@@ -207,7 +207,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         $sold = $this->stockedEnough($company, $note, $consent);
         $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
-            throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
+            throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()), $allocated->number, $note->getEstablishment()->getCode(), self::DOCUMENT_TYPE);
         }
         $printing = DeliveryNotePrinting::today($this->settings, $note);
         $units = array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines());

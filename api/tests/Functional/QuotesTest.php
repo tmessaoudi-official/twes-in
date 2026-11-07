@@ -134,6 +134,34 @@ final class QuotesTest extends ApiTestCase
     }
 
     /**
+     * A send the numbering refuses says which of its two refusals it is, never that the quote changed meanwhile: a number
+     * another quote already carries names that number and its series, a series gone names the establishment and the
+     * document. The quote stays a draft with no number either way.
+     */
+    public function testASendTheNumberingRefusesSaysWhyRatherThanThatTheQuoteChanged(): void
+    {
+        $this->signedIn(self::WRITER);
+        $company = [$this->company->getId()->toRfc4122()];
+        $this->postJson($this->path($this->draft()).'/send', null);
+        self::assertResponseIsSuccessful();
+
+        // A series set back by hand gives again the number it gave last.
+        $this->em()->getConnection()->executeStatement("UPDATE numbering_series SET next_number = next_number - 1 WHERE document_type = 'quote' AND company_id = ?", $company);
+        $second = $this->draft();
+        $this->postJson($this->path($second).'/send', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['series_number_taken', ['number', 'establishment', 'documentType']], $this->refusedWholeAs());
+
+        $this->em()->getConnection()->executeStatement("DELETE FROM numbering_series WHERE document_type = 'quote' AND company_id = ?", $company);
+        $this->postJson($this->path($second).'/send', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['no_numbering_series', ['establishment', 'documentType']], $this->refusedWholeAs());
+
+        $this->getJson($this->path($second));
+        self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']]);
+    }
+
+    /**
      * A draft saved before its customer's regime changed still carries the VAT that regime now leaves out: sent, it would
      * print the regime's mention over the VAT it charges. The send is refused as the save is, naming the line, and the
      * quote stays a draft with no number; which tax goes is the person's to say.

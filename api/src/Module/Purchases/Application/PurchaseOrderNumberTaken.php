@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Purchases\Application;
 
+use App\Tenancy\Application\Numbering\NumberAlreadyTaken;
+
 /** The number the series gave is already on another order of the company, as when establishments share a format without `{EST}`. */
-final class PurchaseOrderNumberTaken extends \RuntimeException
+final class PurchaseOrderNumberTaken extends NumberAlreadyTaken
 {
 }

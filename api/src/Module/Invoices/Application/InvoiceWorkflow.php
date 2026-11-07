@@ -156,7 +156,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             $sold = InvoiceType::Invoice === $type ? $this->stockedEnough($company, $invoice, $consent) : [];
             $allocated = $this->numbers->allocate($company, $invoice->getEstablishment(), $type->value);
             if ($this->invoices->numberTaken($company->getId(), $type, $allocated->number)) {
-                throw new InvoiceNumberTaken(\sprintf('The number %s is already on another document of this company: give the %s series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $type->value, $invoice->getEstablishment()->getCode()));
+                throw new InvoiceNumberTaken(\sprintf('The number %s is already on another document of this company: give the %s series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $type->value, $invoice->getEstablishment()->getCode()), $allocated->number, $invoice->getEstablishment()->getCode(), $type->value);
             }
 
             // A credit note's invoice is held with the series: what it still has due cannot move under the check.

@@ -35,7 +35,7 @@ final readonly class NextNumber
             throw new \LogicException('An establishment numbers the documents of its own company.');
         }
         $series = $this->series->defaultFor($establishment->getId(), $documentType)
-            ?? throw new NoNumberingSeries(\sprintf('The establishment %s numbers no %s.', $establishment->getCode(), $documentType));
+            ?? throw new NoNumberingSeries(\sprintf('The establishment %s numbers no %s.', $establishment->getCode(), $documentType), $establishment->getCode(), $documentType);
 
         $now = $this->clock->now();
 

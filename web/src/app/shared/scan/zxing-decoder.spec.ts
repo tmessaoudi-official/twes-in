@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest';
-import { composeCode } from './barcode-reader';
+import { composeCode } from './zxing-decoder';
 
 describe('composeCode', () => {
   it('types a GS1 label as a GS1 scanner does: its symbology identifier, then its data with the separators', () => {

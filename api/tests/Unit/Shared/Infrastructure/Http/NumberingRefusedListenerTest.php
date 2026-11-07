@@ -10,8 +10,10 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure\Http;
 
 use ApiPlatform\Validator\Exception\ValidationException;
+use App\Module\Invoices\Application\InvoiceNumberTaken;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\NumberingRefusedListener;
+use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,6 +43,24 @@ final class NumberingRefusedListenerTest extends TestCase
         self::assertSame(['reason' => 'before_last_day', 'params' => ['last' => '2026-11-15', 'today' => '2026-11-14']], $rule->payload);
     }
 
+    public function testAnEstablishmentNumberingNoSuchDocumentIsAnsweredWithWhichAndWhat(): void
+    {
+        $refused = new NoNumberingSeries('The establishment MAIN numbers no quote.', 'MAIN', 'quote');
+        $event = self::event(new ConflictHttpException($refused->getMessage(), $refused));
+        (new NumberingRefusedListener())($event);
+
+        self::assertAnsweredWith($event, 'no_numbering_series', ['establishment' => 'MAIN', 'documentType' => 'quote']);
+    }
+
+    public function testANumberAnotherDocumentCarriesIsAnsweredWithTheNumberAndItsSeries(): void
+    {
+        $refused = new InvoiceNumberTaken('The number F-2026-0007 is already on another document.', 'F-2026-0007', 'SFAX', 'credit_note');
+        $event = self::event(new ConflictHttpException($refused->getMessage(), $refused));
+        (new NumberingRefusedListener())($event);
+
+        self::assertAnsweredWith($event, 'series_number_taken', ['number' => 'F-2026-0007', 'establishment' => 'SFAX', 'documentType' => 'credit_note']);
+    }
+
     public function testARefusalAlreadyAnsweredAsAFieldIsLeftAsItIs(): void
     {
         $refused = new InvalidNumbering('nextNumber', 'Resumes at 4.', 'sequence_from', ['next' => 4]);
@@ -58,6 +78,19 @@ final class NumberingRefusedListenerTest extends TestCase
         (new NumberingRefusedListener())($event);
 
         self::assertSame($conflict, $event->getThrowable());
+    }
+
+    /** @param array<string, string> $params */
+    private static function assertAnsweredWith(ExceptionEvent $event, string $reason, array $params): void
+    {
+        $answer = $event->getThrowable();
+        self::assertInstanceOf(ValidationException::class, $answer);
+        self::assertSame(409, $answer->getStatus());
+        $violation = $answer->getConstraintViolationList()->get(0);
+        self::assertSame([DomainRule::WHOLE_REQUEST, $reason], [$violation->getPropertyPath(), $violation->getCode()]);
+        $rule = $violation->getConstraint();
+        self::assertInstanceOf(DomainRule::class, $rule);
+        self::assertSame(['reason' => $reason, 'params' => $params], $rule->payload);
     }
 
     private static function event(\Throwable $thrown): ExceptionEvent

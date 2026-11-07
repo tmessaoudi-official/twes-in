@@ -1472,7 +1472,7 @@
     "errors": {
       "network": "The server cannot be reached.",
       "not_found": "Invoice not found.",
-      "conflict": "The document changed state meanwhile, or its establishment has no invoice numbering series.",
+      "conflict": "The document changed state meanwhile.",
       "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today).",
       "excess_to": "Say where the money already paid goes, to the customer’s credit or to a refund.",
       "customer_unavailable": "This customer has been deactivated, or merged into another, since: choose the customer on the draft (after a merge, the customer kept), or reactivate it on its record.",
@@ -1746,7 +1746,7 @@
     "errors": {
       "network": "The server could not be reached.",
       "not_found": "Delivery note not found.",
-      "conflict": "The note changed state meanwhile, or its establishment has no delivery note numbering series to number it with.",
+      "conflict": "The note changed state meanwhile.",
       "invalid": "The note was refused. Check the customer, the lines and the dates.",
       "customer_unavailable": "This customer has been deactivated, or merged into another, since: choose the customer on the draft (after a merge, the customer kept), or reactivate it on its record."
     },
@@ -2708,7 +2708,9 @@
     "busy": "Another change was being saved at the same moment: nothing was saved. Send it again.",
     "numbering": {
       "before_last_day": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: the document would be dated before the previous one. Correct its date and time, or tell the person who looks after that computer, then try again.",
-      "before_last_period": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: nothing is numbered before the last month numbered. Correct its date and time, or tell the person who looks after that computer, then try again."
+      "before_last_period": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: nothing is numbered before the last month numbered. Correct its date and time, or tell the person who looks after that computer, then try again.",
+      "no_numbering_series": "The establishment {{establishment}} has no numbering series for this document: {{documentType}}. Give it one in Settings › Numbering, then try again.",
+      "series_number_taken": "The number {{number}} is already on another document of the company: the “{{documentType}}” series of the establishment {{establishment}} writes the same numbers as another. In Settings › Numbering, put the establishment’s code in its format, then try again."
     }
   },
   "live": {
@@ -3559,7 +3561,7 @@
     "errors": {
       "network": "The server cannot be reached.",
       "not_found": "Quote not found, or the Invoices module is off.",
-      "conflict": "The quote changed state meanwhile, or an invoice drawn from it already exists, or its establishment has no quote numbering series.",
+      "conflict": "The quote changed state meanwhile, or an invoice drawn from it already exists.",
       "invalid": "The quote was refused. Check the customer, the lines and the dates.",
       "customer_unavailable": "This customer has been deactivated, or merged into another, since: choose the customer on the draft (after a merge, the customer kept), or reactivate it on its record.",
       "file_refused": "The file was refused: it must be a PDF or a PNG, JPEG or WebP image of at most 10 MB, not empty, and a quote holds at most 10 files.",

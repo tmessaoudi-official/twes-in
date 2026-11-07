@@ -45,7 +45,7 @@ final readonly class AllocateNumber
             throw new \LogicException('An establishment numbers the documents of its own company.');
         }
         $series = $this->series->lockedDefaultFor($establishment->getId(), $documentType)
-            ?? throw new NoNumberingSeries(\sprintf('The establishment %s numbers no %s.', $establishment->getCode(), $documentType));
+            ?? throw new NoNumberingSeries(\sprintf('The establishment %s numbers no %s.', $establishment->getCode(), $documentType), $establishment->getCode(), $documentType);
 
         $now = $this->clock->now();
         $day = $now->setTimezone(new \DateTimeZone($company->getTimezone()));

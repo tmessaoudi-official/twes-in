@@ -95,7 +95,7 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             }
             $allocated = $this->numbers->allocate($company, $order->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->orders->numberTaken($company->getId(), $allocated->number)) {
-                throw new PurchaseOrderNumberTaken(\sprintf('The number %s is already on another purchase order of this company: give the purchase order series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $order->getEstablishment()->getCode()));
+                throw new PurchaseOrderNumberTaken(\sprintf('The number %s is already on another purchase order of this company: give the purchase order series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $order->getEstablishment()->getCode()), $allocated->number, $order->getEstablishment()->getCode(), self::DOCUMENT_TYPE);
             }
             // The vendor's codes as the order goes out, whatever was last read when the draft was saved.
             $order->keepVendorCodes($this->products->vendorCodes($company, $order->getVendorId(), array_map(static fn (PurchaseOrderLine $line): Uuid => $line->getProductId(), $order->getLines())));

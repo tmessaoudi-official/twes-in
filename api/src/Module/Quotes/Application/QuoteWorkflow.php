@@ -96,7 +96,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             $this->chargedByItsRegimes($company, $quote);
             $allocated = $this->numbers->allocate($company, $quote->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->quotes->numberTaken($company->getId(), $allocated->number)) {
-                throw new QuoteNumberTaken(\sprintf('The number %s is already on another quote of this company: give the quote series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $quote->getEstablishment()->getCode()));
+                throw new QuoteNumberTaken(\sprintf('The number %s is already on another quote of this company: give the quote series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $quote->getEstablishment()->getCode()), $allocated->number, $quote->getEstablishment()->getCode(), self::DOCUMENT_TYPE);
             }
             $printing = QuotePrinting::today($this->settings, $quote);
             $units = array_map(static fn (QuoteLine $line): Unit => $line->getUnit(), $quote->getLines());

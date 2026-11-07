@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Application;
 
+use App\Tenancy\Application\Numbering\NumberAlreadyTaken;
+
 /** The number a quote series gave is already on another quote of the company: the series of two establishments overlap. */
-final class QuoteNumberTaken extends \RuntimeException
+final class QuoteNumberTaken extends NumberAlreadyTaken
 {
 }

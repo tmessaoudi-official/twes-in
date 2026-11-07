@@ -3,19 +3,21 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { failuresSaid, noticeToasts, provideQuietFeedback } from '../testing/feedback';
 import { isNumberingRefused, numberingRefusedInterceptor } from './numbering-refused-interceptor';
 import { saidAlready } from './said-already';
 
 const ISSUE = '/api/companies/a/invoices/i1/issue';
+const NEXT_NUMBER = '/api/companies/a/invoices/i1/next-number';
 
-function refusal(reason: string, params: Record<string, string>): object {
+function refusal(reason: string, params: Record<string, string>, field = 'issueDate'): object {
   return {
     status: 409,
     violations: [
       {
-        propertyPath: 'issueDate',
+        propertyPath: field,
         message: 'Check the clock.',
         code: reason,
         payload: { reason, params },
@@ -31,8 +33,12 @@ describe('numberingRefusedInterceptor', () => {
         provideHttpClient(withInterceptors([numberingRefusedInterceptor])),
         provideHttpClientTesting(),
         provideQuietFeedback(),
+        provideTranslateService({ lang: 'fr' }),
         { provide: FormatFacade, useValue: { day: (value: string) => `day ${value}` } },
       ],
+    });
+    TestBed.inject(TranslateService).setTranslation('fr', {
+      company: { numbering: { document_types: { quote: 'Devis', credit_note: 'Avoir' } } },
     });
   });
 
@@ -73,6 +79,48 @@ describe('numberingRefusedInterceptor', () => {
       expect(saidAlready(failure)).toBe(true);
     },
   );
+
+  it.each([
+    [
+      'no_numbering_series',
+      { establishment: 'MAIN', documentType: 'quote' },
+      { establishment: 'MAIN', documentType: 'Devis' },
+    ],
+    [
+      'series_number_taken',
+      { number: 'AV-2026-0007', establishment: 'SFAX', documentType: 'credit_note' },
+      { number: 'AV-2026-0007', establishment: 'SFAX', documentType: 'Avoir' },
+    ],
+  ])(
+    'says a document its numbering refused (%s) in words, naming the document as the numbering settings do',
+    async (reason, params, said) => {
+      const failure = issueAnswered(refusal(reason, params, ''));
+      await Promise.resolve();
+
+      const toasts = failuresSaid();
+      expect(toasts.map((toast) => toast.key)).toEqual([`feedback.numbering.${reason}`]);
+      expect(toasts[0]?.params).toEqual(said);
+      expect(isNumberingRefused(failure)).toBe(true);
+      expect(saidAlready(failure)).toBe(true);
+    },
+  );
+
+  it('says nothing when only the next number of a draft is read: issuing says it', async () => {
+    let failure: unknown = null;
+    TestBed.inject(HttpClient)
+      .get(NEXT_NUMBER)
+      .subscribe({ error: (error: unknown) => (failure = error) });
+    TestBed.inject(HttpTestingController)
+      .expectOne(NEXT_NUMBER)
+      .flush(refusal('no_numbering_series', { establishment: 'MAIN', documentType: 'quote' }, ''), {
+        status: 409,
+        statusText: 'Refused',
+      });
+    await Promise.resolve();
+
+    expect(failuresSaid()).toEqual([]);
+    expect(saidAlready(failure)).toBe(false);
+  });
 
   it('leaves any other refusal, and any other numbering refusal, to the screen', async () => {
     const other = issueAnswered(refusal('sequence_from', { next: '4' }));
