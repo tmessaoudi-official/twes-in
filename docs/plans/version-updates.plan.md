@@ -75,6 +75,37 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
     `-s`), which the next tick takes. Search: `grep -noE '> *"\$state/[a-z.-]+"' scripts/onprem/twes`; 26 files, the
     content readers traced, the rest not (Inferred).
 
+### Round 3 (2026-11-07): the coming releases
+
+Ruled in `docs/plans/stable-release.plan.md`'s Decisions Log (2026-11-07 16:14, 17:37): a readiness map of every pin, a
+probe of what already allows PHP 8.6 and Symfony 8.2, a non-blocking CI lane on the release candidates, the switch once a
+release is out and green on its first patch release.
+
+| Pin | Ours | Next | When (source) | Kind |
+|---|---|---|---|---|
+| Symfony | 8.1.11 | 8.2 (`v8.2.0-BETA1` tagged) | Nov 2026; **8.1 unsupported from Jan 2027**, 8.2 until Jul 2027, then 9.0 and 8.4 LTS (symfony.com/releases) | minor, required |
+| PHP | 8.5 (FrankenPHP 1.13.5) | 8.6.0 (RC5 on php.net, `php:8.6-rc` RC4 on Docker Hub) | GA planned 19 Nov 2026 (wiki.php.net/todo/php86) | minor |
+| FrankenPHP | 1.13.5-php8.5 | a php8.6 image | none yet: 0 `php8.6` tags on Docker Hub (2026-11-07) | gate for PHP 8.6 |
+| PostgreSQL | 18.6 | 19 (`postgres:19rc1`, 2026-11-06) | GA after the RCs | **major: data upgrade on every shop** |
+| Node | 26.13 | 27 (alpha) | 26 LTS since 2026-10-28, supported to 2029-04-30 (nodejs/Release) | nothing to do |
+| Angular | 22.2.4 | 22.3 (`next` 22.3.0-next.4); no 23 published | npm dist-tags | watch |
+| TypeScript | 6.0.3 | 7.0.2 latest | held back by ruling (EXPERTISE §2) | held |
+| minimatch (dev-only) | 10.2.6 | 11.0.1 | Dependabot #5, moderate DoS, never shipped | patch when dependents allow |
+
+The probe (`var/claude/release-probe/`, worktree `.claude/worktrees/probe86`, image `twes-in-tools-php86`: PHP 8.6.0RC4,
+the same eight extensions as FrankenPHP's, Symfony 8.2.0-BETA1):
+- Composer resolves both: PHP 8.6 with no package refusing it; Symfony 8.2 moves the 42 `symfony/*` packages and drops
+  `symfony/polyfill-uuid`, no third-party bundle in the way.
+- PHP 8.6 alone (Symfony 8.1): one blocker, `PostgresSessionHandler` lacks `create_sid()` (PHP 8.6 warns « will be
+  required in PHP 9.0 », and the dev error handler stops the container's build on it); with it, PHPStan clean and the 98
+  tests below green. php-cs-fixer 3.95.28 refuses to run on 8.6 (« supports PHP syntax only up to PHP 8.5 »).
+- Symfony 8.2 (on PHP 8.6): the full suite 5,184 tests, 9 failures, all from `MailerAssertionsTrait` now counting the
+  mails of every kernel a test booted (`TestContainer::getKeptState`), where 8.1 counted the last request's; not in
+  framework-bundle's CHANGELOG at BETA1. PHPStan: 8 errors, one spot (`tests/Functional/RouteSweep.php:67-68`, a
+  `string|non-decimal-int-string`), reported per class using it. Deprecations: 3, all ours (below).
+- Not proven: the worker runtime on PHP 8.6 (no FrankenPHP image), the web half (no Node or Angular change involved),
+  the e2e, PostgreSQL 19.
+
 ## Completion note
 - Certified by CI only, never run locally: the full e2e (`stock-map.spec.ts:429` included), the production images, the
   deploy check and the staging check, all green on 3d0767f9 (six workflows of six).
@@ -109,8 +140,17 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 | 12 | Image minors | M | done | 177e5d6a2 | compose.yaml infra/** scripts/backup/** |
 | 13 | make versions complete | S | done | 9921cb725 | scripts/versions.sh docs/UPDATE.md |
 | 14 | twes state writes: torn reads | S | done | - | scripts/onprem/twes |
+| 15 | PHP 8.6 blocker now: `PostgresSessionHandler::create_sid()` delegating to the wrapped handler (Symfony's has it on 8.1) | S | todo | - | api/src/Identity/Infrastructure/Session/PostgresSessionHandler.php |
+| 16 | Symfony 8.2 deprecation now: `SymfonyDomainEvents` takes the Contracts `EventDispatcherInterface` | S | todo | - | api/src/Shared/Infrastructure/Events/SymfonyDomainEvents.php |
+| 17 | RC lane: a non-blocking CI job on PHP 8.6 RC + Symfony 8.2 beta/RC (the probe's image into infra/, its deprecations listed per run) | M | todo | - | .github/workflows/** infra/** |
+| 18 | Symfony 8.2 switch, at 8.2.1, before 8.1's January 2027 end: a mail-count helper marking before the request (the 9 tests), RouteSweep's type, `security.route_loader`, the csrf_protection recipe, the ping middleware (doctrine-bundle 3.3.4 still wires the deprecated class) | M | todo | - | api/composer.* api/config/** api/tests/** |
+| 19 | PHP 8.6 switch at 8.6.1: waits on a FrankenPHP php8.6 image and php-cs-fixer support for 8.6 | M | blocked | - | infra/api/Dockerfile api/composer.json |
+| 20 | PostgreSQL 19 at 19.1: dump and restore on every shop, `pgbackrest stanza-upgrade`, rehearsed by `make onprem-check` and `make update-rehearsal` | L | todo | - | compose*.yaml infra/postgres/** scripts/onprem/** |
+| 21 | Class « a release learnt of late »: a script reading each pin's upstream calendar (php.net, symfony.com/releases, Docker Hub tags, npm dist-tags, Node's schedule) beside `make versions` | M | todo | - | scripts/versions.sh scripts/** |
+| 22 | minimatch 11.0.1 (dev-only, Dependabot #5) once its dependents allow | S | todo | - | web/package.json web/package-lock.json |
 <!-- /progress-block -->
 ### Blocked
+- 19: no FrankenPHP image on PHP 8.6 (Docker Hub, 2026-11-07); php-cs-fixer refuses 8.6.
 ### Needs input
 - npm 11.20 warns that five packages run install scripts not covered by `allowScripts` (@parcel/watcher, esbuild, lmdb,
   msgpackr-extract, protobufjs; they still run, 2026-11-05). Approving them is a supply-chain choice, for the developer,
