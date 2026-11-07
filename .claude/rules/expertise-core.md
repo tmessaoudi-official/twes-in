@@ -19,6 +19,7 @@ Product, goals, done: SPEC §1, §2, §5. Rulings: SPEC §7 only (`git log -S"<p
 ## 1. The business in one screen
 - NORTH STAR (SPEC §1): one modular platform, every capability a module switched on or off, seen per person, talking only through ports and events; real businesses first (TN, FR by evidence); exemplary by evidence; mistake-proofing that guides but never makes a fiscal or legal choice; data where the law allows; RGAA, fr/en/ar, phone first.  [Ruled: user 2026-10-11 23:52]
 - Everything parametrized: a value a company could want otherwise is a company setting, one only the operator sets a parameter; only what the law fixes stays code.  [Ruled: user 2026-10-09 07:46]
+- One canon, then a choice (North star line 6): related things behave the same, one canon per family; a BEHAVIOUR a business could want otherwise is a parameter too, a default plus the others that make sense; each family declares its behaviours and a test holds every member to them.  [Ruled: user 2026-11-06 21:21]
 - Invoicing SaaS for small businesses WITH A PLACE; TN first, FR second; multi-company. The first shop is PRODUCTION: an update never breaks what exists or loses data.  [Source: SPEC §1; Ruled: user 2026-10-17 16:31]
 - Another country is DATA (preset + sourced rules + texts); a new tax KIND is code.  [Ruled: user 2026-09-20]
 - Money: NUMERIC(14,3) amounts, (14,4) prices, (14,3) quantities; issued documents immutable, corrected by credit notes; numbering gapless at issue.  [Source: SPEC §3 Money]

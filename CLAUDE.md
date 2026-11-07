@@ -52,7 +52,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   a principle covers it; a one-off is written down with why.
 - **Deciding while the developer is away**: pick when a rule decides (never silent; every action wherever its subject
   appears, its context filled in and changeable; every outcome shown at once in every tab; guide but never choose a fiscal
-  or legal answer; data over code; one canon; undo first; parameters over fixed values; a fix is a class); when none does,
+  or legal answer; data over code; one canon per family, then a parameter where a business would choose otherwise, for values and behaviours alike (docs/SPEC.md § 1, line 6); undo first; a fix is a class); when none does,
   pick only if `advisor()` agrees, else park it and move on. Every pick is logged `ASSUMED (review)` naming its rule.
 - Craft lessons go to the rules file of their area, `.claude/rules/{api,web,infra,gate-scripts}.md`, or under
   § "Lessons" below when they apply before any file is read (running a command, the stack, the gates, git); five

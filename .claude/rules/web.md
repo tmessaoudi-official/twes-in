@@ -249,3 +249,7 @@ the end of § Lessons here.
   next after the render (`afterNextRender`), a signed-out page's first field with `appTypedFirst` (`shared/a11y/typed-first.ts`;
   `autofocus` holds only for a document load), and a refused answer kept in a dialog selected (`typeAgain`). A spec focuses
   the button BEFORE the submit: focusing it after, once disabled, leaves the cursor where it was and the case passes on nothing.
+- The first case of a heavy page spec pays the page's warm-up (its imports compiled, its texts opened): the delivery
+  note's first case took 6.2 s and 6.4 s under two gates the same day, 565 ms and 702 ms alone, and reddened the gate
+  twice. Measure it alone and read `uptime` before touching code; re-gate only once the load is measured quiet, never
+  with a longer timeout (2026-11-06).
