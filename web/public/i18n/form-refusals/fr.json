@@ -52,6 +52,7 @@
       "on_or_before": "Date refusée : le {{day}} au plus tard.",
       "file_empty": "Ce fichier est vide : choisissez-en un autre.",
       "file_too_large": "Ce fichier dépasse {{bytes}} : choisissez-en un plus léger.",
+      "file_not_received": "Ce fichier n’est pas arrivé entier : choisissez-le de nouveau.",
       "file_type": "Ce type de fichier n’est pas gardé : choisissez un fichier {{types}}.",
       "picture_too_wide": "Cette image dépasse {{pixels}} pixels de côté : réduisez-la, puis recommencez.",
       "too_many_files": "Il y a déjà {{max}} {max, plural, one {fichier} other {fichiers}} ici, le plus que l’on garde : retirez-en un avant d’en ajouter un autre.",

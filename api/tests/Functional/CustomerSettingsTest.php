@@ -124,7 +124,7 @@ final class CustomerSettingsTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path(self::TERMS), ['level' => 'customer', 'value' => 10]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('customerId', (string) $this->client->getResponse()->getContent());
+        self::assertSame(['value_required', []], $this->refusalOf('customerId'));
     }
 
     public function testTheValuesInUseAreTheCompanysAndThoseItsOwnPartiesHold(): void

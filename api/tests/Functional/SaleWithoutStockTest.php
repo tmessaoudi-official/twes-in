@@ -24,6 +24,7 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\ShortSaleConsents;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -190,6 +191,17 @@ final class SaleWithoutStockTest extends ApiTestCase
         $this->postJson($this->path('invoices', $this->draftInvoice($customerId, '3')).'/issue?shortOfStock=confirmed', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame('stock_short', $this->refusalOf('lines[0].quantity')[0]);
+    }
+
+    public function testAConsentOtherThanConfirmedIsRefusedOnItsParameter(): void
+    {
+        $this->signedIn(self::SELLING);
+        $customerId = $this->customer();
+
+        $this->postJson($this->path('delivery-notes', $this->draftNote($customerId, '1')).'/validate?shortOfStock=yes', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        // The route's own constraint refuses it first, on its parameter, still with no reason of its own.
+        self::assertSame([null, []], $this->refusalOf(ShortSaleConsents::QUERY));
     }
 
     public function testAnEstablishmentThenARoleSayOtherwiseThanTheCompany(): void

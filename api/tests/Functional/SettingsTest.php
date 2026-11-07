@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
@@ -375,6 +376,7 @@ final class SettingsTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path().'/presentation.density', ['level' => 'galaxy', 'value' => 'compact']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['not_one_of', ['choices' => implode(', ', array_map(static fn (SettingLevel $each): string => $each->value, array_values(array_filter(SettingLevel::cases(), static fn (SettingLevel $each): bool => SettingLevel::Platform !== $each))))]], $this->refusalOf('level'), 'a level there is not is refused with the levels a company names');
     }
 
     public function testAnUnknownChainIsABadRequest(): void

@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
 use App\Module\Inventory\Application\StockMap\StockMapStep;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
@@ -29,7 +30,6 @@ use App\Venue\Domain\Model\VenueStructure;
 use App\Venue\Domain\ValueObject\PlanRect;
 use App\Venue\Domain\ValueObject\StructureKind;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -67,7 +67,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
         $newPlaces = [];
         foreach ($data->newPlaces as $at => $entry) {
             $kind = StockLocationKind::tryFrom(self::text($entry, 'kind', "newPlaces[$at]", null))
-                ?? throw new UnprocessableEntityHttpException("newPlaces[$at].kind: A place is a zone, a rack or another kind the plan carries.");
+                ?? throw self::notOneOf("newPlaces[$at].kind", array_map(static fn (StockLocationKind $each): string => $each->value, StockLocationKind::cases()));
             $newPlaces[] = [$kind, self::text($entry, 'code', "newPlaces[$at]", null), self::text($entry, 'name', "newPlaces[$at]", null), self::rect($entry, "newPlaces[$at]")];
         }
         $structureBuilds = [];
@@ -130,7 +130,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
     {
         $id = \is_array($entry) ? ($entry[$key] ?? null) : null;
         if (!\is_string($id) || !Uuid::isValid($id)) {
-            throw new UnprocessableEntityHttpException("$at.$key: An id is expected here.");
+            throw DomainRule::refused("$at.$key", 'An id is expected here.', 'invalid_value');
         }
 
         return Uuid::fromString($id);
@@ -141,7 +141,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
     {
         $version = \is_array($entry) ? ($entry['version'] ?? null) : null;
         if (!\is_int($version) || $version < 1) {
-            throw new UnprocessableEntityHttpException("$at.version: The version it was read at is expected here.");
+            throw DomainRule::refused("$at.version", 'The version it was read at is expected here.', 'invalid_value');
         }
 
         return $version;
@@ -152,7 +152,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
     {
         $value = \is_array($entry) ? ($entry[$key] ?? $absent) : null;
         if (!\is_string($value)) {
-            throw new UnprocessableEntityHttpException("$at.$key: A text is expected here.");
+            throw DomainRule::refused("$at.$key", 'A text is expected here.', 'invalid_value');
         }
 
         return $value;
@@ -161,7 +161,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
     private static function structureKind(mixed $entry, string $at): StructureKind
     {
         return StructureKind::tryFrom(self::text($entry, 'kind', $at, null))
-            ?? throw new UnprocessableEntityHttpException("$at.kind: A piece of structure is a wall, a door, a post or a dock.");
+            ?? throw self::notOneOf("$at.kind", array_map(static fn (StructureKind $each): string => $each->value, StructureKind::cases()));
     }
 
     /** A distance as the floor form takes it, its rules left to VenueArea::size(). */
@@ -169,7 +169,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
     {
         $value = \is_array($entry) ? ($entry[$key] ?? null) : null;
         if (!\is_string($value) && !\is_int($value) && !\is_float($value)) {
-            throw new UnprocessableEntityHttpException("$at.$key: A distance in metres is expected here.");
+            throw DomainRule::refused("$at.$key", 'A distance in metres is expected here.', 'invalid_value');
         }
 
         return (string) $value;
@@ -179,19 +179,19 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
     private static function rect(mixed $entry, string $at): PlanRect
     {
         if (!\is_array($entry)) {
-            throw new UnprocessableEntityHttpException("$at: A rectangle is expected here.");
+            throw DomainRule::refused("$at", 'A rectangle is expected here.', 'invalid_value');
         }
         $distance = static function (string $key, bool $required) use ($entry, $at): string {
             $value = $entry[$key] ?? ($required ? null : '0');
             if (!\is_string($value) && !\is_int($value) && !\is_float($value)) {
-                throw new UnprocessableEntityHttpException("$at.$key: A distance in metres is expected here.");
+                throw DomainRule::refused("$at.$key", 'A distance in metres is expected here.', 'invalid_value');
             }
 
             return (string) $value;
         };
         $rotation = $entry['rotation'] ?? 0;
         if (!\is_int($rotation)) {
-            throw new UnprocessableEntityHttpException("$at.rotation: A rotation is a whole number of degrees.");
+            throw DomainRule::refused("$at.rotation", 'A rotation is a whole number of degrees.', 'invalid_value');
         }
 
         try {
@@ -199,5 +199,15 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
         } catch (InvalidVenue $refused) {
             throw DomainRule::refused($at.'.'.$refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
+    }
+
+    /**
+     * A kind the entry names outside those there are, refused on its path with the kinds it may name.
+     *
+     * @param list<string> $choices
+     */
+    private static function notOneOf(string $path, array $choices): ValidationException
+    {
+        return DomainRule::refused($path, 'One of '.implode(', ', $choices).'.', 'not_one_of', ['choices' => implode(', ', $choices)]);
     }
 }

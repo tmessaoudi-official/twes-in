@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Http;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Module\Invoices\Application\NothingToPreview;
 use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
@@ -21,6 +22,7 @@ use App\Shared\Domain\ValueObject\DocumentLayout;
 use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Shared\Domain\ValueObject\WatermarkIntensity;
 use App\Shared\Domain\ValueObject\WatermarkSpread;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,7 +31,6 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -50,7 +51,7 @@ final readonly class InvoiceDesignPreviewController
     {
     }
 
-    #[Route('/api/companies/{companyId}/invoice-design-preview', name: 'api_invoice_design_preview', methods: ['GET'])]
+    #[Route('/api/companies/{companyId}/invoice-design-preview', name: 'api_invoice_design_preview', methods: ['GET'], defaults: ['_api_respond' => true])]
     public function __invoke(string $companyId, Request $request): Response
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), SettingAccess::SHARE);
@@ -61,15 +62,15 @@ final readonly class InvoiceDesignPreviewController
         $layout = $request->query->get('layout');
         $accent = $request->query->get('accent');
         $design = new DocumentDesign(
-            null === $layout ? $saved->layout : (DocumentLayout::tryFrom($layout) ?? throw new UnprocessableEntityHttpException('layout: One of '.implode(', ', array_map(static fn (DocumentLayout $each): string => $each->value, DocumentLayout::cases())).'.')),
-            null === $accent ? $saved->accent : (1 === preg_match('/^#[0-9a-fA-F]{6}$/', $accent) ? $accent : throw new UnprocessableEntityHttpException('accent: A colour written #rrggbb.')),
+            null === $layout ? $saved->layout : (DocumentLayout::tryFrom($layout) ?? throw self::notOneOf('layout', array_map(static fn (DocumentLayout $each): string => $each->value, DocumentLayout::cases()))),
+            null === $accent ? $saved->accent : (1 === preg_match('/^#[0-9a-fA-F]{6}$/', $accent) ? $accent : throw DomainRule::refused('accent', 'A colour written #rrggbb.', 'invalid_value')),
             self::millimetres($request, 'logoWidth', $saved->logoWidthMm, DocumentDesign::LOGO_WIDTH_MM_MIN, DocumentDesign::LOGO_WIDTH_MM_MAX),
             self::millimetres($request, 'logoHeight', $saved->logoHeightMm, DocumentDesign::LOGO_HEIGHT_MM_MIN, DocumentDesign::LOGO_HEIGHT_MM_MAX),
             match ($request->query->get('logoProportions')) {
                 null => $saved->logoKeepsProportions,
                 'keep' => true,
                 'free' => false,
-                default => throw new UnprocessableEntityHttpException('logoProportions: keep or free.'),
+                default => throw self::notOneOf('logoProportions', ['keep', 'free']),
             },
             self::watermark($request, $saved->watermark),
         );
@@ -94,9 +95,9 @@ final readonly class InvoiceDesignPreviewController
         $counts = array_map(strval(...), DocumentWatermark::COPIES);
 
         return new DocumentWatermark(
-            null === $intensity ? $saved->intensity : (WatermarkIntensity::tryFrom($intensity) ?? throw new UnprocessableEntityHttpException('watermarkIntensity: One of '.implode(', ', array_map(static fn (WatermarkIntensity $each): string => $each->value, WatermarkIntensity::cases())).'.')),
-            null === $copies ? $saved->copies : (\in_array($copies, $counts, true) ? (int) $copies : throw new UnprocessableEntityHttpException('watermarkCopies: One of '.implode(', ', $counts).'.')),
-            null === $spread ? $saved->spread : (WatermarkSpread::tryFrom($spread) ?? throw new UnprocessableEntityHttpException('watermarkSpread: One of '.implode(', ', array_map(static fn (WatermarkSpread $each): string => $each->value, WatermarkSpread::cases())).'.')),
+            null === $intensity ? $saved->intensity : (WatermarkIntensity::tryFrom($intensity) ?? throw self::notOneOf('watermarkIntensity', array_map(static fn (WatermarkIntensity $each): string => $each->value, WatermarkIntensity::cases()))),
+            null === $copies ? $saved->copies : (\in_array($copies, $counts, true) ? (int) $copies : throw self::notOneOf('watermarkCopies', $counts)),
+            null === $spread ? $saved->spread : (WatermarkSpread::tryFrom($spread) ?? throw self::notOneOf('watermarkSpread', array_map(static fn (WatermarkSpread $each): string => $each->value, WatermarkSpread::cases()))),
         );
     }
 
@@ -108,9 +109,19 @@ final readonly class InvoiceDesignPreviewController
             return $saved;
         }
         if (1 !== preg_match('/^\d{1,3}$/', $given) || (int) $given < $min || (int) $given > $max) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: A whole number of millimetres from %d to %d.', $name, $min, $max));
+            throw DomainRule::refused($name, \sprintf('A whole number of millimetres from %d to %d.', $min, $max), 'whole_number_between', ['min' => $min, 'max' => $max]);
         }
 
         return (int) $given;
+    }
+
+    /**
+     * A part of the design the query names outside what it may be, refused on its parameter with the choices it has.
+     *
+     * @param list<string> $choices
+     */
+    private static function notOneOf(string $name, array $choices): ValidationException
+    {
+        return DomainRule::refused($name, 'One of '.implode(', ', $choices).'.', 'not_one_of', ['choices' => implode(', ', $choices)]);
     }
 }

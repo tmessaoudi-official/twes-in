@@ -23,7 +23,6 @@ use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProviderInterface<CustomerStatementResource> */
 final readonly class CustomerStatementProvider implements ProviderInterface
@@ -58,7 +57,7 @@ final readonly class CustomerStatementProvider implements ProviderInterface
         }
         $day = WrittenDay::parsed($value);
         if (null === $day) {
-            throw new UnprocessableEntityHttpException($name.': A day is written YYYY-MM-DD.');
+            throw DomainRule::refused($name, 'A day is written YYYY-MM-DD.', 'not_a_date');
         }
 
         return $day;

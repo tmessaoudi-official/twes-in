@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
@@ -295,10 +296,13 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
 
         // An owner may set every company default, and still not the platform's, by either verb.
+        $companyLevels = ['not_one_of', ['choices' => implode(', ', array_map(static fn (SettingLevel $each): string => $each->value, array_values(array_filter(SettingLevel::cases(), static fn (SettingLevel $each): bool => SettingLevel::Platform !== $each))))]];
         $this->sendJson('PUT', '/api/companies/'.$company->getId()->toRfc4122().'/settings/signup.enabled', ['level' => 'platform', 'value' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame($companyLevels, $this->refusalOf('level'));
         $this->sendJson('DELETE', '/api/companies/'.$company->getId()->toRfc4122().'/settings/signup.approval_required?level=platform');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame($companyLevels, $this->refusalOf('level'));
 
         self::assertSame([], $this->em()->getConnection()->fetchFirstColumn("SELECT key FROM setting WHERE level = 'platform'"));
     }

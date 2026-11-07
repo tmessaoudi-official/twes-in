@@ -9,11 +9,12 @@ set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 # The answers built today: losing them (the helper renamed, the tree moved) would leave nothing to check.
-FLOOR=90
-# A 422 forwarding a domain refusal's English message ($refused->getMessage()) carries no reason and, mostly, no field
-# a page can place, so each answers through DomainRule::refused instead. None is left: the count is held at 0, so one
-# coming back reds; a token a screen reads on purpose says why on its line with // plain-refusal: <why>.
-FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-0}
+FLOOR=160
+# A plain 422 (`new UnprocessableEntityHttpException(…)`) carries no reason and, mostly, no field a page can place: a
+# domain message forwarded, or a request's shape refused in an English sentence. Each answers through DomainRule::refused
+# instead. None is left: the count is held at 0, so one coming back reds; a token a screen reads on purpose says why on
+# its line with // plain-refusal: <why>.
+PLAIN=${DOMAIN_REFUSALS_PLAIN:-0}
 problems=()
 
 if [[ ! -d "$root/api/src" ]]; then problems+=("found no api/src")
@@ -24,19 +25,19 @@ else
     [[ "$code" =~ //[[:space:]]*plain-refusal:[[:space:]]*[^[:space:]] ]] && continue
     problems+=("${file#"$root/"}:$n: ${code:0:110}")
   done < <(grep -rnE --include='*.php' "UnprocessableEntityHttpException\(\\\\sprintf\('%s(\.%s)?: %s'" "$root/api/src")
-  forwarded=()
+  plain=()
   while IFS=: read -r file n line; do
     code=${line#"${line%%[![:space:]]*}"}
     [[ "$code" == '*'* || "$code" == '/*'* || "$code" == '//'* || "$code" == '#'* ]] && continue
     [[ "$code" =~ //[[:space:]]*plain-refusal:[[:space:]]*[^[:space:]] ]] && continue
     [[ "$code" =~ \\sprintf\(\'%s(\.%s)?:\ %s\' ]] && continue  # refused above, as a « field: message » answer
-    forwarded+=("${file#"$root/"}:$n: ${code:0:110}")
-  done < <(grep -rnE --include='*.php' 'UnprocessableEntityHttpException\(.*->getMessage\(\)' "$root/api/src")
-  if ((${#forwarded[@]} > FORWARDED)); then
-    problems+=("${#forwarded[@]} 422s forward a domain message, more than the $FORWARDED left: answer through DomainRule::refused with the refusal's field and reason")
-    problems+=("${forwarded[@]}")
-  elif ((${#forwarded[@]} < FORWARDED)); then
-    problems+=("${#forwarded[@]} 422s forward a domain message, fewer than the $FORWARDED this gate holds: lower FORWARDED to ${#forwarded[@]}")
+    plain+=("${file#"$root/"}:$n: ${code:0:110}")
+  done < <(grep -rnE --include='*.php' 'new UnprocessableEntityHttpException\(' "$root/api/src")
+  if ((${#plain[@]} > PLAIN)); then
+    problems+=("${#plain[@]} plain 422s, more than the $PLAIN left: answer through DomainRule::refused with the refusal's field and reason")
+    problems+=("${plain[@]}")
+  elif ((${#plain[@]} < PLAIN)); then
+    problems+=("${#plain[@]} plain 422s, fewer than the $PLAIN this gate holds: lower PLAIN to ${#plain[@]}")
   fi
   found=$(grep -rhoE --include='*.php' 'DomainRule::refused\(' "$root/api/src" | wc -l)
   ((found < FLOOR)) && problems+=("found $found DomainRule::refused answers, fewer than the $FLOOR there are: the helper moved, or this gate reads the wrong tree")
@@ -47,4 +48,4 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'domain-refusals: OK — every domain refusal answers as a violation, %d through DomainRule::refused; %d still forward a domain message (S5.3)\n' "$found" "${#forwarded[@]}"
+printf 'domain-refusals: OK — every domain refusal answers as a violation, %d through DomainRule::refused; %d plain 422s left (S5.3)\n' "$found" "${#plain[@]}"

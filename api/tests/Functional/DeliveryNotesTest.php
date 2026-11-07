@@ -361,10 +361,9 @@ final class DeliveryNotesTest extends ApiTestCase
             $this->postJson($this->path($id).'/deliver', ['delivered' => $moment]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
             self::assertStringContainsString('delivered: ', (string) $this->client->getResponse()->getContent(), $case.', named as sent');
+            // A moment not written as one is refused by the field's own constraint, still with no reason of its own.
             $reason = ['before its issue day' => 'on_or_after', 'after now' => 'after_today'][$case] ?? null;
-            if (null !== $reason) {
-                self::assertSame($reason, $this->refusalOf('delivered')[0], $case.', said why');
-            }
+            self::assertSame($reason, $this->refusalOf('delivered')[0], $case.', said why');
         }
         $before = new \DateTimeImmutable('-1 second');
         $this->postJson($this->path($id).'/deliver', []);

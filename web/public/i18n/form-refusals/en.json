@@ -52,6 +52,7 @@
       "on_or_before": "Date refused: {{day}} at the latest.",
       "file_empty": "This file is empty: choose another.",
       "file_too_large": "This file is over {{bytes}}: choose a lighter one.",
+      "file_not_received": "This file did not arrive whole: choose it again.",
       "file_type": "This type of file is not kept: choose a {{types}} file.",
       "picture_too_wide": "This picture is over {{pixels}} pixels on a side: make it smaller, then try again.",
       "too_many_files": "There {max, plural, one {is already {{max}} file} other {are already {{max}} files}} here, the most kept: take one off before adding another.",

@@ -15,14 +15,12 @@ use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
-use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingKey;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingResource;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<SettingResource, SettingResource> */
 final readonly class ChangeSettingProcessor implements ProcessorInterface
@@ -36,7 +34,7 @@ final readonly class ChangeSettingProcessor implements ProcessorInterface
         $companyId = CompanyPath::identifier($uriVariables, 'companyId');
         // Membership first: a stranger learns nothing from a malformed body.
         $this->access->companyToRead($companyId);
-        $level = SettingLevel::tryFrom($data->level) ?? throw new UnprocessableEntityHttpException(\sprintf('level: no level is called %s.', $data->level));
+        $level = SettingAccess::levelOf($data->level);
         $company = $this->access->companyToWrite($companyId, $level);
         $settingContext = $this->access->contextToWrite($company, $level, $data->roleId, $data->customerId, $data->customerGroupId, $data->productId, $data->productCategoryId, $data->establishmentId);
 

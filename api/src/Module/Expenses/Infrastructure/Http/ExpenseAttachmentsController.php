@@ -17,9 +17,9 @@ use App\Module\Expenses\Domain\Exception\ExpenseTransitionRefused;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseAttachmentResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,7 +27,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -48,13 +47,7 @@ final readonly class ExpenseAttachmentsController
         $ids = ['companyId' => $companyId, 'expenseId' => $expenseId];
         $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), ExpensePermission::WRITE);
 
-        $file = $request->files->get('file');
-        if (!$file instanceof UploadedFile) {
-            throw new UnprocessableEntityHttpException('file: Send the file as a multipart part named file.');
-        }
-        if (!$file->isValid()) {
-            throw new UnprocessableEntityHttpException('file: '.$file->getErrorMessage());
-        }
+        $file = ReceivedFile::of($request);
 
         try {
             $attachment = $this->manage->attach($company, CompanyPath::identifier($ids, 'expenseId'), $file->getClientOriginalName(), (string) file_get_contents($file->getPathname()), $this->guard->account()->getId());

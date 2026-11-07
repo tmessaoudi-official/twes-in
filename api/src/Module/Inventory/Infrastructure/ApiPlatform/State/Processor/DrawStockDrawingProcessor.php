@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Module\Inventory\Application\Location\StockLocationCodeTaken;
 use App\Module\Inventory\Application\Location\StockLocationNotFound;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
@@ -28,7 +29,6 @@ use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\ValueObject\PlanRect;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -53,17 +53,17 @@ final readonly class DrawStockDrawingProcessor implements ProcessorInterface
         // creates a place, since giving it another place is choosing among those that exist.
         $creates = null !== $data->newLocationKind || null !== $data->newLocationCode || null !== $data->newLocationName;
         if ($creates && ('' !== $data->locationId || !$operation instanceof Post)) {
-            throw new UnprocessableEntityHttpException('newLocationCode: A rectangle is drawn for an existing place or for a new one, and moving it never creates one.');
+            throw DomainRule::refused('newLocationCode', 'A rectangle is drawn for an existing place or for a new one, and moving it never creates one.', 'invalid_value');
         }
         if (!$creates && '' === $data->locationId) {
-            throw new UnprocessableEntityHttpException('locationId: A rectangle is drawn for an existing place or for a new one.');
+            throw DomainRule::refused('locationId', 'A rectangle is drawn for an existing place or for a new one.', 'value_required');
         }
 
         try {
             $rect = new PlanRect($data->x, $data->y, $data->width, $data->depth, $data->rotation, $data->height);
             if ($creates) {
                 $kind = StockLocationKind::tryFrom((string) $data->newLocationKind)
-                    ?? throw new UnprocessableEntityHttpException('newLocationKind: A place is a zone, a rack or another kind the plan carries.');
+                    ?? throw self::kindNotOneOf();
                 $drawn = $this->map->drawNew($company, CompanyPath::identifier($uriVariables, 'floorId'), $kind, (string) $data->newLocationCode, (string) $data->newLocationName, $rect, $actor);
             } else {
                 $location = Uuid::fromString($data->locationId);
@@ -84,5 +84,13 @@ final readonly class DrawStockDrawingProcessor implements ProcessorInterface
         }
 
         return StockDrawingResource::ofDrawn($drawn);
+    }
+
+    /** A new place's kind outside those there are, refused on its field with the kinds it may name. */
+    private static function kindNotOneOf(): ValidationException
+    {
+        $kinds = implode(', ', array_map(static fn (StockLocationKind $each): string => $each->value, StockLocationKind::cases()));
+
+        return DomainRule::refused('newLocationKind', \sprintf('One of %s.', $kinds), 'not_one_of', ['choices' => $kinds]);
     }
 }

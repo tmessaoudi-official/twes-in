@@ -11,17 +11,16 @@ namespace App\Tenancy\Infrastructure\Http;
 
 use App\Files\Application\AttachmentRefused;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -41,13 +40,7 @@ final readonly class CompanyLogoController
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
-        $file = $request->files->get('file');
-        if (!$file instanceof UploadedFile) {
-            throw new UnprocessableEntityHttpException('file: Send the file as a multipart part named file.');
-        }
-        if (!$file->isValid()) {
-            throw new UnprocessableEntityHttpException('file: '.$file->getErrorMessage());
-        }
+        $file = ReceivedFile::of($request);
 
         try {
             $attachment = $this->logo->set($company, $file->getClientOriginalName(), (string) file_get_contents($file->getPathname()), $this->guard->account()->getId());

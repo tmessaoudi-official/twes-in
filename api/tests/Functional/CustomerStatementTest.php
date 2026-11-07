@@ -211,6 +211,11 @@ final class CustomerStatementTest extends ApiTestCase
         $this->client->request('GET', $this->path().'/pdf?from=2026-05-02&to=2026-05-01');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([['propertyPath' => 'to', 'reason' => 'on_or_after', 'params' => ['day' => '2026-05-02']]], $this->refusals(), 'the file is refused on its last day, as the statement is');
+        foreach (['/pdf?from=2026-02-30', '?from=2026-02-30'] as $query) {
+            $this->client->request('GET', $this->path().$query, server: ['HTTP_ACCEPT' => 'application/json']);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $query);
+            self::assertSame(['not_a_date', []], $this->refusalOf('from'), $query.': a day the calendar has not');
+        }
 
         $this->client->request('GET', $this->companyPath().'/customers/'.self::ABSENT.'/statement/pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

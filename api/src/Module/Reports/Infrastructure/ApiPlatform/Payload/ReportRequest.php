@@ -19,7 +19,6 @@ use App\Module\Reports\Application\ReportPeriod;
 use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** What a report's address asks: the period's two days, the comparison and the establishment, once API Platform checked their shapes. */
@@ -60,11 +59,13 @@ final readonly class ReportRequest
     private static function read(mixed $from, mixed $to, mixed $compare, mixed $establishment): self
     {
         if (null !== $compare && (!\is_string($compare) || null === ReportComparison::tryFrom($compare))) {
-            throw new UnprocessableEntityHttpException('compare: none, previous or year.');
+            $choices = implode(', ', array_map(static fn (ReportComparison $each): string => $each->value, ReportComparison::cases()));
+
+            throw DomainRule::refused('compare', \sprintf('One of %s.', $choices), 'not_one_of', ['choices' => $choices]);
         }
         // Read as no establishment, a malformed one would hand over the whole company's figures under a narrower address.
         if (null !== $establishment && (!\is_string($establishment) || !Uuid::isValid($establishment))) {
-            throw new UnprocessableEntityHttpException('establishment: the identifier of one of the company\'s establishments.');
+            throw DomainRule::refused('establishment', 'The identifier of one of the company\'s establishments.', 'invalid_value');
         }
 
         return new self(
@@ -83,13 +84,13 @@ final readonly class ReportRequest
     {
         if (!$report->periodic()) {
             if (null !== $this->from || null !== $this->to) {
-                throw new UnprocessableEntityHttpException(\sprintf('from: the report %s reads today and takes no period.', $report->key()));
+                throw DomainRule::refused('from', \sprintf('The report %s reads today and takes no period.', $report->key()), 'invalid_value');
             }
 
             return new ReportPeriod($context->today, $context->today);
         }
         if (null === $this->from || null === $this->to) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: the report %s reads a period, from one day to another.', null === $this->from ? 'from' : 'to', $report->key()));
+            throw DomainRule::refused(null === $this->from ? 'from' : 'to', \sprintf('The report %s reads a period, from one day to another.', $report->key()), 'value_required');
         }
         try {
             return new ReportPeriod(new \DateTimeImmutable($this->from), new \DateTimeImmutable($this->to));
@@ -107,11 +108,8 @@ final readonly class ReportRequest
         if (null === $value) {
             return null;
         }
-        if (!\is_string($value)) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: a calendar day, YYYY-MM-DD.', $key));
-        }
-        if (null === WrittenDay::parsed($value)) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: a calendar day, YYYY-MM-DD.', $key));
+        if (!\is_string($value) || null === WrittenDay::parsed($value)) {
+            throw DomainRule::refused($key, 'A calendar day, YYYY-MM-DD.', 'not_a_date');
         }
 
         return $value;

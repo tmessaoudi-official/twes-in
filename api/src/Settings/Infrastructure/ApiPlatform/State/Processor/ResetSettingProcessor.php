@@ -14,14 +14,12 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
-use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingKey;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * Forgets the value stored at one level, named by the `level` query parameter (and `roleId`, `customerId`,
@@ -43,7 +41,7 @@ final readonly class ResetSettingProcessor implements ProcessorInterface
         $request = $context['request'] ?? null;
         $query = $request instanceof Request ? $request->query : null;
         $rawLevel = $query?->getString('level') ?? '';
-        $level = SettingLevel::tryFrom($rawLevel) ?? throw new UnprocessableEntityHttpException(\sprintf('level: no level is called %s.', $rawLevel));
+        $level = SettingAccess::levelOf($rawLevel);
         $company = $this->access->companyToWrite($companyId, $level);
         $settingContext = $this->access->contextToWrite($company, $level, $query?->getString('roleId'), $query?->getString('customerId'), $query?->getString('customerGroupId'), $query?->getString('productId'), $query?->getString('productCategoryId'), $query?->getString('establishmentId'));
 

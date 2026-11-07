@@ -145,6 +145,8 @@ final class StockCountContextTest extends ApiTestCase
         $this->getJson($this->contextPath($ids));
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        // The route's own constraint refuses it first, on its parameter, still with no reason of its own.
+        self::assertSame([null, []], $this->refusalOf('productIds'));
     }
 
     /**

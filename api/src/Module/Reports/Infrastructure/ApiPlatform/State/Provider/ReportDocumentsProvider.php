@@ -15,9 +15,9 @@ use App\Module\Reports\Application\ReportCatalogue;
 use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportContexts;
 use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportRequest;
 use App\Module\Reports\Infrastructure\ApiPlatform\Resource\ReportDocumentsResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProviderInterface<ReportDocumentsResource> */
 final readonly class ReportDocumentsProvider implements ProviderInterface
@@ -36,11 +36,11 @@ final readonly class ReportDocumentsProvider implements ProviderInterface
             throw new NotFoundHttpException('There is no report by that name.');
         }
         if (null !== $asked->establishment && !$report->byEstablishment()) {
-            throw new UnprocessableEntityHttpException(\sprintf('establishment: the report %s cannot be narrowed to an establishment.', $report->key()));
+            throw DomainRule::refused('establishment', \sprintf('The report %s cannot be narrowed to an establishment.', $report->key()), 'not_by_establishment');
         }
         $row = Paging::text($operation, 'row');
         if (null === $row) {
-            throw new UnprocessableEntityHttpException('row: the key of a row of the report.');
+            throw DomainRule::refused('row', 'The key of a row of the report.', 'value_required');
         }
 
         return ReportDocumentsResource::of($report->documents($reading, $asked->periodFor($report, $reading), $row));

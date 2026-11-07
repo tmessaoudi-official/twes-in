@@ -16,6 +16,8 @@ use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Expenses\Domain\Repository\ExpenseRepository;
 use App\Module\Expenses\Domain\ValueObject\ExpenseAmounts;
 use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
+use App\Module\Reports\Application\ReportComparison;
+use App\Module\Reports\Application\ReportPeriod;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,19 +79,32 @@ final class ReportsTest extends ApiTestCase
     public function testAnAddressAskingWhatAReportCannotReadIsRefused(): void
     {
         $base = $this->path().'/reports/expenses-by-category';
+        $comparisons = implode(', ', array_map(static fn (ReportComparison $each): string => $each->value, ReportComparison::cases()));
         $refused = [
-            $base => 'a report of a period needs one',
-            $base.'?from=2026-09-01&to=2026-02-30' => 'a day the calendar has not',
-            $base.'?from=2026-09-01&to=2027-09-30' => 'more than 366 days',
-            $base.'?from=2026-09-01&to=2026-09-30&compare=decade' => 'a comparison there is not',
-            $base.'?from=2026-09-01&to=2026-09-30&establishment=nope' => 'an establishment that is no identifier',
-            $base.'?from=2026-09-01&to=2026-09-30&establishment='.Uuid::v7()->toRfc4122() => 'an establishment the company has not',
-            $base.'?from=2026-09-01&to=2026-09-30&establishment='.$this->establishment() => 'an expense belongs to no establishment',
+            $base => ['a report of a period needs one', 'from', 'value_required', []],
+            $base.'?from=2026-09-01' => ['a period needs its last day too', 'to', 'value_required', []],
+            $base.'?from=2026-09-01&to=2026-02-30' => ['a day the calendar has not', 'to', 'not_a_date', []],
+            $base.'?from=2026-09-01&to=2027-09-30' => ['more than 366 days', 'to', 'period_longest', ['days' => ReportPeriod::LONGEST_DAYS]],
+            // The route's own parameter constraint refuses first, with no reason yet; the file's address is read by the request itself.
+            $base.'?from=2026-09-01&to=2026-09-30&compare=decade' => ['a comparison there is not', 'compare', null, []],
+            $base.'/export.csv?from=2026-09-01&to=2026-09-30&compare=decade' => ['a comparison there is not, in the file', 'compare', 'not_one_of', ['choices' => $comparisons]],
+            $base.'?from=2026-09-01&to=2026-09-30&establishment=nope' => ['an establishment that is no identifier', 'establishment', null, []],
+            $base.'/export.csv?from=2026-09-01&to=2026-09-30&establishment=nope' => ['an establishment that is no identifier, in the file', 'establishment', 'invalid_value', []],
+            $base.'?from=2026-09-01&to=2026-09-30&establishment='.Uuid::v7()->toRfc4122() => ['an establishment the company has not, or no longer', 'establishment', 'unknown_choice', []],
+            $base.'?from=2026-09-01&to=2026-09-30&establishment='.$this->establishment() => ['an expense belongs to no establishment', 'establishment', 'not_by_establishment', []],
+            $base.'/documents?from=2026-09-01&to=2026-09-30' => ['the documents of a row name the row', 'row', null, []],
+            $base.'/documents?from=2026-09-01&to=2026-09-30&row=x&establishment='.$this->establishment() => ['the documents of a report no establishment narrows', 'establishment', 'not_by_establishment', []],
         ];
-        foreach ($refused as $address => $why) {
+        foreach ($refused as $address => [$why, $field, $reason, $params]) {
             $this->client->request('GET', $address, server: ['HTTP_ACCEPT' => 'application/json']);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $why);
+            self::assertSame([$reason, $params], $this->refusalOf($field), $why);
         }
+        $this->login('owner@twes.local', 'password-1234');
+        $this->client->request('GET', $this->path().'/reports/aged-balance?from=2026-09-01&to=2026-09-30', server: ['HTTP_ACCEPT' => 'application/json']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a report of today takes no period');
+        self::assertSame(['invalid_value', []], $this->refusalOf('from'), 'a report of today takes no period');
+        $this->login('books@twes.local', 'password-1234');
         foreach (['/reports/takings?from=2026-09-01&to=2026-09-30' => 'a report the role may not read', '/reports/nothing-here?from=2026-09-01&to=2026-09-30' => 'a report nobody declared'] as $address => $why) {
             $this->getJson($this->path().$address);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $why);

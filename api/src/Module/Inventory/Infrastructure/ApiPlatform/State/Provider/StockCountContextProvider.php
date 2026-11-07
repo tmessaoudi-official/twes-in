@@ -15,10 +15,10 @@ use App\Module\Inventory\Application\Count\ReadCountContext;
 use App\Module\Inventory\Domain\ValueObject\StockLevel;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockCountContextResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProviderInterface<StockCountContextResource> */
@@ -34,7 +34,7 @@ final readonly class StockCountContextProvider implements ProviderInterface
         $asked = Paging::uuids($operation, 'productIds');
         // Answering the first hundred alone would leave a longer sheet's last lines saying nothing, as if all were well.
         if (\count($asked) > ReadCountContext::MOST) {
-            throw new UnprocessableEntityHttpException(\sprintf('A count asks about at most %d products at once.', ReadCountContext::MOST));
+            throw DomainRule::refused('productIds', \sprintf('A count asks about at most %d products at once.', ReadCountContext::MOST), 'selection_count', ['max' => ReadCountContext::MOST]);
         }
 
         $resource = new StockCountContextResource();

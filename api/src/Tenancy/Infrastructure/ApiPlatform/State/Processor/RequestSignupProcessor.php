@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Domain\ValueObject\Email;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use App\Tenancy\Application\Signup\SignupPolicy;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\SignupResource;
@@ -20,7 +21,6 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
@@ -60,7 +60,7 @@ final readonly class RequestSignupProcessor implements ProcessorInterface
         try {
             $email = Email::fromString($data->email);
         } catch (\InvalidArgumentException $malformed) {
-            throw new UnprocessableEntityHttpException('email: that is not an email address.', $malformed);
+            throw DomainRule::refused('email', 'An e-mail address is written name@domain.extension, such as accounts@example.tn.', 'invalid_email', previous: $malformed);
         }
 
         if (!$this->signupAddressLimiter->create(hash('sha256', $email->value))->consume()->isAccepted()) {

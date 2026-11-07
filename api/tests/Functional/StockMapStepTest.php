@@ -271,6 +271,7 @@ final class StockMapStepTest extends ApiTestCase
             ['structureMoves[2].x', [...$start, 'structureMoves' => [$moved($a), $moved($b), $moved($c, ['x' => '-1'])]]],
             ['structureMoves[2].kind', [...$start, 'structureMoves' => [$moved($a), $moved($b), $moved($c, ['kind' => 'moat'])]]],
             ['structureMoves[0].structureId', [...$start, 'structureMoves' => [$moved(Uuid::v7()->toRfc4122())]]],
+            ['moves[1].drawingId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => 'R2', ...$this->drawing([]), 'version' => 1]]]],
             ['structureMoves[0].structureId', [...$start, 'structureMoves' => [$moved($elsewhere)]]],
             ['structureMoves[1].structureId', [...$start, 'structureMoves' => [$moved($a), $moved($a)]]],
             ['structureMoves[0].version', [...$start, 'structureMoves' => [['structureId' => $a, ...$this->piece([])]]]],
@@ -300,11 +301,11 @@ final class StockMapStepTest extends ApiTestCase
         ] as [$field, $body]) {
             $this->postJson($this->changes(), $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
+            self::assertSame([$field], array_column($this->refusals(), 'propertyPath'), $field.', refused as a violation on its entry');
         }
 
-        // A place the domain refuses names its field as a violation, which the screen reads under it; the shapes above
-        // that only a crafted request sends stay a plain answer.
+        // A place the domain refuses names its field as a violation, which the screen reads under it, as every shape
+        // above does, though only a crafted request sends one.
         $this->postJson($this->changes(), [...$start, 'newPlaces' => [$this->newPlace('rack', 'R 8', 'Rayonnage 8', [])]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(['newPlaces[0].code'], array_column($this->refusals(), 'propertyPath'));
@@ -426,13 +427,14 @@ final class StockMapStepTest extends ApiTestCase
 
         // Refused with the floor form's own rules, named in the step, and nothing of the rest written.
         foreach ([
-            'floor.widthMetres' => ['widthMetres' => '0', 'depthMetres' => '15', 'version' => $later],
-            'floor.depthMetres' => ['widthMetres' => '30', 'depthMetres' => 'large', 'version' => $later],
-            'floor.version' => ['widthMetres' => '30', 'depthMetres' => '15'],
-        ] as $field => $sent) {
+            ['floor.widthMetres', ['widthMetres' => '0', 'depthMetres' => '15', 'version' => $later]],
+            ['floor.widthMetres', ['widthMetres' => true, 'depthMetres' => '15', 'version' => $later]],
+            ['floor.depthMetres', ['widthMetres' => '30', 'depthMetres' => 'large', 'version' => $later]],
+            ['floor.version', ['widthMetres' => '30', 'depthMetres' => '15']],
+        ] as [$field, $sent]) {
             $this->postJson($this->changes(), ['moves' => [['drawingId' => $rack, ...$this->drawing(['x' => '1']), 'version' => $this->versions()[$rack]]], 'floor' => $sent]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
+            self::assertSame([$field], array_column($this->refusals(), 'propertyPath'), $field.', refused as a violation on its entry');
         }
         self::assertSame($before, $this->floorAsItStands());
 

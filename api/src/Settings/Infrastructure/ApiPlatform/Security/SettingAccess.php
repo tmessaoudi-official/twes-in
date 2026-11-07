@@ -9,11 +9,13 @@ declare(strict_types=1);
 
 namespace App\Settings\Infrastructure\ApiPlatform\Security;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Settings\Application\ArticleSubjects;
 use App\Settings\Application\PartySubjects;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
@@ -21,7 +23,6 @@ use App\Tenancy\Domain\Repository\RoleRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -55,13 +56,21 @@ final readonly class SettingAccess
         return $this->guard->companyForActing($companyId, self::READ);
     }
 
-    /** @throws UnprocessableEntityHttpException for the platform level, which belongs to the platform's operators */
+    /** The level a company's setting is written at, as the request names it: one of a company's, refused on `level` otherwise. */
+    public static function levelOf(string $named): SettingLevel
+    {
+        $level = SettingLevel::tryFrom($named);
+
+        return null === $level || SettingLevel::Platform === $level ? throw self::notACompanyLevel() : $level;
+    }
+
+    /** @throws ValidationException for the platform level, which belongs to the platform's operators */
     public function companyToWrite(Uuid $companyId, SettingLevel $level): Company
     {
         // A company's own context reaches the platform address like any chain does, so a company endpoint must refuse
         // that level outright, or anyone who may set a company default could set one for every company at once.
         if (SettingLevel::Platform === $level) {
-            throw new UnprocessableEntityHttpException('level: the platform level is set by the platform\'s operators.');
+            throw self::notACompanyLevel();
         }
 
         return $this->guard->companyForActing($companyId, match ($level) {
@@ -143,11 +152,11 @@ final readonly class SettingAccess
     {
         return match ($level) {
             SettingLevel::Role => $this->contextOfRole($company, $roleId),
-            SettingLevel::Customer => $this->contextOf($company, self::named($customerId) ?? throw new UnprocessableEntityHttpException('customerId: the customer level names a customer.')),
-            SettingLevel::CustomerGroup => $this->contextOf($company, null, self::named($customerGroupId) ?? throw new UnprocessableEntityHttpException('customerGroupId: the customer group level names a group.')),
-            SettingLevel::Product => $this->contextOf($company, productId: self::named($productId) ?? throw new UnprocessableEntityHttpException('productId: the product level names a product.')),
-            SettingLevel::ProductCategory => $this->contextOf($company, productCategoryId: self::named($productCategoryId) ?? throw new UnprocessableEntityHttpException('productCategoryId: the product category level names a category.')),
-            SettingLevel::Establishment => $this->contextOf($company, establishmentId: self::named($establishmentId) ?? throw new UnprocessableEntityHttpException('establishmentId: the establishment level names an establishment.')),
+            SettingLevel::Customer => $this->contextOf($company, self::named($customerId) ?? throw DomainRule::refused('customerId', 'The customer level names a customer.', 'value_required')),
+            SettingLevel::CustomerGroup => $this->contextOf($company, null, self::named($customerGroupId) ?? throw DomainRule::refused('customerGroupId', 'The customer group level names a group.', 'value_required')),
+            SettingLevel::Product => $this->contextOf($company, productId: self::named($productId) ?? throw DomainRule::refused('productId', 'The product level names a product.', 'value_required')),
+            SettingLevel::ProductCategory => $this->contextOf($company, productCategoryId: self::named($productCategoryId) ?? throw DomainRule::refused('productCategoryId', 'The product category level names a category.', 'value_required')),
+            SettingLevel::Establishment => $this->contextOf($company, establishmentId: self::named($establishmentId) ?? throw DomainRule::refused('establishmentId', 'The establishment level names an establishment.', 'value_required')),
             default => $this->contextOf($company),
         };
     }
@@ -156,7 +165,7 @@ final readonly class SettingAccess
     public function contextOfRole(Company $company, ?string $roleId): SettingContext
     {
         if (null === $roleId || '' === $roleId) {
-            throw new UnprocessableEntityHttpException('roleId: the role level names a role.');
+            throw DomainRule::refused('roleId', 'The role level names a role.', 'value_required');
         }
         $role = Uuid::isValid($roleId) ? $this->roles->ofIdForCompany(Uuid::fromString($roleId), $company->getId()) : null;
         if (null === $role) {
@@ -247,5 +256,13 @@ final readonly class SettingAccess
     private static function named(?string $identifier): ?string
     {
         return null === $identifier || '' === $identifier ? null : $identifier;
+    }
+
+    /** A level a company's setting is not written at: the platform's, or none there is, refused with the levels it may name. */
+    private static function notACompanyLevel(): ValidationException
+    {
+        $levels = implode(', ', array_map(static fn (SettingLevel $each): string => $each->value, array_values(array_filter(SettingLevel::cases(), static fn (SettingLevel $each): bool => SettingLevel::Platform !== $each))));
+
+        return DomainRule::refused('level', \sprintf('One of %s; the platform level is set by the platform\'s operators.', $levels), 'not_one_of', ['choices' => $levels]);
     }
 }

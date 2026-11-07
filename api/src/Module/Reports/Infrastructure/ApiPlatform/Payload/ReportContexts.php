@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Reports\Infrastructure\ApiPlatform\Payload;
 
 use App\Module\Reports\Application\ReportContext;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -35,7 +35,7 @@ final readonly class ReportContexts
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), self::PERMISSION);
         if (null !== $establishment && null === $this->establishments->ofIdInCompany($establishment, $company->getId())) {
-            throw new UnprocessableEntityHttpException('establishment: the company has no such establishment.');
+            throw DomainRule::refused('establishment', 'The company has no such establishment, or no longer.', 'unknown_choice');
         }
         $today = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
 

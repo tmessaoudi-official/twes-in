@@ -25,7 +25,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -76,7 +75,7 @@ final readonly class StatementPdfController
         }
         $day = WrittenDay::parsed($value);
         if (null === $day) {
-            throw new UnprocessableEntityHttpException($name.': A day is written YYYY-MM-DD.');
+            throw DomainRule::refused($name, 'A day is written YYYY-MM-DD.', 'not_a_date');
         }
 
         return $day;

@@ -628,6 +628,7 @@ final class ExpensesTest extends ApiTestCase
         }
         $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF, 'document');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no part named file');
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'value_required', 'params' => []]], $this->refusals(), 'no part named file');
 
         $this->getJson($this->path($id).'/attachments');
         self::assertResponseIsSuccessful();

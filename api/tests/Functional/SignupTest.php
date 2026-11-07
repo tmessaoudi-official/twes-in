@@ -122,7 +122,8 @@ final class SignupTest extends ApiTestCase
     {
         $this->openSignup();
 
-        foreach (['not an address', 'owner@exemple', 'é@exemple.tn'] as $email) {
+        // The last two pass the shared address rule and are refused by the account's own, as PHP's filter reads one.
+        foreach (['not an address', 'owner@exemple', 'é@exemple.tn', 'owner..shop@exemple.tn', '.owner@exemple.tn'] as $email) {
             $this->postJson('/api/signup', ['email' => $email]);
 
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $email);

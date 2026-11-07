@@ -64,7 +64,8 @@ final class CreditNoteOnPaidInvoiceTest extends ApiTestCase
 
         $this->postJson($this->path($credit).'/issue?excessTo=elsewhere', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('excessTo', (string) $this->client->getResponse()->getContent());
+        // The route's own constraint refuses it first, on its parameter, still with no reason of its own.
+        self::assertSame([null, []], $this->refusalOf('excessTo'));
     }
 
     public function testTheExcessGoesToTheCreditBalanceWhichTheNextInvoiceCanTake(): void

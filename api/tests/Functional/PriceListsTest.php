@@ -414,9 +414,12 @@ final class PriceListsTest extends ApiTestCase
     {
         $this->signedIn(['product.read']);
 
-        foreach (['?quantity=0', '?quantity=-1', '?quantity=1.2345', '?quantity=abc', '?on=tomorrow', '?on=2026-13-45', '?customerId=not-a-uuid'] as $query) {
+        // Of the quantities only zero passes the route's own pattern: the rest are refused by it, on their parameter, still with no reason.
+        $refusedAs = ['?quantity=0' => ['quantity', 'invalid_quantity'], '?quantity=-1' => ['quantity', null], '?quantity=1.2345' => ['quantity', null], '?quantity=abc' => ['quantity', null], '?on=tomorrow' => ['on', 'not_a_date'], '?on=2026-13-45' => ['on', 'not_a_date'], '?customerId=not-a-uuid' => ['customerId', null]];
+        foreach ($refusedAs as $query => [$field, $reason]) {
             $this->getJson($this->price($this->screw, $query));
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $query);
+            self::assertSame([$reason, []], $this->refusalOf($field), $query);
         }
         $this->getJson($this->price($this->theirProduct));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

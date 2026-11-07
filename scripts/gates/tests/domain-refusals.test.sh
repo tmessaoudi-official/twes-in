@@ -8,13 +8,13 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 # A tree shaped like the real one: processors answering through DomainRule, as many as the gate's floor asks.
 tree() {
   local d i; d=$(mktemp -d); mkdir -p "$d/api/src/Shop"
-  for i in $(seq 1 90); do
+  for i in $(seq 1 160); do
     printf '<?php\nthrow DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? %s, $refused->params, $refused);\n' "'invalid_value'" > "$d/api/src/Shop/P$i.php"
   done
   echo "$d"
 }
-# A fixture forwards no domain message unless its case says how many it holds.
-run() { DOMAIN_REFUSALS_FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-0} bash "$GATE" --root "$1" 2>&1; }
+# A fixture holds no plain 422 unless its case says how many it holds.
+run() { DOMAIN_REFUSALS_PLAIN=${DOMAIN_REFUSALS_PLAIN:-0} bash "$GATE" --root "$1" 2>&1; }
 echo "domain-refusals gate"
 
 d=$(tree); out=$(run "$d"); check "a tree answering every refusal as a violation passes" $? 0 "$out" "OK"
@@ -36,22 +36,25 @@ out=$(run "$d"); check "an answer named in a comment is not one" $? 0 "$out" "OK
 
 forward() { printf '<?php\nthrow new UnprocessableEntityHttpException(%s, $refused);\n' "$2" > "$1"; }
 d=$(tree); forward "$d/api/src/Shop/F1.php" '$refused->getMessage()'; forward "$d/api/src/Shop/F2.php" "'file: '.\$refused->getMessage()"
-out=$(DOMAIN_REFUSALS_FORWARDED=2 run "$d"); check "as many 422s forwarding a domain message as the ceiling pass, and are counted" $? 0 "$out" "2 still forward"
+out=$(DOMAIN_REFUSALS_PLAIN=2 run "$d"); check "as many plain 422s as the ceiling pass, and are counted" $? 0 "$out" "2 plain 422s left"
 
 d=$(tree); forward "$d/api/src/Shop/F1.php" '$refused->getMessage()'; forward "$d/api/src/Shop/F2.php" "\\sprintf('to: %s', \$refused->getMessage())"; forward "$d/api/src/Shop/F3.php" '$failure->getPrevious()->getMessage()'
-out=$(DOMAIN_REFUSALS_FORWARDED=2 run "$d"); check "one more forwarding 422 than the ceiling is refused, each named" $? 1 "$out" "F3.php:2"
+out=$(DOMAIN_REFUSALS_PLAIN=2 run "$d"); check "one more plain 422 than the ceiling is refused, each named" $? 1 "$out" "F3.php:2"
 
 d=$(tree); forward "$d/api/src/Shop/F1.php" '$refused->getMessage()'
-out=$(DOMAIN_REFUSALS_FORWARDED=2 run "$d"); check "one fewer asks the ceiling lowered, so it never grows back unseen" $? 1 "$out" "lower FORWARDED to 1"
+out=$(DOMAIN_REFUSALS_PLAIN=2 run "$d"); check "one fewer asks the ceiling lowered, so it never grows back unseen" $? 1 "$out" "lower PLAIN to 1"
 
 d=$(tree); printf '<?php\nthrow new UnprocessableEntityHttpException($refused->getMessage(), $refused); // plain-refusal: a token the page reads\n' > "$d/api/src/Shop/F1.php"
-out=$(DOMAIN_REFUSALS_FORWARDED=0 run "$d"); check "a forwarding 422 whose line says why is not counted" $? 0 "$out" "0 still forward"
+out=$(DOMAIN_REFUSALS_PLAIN=0 run "$d"); check "a plain 422 whose line says why is not counted" $? 0 "$out" "0 plain 422s left"
 
-d=$(tree); printf '<?php\n// UnprocessableEntityHttpException($refused->getMessage()) was the old answer.\n' > "$d/api/src/Shop/F1.php"
-out=$(DOMAIN_REFUSALS_FORWARDED=0 run "$d"); check "a forwarding 422 named in a comment is not one" $? 0 "$out" "0 still forward"
+d=$(tree); printf '<?php\n// new UnprocessableEntityHttpException($refused->getMessage()) was the old answer.\n' > "$d/api/src/Shop/F1.php"
+out=$(DOMAIN_REFUSALS_PLAIN=0 run "$d"); check "a plain 422 named in a comment is not one" $? 0 "$out" "0 plain 422s left"
+
+d=$(tree); forward "$d/api/src/Shop/F1.php" "'quantity: A quantity is a decimal number.'"; printf '<?php\n$kind = Kind::tryFrom($raw) ?? throw new UnprocessableEntityHttpException(%s);\n' "'kind: One of a or b.'" > "$d/api/src/Shop/F2.php"
+out=$(DOMAIN_REFUSALS_PLAIN=1 run "$d"); check "a request's shape refused in a sentence is a plain 422 too, inline after ?? as well" $? 1 "$out" "F2.php:2"
 
 d=$(tree); rm "$d/api/src/Shop/P1.php"
-out=$(run "$d"); check "fewer DomainRule answers than the floor is refused" $? 1 "$out" "fewer than the 90"
+out=$(run "$d"); check "fewer DomainRule answers than the floor is refused" $? 1 "$out" "fewer than the 160"
 
 d=$(tree); rm -r "$d/api/src"
 out=$(run "$d"); check "a missing api/src is refused, not skipped" $? 1 "$out" "found no"

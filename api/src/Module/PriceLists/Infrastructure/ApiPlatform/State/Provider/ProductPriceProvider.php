@@ -16,13 +16,13 @@ use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\ProductPriceResour
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Domain\Service\WrittenDay;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProviderInterface<ProductPriceResource> */
 final readonly class ProductPriceProvider implements ProviderInterface
@@ -38,7 +38,7 @@ final readonly class ProductPriceProvider implements ProviderInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::READ);
         $quantity = Paging::text($operation, 'quantity') ?? '1';
         if (1 !== preg_match(self::QUANTITY, $quantity) || !is_numeric($quantity) || 1 !== new Number($quantity)->compare(0)) {
-            throw new UnprocessableEntityHttpException('quantity: A quantity is a decimal number above zero with at most three decimals.');
+            throw DomainRule::refused('quantity', 'A quantity is a decimal number above zero with at most three decimals.', 'invalid_quantity');
         }
         $day = Paging::text($operation, 'on');
         $on = null === $day
@@ -56,7 +56,7 @@ final readonly class ProductPriceProvider implements ProviderInterface
     {
         $parsed = WrittenDay::parsed($day);
         if (null === $parsed) {
-            throw new UnprocessableEntityHttpException('on: A day is written YYYY-MM-DD.');
+            throw DomainRule::refused('on', 'A day is written YYYY-MM-DD.', 'not_a_date');
         }
 
         return $parsed;

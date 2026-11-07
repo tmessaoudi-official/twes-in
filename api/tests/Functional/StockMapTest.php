@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
@@ -347,13 +348,15 @@ final class StockMapTest extends ApiTestCase
         self::assertCount(1, $this->jsonList());
 
         // A rectangle names a place one way: an existing one or a new one, never both and never neither.
+        $kinds = implode(', ', array_map(static fn (StockLocationKind $each): string => $each->value, StockLocationKind::cases()));
         foreach ([
-            'locationId' => $this->drawing([]),
-            'newLocationCode' => $this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R10', 'Rayonnage 10')]),
-        ] as $field => $sent) {
+            'locationId' => [$this->drawing([]), ['value_required', []]],
+            'newLocationCode' => [$this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R10', 'Rayonnage 10')]), ['invalid_value', []]],
+            'newLocationKind' => [$this->drawing($this->newPlace('moat', 'M10', 'Douve 10')), ['not_one_of', ['choices' => $kinds]]],
+        ] as $field => [$sent, $refusal]) {
             $this->postJson($drawings, $sent);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent(), $field);
+            self::assertSame($refusal, $this->refusalOf($field), $field);
         }
 
         // Moving a rectangle never creates a place: that is drawing a new one.
@@ -361,7 +364,7 @@ final class StockMapTest extends ApiTestCase
         $drawing = $this->stringAt($this->jsonList()[0], 'id');
         $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R11', 'Rayonnage 11'), 'version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('newLocationCode', (string) $this->client->getResponse()->getContent());
+        self::assertSame(['invalid_value', []], $this->refusalOf('newLocationCode'));
     }
 
     /**

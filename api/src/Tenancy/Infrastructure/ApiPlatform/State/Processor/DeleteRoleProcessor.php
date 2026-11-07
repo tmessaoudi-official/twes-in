@@ -43,7 +43,7 @@ final readonly class DeleteRoleProcessor implements ProcessorInterface
         } catch (RoleNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (RoleNotEditable $refused) {
-            throw new UnprocessableEntityHttpException(self::refusal(RoleResource::BUILT_IN, $refused), $refused);
+            throw new UnprocessableEntityHttpException(self::refusal(RoleResource::BUILT_IN, $refused), $refused); // plain-refusal: a token the roles page reads, not a field
         } catch (RoleInUse $refused) {
             // Who holds it is data no translation carries: the screen says its own sentence around these parameters,
             // read from the violation's reason, never from the English detail.

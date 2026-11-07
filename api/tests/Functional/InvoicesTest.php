@@ -33,6 +33,11 @@ use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Domain\ValueObject\DocumentDesign;
+use App\Shared\Domain\ValueObject\DocumentLayout;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\WatermarkIntensity;
+use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -655,10 +660,38 @@ final class InvoicesTest extends ApiTestCase
         $this->client->request('GET', $preview);
         self::assertStringContainsString('<div class="watermark watermark-many watermark-grouped" style="font-size: 48pt">'.str_repeat('<span>APERÇU</span>', 3).'</div>', (string) $this->client->getResponse()->getContent());
 
-        foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none', '?logoWidth=9', '?logoWidth=106', '?logoHeight=71', '?logoWidth=4.5', '?logoHeight=big', '?logoProportions=maybe', '?watermarkIntensity=loud', '?watermarkCopies=2', '?watermarkCopies=three', '?watermarkSpread=everywhere'] as $refused) {
+        $width = ['whole_number_between', ['min' => DocumentDesign::LOGO_WIDTH_MM_MIN, 'max' => DocumentDesign::LOGO_WIDTH_MM_MAX]];
+        $height = ['whole_number_between', ['min' => DocumentDesign::LOGO_HEIGHT_MM_MIN, 'max' => DocumentDesign::LOGO_HEIGHT_MM_MAX]];
+        $refusedAs = [
+            '?layout=fancy' => ['layout', ['not_one_of', ['choices' => self::choicesOf(DocumentLayout::cases())]]],
+            '?accent=red' => ['accent', ['invalid_value', []]],
+            '?accent=%231f6feb;}body{display:none' => ['accent', ['invalid_value', []]],
+            '?logoWidth=9' => ['logoWidth', $width],
+            '?logoWidth=106' => ['logoWidth', $width],
+            '?logoHeight=71' => ['logoHeight', $height],
+            '?logoWidth=4.5' => ['logoWidth', $width],
+            '?logoHeight=big' => ['logoHeight', $height],
+            '?logoProportions=maybe' => ['logoProportions', ['not_one_of', ['choices' => 'keep, free']]],
+            '?watermarkIntensity=loud' => ['watermarkIntensity', ['not_one_of', ['choices' => self::choicesOf(WatermarkIntensity::cases())]]],
+            '?watermarkCopies=2' => ['watermarkCopies', ['not_one_of', ['choices' => implode(', ', DocumentWatermark::COPIES)]]],
+            '?watermarkCopies=three' => ['watermarkCopies', ['not_one_of', ['choices' => implode(', ', DocumentWatermark::COPIES)]]],
+            '?watermarkSpread=everywhere' => ['watermarkSpread', ['not_one_of', ['choices' => self::choicesOf(WatermarkSpread::cases())]]],
+        ];
+        foreach ($refusedAs as $refused => [$field, $refusal]) {
             $this->client->request('GET', $preview.$refused);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            self::assertSame($refusal, $this->refusalOf($field), $refused);
         }
+    }
+
+    /**
+     * The choices a refusal names, as the controller writes them: each value, in the enum's order.
+     *
+     * @param list<\BackedEnum> $cases
+     */
+    private static function choicesOf(array $cases): string
+    {
+        return implode(', ', array_map(static fn (\BackedEnum $each): string => (string) $each->value, $cases));
     }
 
     public function testADesignPreviewAsksForTheSettingsAndForReadingInvoices(): void

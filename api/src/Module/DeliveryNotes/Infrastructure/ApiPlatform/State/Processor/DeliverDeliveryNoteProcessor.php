@@ -24,7 +24,6 @@ use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<DeliveryNoteResource, DeliveryNoteResource> */
 final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
@@ -38,7 +37,7 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::WRITE);
         $delivered = null === $data->delivered ? null : WrittenDay::parsed($data->delivered, DeliveryNoteResource::LOCAL_MOMENT, new \DateTimeZone($company->getTimezone()));
         if (null !== $data->delivered && null === $delivered) {
-            throw new UnprocessableEntityHttpException('delivered: not a day and a time.');
+            throw DomainRule::refused('delivered', 'A day and a time.', 'invalid_value');
         }
 
         try {

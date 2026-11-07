@@ -59,7 +59,9 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
         $asked = $request instanceof Request ? $request->query->get('excessTo') : null;
         $excessTo = \is_string($asked) ? CreditExcessTo::tryFrom($asked) : null;
         if (null !== $asked && null === $excessTo) {
-            throw new UnprocessableEntityHttpException('excessTo: One of balance or refund.');
+            $choices = implode(', ', array_map(static fn (CreditExcessTo $each): string => $each->value, CreditExcessTo::cases()));
+
+            throw DomainRule::refused('excessTo', \sprintf('One of %s.', $choices), 'not_one_of', ['choices' => $choices]);
         }
 
         try {
