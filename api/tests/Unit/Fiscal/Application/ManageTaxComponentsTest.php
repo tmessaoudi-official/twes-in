@@ -74,10 +74,14 @@ final class ManageTaxComponentsTest extends TestCase
         self::assertCount(2, $this->components->components);
     }
 
-    public function testAnInventedFamilyIsRefused(): void
+    public function testAnInventedFamilyIsRefusedNamingTheFamilies(): void
     {
-        $this->expectException(InvalidFiscalValue::class);
-        $this->manage->create($this->company, new TaxComponentDraft('X1', 'X', 'luxury', '5', null, null, false, false, null, 0), null);
+        try {
+            $this->manage->create($this->company, new TaxComponentDraft('X1', 'X', 'luxury', '5', null, null, false, false, null, 0), null);
+            self::fail('expected InvalidFiscalValue');
+        } catch (InvalidFiscalValue $refused) {
+            self::assertSame(['family', 'not_one_of', ['choices' => 'vat, levy, stamp, withholding']], [$refused->field, $refused->reason, $refused->params]);
+        }
     }
 
     public function testTheCurrencyDecidesHowFineAnAmountMayBe(): void

@@ -134,7 +134,10 @@
       "trial_or_paid_required": "Remplissez « Fin de l’essai », « Payé jusqu’au » ou les deux : un abonnement couvre au moins l’un des deux.",
       "filter_refused": "Ce fichier ne se fait pas avec un filtre de cette adresse, venue d’un lien ancien ou modifiée : choisissez à nouveau les filtres de la liste, puis exportez.",
       "selection_count": "Une action sur une sélection prend de 1 à {{max}} éléments : réduisez la sélection, puis recommencez.",
-      "nothing_to_print": "Rien à imprimer : les factures choisies sont des brouillons ou des factures annulées dont la case n’est pas cochée, ou elles n’existent plus. Cochez la case, ou choisissez d’autres factures."
+      "nothing_to_print": "Rien à imprimer : les factures choisies sont des brouillons ou des factures annulées dont la case n’est pas cochée, ou elles n’existent plus. Cochez la case, ou choisissez d’autres factures.",
+      "at_most": "Attendu : {{max}} au plus.",
+      "not_negative": "Attendu : zéro ou plus.",
+      "at_least": "Attendu : {{min}} ou plus."
     }
   }
 }

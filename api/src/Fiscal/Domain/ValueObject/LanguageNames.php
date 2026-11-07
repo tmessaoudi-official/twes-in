@@ -34,11 +34,11 @@ final class LanguageNames
         $kept = [];
         foreach ($names as $language => $name) {
             if (!\is_string($language) || '' === TypedText::trimmed($language) || !\is_string($name)) {
-                throw new InvalidFiscalValue('names', 'Names are given by language, each as text.');
+                throw new InvalidFiscalValue('names', 'Names are given by language, each as text.', 'invalid_value');
             }
             $name = TypedText::trimmed($name);
             if (mb_strlen($name) > $max) {
-                throw new InvalidFiscalValue('names', \sprintf('A name has at most %d characters in any language.', $max));
+                throw new InvalidFiscalValue('names', \sprintf('A name has at most %d characters in any language.', $max), 'invalid_text', ['max' => $max]);
             }
             if ('' !== $name) {
                 $kept[$language] = $name;

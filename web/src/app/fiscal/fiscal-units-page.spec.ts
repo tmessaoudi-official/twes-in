@@ -27,10 +27,14 @@ import type { UnitRow } from './fiscal-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ fiscal: { edit: 'Modifier', yes: 'Oui', no: 'Non', units: { title: 'Unités' } } });
+    return of({
+      fiscal: { edit: 'Modifier', yes: 'Oui', no: 'Non', units: { title: 'Unités' } },
+      import: { rejections: { not_negative: 'Attendu : zéro ou plus.' } },
+    });
   }
 }
 
@@ -48,11 +52,13 @@ const hour: UnitRow = {
 describe('FiscalUnitsPage', () => {
   const units = signal<readonly UnitRow[]>([hour]);
   const error = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const fiscal = {
     units: units.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
+    refusals: refusals.asReadonly(),
     loadUnits: vi.fn(),
     createUnit: vi.fn(),
     reviseUnit: vi.fn(),
@@ -140,6 +146,26 @@ describe('FiscalUnitsPage', () => {
       isActive: true,
       names: {},
     });
+  });
+
+  it('says on its field what a save was refused for, in its words, and nothing above the form', async () => {
+    fiscal.createUnit.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'sortOrder', reason: 'not_negative', params: {} }]);
+      return false;
+    });
+    q('unit-add')!.click();
+    await settle();
+    type('field-code', 'TNE');
+    type('field-name', 'Tonne');
+    fixture.detectChanges();
+    q('unit-save')!.click();
+    await settle();
+
+    expect(q('field-error-sortOrder')?.textContent).toContain('Attendu : zéro ou plus.');
+    expect(q('units-error')).toBeNull();
+    refusals.set([]);
+    error.set(null);
   });
 
   it('revises a unit without offering to change its code', async () => {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   CustomerTaxRegimeCustomerTaxRegimeRead,
@@ -22,10 +22,15 @@ import {
   type UnitRow,
 } from './fiscal-types';
 import { refusedFor } from '../shared/errors/said-already';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 
-/** Thrown when the API refuses; carries the code the UI translates. */
+/** Thrown when the API refuses; carries the code the UI translates and each field a 422 refused, with its reason. */
 export class FiscalRefused extends Error {
-  constructor(readonly code: FiscalError) {
+  constructor(
+    readonly code: FiscalError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -34,6 +39,7 @@ export class FiscalRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class FiscalApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   async taxComponents(companyId: string): Promise<TaxComponentRow[]> {
     return this.guard(async () =>
@@ -164,7 +170,10 @@ export class FiscalApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new FiscalRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new FiscalRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

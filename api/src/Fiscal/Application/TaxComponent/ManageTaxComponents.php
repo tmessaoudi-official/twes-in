@@ -58,7 +58,7 @@ final readonly class ManageTaxComponents implements DeclaresAuditActions
     public function create(Company $company, TaxComponentDraft $draft, ?Uuid $actorUserId): TaxComponent
     {
         return $this->transactions->run(function () use ($company, $draft, $actorUserId): TaxComponent {
-            $family = TaxFamily::tryFrom($draft->family) ?? throw new InvalidFiscalValue('family', \sprintf('"%s" is not a tax family.', $draft->family));
+            $family = TaxFamily::tryFrom($draft->family) ?? throw new InvalidFiscalValue('family', \sprintf('"%s" is not a tax family.', $draft->family), 'not_one_of', ['choices' => implode(', ', array_map(static fn (TaxFamily $each): string => $each->value, TaxFamily::cases()))]);
             if (null !== $this->components->ofCodeInCompany($draft->code, $company->getId())) {
                 throw new TaxComponentCodeTaken(\sprintf('The company already has a tax coded %s.', $draft->code));
             }

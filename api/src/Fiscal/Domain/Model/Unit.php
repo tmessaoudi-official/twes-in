@@ -78,7 +78,7 @@ class Unit implements CompanyOwned
     private function __construct(Company $company, string $code, \DateTimeImmutable $now)
     {
         if (1 !== preg_match(self::CODE, $code)) {
-            throw new InvalidFiscalValue('code', \sprintf('"%s" is not a UN/ECE Recommendation 20 code: two or three capital letters or digits.', $code));
+            throw new InvalidFiscalValue('code', \sprintf('"%s" is not a UN/ECE Recommendation 20 code: two or three capital letters or digits.', $code), 'invalid_value');
         }
         $this->id = Uuid::v7();
         $this->company = $company;
@@ -146,14 +146,17 @@ class Unit implements CompanyOwned
     private function apply(string $name, ?array $names, int $decimals, bool $isActive, int $sortOrder): void
     {
         $name = TypedText::trimmed($name);
-        if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidFiscalValue('name', \sprintf('A unit name has between 1 and %d characters.', self::NAME_MAX));
+        if ('' === $name) {
+            throw new InvalidFiscalValue('name', 'A unit is named.', 'value_required');
+        }
+        if (mb_strlen($name) > self::NAME_MAX) {
+            throw new InvalidFiscalValue('name', \sprintf('A unit name has at most %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
         if ($decimals < 0 || $decimals > self::MAX_DECIMALS) {
-            throw new InvalidFiscalValue('decimals', \sprintf('A quantity carries between 0 and %d decimals.', self::MAX_DECIMALS));
+            throw new InvalidFiscalValue('decimals', \sprintf('A quantity carries between 0 and %d decimals.', self::MAX_DECIMALS), 'whole_number_between', ['min' => 0, 'max' => self::MAX_DECIMALS]);
         }
         if ($sortOrder < 0) {
-            throw new InvalidFiscalValue('sortOrder', 'A sort order is never negative.');
+            throw new InvalidFiscalValue('sortOrder', 'A sort order is never negative.', 'not_negative');
         }
         $names = null === $names ? $this->names : LanguageNames::of($names, self::NAME_MAX);
         $this->name = $name;

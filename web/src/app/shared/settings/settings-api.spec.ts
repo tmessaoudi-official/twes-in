@@ -184,6 +184,8 @@ describe('SettingsApi', () => {
       { field: 'reminders__stages', reason: 'at_most', params: { max: 5 } },
     ]);
     expect(opened).toHaveBeenCalledWith('settings-refusals');
+    // A bound is one of the form refusals every form shares, so its words open with them.
+    expect(opened).toHaveBeenCalledWith('form-refusals');
   });
 
   it('opens the words a field with a pattern is refused in when it reads its chain', async () => {

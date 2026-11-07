@@ -123,7 +123,7 @@ final class RefusalReasonsTest extends KernelTestCase
         foreach ($files as $file) {
             \assert($file instanceof \SplFileInfo);
             $source = (string) file_get_contents($file->getPathname());
-            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
+            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement|FiscalValue)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
             foreach ($found[2] as [$arguments, $offset]) {
                 ++$statements;
                 if (1 === preg_match("/'[a-z]+(?:_[a-z]+)+'|\\.\\.\\.|->reason\\b/", $arguments)) {
@@ -221,7 +221,7 @@ final class RefusalReasonsTest extends KernelTestCase
 
     /**
      * A settings save refuses a key with a reason its field is told in: every refusal a declared setting can answer has
-     * its text, in the screens' file or in the settings refusals' part the settings screens open, in every language,
+     * its text, in the screens' file or in the two parts the settings screens open, in every language,
      * and every placeholder of that text among the refusal's parameters.
      */
     public function testEveryRefusalASettingCanAnswerIsTranslated(): void
@@ -231,9 +231,8 @@ final class RefusalReasonsTest extends KernelTestCase
         $wrong = [];
         $refusals = 0;
         foreach (['fr', 'en', 'ar'] as $language) {
-            $translated = self::translated($language, self::SETTINGS_REFUSALS);
-            // A phone setting is typed in the phone field, whose refusals the platform's adapters open with the form refusals.
-            $phones = self::translated($language, self::SETTINGS_REFUSALS, self::FORM_REFUSALS);
+            // The settings screens open the form refusals beside their own: a bound or a phone is said in the words every form shares.
+            $translated = self::translated($language, self::SETTINGS_REFUSALS, self::FORM_REFUSALS);
             // What a save refuses a key with beyond its value: a level it is not kept at, a key named twice.
             foreach (['level_refused', 'invalid_value'] as $ofTheSave) {
                 if (!\is_string($translated[$ofTheSave] ?? null)) {
@@ -244,7 +243,7 @@ final class RefusalReasonsTest extends KernelTestCase
                 foreach ($catalog->ofChain($chain) as $definition) {
                     foreach ($definition->refusals() as $refusal) {
                         ++$refusals;
-                        $said = ($definition->phone ? $phones : $translated)[$refusal->reason] ?? null;
+                        $said = $translated[$refusal->reason] ?? null;
                         if (!\is_string($said) || '' === $said) {
                             $wrong[] = \sprintf('%s: no %s text for %s', $definition->key, $language, $refusal->reason);
                             continue;

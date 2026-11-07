@@ -15,9 +15,11 @@
   }
 
   @if (error(); as code) {
-    <p role="alert" data-testid="taxes-error" class="text-error">
-      {{ 'fiscal.errors.' + code | translate }}
-    </p>
+    @if (refusalLine.for(code); as said) {
+      <p role="alert" data-testid="taxes-error" class="text-error">
+        {{ said.key | translate: said.params }}
+      </p>
+    }
   }
 
   @if (form(); as form) {

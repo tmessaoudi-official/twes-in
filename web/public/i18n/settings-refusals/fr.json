@@ -4,8 +4,6 @@
   },
   "import": {
     "rejections": {
-      "at_least": "Attendu : {{min}} ou plus.",
-      "at_most": "Attendu : {{max}} au plus.",
       "number_between": "Attendu : un nombre de {{min}} à {{max}}.",
       "not_a_colour": "Attendu : une couleur écrite #rrvvbb, six chiffres ou lettres de a à f après le dièse (exemple : #1f6feb).",
       "level_refused": "Cette valeur ne se règle pas à ce niveau : réglez-la là où elle est proposée.",

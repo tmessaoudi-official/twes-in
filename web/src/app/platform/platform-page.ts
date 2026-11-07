@@ -29,6 +29,7 @@ import { firstValueFrom, map } from 'rxjs';
 import { refusalParams, sayRefusal } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
+import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
 import { DescriptorForm, type FieldAction } from '../shared/form/descriptor-form';
 import { countriesNamed, countryName } from '../shared/i18n/country-names';
 import { type PhonesOutsideRanges, Session } from '../shared/session/session';
@@ -661,9 +662,12 @@ export class PlatformPage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    // The words a setting's bounds and refusals are said in beyond the platform's own texts; a failure to read them
-    // leaves each field saying « Valeur refusée. », as every form does for a reason it has no words for.
-    void this.texts.open(SETTING_REFUSAL_TEXTS).catch(() => undefined);
+    // The words a setting's bounds and refusals are said in beyond the platform's own texts, a bound among the form
+    // refusals every form shares; a failure to read them leaves each field saying « Valeur refusée. », as every form
+    // does for a reason it has no words for.
+    for (const part of [SETTING_REFUSAL_TEXTS, FORM_REFUSAL_TEXTS]) {
+      void this.texts.open(part).catch(() => undefined);
+    }
     await Promise.all([this.platform.load(), this.workingCompanies.load()]);
     await this.payments.loadWaiting();
   }

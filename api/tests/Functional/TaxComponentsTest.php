@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Shared\Application\Languages;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -65,6 +66,7 @@ final class TaxComponentsTest extends ApiTestCase
 
         $this->postJson($this->path(), ['code' => 'TVA12', 'name' => 'TVA 12 %', 'names' => ['de' => 'MwSt'], 'family' => 'vat', 'rate' => '12', 'sortOrder' => 35]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['not_one_of', ['choices' => implode(', ', static::getContainer()->get(Languages::class)->documents())]], $this->refusalOf('names'));
 
         $this->postJson($this->path(), ['code' => 'TVA12', 'name' => 'TVA 12 %', 'names' => ['en' => 'VAT 12%'], 'family' => 'vat', 'rate' => '12', 'sortOrder' => 35]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -110,8 +112,13 @@ final class TaxComponentsTest extends ApiTestCase
         $this->signedIn(['fiscal.read', 'fiscal.write']);
 
         $this->postJson($this->path(), ['code' => 'STAMP2', 'name' => 'Stamp', 'family' => 'stamp', 'rate' => '1', 'amount' => '1']);
-
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'rate', 'reason' => 'invalid_value', 'params' => []]], $this->refusals());
+
+        // What the form lets through and the rule refuses: a rate past 100, said on the rate with the limit.
+        $this->postJson($this->path(), ['code' => 'TVA150', 'name' => 'TVA 150 %', 'family' => 'vat', 'rate' => '150', 'sortOrder' => 35]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'rate', 'reason' => 'at_most', 'params' => ['max' => 100]]], $this->refusals());
     }
 
     public function testAMalformedShapeIsUnprocessable(): void

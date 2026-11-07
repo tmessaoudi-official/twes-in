@@ -13,9 +13,11 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { RefusalLine } from '../shared/documents/refusal-line';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { editorActions } from '../shared/form/editor-actions';
 import { RecordBar } from '../shared/form/record-bar';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -83,6 +85,13 @@ export class FiscalTaxesPage implements OnInit {
   protected readonly regimes = this.fiscal.regimes;
   protected readonly busy = this.fiscal.busy;
   protected readonly error = this.fiscal.error;
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.fiscal.refusals,
+    'fiscal.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
 
   /** « Réessayer » on either list that could not be read: the taxes and the regimes are read together. */
@@ -191,6 +200,10 @@ export class FiscalTaxesPage implements OnInit {
     } else if (this.fiscal.error() === 'record_changed') {
       this.fiscal.clearError();
       await this.sync.savedElsewhere();
+    } else {
+      // Each field the API refused said on that field; the line above the form says what none of them took.
+      const refused = this.fiscal.refusals();
+      this.refusalLine.placed(refused, this.editor()?.showRefused(refused) ?? refused);
     }
   }
 

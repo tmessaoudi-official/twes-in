@@ -694,6 +694,14 @@ describe('PlatformPage', () => {
     expect(facade.load).toHaveBeenCalled();
   });
 
+  it('opens the words a number is held to when it opens, a bound among the form refusals every form shares', async () => {
+    await render();
+
+    const open = TestBed.inject(TextsParts).open;
+    expect(open).toHaveBeenCalledWith('settings-refusals');
+    expect(open).toHaveBeenCalledWith('form-refusals');
+  });
+
   it('shows each waiting company with its country and owners', async () => {
     const { query } = await render();
 

@@ -36,25 +36,27 @@ final class UnitTest extends TestCase
         self::assertTrue($unit->isActive());
     }
 
-    /** @return iterable<string, array{string, string, int, int, string}> */
+    /** @return iterable<string, array{string, string, int, int, string, string, array<string, int>}> */
     public static function refusals(): iterable
     {
-        yield 'a lower-case code' => ['kgm', 'Kilogramme', 3, 0, 'code'];
-        yield 'a four-letter code' => ['KGMS', 'Kilogramme', 3, 0, 'code'];
-        yield 'a blank name' => ['KGM', '  ', 3, 0, 'name'];
-        yield 'four decimals' => ['KGM', 'Kilogramme', 4, 0, 'decimals'];
-        yield 'negative decimals' => ['KGM', 'Kilogramme', -1, 0, 'decimals'];
-        yield 'a negative sort order' => ['KGM', 'Kilogramme', 3, -1, 'sortOrder'];
+        yield 'a lower-case code' => ['kgm', 'Kilogramme', 3, 0, 'code', 'invalid_value', []];
+        yield 'a four-letter code' => ['KGMS', 'Kilogramme', 3, 0, 'code', 'invalid_value', []];
+        yield 'a blank name' => ['KGM', '  ', 3, 0, 'name', 'value_required', []];
+        yield 'a name past 60 characters' => ['KGM', str_repeat('k', 61), 3, 0, 'name', 'invalid_text', ['max' => 60]];
+        yield 'four decimals' => ['KGM', 'Kilogramme', 4, 0, 'decimals', 'whole_number_between', ['min' => 0, 'max' => 3]];
+        yield 'negative decimals' => ['KGM', 'Kilogramme', -1, 0, 'decimals', 'whole_number_between', ['min' => 0, 'max' => 3]];
+        yield 'a negative sort order' => ['KGM', 'Kilogramme', 3, -1, 'sortOrder', 'not_negative', []];
     }
 
+    /** @param array<string, int> $params */
     #[DataProvider('refusals')]
-    public function testAnInvalidUnitIsRefusedNamingTheField(string $code, string $name, int $decimals, int $sortOrder, string $field): void
+    public function testAnInvalidUnitIsRefusedOnTheFieldWithItsReason(string $code, string $name, int $decimals, int $sortOrder, string $field, string $reason, array $params): void
     {
         try {
             Unit::create($this->company, $code, $name, $decimals, $sortOrder, $this->now);
             self::fail('expected InvalidFiscalValue');
         } catch (InvalidFiscalValue $refused) {
-            self::assertSame($field, $refused->field);
+            self::assertSame([$field, $reason, $params], [$refused->field, $refused->reason, $refused->params]);
         }
     }
 
@@ -99,23 +101,26 @@ final class UnitTest extends TestCase
         self::assertEquals($later, $unit->getUpdatedAt());
     }
 
-    /** @return iterable<string, array{array<array-key, string>}> */
+    /** @return iterable<string, array{array<array-key, string>, string, array<string, int>}> */
     public static function badNames(): iterable
     {
-        yield 'a name past 60 characters' => [['ar' => str_repeat('و', 61)]];
-        yield 'a list rather than names by language' => [['وحدة']];
-        yield 'a blank language' => [[' ' => 'وحدة']];
+        yield 'a name past 60 characters' => [['ar' => str_repeat('و', 61)], 'invalid_text', ['max' => 60]];
+        yield 'a list rather than names by language' => [['وحدة'], 'invalid_value', []];
+        yield 'a blank language' => [[' ' => 'وحدة'], 'invalid_value', []];
     }
 
-    /** @param array<array-key, string> $names */
+    /**
+     * @param array<array-key, string> $names
+     * @param array<string, int>       $params
+     */
     #[DataProvider('badNames')]
-    public function testNamesThatAreNotByLanguageOrTooLongAreRefused(array $names): void
+    public function testNamesThatAreNotByLanguageOrTooLongAreRefusedWithTheirReason(array $names, string $reason, array $params): void
     {
         try {
             Unit::create($this->company, 'C62', 'Unité', 0, 10, $this->now, $names);
             self::fail('expected InvalidFiscalValue');
         } catch (InvalidFiscalValue $refused) {
-            self::assertSame('names', $refused->field);
+            self::assertSame(['names', $reason, $params], [$refused->field, $refused->reason, $refused->params]);
         }
     }
 

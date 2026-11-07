@@ -37,6 +37,8 @@ class TaxComponent implements CompanyOwned
     private const string RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
     /** An amount that fits NUMERIC(14,3); the currency may allow fewer decimals. */
     private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
+    /** Digits with a point at most, as BcMath reads them: `is_numeric` also takes « 1e3 », which BcMath refuses. */
+    private const string PLAIN_DECIMAL = '/^-?[0-9]+(\.[0-9]+)?$/';
     private const int NAME_MAX = 120;
     private const int MENTION_MAX = 500;
 
@@ -106,7 +108,7 @@ class TaxComponent implements CompanyOwned
     private function __construct(Company $company, string $code, TaxFamily $family, \DateTimeImmutable $now)
     {
         if (1 !== preg_match(self::CODE, $code)) {
-            throw new InvalidFiscalValue('code', \sprintf('"%s" is not a tax code: capital letters, digits and underscores, starting with a letter.', $code));
+            throw new InvalidFiscalValue('code', \sprintf('"%s" is not a tax code: capital letters, digits and underscores, starting with a letter.', $code), 'invalid_value');
         }
         $this->id = Uuid::v7();
         $this->company = $company;
@@ -205,21 +207,24 @@ class TaxComponent implements CompanyOwned
     private function apply(string $name, ?array $names, ?string $rate, ?string $amount, ?string $threshold, bool $entersVatBase, bool $isDefault, bool $isActive, ?string $exemptionMention, int $sortOrder, int $currencyScale): void
     {
         $name = TypedText::trimmed($name);
-        if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidFiscalValue('name', \sprintf('A tax name has between 1 and %d characters.', self::NAME_MAX));
+        if ('' === $name) {
+            throw new InvalidFiscalValue('name', 'A tax is named.', 'value_required');
+        }
+        if (mb_strlen($name) > self::NAME_MAX) {
+            throw new InvalidFiscalValue('name', \sprintf('A tax name has at most %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
         $rate = $this->decimal('rate', $rate, TaxKind::FixedDocument !== $this->kind, self::RATE, 3, max: 100);
         $amount = $this->decimal('amount', $amount, TaxKind::FixedDocument === $this->kind, self::AMOUNT, $currencyScale);
         $threshold = $this->decimal('threshold', $threshold, TaxKind::WithholdingTotal === $this->kind, self::AMOUNT, $currencyScale);
         if ($entersVatBase && !$this->family->mayEnterVatBase()) {
-            throw new InvalidFiscalValue('entersVatBase', \sprintf('Only a levy enters the VAT base, not a %s tax.', $this->family->value));
+            throw new InvalidFiscalValue('entersVatBase', \sprintf('Only a levy enters the VAT base, not a %s tax.', $this->family->value), 'invalid_value');
         }
         $exemptionMention = null === $exemptionMention || '' === TypedText::trimmed($exemptionMention) ? null : TypedText::trimmed($exemptionMention);
         if (null !== $exemptionMention && mb_strlen($exemptionMention) > self::MENTION_MAX) {
-            throw new InvalidFiscalValue('exemptionMention', \sprintf('An exemption mention has at most %d characters.', self::MENTION_MAX));
+            throw new InvalidFiscalValue('exemptionMention', \sprintf('An exemption mention has at most %d characters.', self::MENTION_MAX), 'invalid_text', ['max' => self::MENTION_MAX]);
         }
         if ($sortOrder < 0) {
-            throw new InvalidFiscalValue('sortOrder', 'A sort order is never negative.');
+            throw new InvalidFiscalValue('sortOrder', 'A sort order is never negative.', 'not_negative');
         }
         $names = null === $names ? $this->names : LanguageNames::of($names, self::NAME_MAX);
 
@@ -235,26 +240,47 @@ class TaxComponent implements CompanyOwned
         $this->sortOrder = $sortOrder;
     }
 
+    /** What a value its shape refuses is refused for: not a number, below zero, or finer than the column's three decimals. */
+    private static function malformed(string $field, string $value): InvalidFiscalValue
+    {
+        $message = \sprintf('The %s is a non-negative decimal with at most three decimals.', $field);
+        if (!is_numeric($value)) {
+            return new InvalidFiscalValue($field, $message, 'not_a_number');
+        }
+        if (str_starts_with($value, '-')) {
+            return new InvalidFiscalValue($field, $message, 'not_negative');
+        }
+        $decimals = strpbrk($value, '.');
+
+        return false !== $decimals && \strlen($decimals) > 4
+            ? new InvalidFiscalValue($field, $message, 'too_many_decimals', ['max' => 3])
+            : new InvalidFiscalValue($field, $message, 'not_a_number');
+    }
+
     /** The value written with its column's three decimals, as the database gives it back, or null when not applicable. */
     private function decimal(string $field, ?string $value, bool $required, string $shape, int $maxDecimals, ?int $max = null): ?string
     {
         $value = null === $value || '' === TypedText::trimmed($value) ? null : TypedText::trimmed($value);
         if (!$required) {
             if (null !== $value) {
-                throw new InvalidFiscalValue($field, \sprintf('A %s tax has no %s.', $this->kind->value, $field));
+                throw new InvalidFiscalValue($field, \sprintf('A %s tax has no %s.', $this->kind->value, $field), 'invalid_value');
             }
 
             return null;
         }
-        if (null === $value || 1 !== preg_match($shape, $value) || !is_numeric($value)) {
-            throw new InvalidFiscalValue($field, \sprintf('A %s tax needs a %s, a non-negative decimal with at most three decimals.', $this->kind->value, $field));
+        if (null === $value) {
+            throw new InvalidFiscalValue($field, \sprintf('A %s tax needs a %s.', $this->kind->value, $field), 'value_required');
+        }
+        // A value past the limit is said with the limit, whatever its digits, before what its shape refuses.
+        if (null !== $max && 1 === preg_match(self::PLAIN_DECIMAL, $value) && is_numeric($value) && (new Number($value))->compare($max) > 0) {
+            throw new InvalidFiscalValue($field, \sprintf('The %s is at most %d.', $field, $max), 'at_most', ['max' => $max]);
+        }
+        if (1 !== preg_match($shape, $value) || !is_numeric($value)) {
+            throw self::malformed($field, $value);
         }
         $number = new Number($value);
-        if (null !== $max && $number->compare($max) > 0) {
-            throw new InvalidFiscalValue($field, \sprintf('The %s is at most %d.', $field, $max));
-        }
         if (0 !== $number->round($maxDecimals, \RoundingMode::HalfAwayFromZero)->compare($number)) {
-            throw new InvalidFiscalValue($field, \sprintf('The %s may carry at most %d decimals, the currency\'s.', $field, $maxDecimals));
+            throw new InvalidFiscalValue($field, \sprintf('The %s may carry at most %d decimals, the currency\'s.', $field, $maxDecimals), 'too_many_decimals', ['max' => $maxDecimals]);
         }
 
         return (string) $number->add(0, 3);

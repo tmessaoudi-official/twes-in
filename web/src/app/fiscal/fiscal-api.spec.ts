@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FiscalApi, FiscalRefused } from './fiscal-api';
+import { TextsParts } from '../shared/i18n/texts-part';
 import type { TaxComponentInput, UnitInput } from './fiscal-types';
 
 const stamp: TaxComponentInput = {
@@ -36,7 +37,12 @@ describe('FiscalApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refusal opens the words of its reasons first: stood in for, as nothing here says them.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(FiscalApi);
     http = TestBed.inject(HttpTestingController);
@@ -131,6 +137,27 @@ describe('FiscalApi', () => {
       .flush({ detail: 'refused' }, { status, statusText: 'Refused' });
 
     await expect(created).rejects.toEqual(new FiscalRefused(code as FiscalRefused['code']));
+  });
+
+  it('keeps the fields a 422 was refused on, each with its reason', async () => {
+    const created = api.createTaxComponent('c1', stamp);
+    http.expectOne({ method: 'POST', url: '/api/companies/c1/tax-components' }).flush(
+      {
+        violations: [
+          {
+            propertyPath: 'amount',
+            message: 'x',
+            payload: { reason: 'too_many_decimals', params: { max: 2 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+
+    await expect(created).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'amount', reason: 'too_many_decimals', params: { max: 2 } }],
+    });
   });
 
   it('reports a server that cannot be reached as a network failure', async () => {

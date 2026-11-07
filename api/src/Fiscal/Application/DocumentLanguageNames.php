@@ -30,7 +30,8 @@ final readonly class DocumentLanguageNames
     {
         $unknown = array_diff(array_map(strval(...), array_keys($names ?? [])), $this->languages->documents());
         if ([] !== $unknown) {
-            throw new InvalidFiscalValue('names', \sprintf('Documents print in %s, not in %s.', implode(', ', $this->languages->documents()), implode(', ', $unknown)));
+            $printed = implode(', ', $this->languages->documents());
+            throw new InvalidFiscalValue('names', \sprintf('Documents print in %s, not in %s.', $printed, implode(', ', $unknown)), 'not_one_of', ['choices' => $printed]);
         }
 
         return $names;

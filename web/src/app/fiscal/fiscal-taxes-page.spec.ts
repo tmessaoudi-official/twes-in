@@ -31,6 +31,7 @@ import {
   successToasts,
 } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -50,7 +51,13 @@ class StaticLoader implements TranslateLoader {
           rate: 'Taux',
         },
         regimes: { title: 'Régimes', label: 'Régime', excluded: 'Taxes non facturées' },
-        errors: { code_taken: 'Code déjà utilisé' },
+        errors: { code_taken: 'Code déjà utilisé', invalid: 'Les valeurs ont été refusées.' },
+      },
+      import: {
+        rejections: {
+          at_most: 'Attendu : {{max}} au plus.',
+          not_one_of: 'Attendu : {{choices}}.',
+        },
       },
     });
   }
@@ -97,12 +104,14 @@ const exportRegime: CustomerTaxRegimeRow = {
 describe('FiscalTaxesPage', () => {
   const taxes = signal<readonly TaxComponentRow[]>([]);
   const error = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const fiscal = {
     taxes: taxes.asReadonly(),
     regimes: signal<readonly CustomerTaxRegimeRow[]>([exportRegime]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
+    refusals: refusals.asReadonly(),
     loadTaxes: vi.fn(),
     createTax: vi.fn(),
     reviseTax: vi.fn(),
@@ -126,6 +135,7 @@ describe('FiscalTaxesPage', () => {
   beforeEach(async () => {
     taxes.set([vat, stamp]);
     error.set(null);
+    refusals.set([]);
     fiscal.loadTaxes.mockReset().mockResolvedValue(undefined);
     fiscal.createTax.mockReset().mockResolvedValue(true);
     fiscal.reviseTax.mockReset().mockResolvedValue(true);
@@ -287,6 +297,50 @@ describe('FiscalTaxesPage', () => {
       expect.objectContaining({ code: 'TVA19', family: 'vat', rate: '19' }),
     );
     expect(q('tax-form')).not.toBeNull();
+  });
+
+  it('says on its field what a save was refused for, in its words, and nothing above the form', async () => {
+    fiscal.createTax.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'rate', reason: 'at_most', params: { max: 100 } }]);
+      return false;
+    });
+    q('tax-add')!.click();
+    await settle();
+    for (const [id, value] of [
+      ['field-code', 'TVA150'],
+      ['field-name', 'TVA 150 %'],
+      ['field-rate', '150'],
+    ]) {
+      const input = q(id) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    fixture.detectChanges();
+    q('tax-save')!.click();
+    await settle();
+
+    expect(q('field-error-rate')?.textContent).toContain('Attendu : 100 au plus.');
+    expect(q('taxes-error')).toBeNull();
+  });
+
+  it('says above the form, in its words, what a save was refused for on no field of it', async () => {
+    q('row-action-edit-t1')!.click();
+    await settle();
+    fiscal.reviseTax.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'names', reason: 'not_one_of', params: { choices: 'fr, en, ar' } }]);
+      return false;
+    });
+    const name = q('field-name') as HTMLInputElement;
+    name.value = 'TVA';
+    name.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    q('tax-save')!.click();
+    await settle();
+
+    expect(q('taxes-error')?.textContent).toContain('Attendu : fr, en, ar.');
+    expect(q('taxes-error')?.textContent).not.toContain('Les valeurs ont été refusées.');
   });
 
   it('hides adding and editing from someone who may only read', async () => {

@@ -12,6 +12,7 @@ import type {
   UnitRow,
 } from './fiscal-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** The fiscal setup of one company: its taxes, its units and the regimes its customers may be under. */
 @Injectable({ providedIn: 'root' })
@@ -20,6 +21,7 @@ export class FiscalFacade {
   private readonly taxesSignal = sessionSignal<readonly TaxComponentRow[]>([]);
   private readonly unitsSignal = sessionSignal<readonly UnitRow[]>([]);
   private readonly regimesSignal = sessionSignal<readonly CustomerTaxRegimeRow[]>([]);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
   private readonly state = requestState(codeOf);
 
   readonly taxes = this.taxesSignal.asReadonly();
@@ -29,6 +31,8 @@ export class FiscalFacade {
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
   readonly readFailed = this.state.readFailed;
+  /** The fields the last save was refused on, each with the reason the screens translate. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async loadTaxes(companyId: string): Promise<void> {
     await this.read(async () => {
@@ -93,10 +97,17 @@ export class FiscalFacade {
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      await reload();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        await reload();
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof FiscalRefused ? error.refusals : []),
+      },
+    );
   }
 }
 

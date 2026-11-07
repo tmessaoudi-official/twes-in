@@ -139,6 +139,23 @@ describe('FiscalFacade', () => {
     expect(facade.error()).toBe('invalid');
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const decimals = {
+      field: 'decimals',
+      reason: 'whole_number_between',
+      params: { min: 0, max: 3 },
+    };
+    api.reviseUnit.mockRejectedValueOnce(new FiscalRefused('invalid', [decimals]));
+
+    await facade.reviseUnit('c1', 'u1', { ...kilogram, decimals: 7 }, 1);
+    expect(facade.refusals()).toEqual([decimals]);
+
+    api.reviseUnit.mockResolvedValueOnce(kilogram);
+    api.units.mockResolvedValueOnce([kilogram]);
+    await facade.reviseUnit('c1', 'u1', kilogram, 1);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('keeps an unexpected failure as a network error, and is not busy once it settled', async () => {
     api.units.mockRejectedValue(new Error('boom'));
 

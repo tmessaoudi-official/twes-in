@@ -152,11 +152,17 @@ export class SettingsApi {
    * the next refusal fetches them again (`TextsParts` keeps no failed fetch).
    */
   private async openRefusalTexts(): Promise<void> {
-    const { SETTING_REFUSAL_TEXTS } = await import('./setting-refusals');
-    await this.injector
-      .get(TextsParts)
-      .open(SETTING_REFUSAL_TEXTS)
-      .catch(() => undefined);
+    const [{ SETTING_REFUSAL_TEXTS }, { FORM_REFUSAL_TEXTS }] = await Promise.all([
+      import('./setting-refusals'),
+      import('../form/form-refusal-texts'),
+    ]);
+    // A bound or a phone is refused in the words every form shares, which live with the form refusals.
+    const parts = this.injector.get(TextsParts);
+    await Promise.all(
+      [SETTING_REFUSAL_TEXTS, FORM_REFUSAL_TEXTS].map((part) =>
+        parts.open(part).catch(() => undefined),
+      ),
+    );
   }
 
   private path(companyId: string): string {
