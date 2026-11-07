@@ -653,7 +653,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'cancelling needs delivery_note.validate');
         $this->postJson($this->path($id).'/deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not delivered');
-        self::assertSame(['note_not_validated', ['reference']], $this->refusedWholeAs());
+        self::assertSame(['note_draft_not_validated', []], $this->refusedWholeAs(), 'a draft has no number to be named by');
 
         $this->getJson($this->path($id));
         self::assertSame(['draft', null, null], [$this->json()['status'], $this->json()['number'], $this->json()['customerSnapshot']]);

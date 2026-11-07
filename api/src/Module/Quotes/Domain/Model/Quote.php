@@ -218,7 +218,7 @@ class Quote implements CompanyOwned
      */
     public function send(string $number, \DateTimeImmutable $issueDate, int $validityDays, QuotePrint $print, PrintedNames $names, \DateTimeImmutable $now): void
     {
-        $this->assertDraft('is sent');
+        $this->assertDraft('is sent', sending: true);
         if ($this->lines->isEmpty()) {
             throw new InvalidQuote('lines', 'A quote is sent with at least one line.', 'lines_required');
         }
@@ -312,7 +312,7 @@ class Quote implements CompanyOwned
     public function assertAnswered(): void
     {
         if (QuoteStatus::Accepted !== $this->status && QuoteStatus::Refused !== $this->status) {
-            throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only an accepted or refused quote names who answered.', $this->reference(), $this->status->value));
+            throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only an accepted or refused quote names who answered.', $this->reference(), $this->status->value), ...$this->unlessAbandoned('quote_not_answered'));
         }
     }
 
@@ -329,7 +329,7 @@ class Quote implements CompanyOwned
      */
     public function cancel(\DateTimeImmutable $now): void
     {
-        $this->assertDraft('is cancelled');
+        $this->assertDraft('is cancelled', cancelling: true);
         $this->status = QuoteStatus::Cancelled;
         $this->updatedAt = $now;
     }
@@ -351,7 +351,7 @@ class Quote implements CompanyOwned
     public function assertInvoiceable(): void
     {
         if (QuoteStatus::Accepted !== $this->status) {
-            throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only an accepted quote is invoiced.', $this->reference(), $this->status->value));
+            throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only an accepted quote is invoiced.', $this->reference(), $this->status->value), ...$this->unlessAbandoned('quote_invoice_not_accepted'));
         }
     }
 
@@ -393,10 +393,21 @@ class Quote implements CompanyOwned
         return array_values($this->lines->toArray());
     }
 
-    public function assertDraft(string $what): void
+    /**
+     * A sent quote is named by its number; an abandoned draft never had one, and is said as abandoned whatever was asked.
+     *
+     * @throws QuoteNotDraft
+     */
+    public function assertDraft(string $what, bool $sending = false, bool $cancelling = false): void
     {
         if (QuoteStatus::Draft !== $this->status) {
-            throw new QuoteNotDraft(\sprintf('The quote %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));
+            $refused = \sprintf('The quote %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what);
+            throw match (true) {
+                null === $this->number => new QuoteNotDraft($refused, 'quote_draft_cancelled'),
+                $sending => new QuoteNotDraft($refused, 'quote_sent_already', ['reference' => $this->number]),
+                $cancelling => new QuoteNotDraft($refused, 'quote_not_cancellable', ['reference' => $this->number]),
+                default => new QuoteNotDraft($refused, 'quote_no_longer_draft', ['reference' => $this->number]),
+            };
         }
     }
 
@@ -407,7 +418,12 @@ class Quote implements CompanyOwned
     private function answer(QuoteStatus $answer, \DateTimeImmutable $on, \DateTimeImmutable $today, string $what, ReceiverRule $rule, ?Receiver $receiver): void
     {
         if (QuoteStatus::Sent !== $this->status) {
-            throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only a sent quote is %s.', $this->reference(), $this->status->value, $what));
+            $refused = \sprintf('The quote %s is %s: only a sent quote is %s.', $this->reference(), $this->status->value, $what);
+            throw match ($this->status) {
+                QuoteStatus::Draft => new QuoteTransitionRefused($refused, 'quote_not_sent'),
+                QuoteStatus::Cancelled => new QuoteTransitionRefused($refused, 'quote_draft_cancelled'),
+                default => new QuoteTransitionRefused($refused, 'quote_answered_already', ['reference' => $this->reference()]),
+            };
         }
         $issued = $this->issueDate ?? throw new \LogicException('A sent quote has an issue day.');
         $day = self::day($on);
@@ -453,6 +469,17 @@ class Quote implements CompanyOwned
     private function reference(): string
     {
         return $this->number ?? $this->id->toRfc4122();
+    }
+
+    /**
+     * The reason a refusal of this quote is said with: its own, or that the draft was abandoned, which is all there is to
+     * say of one.
+     *
+     * @return array{string}
+     */
+    private function unlessAbandoned(string $reason): array
+    {
+        return [QuoteStatus::Cancelled === $this->status ? 'quote_draft_cancelled' : $reason];
     }
 
     private static function day(\DateTimeImmutable $moment): \DateTimeImmutable

@@ -455,6 +455,28 @@ describe('QuotesApi', () => {
     expect((await pending).name).toBe('signé.pdf');
   });
 
+  it('hands over the reason a 409 names for a move the quote’s state refuses', async () => {
+    const refused = api.cancel('c1', 'q1');
+    http.expectOne('/api/companies/c1/quotes/q1/cancel').flush(
+      {
+        violations: [
+          {
+            propertyPath: '',
+            message: 'x',
+            payload: { reason: 'quote_not_cancellable', params: { reference: 'DEV-2026-00001' } },
+          },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'conflict',
+      refusals: [
+        { field: '', reason: 'quote_not_cancellable', params: { reference: 'DEV-2026-00001' } },
+      ],
+    });
+  });
+
   it('names a refused file as such, and a refused field as invalid', async () => {
     const file = api.attach('c1', 'q1', new File(['x'], 'x.exe'));
     http

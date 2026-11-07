@@ -53,6 +53,7 @@ class StaticLoader implements TranslateLoader {
           file_empty: 'Ce fichier est vide\u00a0: choisissez-en un autre.',
           discount_rate_or_amount: 'Un pourcentage ou un montant, pas les deux.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
+          quote_sent_already: 'Le devis « {{reference}} » est déjà envoyé.',
         },
       },
       quotes: {
@@ -555,6 +556,29 @@ describe('QuotePage', () => {
 
     await vi.waitFor(() =>
       expect(q('quote-error')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
+    );
+  });
+
+  it('says why a send the quote’s state refuses was refused, naming the quote by its number', async () => {
+    quote.set(draft);
+    await open('q1');
+    facade.reviseAndSend.mockImplementationOnce(async () => {
+      error.set('conflict');
+      refusals.set([
+        { field: '', reason: 'quote_sent_already', params: { reference: 'DEV-2026-00001' } },
+      ]);
+      return null;
+    });
+
+    q('document-action-send')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('quote-error')?.textContent?.trim()).toBe(
+        'Le devis « DEV-2026-00001 » est déjà envoyé.',
+      ),
     );
   });
 

@@ -180,7 +180,8 @@ final class InvoiceDeliveryNotesTest extends TestCase
                 $this->invoicing->draftInvoice($this->company, [$mine->getId(), $note->getId()], null);
                 self::fail("$case was invoiced");
             } catch (DeliveryNoteTransitionRefused $refused) {
-                self::assertSame(['note_not_invoiceable', ['reference' => $note->getNumber() ?? $note->getId()->toRfc4122()]], [$refused->reason, $refused->params], $case);
+                $said = null === $note->getNumber() ? ['note_draft_not_invoiceable', []] : ['note_not_invoiceable', ['reference' => $note->getNumber()]];
+                self::assertSame($said, [$refused->reason, $refused->params], "$case, named by its number only once it has one");
             }
         }
         self::assertSame([[], []], [$this->invoices->invoices, $this->audit->entries]);

@@ -628,7 +628,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $draft = $this->stringAt($this->json(), 'id');
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$draft]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft note is not invoiced');
-        self::assertSame(['note_not_invoiceable', ['reference']], $this->refusedWholeAs());
+        self::assertSame(['note_draft_not_invoiceable', []], $this->refusedWholeAs(), 'a draft has no number to be named by');
         $cancelled = $this->validatedNote();
         $this->postJson($this->notePath($cancelled).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);

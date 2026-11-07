@@ -99,10 +99,12 @@ final readonly class DepositDeductions
     {
         $reference = $deposit->getNumber() ?? $deposit->getId()->toRfc4122();
         if (!$deposit->isDeposit()) {
-            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The invoice %s is not a deposit invoice: only a deposit is given back on another invoice.', $reference), 'not_a_deposit', ['reference' => $reference]);
+            $refused = \sprintf('The invoice %s is not a deposit invoice: only a deposit is given back on another invoice.', $reference);
+            throw null === $deposit->getNumber() ? new InvalidInvoice('deductsInvoiceId', $refused, 'chosen_not_a_deposit') : new InvalidInvoice('deductsInvoiceId', $refused, 'not_a_deposit', ['reference' => $reference]);
         }
         if (!$deposit->isDeductible()) {
-            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The deposit %s is given back once it is issued, and not once a credit note corrects it.', $reference), 'deposit_not_issued', ['reference' => $reference]);
+            $refused = \sprintf('The deposit %s is given back once it is issued, and not once a credit note corrects it.', $reference);
+            throw null === $deposit->getNumber() ? new InvalidInvoice('deductsInvoiceId', $refused, 'deposit_draft_not_issued') : new InvalidInvoice('deductsInvoiceId', $refused, 'deposit_not_issued', ['reference' => $reference]);
         }
         foreach ($this->invoices->givingBack($company->getId(), $deposit->getId()) as $other) {
             if (null === $by || !$other->getId()->equals($by->getId())) {

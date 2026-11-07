@@ -21,7 +21,6 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<QuoteResource, QuoteResource> */
@@ -40,7 +39,7 @@ final readonly class ReviseQuoteProcessor implements ProcessorInterface
         } catch (QuoteNotFound $absent) {
             throw new NotFoundHttpException('No such quote.', $absent);
         } catch (QuoteNotDraft $fixed) {
-            throw new ConflictHttpException($fixed->getMessage(), $fixed);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $fixed->getMessage(), $fixed->reason, $fixed->params, $fixed);
         } catch (InvalidQuote $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

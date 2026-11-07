@@ -183,7 +183,28 @@
       "payment_kept_cashed": "This payment cashed a cheque or traite of invoice “{{reference}}”: it is kept, as the proof the money came.",
       "instrument_not_held": "Only a cheque or traite in the portfolio is deposited: this one is at the bank already, cashed or unpaid.",
       "instrument_settled": "This cheque or traite is already cashed or marked unpaid.",
-      "target_not_draft": "The invoice chosen is no longer a draft: delivery notes are added only to a draft. Choose another, or make a new invoice."
+      "target_not_draft": "The invoice chosen is no longer a draft: delivery notes are added only to a draft. Choose another, or make a new invoice.",
+      "quote_draft_cancelled": "This quote draft is abandoned: it is no longer sent or changed.",
+      "quote_no_longer_draft": "Quote “{{reference}}” is sent: only a draft is changed.",
+      "quote_sent_already": "Quote “{{reference}}” is sent already.",
+      "quote_not_cancellable": "Quote “{{reference}}” is sent: only a draft is abandoned. A sent quote waits for the customer’s answer, accepted or refused.",
+      "quote_not_sent": "This quote is a draft: send it first, only a sent quote is accepted or refused.",
+      "quote_answered_already": "Quote “{{reference}}” has its answer already: it no longer changes, only who answered is put right.",
+      "quote_not_answered": "This quote has no answer yet: who answered is named once the quote is accepted or refused.",
+      "quote_invoice_not_accepted": "This quote is not accepted: only an accepted quote is invoiced.",
+      "quote_on_invoice": "Quote “{{reference}}” is on an invoice already: to invoice it again, abandon that draft first.",
+      "quote_on_invoice_deposit": "Quote “{{reference}}” is on an invoice already: its deposit comes before it.",
+      "quote_invoiced_by_notes": "Quote “{{reference}}” is delivered by delivery notes not cancelled: it is invoiced through its notes, with “Invoice this note”.",
+      "quote_deposit_after_notes": "Quote “{{reference}}” is delivered by delivery notes not cancelled: a deposit comes before them, and the invoice of its notes would not give it back.",
+      "quote_target_not_draft": "The invoice chosen is no longer a draft: a quote is added only to a draft. Choose another, or make a new invoice.",
+      "note_draft_cancelled": "This delivery note draft is abandoned: it is no longer validated, delivered or invoiced.",
+      "note_draft_not_validated": "This delivery note is a draft: validate it first, only a validated note is delivered.",
+      "note_draft_not_invoiceable": "This delivery note is a draft: validate it first, only a validated or delivered note is invoiced.",
+      "invoice_draft_not_delivered": "This invoice is a draft: it bills nothing yet. Deliver its goods by notes first, then invoice those notes.",
+      "draft_not_goods_invoice": "This draft is a credit note or a deposit invoice: only an invoice of goods is delivered.",
+      "quote_draft_not_accepted": "This quote is a draft: only an accepted quote is delivered. Send it, then record the customer’s answer.",
+      "chosen_not_a_deposit": "The invoice chosen is not a deposit invoice: only a deposit is given back on another invoice.",
+      "deposit_draft_not_issued": "The deposit chosen is a draft: a deposit is given back once issued."
     }
   }
 }

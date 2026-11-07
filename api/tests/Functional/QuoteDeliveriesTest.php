@@ -145,6 +145,19 @@ final class QuoteDeliveriesTest extends ApiTestCase
         $this->postJson($this->deliver($sent), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote not accepted');
         self::assertSame(['quote_not_accepted', ['reference']], $this->refusedWholeAs());
+        $this->postJson($this->path('quotes'), [
+            'customerId' => $this->customer->getId()->toRfc4122(),
+            'establishmentId' => null,
+            'customerReference' => null,
+            'notesPrinted' => null,
+            'notesInternal' => null,
+            'discountAmount' => null,
+            'lines' => [['productId' => $this->productId, 'quantity' => '1', 'discountAmount' => null]],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->deliver($this->stringAt($this->json(), 'id')), ['quantities' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft quote is not delivered');
+        self::assertSame(['quote_draft_not_accepted', []], $this->refusedWholeAs(), 'a draft has no number to be named by');
         $this->postJson($this->deliver(self::ABSENT), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->path('quotes', self::ABSENT).'/left');
@@ -190,6 +203,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->postJson($this->path('quotes', $delivered).'/deposit-invoices', ['depositPercentage' => '30', 'depositAmount' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nor a deposit drawn once notes stand');
+        self::assertSame(['quote_deposit_after_notes', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     public function testAQuoteIsInvoicedThroughItsNotesOrAsAWholeNeverBoth(): void
@@ -200,6 +214,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         $noteId = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path('quotes', $delivered).'/invoice', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote its notes deliver is invoiced through them');
+        self::assertSame(['quote_invoiced_by_notes', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertStringContainsString('delivered by delivery notes', $this->detail());
         // An open draft of the same customer: another quote invoiced whole.
         $other = $this->accepted();
@@ -208,6 +223,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         $draftId = $this->stringAt($this->json(), 'invoiceId');
         $this->postJson($this->path('quotes', $delivered).'/invoices/'.$draftId, null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nor added to an open draft');
+        self::assertSame(['quote_invoiced_by_notes', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->postJson($this->path('delivery-notes', $noteId).'/cancel', null);
         self::assertResponseIsSuccessful();

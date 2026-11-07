@@ -122,11 +122,14 @@ final class QuotesTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($first), $this->quote(['version' => $this->storedVersion('quote', $first)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote is fixed');
+        self::assertSame(['quote_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertStringNotContainsString('record-changed', (string) $this->client->getResponse()->getContent(), 'fixed, not saved since');
         $this->postJson($this->path($first).'/send', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'and numbered once');
+        self::assertSame(['quote_sent_already', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($first).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote is answered, never cancelled');
+        self::assertSame(['quote_not_cancellable', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM numbering_series WHERE document_type = 'quote' AND company_id = ?", [$this->company->getId()->toRfc4122()]));
     }
 
@@ -235,9 +238,11 @@ final class QuotesTest extends ApiTestCase
 
         $this->postJson($this->path($refused).'/accept', ['answeredOn' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an answered quote is answered once');
+        self::assertSame(['quote_answered_already', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $draft = $this->draft();
         $this->postJson($this->path($draft).'/accept', ['answeredOn' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is sent before it is answered');
+        self::assertSame(['quote_not_sent', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($draft).'/cancel', null);
         self::assertSame('cancelled', $this->json()['status']);
     }
@@ -248,6 +253,7 @@ final class QuotesTest extends ApiTestCase
         $id = $this->sent(['customerReference' => 'RFQ-12', 'notesPrinted' => 'Livraison comprise.', 'discountAmount' => '10']);
         $this->postJson($this->path($id).'/invoice', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only an accepted quote is invoiced');
+        self::assertSame(['quote_invoice_not_accepted', []], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM invoice'), 'and a refusal drafts nothing');
 
         $this->postJson($this->path($id).'/accept', ['answeredOn' => null]);
@@ -265,6 +271,7 @@ final class QuotesTest extends ApiTestCase
 
         $this->postJson($this->path($id).'/invoice', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'invoiced once');
+        self::assertSame(['quote_on_invoice', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/cancel', null);
         self::assertResponseIsSuccessful();
         $this->postJson($this->path($id).'/invoice', null);
@@ -292,8 +299,10 @@ final class QuotesTest extends ApiTestCase
 
         $this->postJson($this->path($second).'/invoices/'.$draftId, null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote goes on one invoice');
+        self::assertSame(['quote_on_invoice', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($second).'/invoice', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'and is not drafted again while it stands');
+        self::assertSame(['quote_on_invoice', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertCount(4, $this->arrayAt($this->invoiceBody($draftId), 'lines'));
 
         $this->postJson($this->companyPath().'/invoices/'.$draftId.'/cancel', null);
@@ -315,6 +324,7 @@ final class QuotesTest extends ApiTestCase
 
         $this->postJson($this->path($this->sent()).'/invoices/'.$draftId, null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only an accepted quote is invoiced');
+        self::assertSame(['quote_invoice_not_accepted', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($this->accepted()).'/invoices/'.self::ABSENT, null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
@@ -344,6 +354,7 @@ final class QuotesTest extends ApiTestCase
         $last = $this->accepted();
         $this->postJson($this->path($last).'/invoices/'.$draftId, null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft only, never a cancelled or an issued invoice');
+        self::assertSame(['quote_target_not_draft', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->getJson($this->path($last));
         self::assertNull($this->json()['invoiceId']);
     }
@@ -502,8 +513,10 @@ final class QuotesTest extends ApiTestCase
         $draft = $this->draft();
         $this->postJson($this->path($draft).'/receiver', $correct);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nobody answers a draft');
+        self::assertSame(['quote_not_answered', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($this->sent()).'/receiver', $correct);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote is answered first');
+        self::assertSame(['quote_not_answered', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path(self::ABSENT).'/receiver', $correct);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 

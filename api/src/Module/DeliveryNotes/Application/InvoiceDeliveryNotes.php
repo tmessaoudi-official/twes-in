@@ -229,7 +229,9 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         }
         foreach ($notes as $note) {
             if (DeliveryNoteStatus::Validated !== $note->getStatus() && DeliveryNoteStatus::Delivered !== $note->getStatus()) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', self::reference($note), $note->getStatus()->value), 'note_not_invoiceable', ['reference' => self::reference($note)]);
+                $refused = \sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', self::reference($note), $note->getStatus()->value);
+                $number = $note->getNumber();
+                throw null === $number ? new DeliveryNoteTransitionRefused($refused, DeliveryNoteStatus::Cancelled === $note->getStatus() ? 'note_draft_cancelled' : 'note_draft_not_invoiceable') : new DeliveryNoteTransitionRefused($refused, 'note_not_invoiceable', ['reference' => $number]);
             }
             if ($note->deliversInvoice()) {
                 throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s hands over the goods of an issued invoice, which billed its goods: it is never invoiced again.', self::reference($note)), 'note_of_issued_invoice', ['reference' => self::reference($note)]);

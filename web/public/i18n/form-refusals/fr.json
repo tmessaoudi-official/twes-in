@@ -183,7 +183,28 @@
       "payment_kept_cashed": "Ce règlement a encaissé un chèque ou une traite de la facture « {{reference}} » : il est gardé, comme preuve que l’argent est venu.",
       "instrument_not_held": "Seul un chèque ou une traite en portefeuille se remet à la banque : celui-ci y est déjà, ou il est encaissé ou impayé.",
       "instrument_settled": "Ce chèque ou cette traite est déjà encaissé ou marqué impayé.",
-      "target_not_draft": "La facture choisie n’est plus un brouillon : des bons s’ajoutent seulement à un brouillon. Choisissez-en un autre, ou faites une nouvelle facture."
+      "target_not_draft": "La facture choisie n’est plus un brouillon : des bons s’ajoutent seulement à un brouillon. Choisissez-en un autre, ou faites une nouvelle facture.",
+      "quote_draft_cancelled": "Ce brouillon de devis est abandonné : il ne s’envoie plus et ne se modifie plus.",
+      "quote_no_longer_draft": "Le devis « {{reference}} » est envoyé : seul un brouillon se modifie.",
+      "quote_sent_already": "Le devis « {{reference}} » est déjà envoyé.",
+      "quote_not_cancellable": "Le devis « {{reference}} » est envoyé : seul un brouillon s’abandonne. Un devis envoyé attend la réponse du client, acceptée ou refusée.",
+      "quote_not_sent": "Ce devis est un brouillon : envoyez-le d’abord, seul un devis envoyé est accepté ou refusé.",
+      "quote_answered_already": "Le devis « {{reference}} » a déjà sa réponse : elle ne change plus, seul qui a répondu se corrige.",
+      "quote_not_answered": "Ce devis n’a pas encore de réponse : qui a répondu se nomme une fois le devis accepté ou refusé.",
+      "quote_invoice_not_accepted": "Ce devis n’est pas accepté : seul un devis accepté se facture.",
+      "quote_on_invoice": "Le devis « {{reference}} » est déjà sur une facture : pour le facturer de nouveau, abandonnez d’abord ce brouillon.",
+      "quote_on_invoice_deposit": "Le devis « {{reference}} » est déjà sur une facture : son acompte vient avant elle.",
+      "quote_invoiced_by_notes": "Le devis « {{reference}} » est livré par des bons non annulés : il se facture par ses bons, avec « Facturer ce bon ».",
+      "quote_deposit_after_notes": "Le devis « {{reference}} » est livré par des bons non annulés : un acompte vient avant eux, et la facture de ses bons ne le rendrait pas.",
+      "quote_target_not_draft": "La facture choisie n’est plus un brouillon : un devis s’ajoute seulement à un brouillon. Choisissez-en un autre, ou faites une nouvelle facture.",
+      "note_draft_cancelled": "Ce brouillon de bon est abandonné : il ne se valide plus, ne se livre plus et ne se facture plus.",
+      "note_draft_not_validated": "Ce bon est un brouillon : validez-le d’abord, seul un bon validé se livre.",
+      "note_draft_not_invoiceable": "Ce bon est un brouillon : validez-le d’abord, seul un bon validé ou livré se facture.",
+      "invoice_draft_not_delivered": "Cette facture est un brouillon : elle n’a encore rien facturé. Livrez ses articles par des bons, puis facturez ces bons.",
+      "draft_not_goods_invoice": "Ce brouillon est un avoir ou une facture d’acompte : seule une facture de biens se livre.",
+      "quote_draft_not_accepted": "Ce devis est un brouillon : seul un devis accepté se livre. Envoyez-le, puis notez la réponse du client.",
+      "chosen_not_a_deposit": "La facture choisie n’est pas une facture d’acompte : seul un acompte se rend sur une autre facture.",
+      "deposit_draft_not_issued": "L’acompte choisi est un brouillon : un acompte se rend une fois émis."
     }
   }
 }

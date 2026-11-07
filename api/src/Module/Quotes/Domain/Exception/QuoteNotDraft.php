@@ -12,4 +12,12 @@ namespace App\Module\Quotes\Domain\Exception;
 /** A change a quote's status no longer allows: only a draft is revised, sent or cancelled. */
 final class QuoteNotDraft extends \DomainException
 {
+    /**
+     * @param string                    $reason a stable code the screen says in its own words, the English message being for logs
+     * @param array<string, string|int> $params that text's parameters, such as the quote's `reference`
+     */
+    public function __construct(string $message, public readonly string $reason, public readonly array $params = [])
+    {
+        parent::__construct($message);
+    }
 }

@@ -313,7 +313,8 @@ class DeliveryNote implements CompanyOwned
     public function deliver(\DateTimeImmutable $deliveredAt, \DateTimeImmutable $now, ReceiverRule $rule, ?Receiver $receiver = null): void
     {
         if (DeliveryNoteStatus::Validated !== $this->status) {
-            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated note is delivered.', $this->reference(), $this->status->value), 'note_not_validated', ['reference' => $this->reference()]);
+            $refused = \sprintf('The delivery note %s is %s: only a validated note is delivered.', $this->reference(), $this->status->value);
+            throw null === $this->number ? new DeliveryNoteTransitionRefused($refused, DeliveryNoteStatus::Cancelled === $this->status ? 'note_draft_cancelled' : 'note_draft_not_validated') : new DeliveryNoteTransitionRefused($refused, 'note_not_validated', ['reference' => $this->number]);
         }
         $issued = $this->issueDate ?? throw new \LogicException('A validated delivery note has an issue day.');
         if ($this->localDay($deliveredAt) < $issued) {
@@ -365,7 +366,8 @@ class DeliveryNote implements CompanyOwned
     public function markInvoiced(Uuid $invoiceId, \DateTimeImmutable $now): void
     {
         if (DeliveryNoteStatus::Validated !== $this->status && DeliveryNoteStatus::Delivered !== $this->status) {
-            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', $this->reference(), $this->status->value), 'note_not_invoiceable', ['reference' => $this->reference()]);
+            $refused = \sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', $this->reference(), $this->status->value);
+            throw null === $this->number ? new DeliveryNoteTransitionRefused($refused, DeliveryNoteStatus::Cancelled === $this->status ? 'note_draft_cancelled' : 'note_draft_not_invoiceable') : new DeliveryNoteTransitionRefused($refused, 'note_not_invoiceable', ['reference' => $this->number]);
         }
 
         $this->status = DeliveryNoteStatus::Invoiced;
@@ -383,7 +385,8 @@ class DeliveryNote implements CompanyOwned
     {
         $was = $this->status;
         if (DeliveryNoteStatus::Draft !== $was && DeliveryNoteStatus::Validated !== $was) {
-            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a draft or a validated note is cancelled.', $this->reference(), $was->value), 'note_not_cancellable', ['reference' => $this->reference()]);
+            $refused = \sprintf('The delivery note %s is %s: only a draft or a validated note is cancelled.', $this->reference(), $was->value);
+            throw null === $this->number ? new DeliveryNoteTransitionRefused($refused, 'note_draft_cancelled') : new DeliveryNoteTransitionRefused($refused, 'note_not_cancellable', ['reference' => $this->number]);
         }
 
         $this->status = DeliveryNoteStatus::Cancelled;
@@ -504,11 +507,20 @@ class DeliveryNote implements CompanyOwned
         }
     }
 
-    /** @param bool $validating whether the note is being validated, which a screen says as validated already rather than as changed */
+    /**
+     * A numbered note is named by its number; an abandoned draft never had one, and is said as abandoned whatever was asked.
+     *
+     * @param bool $validating whether the note is being validated, which a screen says as validated already rather than as changed
+     */
     public function assertDraft(string $what, bool $validating = false): void
     {
         if (DeliveryNoteStatus::Draft !== $this->status) {
-            throw new DeliveryNoteNotDraft(\sprintf('The delivery note %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what), $validating ? 'note_validated_already' : 'note_no_longer_draft', ['reference' => $this->reference()]);
+            $refused = \sprintf('The delivery note %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what);
+            throw match (true) {
+                null === $this->number => new DeliveryNoteNotDraft($refused, 'note_draft_cancelled'),
+                $validating => new DeliveryNoteNotDraft($refused, 'note_validated_already', ['reference' => $this->number]),
+                default => new DeliveryNoteNotDraft($refused, 'note_no_longer_draft', ['reference' => $this->number]),
+            };
         }
     }
 

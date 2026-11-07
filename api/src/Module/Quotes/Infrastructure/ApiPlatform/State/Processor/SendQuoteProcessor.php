@@ -47,7 +47,9 @@ final readonly class SendQuoteProcessor implements ProcessorInterface
             $quote = $this->workflow->send($company, CompanyPath::identifier($uriVariables, 'quoteId'), $this->guard->account()->getId());
         } catch (QuoteNotFound $absent) {
             throw new NotFoundHttpException('No such quote.', $absent);
-        } catch (QuoteNotDraft|NoNumberingSeries|InvalidNumbering|QuoteNumberTaken $conflict) {
+        } catch (QuoteNotDraft $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
+        } catch (NoNumberingSeries|InvalidNumbering|QuoteNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidQuote $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);

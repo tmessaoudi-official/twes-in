@@ -176,6 +176,7 @@ final class DocumentPreviewTest extends ApiTestCase
         $this->postJson($this->companyPath().'/invoices/'.$id.'/issue', []);
         $this->postJson($this->companyPath().'/invoices/'.$id.'/preview', $this->invoiceBody([]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice shows the figures it was issued with');
+        self::assertSame(['invoice_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     public function testAPreviewIsForWhoeverMayWriteTheDocument(): void
@@ -218,6 +219,12 @@ final class DocumentPreviewTest extends ApiTestCase
         self::assertSame('7.500', $this->json()['savings'], 'the line discount and the document discount together');
         self::assertSame(['33.750', '3.750'], [$this->rows($this->json(), 'lines')[0]['net'], $this->rows($this->json(), 'lines')[0]['documentDiscount']], 'a line says its share of the document discount');
         self::assertSame($this->json()['total'], $this->rows($this->json(), 'lines')[0]['total'], 'the only line adds what the quote comes to, its share of the discount taken off');
+
+        $this->postJson($this->companyPath().'/quotes/'.$id.'/send', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->companyPath().'/quotes/'.$id.'/preview', $body);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote shows the figures it was sent with');
+        self::assertSame(['quote_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     /**
@@ -296,6 +303,7 @@ final class DocumentPreviewTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson($this->companyPath().'/delivery-notes/'.$id.'/preview', $this->noteBody([$line]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a validated note shows the figures it was validated with');
+        self::assertSame(['note_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->postJson($this->companyPath().'/delivery-notes/0190a3c5-0000-7000-8000-000000000000/preview', $this->noteBody([$line]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

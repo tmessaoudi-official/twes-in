@@ -110,6 +110,9 @@ final class DepositInvoicesTest extends ApiTestCase
         $this->signedIn(self::WRITER);
         $quoteId = $this->accepted();
         $depositId = $this->deposit($quoteId, ['depositPercentage' => '30', 'depositAmount' => null]);
+        $this->postJson($this->companyPath().'/invoices', $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a deposit is given back once issued');
+        self::assertSame(['deposit_draft_not_issued', []], $this->refusalOf('lines[0].deductsInvoiceId'), 'a draft has no number to be named by');
         $this->issue($depositId);
         $this->postJson($this->quotePath($quoteId).'/invoice', null);
         $finalId = $this->stringAt($this->json(), 'invoiceId');
@@ -137,6 +140,7 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertCount(3, $this->rows($this->json(), 'lines'), 'the deposit given back line by line');
         $this->postJson($this->companyPath().'/invoices', $this->handInvoice([['deductsInvoiceId' => $handId, 'quantity' => '1']]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['chosen_not_a_deposit', []], $this->refusalOf('lines[0].deductsInvoiceId'), 'a draft has no number to be named by');
 
         // A duplicate is a new sale and gives nothing back; a credit note of an invoice reverses its deductions too.
         $this->issue($handId);
@@ -380,6 +384,7 @@ final class DepositInvoicesTest extends ApiTestCase
         $draft = $this->draft();
         $this->postJson($this->quotePath($draft).'/deposit-invoices', ['depositPercentage' => '30', 'depositAmount' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only an accepted quote takes a deposit');
+        self::assertSame(['quote_invoice_not_accepted', []], $this->refusedWholeAs(), 'the reason it is said with');
 
         $quoteId = $this->accepted();
         foreach ([

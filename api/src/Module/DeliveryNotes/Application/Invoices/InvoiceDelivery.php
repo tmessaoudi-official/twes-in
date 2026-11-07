@@ -31,14 +31,18 @@ final class InvoiceDelivery
         };
     }
 
-    /** @return array{string, array{reference: string}}|null the reason `refusal` gives, and its params */
+    /**
+     * The reason `refusal` gives, and its params; a draft is said as one, with no number to name it by.
+     *
+     * @return array{string, array<string, string>}|null
+     */
     public static function refusalReason(InvoiceToDeliver $invoice): ?array
     {
-        $reference = ['reference' => self::reference($invoice)];
+        $reference = null === $invoice->number ? [] : ['reference' => $invoice->number];
 
         return match (true) {
-            !$invoice->sale => ['not_goods_invoice', $reference],
-            !$invoice->issued => ['invoice_not_issued', $reference],
+            !$invoice->sale => [[] === $reference ? 'draft_not_goods_invoice' : 'not_goods_invoice', $reference],
+            !$invoice->issued => [[] === $reference ? 'invoice_draft_not_delivered' : 'invoice_not_issued', $reference],
             default => null,
         };
     }

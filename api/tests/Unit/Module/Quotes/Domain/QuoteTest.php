@@ -296,6 +296,61 @@ final class QuoteTest extends TestCase
         self::assertTrue($refused->correctReceiver($sami, $this->now), 'a refused quote is put right as an accepted one');
     }
 
+    public function testEveryStateRefusalNamesItsReasonAndOnlyASentQuoteByItsNumber(): void
+    {
+        $draft = $this->draft();
+        $cancelled = $this->draft();
+        $cancelled->cancel($this->now);
+        $sent = $this->sent();
+        $accepted = $this->sent();
+        $accepted->accept($this->now, $this->now, $this->now, ReceiverRule::Optional);
+        $refused = $this->sent();
+        $refused->refuse($this->now, null, $this->now, $this->now, ReceiverRule::Optional);
+        $reference = ['reference' => 'DEV-2026-10-00001'];
+        $accept = fn (Quote $quote) => $quote->accept($this->now, $this->now, $this->now, ReceiverRule::Optional);
+        $refuse = fn (Quote $quote) => $quote->refuse($this->now, null, $this->now, $this->now, ReceiverRule::Optional);
+
+        foreach ([
+            'a draft accepted' => [static fn () => $accept($draft), 'quote_not_sent', []],
+            'a draft refused' => [static fn () => $refuse($draft), 'quote_not_sent', []],
+            'an abandoned draft accepted' => [static fn () => $accept($cancelled), 'quote_draft_cancelled', []],
+            'an accepted quote refused' => [static fn () => $refuse($accepted), 'quote_answered_already', $reference],
+            'a refused quote accepted' => [static fn () => $accept($refused), 'quote_answered_already', $reference],
+            'a draft\'s receiver put right' => [fn () => $draft->correctReceiver(Receiver::named('Sami'), $this->now), 'quote_not_answered', []],
+            'a sent quote\'s receiver put right' => [fn () => $sent->correctReceiver(Receiver::named('Sami'), $this->now), 'quote_not_answered', []],
+            'an abandoned draft\'s receiver put right' => [fn () => $cancelled->correctReceiver(Receiver::named('Sami'), $this->now), 'quote_draft_cancelled', []],
+            'a draft invoiced' => [static fn () => $draft->assertInvoiceable(), 'quote_invoice_not_accepted', []],
+            'a sent quote invoiced' => [static fn () => $sent->assertInvoiceable(), 'quote_invoice_not_accepted', []],
+            'a refused quote invoiced' => [static fn () => $refused->assertInvoiceable(), 'quote_invoice_not_accepted', []],
+            'an abandoned draft invoiced' => [static fn () => $cancelled->assertInvoiceable(), 'quote_draft_cancelled', []],
+        ] as $case => [$attempt, $reason, $params]) {
+            try {
+                $attempt();
+                self::fail("accepted: $case");
+            } catch (QuoteTransitionRefused $refusal) {
+                self::assertSame([$reason, $params], [$refusal->reason, $refusal->params], $case);
+            }
+        }
+
+        foreach ([
+            'an abandoned draft revised' => [fn () => $cancelled->revise($this->establishment(), $this->customer, new QuoteHeader(), [$this->line('10')], $this->now), 'quote_draft_cancelled', []],
+            'an abandoned draft sent' => [fn () => $this->send($cancelled), 'quote_draft_cancelled', []],
+            'an abandoned draft abandoned again' => [fn () => $cancelled->cancel($this->now), 'quote_draft_cancelled', []],
+            'a sent quote revised' => [fn () => $sent->revise($this->establishment(), $this->customer, new QuoteHeader(), [$this->line('10')], $this->now), 'quote_no_longer_draft', $reference],
+            'a sent quote sent again' => [fn () => $this->send($sent), 'quote_sent_already', $reference],
+            'a sent quote sent again through the workflow\'s check' => [static fn () => $sent->assertDraft('is sent', sending: true), 'quote_sent_already', $reference],
+            'a sent quote abandoned' => [fn () => $sent->cancel($this->now), 'quote_not_cancellable', $reference],
+            'an accepted quote abandoned' => [fn () => $accepted->cancel($this->now), 'quote_not_cancellable', $reference],
+        ] as $case => [$attempt, $reason, $params]) {
+            try {
+                $attempt();
+                self::fail("accepted: $case");
+            } catch (QuoteNotDraft $refusal) {
+                self::assertSame([$reason, $params], [$refusal->reason, $refusal->params], $case);
+            }
+        }
+    }
+
     private function draft(): Quote
     {
         return Quote::create($this->company, $this->establishment(), $this->customer, new QuoteHeader(), [$this->line('10')], $this->now);

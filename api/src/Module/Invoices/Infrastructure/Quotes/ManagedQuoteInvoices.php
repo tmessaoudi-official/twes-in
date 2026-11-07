@@ -94,7 +94,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         // Held until the transaction ends, so the draft checked is the draft the lines go on.
         $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new QuoteTargetInvoiceNotFound();
         if (InvoiceStatus::Draft !== $invoice->getStatus()) {
-            throw new QuoteTargetInvoiceNotDraft($invoice->getNumber() ?? $invoice->getId()->toRfc4122());
+            throw new QuoteTargetInvoiceNotDraft(\sprintf('The invoice %s is not a draft any more: a quote is added only to a draft.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()), 'quote_target_not_draft');
         }
         if (InvoiceType::Invoice !== $invoice->getType() || $invoice->isDeposit()) {
             throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice, never to a deposit invoice or a credit note.', null, 'quote_not_on_invoice');

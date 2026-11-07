@@ -87,7 +87,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             // Held until this transaction ends and read as it stands, before the series: a request that read the draft
             // before another sent it is refused here, and takes no number.
             $quote = $this->locked($company, $id);
-            $quote->assertDraft('is sent');
+            $quote->assertDraft('is sent', sending: true);
             // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
             if ($quote->getCustomer()->isMergedAway()) {
                 throw new InvalidQuote('customerId', $quote->getCustomer()->whySwitchedOff(), ...$quote->getCustomer()->switchedOffReason());
@@ -209,11 +209,11 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             $quote = $this->locked($company, $id);
             $earlier = $quote->getInvoiceId();
             if (null !== $earlier && $this->invoices->stands($company, $earlier)) {
-                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: cancel that draft first to invoice it again.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
+                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: cancel that draft first to invoice it again.', $quote->getNumber() ?? $quote->getId()->toRfc4122()), 'quote_on_invoice', ['reference' => $quote->getNumber() ?? $quote->getId()->toRfc4122()]);
             }
             // Checked before the draft is made, so a quote that is not accepted makes no invoice.
             $quote->assertInvoiceable();
-            $this->assertNotDelivered($company, $quote, 'it is invoiced through them, « Facturer les bons de livraison »');
+            $this->assertNotDelivered($company, $quote, deposit: false);
             $invoiceId = $this->invoices->draftFrom($quote, $actorUserId);
             $quote->markInvoiced($invoiceId, $this->clock->now());
             $this->quotes->save($quote);
@@ -239,10 +239,10 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             $quote = $this->locked($company, $id);
             $earlier = $quote->getInvoiceId();
             if (null !== $earlier && $this->invoices->stands($company, $earlier)) {
-                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: cancel that draft first to invoice it again.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
+                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: cancel that draft first to invoice it again.', $quote->getNumber() ?? $quote->getId()->toRfc4122()), 'quote_on_invoice', ['reference' => $quote->getNumber() ?? $quote->getId()->toRfc4122()]);
             }
             $quote->assertInvoiceable();
-            $this->assertNotDelivered($company, $quote, 'it is invoiced through them, « Facturer les bons de livraison »');
+            $this->assertNotDelivered($company, $quote, deposit: false);
             $this->invoices->addTo($quote, $invoiceId, $actorUserId);
             $quote->markInvoiced($invoiceId, $this->clock->now());
             $this->quotes->save($quote);
@@ -277,10 +277,10 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             $quote = $this->locked($company, $id);
             $earlier = $quote->getInvoiceId();
             if (null !== $earlier && $this->invoices->stands($company, $earlier)) {
-                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: a deposit comes before it.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
+                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: a deposit comes before it.', $quote->getNumber() ?? $quote->getId()->toRfc4122()), 'quote_on_invoice_deposit', ['reference' => $quote->getNumber() ?? $quote->getId()->toRfc4122()]);
             }
             $quote->assertInvoiceable();
-            $this->assertNotDelivered($company, $quote, 'a deposit comes before them, and the invoice of its notes would not give it back');
+            $this->assertNotDelivered($company, $quote, deposit: true);
             $invoiceId = $this->invoices->depositFrom($quote, $percentage, $amount, $actorUserId);
             $this->record($company, $quote, self::DEPOSIT_DRAFTED, ['invoiceId' => $invoiceId->toRfc4122()], $actorUserId);
 
@@ -294,13 +294,14 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
      *
      * @throws QuoteTransitionRefused
      */
-    private function assertNotDelivered(Company $company, Quote $quote, string $instead): void
+    private function assertNotDelivered(Company $company, Quote $quote, bool $deposit): void
     {
         $key = $quote->getId()->toRfc4122();
         $lines = array_map(static fn (QuoteLine $line): Uuid => $line->getId(), $quote->getLines());
         $notes = $this->deliveries->ofQuotes($company, [$key => $lines])[$key]->notes ?? [];
         if ([] !== $notes) {
-            throw new QuoteTransitionRefused(\sprintf('The quote %s is delivered by delivery notes that are not cancelled: %s.', $quote->getNumber() ?? $key, $instead));
+            $reference = ['reference' => $quote->getNumber() ?? $key];
+            throw $deposit ? new QuoteTransitionRefused(\sprintf('The quote %s is delivered by delivery notes that are not cancelled: a deposit comes before them, and the invoice of its notes would not give it back.', $reference['reference']), 'quote_deposit_after_notes', $reference) : new QuoteTransitionRefused(\sprintf('The quote %s is delivered by delivery notes that are not cancelled: it is invoiced through them, « Facturer les bons de livraison ».', $reference['reference']), 'quote_invoiced_by_notes', $reference);
         }
     }
 

@@ -221,7 +221,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->deliver($draft), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft bills nothing yet');
         self::assertStringContainsString('not issued', $this->detail());
-        self::assertSame(['invoice_not_issued', ['reference']], $this->refusedWholeAs());
+        self::assertSame(['invoice_draft_not_delivered', []], $this->refusedWholeAs(), 'a draft has no number to be named by');
         $this->postJson($this->deliver(self::ABSENT), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 

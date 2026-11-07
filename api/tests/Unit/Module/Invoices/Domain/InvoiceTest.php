@@ -655,6 +655,14 @@ final class InvoiceTest extends TestCase
         $givingBack = fn (Invoice $of): InvoiceLineDetails => new InvoiceLineDetails(null, 'Acompte', '1', $this->unit('C62'), '10', null, [], deduction: new Deduction($of, []));
         $this->assertRefused('lines[0].deductsInvoiceId', fn () => $draft->addLines([$givingBack($theirs)], $this->now), "another customer's deposit, as a new draft refuses it");
         self::assertCount(1, $draft->getLines(), 'and nothing is added');
+        foreach (['a draft, which has no number to be named by' => [$draft, 'chosen_not_a_deposit', []], 'an issued invoice' => [$issued = $this->issued('12.900', '0.000', '12.900'), 'not_a_deposit', ['reference' => $issued->getNumber()]]] as $case => [$chosen, $reason, $params]) {
+            try {
+                new Deduction($chosen, []);
+                self::fail("$case was given back as a deposit");
+            } catch (InvalidInvoice $refused) {
+                self::assertSame(['deductsInvoiceId', $reason, $params], [$refused->field, $refused->reason, $refused->params], $case);
+            }
+        }
 
         $draft->addLines([$givingBack($deposit)], $this->now);
         self::assertSame([null, $deposit], array_map(static fn ($line): ?Invoice => $line->getDeduction()?->deposit, $draft->getLines()));

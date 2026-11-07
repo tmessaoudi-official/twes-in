@@ -12,8 +12,12 @@ namespace App\Module\Quotes\Application;
 /** The invoice a quote was to be added to is issued or cancelled: an issued invoice is corrected by a credit note. */
 final class QuoteTargetInvoiceNotDraft extends \DomainException
 {
-    public function __construct(string $number)
+    /**
+     * @param string                    $reason a stable code the screen says in its own words, the English message being for logs
+     * @param array<string, string|int> $params that text's parameters
+     */
+    public function __construct(string $message, public readonly string $reason, public readonly array $params = [])
     {
-        parent::__construct(\sprintf('The invoice %s is not a draft any more: a quote is added only to a draft.', $number));
+        parent::__construct($message);
     }
 }
