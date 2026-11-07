@@ -11,9 +11,9 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # The answers built today: losing them (the helper renamed, the tree moved) would leave nothing to check.
 FLOOR=90
 # A 422 forwarding a domain refusal's English message ($refused->getMessage()) carries no reason and, mostly, no field
-# a page can place: stable-release S5.3 moves each onto DomainRule::refused. Until the last one, their count is held
-# exactly here, so one coming back reds and each one moved lowers it (the number this gate asks for).
-FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-3}
+# a page can place, so each answers through DomainRule::refused instead. None is left: the count is held at 0, so one
+# coming back reds; a token a screen reads on purpose says why on its line with // plain-refusal: <why>.
+FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-0}
 problems=()
 
 if [[ ! -d "$root/api/src" ]]; then problems+=("found no api/src")

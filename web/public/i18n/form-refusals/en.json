@@ -122,6 +122,8 @@
       "lot_of_another": "Lot “{{lot}}” is not a lot of “{{reference}}”.",
       "serial_one_piece": "A serial number is a single piece: it moves one at a time, quantity 1.",
       "same_location": "The goods are already there: choose another location.",
+      "location_gone": "This place has been removed in the meantime: choose another.",
+      "drawing_unbound": "This rectangle is linked to no place: link it to a place first, then repeat it.",
       "stock_short": "{{name}}: {{wanted}} {{unit}} needed, the stock recorded holds {{on_hand}} {{unit}}. Count the stock or receive the goods first.",
       "stock_short_to_confirm": "{{name}}: {{wanted}} {{unit}} needed, the stock recorded holds {{on_hand}} {{unit}}. Confirm the sale to go on.",
       "after_now": "This moment has already passed: choose an end still to come.",

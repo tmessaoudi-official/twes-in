@@ -76,7 +76,7 @@ final readonly class DrawStockDrawingProcessor implements ProcessorInterface
         } catch (StockLocationCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (StockLocationNotFound $unknown) {
-            throw new UnprocessableEntityHttpException(\sprintf('locationId: %s', $unknown->getMessage()), $unknown);
+            throw DomainRule::refused('locationId', $unknown->getMessage(), 'location_gone', previous: $unknown);
         } catch (InvalidVenue $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         } catch (InvalidStockLocation $refused) {

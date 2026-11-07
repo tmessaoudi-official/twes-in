@@ -77,7 +77,7 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $missing->datum, $missing->getMessage()), $missing); // plain-refusal: a setting to complete, not a field of the form
         } catch (PartyIdentityMissing $unnamed) {
             // `seller_identity` or `customer_identity` leads: the screen says which form to complete from that word.
-            throw new UnprocessableEntityHttpException(\sprintf('%s_identity: %s', $unnamed->party, $unnamed->getMessage()), $unnamed);
+            throw new UnprocessableEntityHttpException(\sprintf('%s_identity: %s', $unnamed->party, $unnamed->getMessage()), $unnamed); // plain-refusal: a party's identity to complete on its own form, not a field of this one
         }
 
         return $this->view->of($company, $invoice, $this->guard->may($company, ProductPermission::COST_READ));

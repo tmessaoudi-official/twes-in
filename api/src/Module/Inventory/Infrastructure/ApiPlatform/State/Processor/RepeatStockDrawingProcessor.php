@@ -27,7 +27,6 @@ use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\ValueObject\PlanWay;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * Repeating a rectangle down an aisle. The refusals are named by the FIELD they belong to, because this is a form
@@ -62,7 +61,7 @@ final readonly class RepeatStockDrawingProcessor implements ProcessorInterface
         } catch (StockLocationCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (StockLocationNotFound $unknown) {
-            throw new UnprocessableEntityHttpException(\sprintf('drawingId: %s', $unknown->getMessage()), $unknown);
+            throw DomainRule::refused('drawingId', $unknown->getMessage(), 'drawing_unbound', previous: $unknown);
         } catch (InvalidVenue|InvalidStockLocation $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

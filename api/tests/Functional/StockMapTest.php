@@ -163,6 +163,9 @@ final class StockMapTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent(), $field);
         }
+
+        $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => Uuid::v7()->toRfc4122()]));
+        self::assertSame([['propertyPath' => 'locationId', 'reason' => 'location_gone', 'params' => []]], $this->refusals(), 'a place removed since it was chosen: choose another');
     }
 
     /**
