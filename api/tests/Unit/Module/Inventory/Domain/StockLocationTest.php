@@ -174,7 +174,7 @@ final class StockLocationTest extends TestCase
             $rack->drawAt(VenueSpot::place($there, $rect, $this->now), $this->now);
             self::fail('A location was drawn on another establishment\'s floor.');
         } catch (InvalidStockLocation $refused) {
-            self::assertSame('spotId', $refused->field);
+            self::assertSame(['spotId', 'other_establishment'], [$refused->field, $refused->reason]);
         }
         self::assertNull($rack->getSpot());
     }

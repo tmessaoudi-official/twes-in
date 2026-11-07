@@ -445,7 +445,7 @@ final class StockMapTest extends ApiTestCase
 
         $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing($this->newPlace('bin', 'B9', 'Casier 9')));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('newLocationKind', (string) $this->client->getResponse()->getContent());
+        self::assertSame(['bin_in_rack', []], $this->refusalOf('newLocationKind'));
 
         $this->getJson($this->path('stock-locations'));
         self::assertNotContains('B9', array_column($this->jsonList(), 'code'));

@@ -227,7 +227,7 @@ final class RepeatStockDrawingTest extends TestCase
             $this->map->repeat($this->company, $source, 2, '0.600', PlanWay::Down, 'RAYONNAGE', $this->actor);
             self::fail('A repeat started from a code with no number in it.');
         } catch (InvalidStockLocation $refused) {
-            self::assertSame('firstCode', $refused->field);
+            self::assertSame(['firstCode', 'code_ends_in_number'], [$refused->field, $refused->reason]);
         }
 
         self::assertSame([], $this->codesLike('R'));

@@ -87,7 +87,7 @@ class ProductHomeLocation implements CompanyOwned
     public static function at(Product $product, StockLocation $location, int $position, \DateTimeImmutable $now): self
     {
         if (!$product->getCompany()->getId()->equals($location->getCompany()->getId())) {
-            throw new InvalidStockLocation('productId', 'A product is given a home among its own company’s locations.');
+            throw new InvalidStockLocation('productId', 'A product is given a home among its own company’s locations.', 'invalid_location');
         }
 
         return new self($product, $location, $position, $now);

@@ -250,7 +250,7 @@ class StockLocation implements CompanyOwned
             return false;
         }
         if (null !== $spot && !$spot->getArea()->getEstablishment()->getId()->equals($this->establishment->getId())) {
-            throw new InvalidStockLocation('spotId', 'A location is drawn on a floor of its own establishment.');
+            throw new InvalidStockLocation('spotId', 'A location is drawn on a floor of its own establishment.', 'other_establishment');
         }
         $this->spot = $spot;
         $this->updatedAt = $now;

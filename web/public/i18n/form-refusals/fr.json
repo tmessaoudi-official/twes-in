@@ -142,7 +142,16 @@
       "leaves_the_floor": "Ce rectangle sortirait du plan de ce côté : rapprochez-le du bord ou tournez-le.",
       "piece_gone": "Cet élément du bâtiment a été effacé entre-temps : abandonnez les changements qui le touchent, puis recommencez.",
       "piece_other_floor": "Cet élément du bâtiment est sur un autre étage : changez-le depuis le plan de son étage.",
-      "piece_named_twice": "Cet élément du bâtiment est changé deux fois dans les mêmes changements : n’en gardez qu’un."
+      "piece_named_twice": "Cet élément du bâtiment est changé deux fois dans les mêmes changements : n’en gardez qu’un.",
+      "bin_in_rack": "Un casier se range dans son rayonnage, pas sur le plan : dessinez le rayonnage, puis créez-y le casier.",
+      "code_ends_in_number": "Le premier code se termine par un nombre, que les suivants continuent (exemple : R2).",
+      "rectangle_gone": "Ce rectangle a été effacé entre-temps : abandonnez les changements qui le touchent, puis recommencez.",
+      "rectangle_other_floor": "Ce rectangle est sur un autre étage : changez-le depuis le plan de son étage.",
+      "rectangle_named_twice": "Ce rectangle est changé deux fois dans les mêmes changements : n’en gardez qu’un.",
+      "place_drawn_twice": "Cet emplacement est dessiné deux fois dans les mêmes changements : n’en gardez qu’un.",
+      "place_drawn_elsewhere": "Cet emplacement est déjà dessiné sur un autre rectangle : effacez d’abord celui-là, dans les mêmes changements.",
+      "code_taken": "Le code {{code}} est déjà celui d’un autre emplacement de cet établissement : choisissez-en un autre.",
+      "code_given_twice": "Ce code est donné à deux nouveaux emplacements : donnez-en un autre à l’un des deux."
     }
   }
 }

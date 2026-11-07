@@ -142,7 +142,16 @@
       "leaves_the_floor": "This rectangle would leave the plan on this side: bring it closer to the edge or turn it.",
       "piece_gone": "This building element was erased in the meantime: discard the changes touching it, then start again.",
       "piece_other_floor": "This building element is on another floor: change it from its own floor’s plan.",
-      "piece_named_twice": "This building element is changed twice in the same changes: keep only one."
+      "piece_named_twice": "This building element is changed twice in the same changes: keep only one.",
+      "bin_in_rack": "A bin is kept in its rack, not on the plan: draw the rack, then create the bin in it.",
+      "code_ends_in_number": "The first code ends in a number, which the next ones continue (example: R2).",
+      "rectangle_gone": "This rectangle was erased in the meantime: discard the changes touching it, then start again.",
+      "rectangle_other_floor": "This rectangle is on another floor: change it from its own floor’s plan.",
+      "rectangle_named_twice": "This rectangle is changed twice in the same changes: keep only one.",
+      "place_drawn_twice": "This location is drawn twice in the same changes: keep only one.",
+      "place_drawn_elsewhere": "This location is already drawn on another rectangle: erase that one first, in the same changes.",
+      "code_taken": "The code {{code}} is already another location’s in this establishment: choose another one.",
+      "code_given_twice": "This code is given to two new locations: give one of them another."
     }
   }
 }

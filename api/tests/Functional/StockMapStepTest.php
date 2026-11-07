@@ -256,6 +256,9 @@ final class StockMapStepTest extends ApiTestCase
         $upstairs = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path('stock-floors', $upstairs).'/structures', $this->piece([]));
         $elsewhere = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-floors', $upstairs).'/drawings', $this->drawing(['newLocationKind' => 'rack', 'newLocationCode' => 'R9', 'newLocationName' => 'Rayonnage 9']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $upstairsRack = $this->stringAt($this->json(), 'id');
         $before = $this->floorAsItStands();
         $codes = $this->codes();
         $since = $this->auditCount();
@@ -282,20 +285,23 @@ final class StockMapStepTest extends ApiTestCase
             ['structureBuilds[1].kind', [...$start, 'structureBuilds' => [$this->piece([]), $this->piece(['kind' => 'moat'])]]],
             ['structureBuilds[0].name', [...$start, 'structureBuilds' => [$this->piece(['name' => str_repeat('m', 121)])]], 'invalid_text', ['max' => 120]],
             ['structureBuilds[0].depth', [...$start, 'structureBuilds' => [$this->piece(['depth' => '0'])]], 'above_zero'],
-            ['newPlaces[1].code', [...$start, 'newPlaces' => [...$start['newPlaces'], $this->newPlace('rack', 'R1', 'Doublon', [])]]],
-            ['newPlaces[1].code', [...$start, 'newPlaces' => [...$start['newPlaces'], $this->newPlace('rack', 'R8', 'Doublon', [])]]],
+            ['newPlaces[1].code', [...$start, 'newPlaces' => [...$start['newPlaces'], $this->newPlace('rack', 'R1', 'Doublon', [])]], 'code_taken', ['code' => 'R1']],
+            ['newPlaces[1].code', [...$start, 'newPlaces' => [...$start['newPlaces'], $this->newPlace('rack', 'R8', 'Doublon', [])]], 'code_given_twice'],
             ['newPlaces[0].code', [...$start, 'newPlaces' => [$this->newPlace('rack', 'R 8', 'Rayonnage 8', [])]]],
             ['newPlaces[0].name', [...$start, 'newPlaces' => [$this->newPlace('rack', 'R8', '  ', [])]]],
-            ['newPlaces[0].kind', [...$start, 'newPlaces' => [$this->newPlace('bin', 'B8', 'Bac 8', [])]]],
+            ['newPlaces[0].kind', [...$start, 'newPlaces' => [$this->newPlace('bin', 'B8', 'Bac 8', [])]], 'bin_in_rack'],
             ['newPlaces[0].kind', [...$start, 'newPlaces' => [$this->newPlace('moat', 'M8', 'Douve', [])]]],
-            ['newPlaces[0].width', [...$start, 'newPlaces' => [$this->newPlace('rack', 'R8', 'Rayonnage 8', ['width' => '0'])]]],
-            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => Uuid::v7()->toRfc4122()]]]],
-            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $bin]]]],
-            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $sfax]]]],
-            ['moves[0].locationId', ['moves' => [['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $rackPlace]]]],
-            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $rackPlace]]]],
-            ['moves[1].locationId', ['moves' => [['drawingId' => $rack, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose]]]],
-            ['draws[0].locationId', [...$start, 'moves' => [['drawingId' => $rack, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose]], 'draws' => [['locationId' => $loose, ...$this->drawing(['y' => '12'])]]]],
+            ['newPlaces[0].width', [...$start, 'newPlaces' => [$this->newPlace('rack', 'R8', 'Rayonnage 8', ['width' => '0'])]], 'above_zero'],
+            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => Uuid::v7()->toRfc4122()]]], 'invalid_location'],
+            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $bin]]], 'bin_in_rack'],
+            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $sfax]]], 'other_establishment'],
+            ['moves[0].locationId', ['moves' => [['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $rackPlace]]], 'place_drawn_elsewhere'],
+            ['moves[1].locationId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $rackPlace]]], 'place_drawn_elsewhere'],
+            ['moves[1].locationId', ['moves' => [['drawingId' => $rack, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose], ['drawingId' => $other, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose]]], 'place_drawn_twice'],
+            ['draws[0].locationId', [...$start, 'moves' => [['drawingId' => $rack, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose]], 'draws' => [['locationId' => $loose, ...$this->drawing(['y' => '12'])]]], 'place_drawn_twice'],
+            ['moves[1].drawingId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => Uuid::v7()->toRfc4122(), ...$this->drawing([]), 'version' => 1]]], 'rectangle_gone'],
+            ['moves[1].drawingId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $rack, ...$this->drawing([]), 'version' => 1]]], 'rectangle_named_twice'],
+            ['moves[1].drawingId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => $upstairsRack, ...$this->drawing([]), 'version' => 1]]], 'rectangle_other_floor'],
             ['structureMoves', [...$start, 'structureMoves' => ['first' => $moved($a)]]],
             ['newPlaces', [...$start, 'newPlaces' => ['first' => $start['newPlaces'][0]]]],
         ] as $refused) {

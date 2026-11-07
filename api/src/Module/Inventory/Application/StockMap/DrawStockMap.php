@@ -182,7 +182,7 @@ final readonly class DrawStockMap
     public function drawNew(Company $company, Uuid $floorId, StockLocationKind $kind, string $code, string $name, PlanRect $rect, ?Uuid $actorUserId): StockLocation
     {
         if (!$kind->isDrawable()) {
-            throw new InvalidStockLocation('newLocationKind', 'A bin is placed in its rack rather than on the floor plan.');
+            throw new InvalidStockLocation('newLocationKind', 'A bin is placed in its rack rather than on the floor plan.', 'bin_in_rack');
         }
         $floor = $this->venue->area($company, $floorId);
         $zone = $this->zoneHolding($company, $floorId, $rect);
@@ -399,7 +399,7 @@ final readonly class DrawStockMap
     {
         $first = TypedText::trimmed($firstCode);
         if (1 !== preg_match('/^(.*?)([0-9]+)$/', $first, $found)) {
-            throw new InvalidStockLocation('firstCode', 'A repeat counts on from a code ending in a number, such as R2.');
+            throw new InvalidStockLocation('firstCode', 'A repeat counts on from a code ending in a number, such as R2.', 'code_ends_in_number');
         }
         [, $stem, $number] = $found;
         $width = \strlen($number);
@@ -538,13 +538,13 @@ final readonly class DrawStockMap
             try {
                 $spot = $this->venue->spot($company, $drawingId);
             } catch (VenueSpotNotFound) {
-                throw new InvalidStockLocation($field, 'No such rectangle is drawn.');
+                throw new InvalidStockLocation($field, 'No such rectangle is drawn.', 'rectangle_gone');
             }
             if (!$spot->getArea()->getId()->equals($floor->getId())) {
-                throw new InvalidStockLocation($field, 'This rectangle is drawn on another floor.');
+                throw new InvalidStockLocation($field, 'This rectangle is drawn on another floor.', 'rectangle_other_floor');
             }
             if (isset($touched[$drawingId->toRfc4122()])) {
-                throw new InvalidStockLocation($field, 'A rectangle is named once in a step.');
+                throw new InvalidStockLocation($field, 'A rectangle is named once in a step.', 'rectangle_named_twice');
             }
             $touched[$drawingId->toRfc4122()] = true;
         };
@@ -564,10 +564,10 @@ final readonly class DrawStockMap
             $field = "moves[$at].locationId";
             $drawnOn = $this->placeFor($company, $floor, $locationId, $field)->getSpot()?->getId();
             if (isset($placed[$locationId->toRfc4122()])) {
-                throw new InvalidStockLocation($field, 'A place is drawn once in a step.');
+                throw new InvalidStockLocation($field, 'A place is drawn once in a step.', 'place_drawn_twice');
             }
             if (null !== $drawnOn && !$drawnOn->equals($drawingId) && !isset($erased[$drawnOn->toRfc4122()])) {
-                throw new InvalidStockLocation($field, 'This place is drawn on another rectangle, which the step keeps: undraw that one in the same step.');
+                throw new InvalidStockLocation($field, 'This place is drawn on another rectangle, which the step keeps: undraw that one in the same step.', 'place_drawn_elsewhere');
             }
             $placed[$locationId->toRfc4122()] = true;
         }
@@ -575,7 +575,7 @@ final readonly class DrawStockMap
             $field = "draws[$at].locationId";
             $drawnOn = $this->placeFor($company, $floor, $locationId, $field)->getSpot()?->getId()->toRfc4122();
             if (isset($placed[$locationId->toRfc4122()]) || (null !== $drawnOn && isset($touched[$drawnOn]))) {
-                throw new InvalidStockLocation($field, 'A place is drawn once in a step, and not over a rectangle the step moves or undraws.');
+                throw new InvalidStockLocation($field, 'A place is drawn once in a step, and not over a rectangle the step moves or undraws.', 'place_drawn_twice');
             }
             $placed[$locationId->toRfc4122()] = true;
         }
@@ -597,7 +597,7 @@ final readonly class DrawStockMap
             throw new InvalidStockLocation($field, $refused->getMessage(), $refused->reason, $refused->params);
         }
         if (!$location->getEstablishment()->getId()->equals($floor->getEstablishment()->getId())) {
-            throw new InvalidStockLocation($field, 'A location is drawn on a floor of its own establishment.');
+            throw new InvalidStockLocation($field, 'A location is drawn on a floor of its own establishment.', 'other_establishment');
         }
 
         return $location;
@@ -623,7 +623,7 @@ final readonly class DrawStockMap
         $given = [];
         foreach ($step->newPlaces as $at => [$kind, $code, $name]) {
             if (!$kind->isDrawable()) {
-                throw new InvalidStockLocation("newPlaces[$at].kind", 'A bin is placed in its rack rather than on the floor plan.');
+                throw new InvalidStockLocation("newPlaces[$at].kind", 'A bin is placed in its rack rather than on the floor plan.', 'bin_in_rack');
             }
             try {
                 $kept = StockLocation::namingOf($code, $name);
@@ -631,10 +631,10 @@ final readonly class DrawStockMap
                 throw new InvalidStockLocation("newPlaces[$at].{$refused->field}", $refused->getMessage(), $refused->reason, $refused->params);
             }
             if (isset($taken[$kept])) {
-                throw new InvalidStockLocation("newPlaces[$at].code", new StockLocationCodeTaken($kept)->getMessage());
+                throw new InvalidStockLocation("newPlaces[$at].code", new StockLocationCodeTaken($kept)->getMessage(), 'code_taken', ['code' => $kept]);
             }
             if (isset($given[$kept])) {
-                throw new InvalidStockLocation("newPlaces[$at].code", 'A code is given to one new place of a step.');
+                throw new InvalidStockLocation("newPlaces[$at].code", 'A code is given to one new place of a step.', 'code_given_twice');
             }
             $given[$kept] = true;
         }
@@ -716,7 +716,7 @@ final readonly class DrawStockMap
     {
         $location = $this->locations->get($company, $locationId);
         if (!$location->getKind()->isDrawable()) {
-            throw new InvalidStockLocation('locationId', 'A bin is placed in its rack rather than on the floor plan.');
+            throw new InvalidStockLocation('locationId', 'A bin is placed in its rack rather than on the floor plan.', 'bin_in_rack');
         }
 
         return $location;

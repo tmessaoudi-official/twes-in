@@ -192,7 +192,7 @@ final class DrawStockMapTest extends TestCase
             $this->map->draw($this->company, $ground, $bin->getId(), $this->rect('1'), $this->actor);
             self::fail('A bin was drawn on the floor plan.');
         } catch (InvalidStockLocation $refused) {
-            self::assertSame('locationId', $refused->field);
+            self::assertSame(['locationId', 'bin_in_rack'], [$refused->field, $refused->reason]);
         }
 
         // Refused before anything was placed: no rectangle is left behind for a binding that never happened.
@@ -211,7 +211,7 @@ final class DrawStockMapTest extends TestCase
             $this->map->moveDrawing($this->company, $drawing->getId(), $bin->getId(), $this->rect('2'), $this->actor);
             self::fail('A rectangle was given to a bin.');
         } catch (InvalidStockLocation $refused) {
-            self::assertSame('locationId', $refused->field);
+            self::assertSame(['locationId', 'bin_in_rack'], [$refused->field, $refused->reason]);
         }
 
         // The rack keeps the rectangle it had, unmoved: a refusal leaves the plan as it was.
