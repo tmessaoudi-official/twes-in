@@ -435,7 +435,7 @@ describe('ExpensesApi', () => {
     http
       .expectOne('/api/companies/c1/expenses/e1')
       .flush(null, { status: 409, statusText: 'Conflict' });
-    await expect(recorded).rejects.toEqual(new ExpensesRefused('not_draft'));
+    await expect(recorded).rejects.toEqual(new ExpensesRefused('conflict'));
 
     const changed = api.reviseExpense('c1', 'e1', fuel, 1);
     http
@@ -507,7 +507,7 @@ describe('ExpensesApi', () => {
     http
       .expectOne('/api/companies/c1/expenses/e1/attachments/a1')
       .flush(null, { status: 409, statusText: 'Conflict' });
-    await expect(kept).rejects.toEqual(new ExpensesRefused('not_draft'));
+    await expect(kept).rejects.toEqual(new ExpensesRefused('conflict'));
 
     const full = api.restoreAttachment('c1', 'e1', 'a1');
     const restore = http.expectOne('/api/companies/c1/expenses/e1/attachments/a1/restore');
@@ -521,8 +521,64 @@ describe('ExpensesApi', () => {
     http
       .expectOne('/api/companies/c1/expenses/e1/attachments/a1/restore')
       .flush(null, { status: 409, statusText: 'Conflict' });
-    await expect(restoreRecorded).rejects.toEqual(new ExpensesRefused('not_draft'));
+    await expect(restoreRecorded).rejects.toEqual(new ExpensesRefused('conflict'));
   });
+
+  it.each([
+    [
+      'records',
+      (api: ExpensesApi) => api.recordExpense('c1', 'e1'),
+      '/api/companies/c1/expenses/e1/record',
+    ],
+    [
+      'classifies',
+      (api: ExpensesApi) => api.classifyWithholding('c1', 'e1', '1'),
+      '/api/companies/c1/expenses/e1/withholding-operation',
+    ],
+    [
+      'detaches a file from',
+      (api: ExpensesApi) => api.detach('c1', 'e1', 'a1'),
+      '/api/companies/c1/expenses/e1/attachments/a1',
+    ],
+    [
+      'puts a file back on',
+      (api: ExpensesApi) => api.restoreAttachment('c1', 'e1', 'a1'),
+      '/api/companies/c1/expenses/e1/attachments/a1/restore',
+    ],
+    [
+      'revises',
+      (api: ExpensesApi) => api.reviseExpense('c1', 'e1', fuel, 1),
+      '/api/companies/c1/expenses/e1',
+    ],
+    [
+      'pays',
+      (api: ExpensesApi) =>
+        api.payExpense('c1', 'e1', {
+          paymentMethod: 'cash',
+          paidOn: '2026-09-12',
+          withholdingRate: '1',
+        }),
+      '/api/companies/c1/expenses/e1/pay',
+    ],
+  ] as const)(
+    'hands over the reason a 409 names when it %s an expense its state refuses',
+    async (_, call, url) => {
+      const refused = call(api);
+      http.expectOne(url).flush(
+        {
+          violations: [
+            { propertyPath: '', message: 'x', payload: { reason: 'expense_not_draft_changed' } },
+          ],
+        },
+        { status: 409, statusText: 'Conflict' },
+      );
+      await expect(refused).rejects.toEqual(
+        new ExpensesRefused('conflict', [
+          { field: '', reason: 'expense_not_draft_changed', params: {} },
+        ]),
+      );
+    },
+  );
 
   it('names each field a save, a recording or a payment was refused on, a line by its place', async () => {
     const violations = (path: string, reason: string, params?: Record<string, unknown>) => ({

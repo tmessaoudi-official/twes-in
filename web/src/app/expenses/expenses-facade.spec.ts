@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { saidAlready } from '../shared/errors/said-already';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
 import { ExpensesFacade } from './expenses-facade';
 import type { ExpenseAttachment, ExpenseInput, ExpenseOptions, ExpenseRow } from './expenses-types';
@@ -205,9 +207,9 @@ describe('ExpensesFacade', () => {
     expect(facade.attachments()).toEqual([receipt]);
     expect(facade.expense()?.attachmentCount).toBe(1);
 
-    api.detach.mockRejectedValue(new ExpensesRefused('not_draft'));
+    api.detach.mockRejectedValue(new ExpensesRefused('conflict'));
     expect(await facade.detach('c1', 'e1', 'a1')).toBe(false);
-    expect(facade.error()).toBe('not_draft');
+    expect(facade.error()).toBe('conflict');
     expect(facade.busy()).toBe(false);
   });
 
@@ -232,8 +234,29 @@ describe('ExpensesFacade', () => {
 
     // A refusal is the toast's to say, never written on the page open now.
     api.restoreAttachment.mockRejectedValue(new ExpensesRefused('files_full'));
-    expect(await facade.restoreAttachment('c1', 'e1', 'a1')).toBe('files_full');
+    expect(await facade.restoreAttachment('c1', 'e1', 'a1')).toEqual(
+      new ExpensesRefused('files_full'),
+    );
     expect(facade.error()).toBeNull();
+
+    // A refusal of the expense's state comes back with the reason it names, for the toast to say.
+    const state = new ExpensesRefused('conflict', [
+      { field: '', reason: 'expense_not_draft_changed', params: {} },
+    ]);
+    api.restoreAttachment.mockRejectedValue(state);
+    expect(await facade.restoreAttachment('c1', 'e1', 'a1')).toBe(state);
+
+    // No answer at all reads as the network's.
+    api.restoreAttachment.mockRejectedValue(new Error('offline'));
+    expect(await facade.restoreAttachment('c1', 'e1', 'a1')).toEqual(
+      new ExpensesRefused('network'),
+    );
+
+    // Whatever it came from stays readable, so a failure an interceptor said is not said again.
+    api.restoreAttachment.mockRejectedValue(
+      new HttpErrorResponse({ status: 403, error: { error: 'demo_refused' } }),
+    );
+    expect(saidAlready(await facade.restoreAttachment('c1', 'e1', 'a1'))).toBe(true);
   });
 
   it('keeps the expense the API answered after each step, and the reason when it refused', async () => {

@@ -5,7 +5,7 @@ import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
 import { isPeriodClosed } from '../shared/documents/period-closed';
-import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
@@ -66,10 +66,10 @@ interface Refusals {
   invalid: ExpensesError;
 }
 
-const EXPENSE: Refusals = { conflict: 'not_draft', invalid: 'invalid' };
+const EXPENSE: Refusals = { conflict: 'conflict', invalid: 'invalid' };
 const CATEGORY: Refusals = { conflict: 'name_taken', invalid: 'invalid' };
-const FILE: Refusals = { conflict: 'not_draft', invalid: 'file_refused' };
-const RESTORE: Refusals = { conflict: 'not_draft', invalid: 'files_full' };
+const FILE: Refusals = { conflict: 'conflict', invalid: 'file_refused' };
+const RESTORE: Refusals = { conflict: 'conflict', invalid: 'files_full' };
 
 /** The HTTP edge of the expenses feature: the only code here that knows endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
@@ -394,7 +394,9 @@ export class ExpensesApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new ExpensesRefused(codeOf(error, refusals)));
+      // A category's refusals are about the row as a whole, which its page says in the code's words.
+      const said = refusals === CATEGORY ? [] : await formRefusalsIn(this.injector, error);
+      throw refusedFor(error, new ExpensesRefused(codeOf(error, refusals), said));
     }
   }
 
@@ -403,9 +405,10 @@ export class ExpensesApi {
     try {
       return await call();
     } catch (error) {
-      const refusals =
-        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
-      throw refusedFor(error, new ExpensesRefused(codeOf(error, EXPENSE), refusals));
+      throw refusedFor(
+        error,
+        new ExpensesRefused(codeOf(error, EXPENSE), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

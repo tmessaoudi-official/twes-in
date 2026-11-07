@@ -214,7 +214,13 @@
       "order_nothing_arrived": "Nothing of order “{{reference}}” is received yet: it is cancelled, not closed.",
       "order_not_closable": "Order “{{reference}}” is not closed: only a partly received order is closed.",
       "order_sent_already": "Order “{{reference}}” is sent already.",
-      "order_no_longer_draft": "Order “{{reference}}” is sent: only a draft is changed."
+      "order_no_longer_draft": "Order “{{reference}}” is sent: only a draft is changed.",
+      "expense_draft_not_paid": "This expense is a draft: record it in the books first, then mark it as paid.",
+      "expense_paid_already": "This expense is paid already.",
+      "expense_not_paid_classified": "This expense is not paid yet: its operation is said once the expense is marked as paid.",
+      "expense_recorded_already": "This expense is recorded in the books already.",
+      "expense_not_draft_deleted": "This expense is recorded in the books: it is no longer deleted.",
+      "expense_not_draft_changed": "This expense is recorded in the books: only a draft is changed."
     }
   }
 }

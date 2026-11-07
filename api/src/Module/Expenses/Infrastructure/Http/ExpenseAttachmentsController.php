@@ -25,7 +25,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -61,7 +60,7 @@ final readonly class ExpenseAttachmentsController
     }
 
     /** Puts back a file taken off, where it was: what « Annuler » after taking it off sends. */
-    #[Route('/api/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}/restore', name: 'api_expense_attachment_restore', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}/restore', name: 'api_expense_attachment_restore', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function restore(string $companyId, string $expenseId, string $attachmentId): Response
     {
         $ids = ['companyId' => $companyId, 'expenseId' => $expenseId, 'attachmentId' => $attachmentId];
@@ -72,7 +71,7 @@ final readonly class ExpenseAttachmentsController
         } catch (ExpenseNotFound|AttachmentNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ExpenseTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (AttachmentRefused $refused) {
             return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }

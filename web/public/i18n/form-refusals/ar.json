@@ -214,7 +214,13 @@
       "order_nothing_arrived": "لم يُستلم شيء بعد من الطلبية « {{reference}} »: تُلغى ولا تُقفل.",
       "order_not_closable": "الطلبية « {{reference}} » لا تُقفل: لا تُقفل إلا طلبية مستلمة جزئيًا.",
       "order_sent_already": "الطلبية « {{reference}} » مُرسَلة بالفعل.",
-      "order_no_longer_draft": "الطلبية « {{reference}} » مُرسَلة: لا تُعدَّل إلا المسودة."
+      "order_no_longer_draft": "الطلبية « {{reference}} » مُرسَلة: لا تُعدَّل إلا المسودة.",
+      "expense_draft_not_paid": "هذا المصروف مسودة: سجّله محاسبيًا أولًا، ثم علّمه كمدفوع.",
+      "expense_paid_already": "هذا المصروف مدفوع بالفعل.",
+      "expense_not_paid_classified": "هذا المصروف لم يُدفع بعد: تُحدَّد عمليته بعد تعليمه كمدفوع.",
+      "expense_recorded_already": "هذا المصروف مسجّل محاسبيًا بالفعل.",
+      "expense_not_draft_deleted": "هذا المصروف مسجّل محاسبيًا: لم يعد يُحذف.",
+      "expense_not_draft_changed": "هذا المصروف مسجّل محاسبيًا: لا تُعدَّل إلا المسودة."
     }
   }
 }

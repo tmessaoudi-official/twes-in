@@ -7,7 +7,7 @@ import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 export type ExpensesError =
   | 'network'
   | 'not_found'
-  | 'not_draft'
+  | 'conflict'
   | 'name_taken'
   | 'invalid'
   | 'file_refused'

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -24,6 +24,8 @@ import {
 import type { BillGroup } from './expense-forms';
 import { ExpensePage } from './expense-page';
 import { ExpensesFacade } from './expenses-facade';
+import { ExpensesRefused } from './expenses-api';
+import { refusedFor } from '../shared/errors/said-already';
 import { RecurringExpensesApi } from '../recurring-expenses/recurring-expenses-api';
 import type {
   ExpenseAttachment,
@@ -46,7 +48,7 @@ class StaticLoader implements TranslateLoader {
       expenses: {
         saved: 'La dépense a été enregistrée.',
         withheld: 'Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}',
-        errors: { not_draft: 'Seule une dépense en brouillon peut être modifiée.' },
+        errors: { conflict: 'Seule une dépense en brouillon peut être modifiée.' },
         bill: { worked_out: 'Calculé\u00a0: {{amount}}' },
       },
       import: {
@@ -61,6 +63,9 @@ class StaticLoader implements TranslateLoader {
           paid_before_expense: 'Date de règlement refusée : le jour de la dépense au plus tôt.',
           invalid_withholding_rate:
             'Retenue refusée : un pourcentage de 0 à 100, trois décimales au plus.',
+          expense_paid_already: 'Cette dépense est déjà payée.',
+          expense_not_draft_changed:
+            'Cette dépense est comptabilisée : seul un brouillon se modifie.',
         },
       },
     });
@@ -800,10 +805,36 @@ describe('ExpensePage', () => {
     });
 
     // Refused, it is said as a toast too, since the page it came from may be gone.
-    facade.restoreAttachment.mockResolvedValue('files_full');
+    facade.restoreAttachment.mockResolvedValue(new ExpensesRefused('files_full'));
     removed?.action?.run();
     await settle();
     expect(feedback.said.at(-1)).toEqual({ kind: 'failure', key: 'expenses.errors.files_full' });
+
+    // Refused for the expense's state, the toast says the reason the API named, not the code's words.
+    facade.restoreAttachment.mockResolvedValue(
+      new ExpensesRefused('conflict', [
+        { field: '', reason: 'expense_not_draft_changed', params: {} },
+      ]),
+    );
+    removed?.action?.run();
+    await settle();
+    expect(feedback.said.at(-1)).toEqual({
+      kind: 'failure',
+      key: 'import.rejections.expense_not_draft_changed',
+      params: {},
+    });
+
+    // A refusal an interceptor has said already (the demo's) is not said a second time.
+    const toasts = feedback.said.length;
+    facade.restoreAttachment.mockResolvedValue(
+      refusedFor(
+        new HttpErrorResponse({ status: 403, error: { error: 'demo_refused' } }),
+        new ExpensesRefused('network'),
+      ),
+    );
+    removed?.action?.run();
+    await settle();
+    expect(feedback.said.length).toBe(toasts);
   });
 
   it('takes what another person saved into the open draft', async () => {
@@ -892,11 +923,27 @@ describe('ExpensePage', () => {
     expense.set(draft);
     await open('e1');
     facade.reviseExpense.mockResolvedValue(null);
-    error.set('not_draft');
+    error.set('conflict');
     q('record-save')!.click();
     await settle();
     expect(successToasts()).toEqual([]);
     expect(q('expense-error')?.textContent).toContain('brouillon');
+  });
+
+  it('says the reason a move the expense’s state refuses names, rather than the code’s words', async () => {
+    expense.set({ ...draft, status: 'recorded' });
+    await open('e1');
+    facade.payExpense.mockImplementationOnce(async () => {
+      error.set('conflict');
+      refusals.set([{ field: '', reason: 'expense_paid_already', params: {} }]);
+      return null;
+    });
+
+    q('expense-pay')!.click();
+    await settle();
+
+    expect(q('expense-error')?.textContent).toContain('Cette dépense est déjà payée.');
+    expect(q('expense-error')?.textContent).not.toContain('brouillon');
   });
 
   it('shows a reader the expense and its receipts without a way to change them', async () => {

@@ -22,7 +22,6 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -51,7 +50,7 @@ final readonly class ClassifyExpenseWithholdingProcessor implements ProcessorInt
         } catch (ExpenseNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ExpenseTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvalidExpense $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

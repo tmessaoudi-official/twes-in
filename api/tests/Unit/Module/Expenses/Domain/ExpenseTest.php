@@ -258,6 +258,38 @@ final class ExpenseTest extends TestCase
         $this->assertRefused('name', fn () => ExpenseCategory::create($this->acme, '  ', null, $this->now), 'an empty name');
     }
 
+    public function testEveryStateRefusalNamesTheMoveItRefuses(): void
+    {
+        $expense = $this->create($this->acme, '10', null, $this->fuel, null, 3);
+        $today = new \DateTimeImmutable('2026-09-15');
+        $paid = static fn (Expense $expense) => $expense->pay(PaymentMethod::Cash, new \DateTimeImmutable('2026-09-12'), $today, new \DateTimeImmutable('2026-09-15 10:00'));
+
+        self::assertSame('expense_draft_not_paid', $this->reasonOf(static fn () => $paid($expense)), 'a draft paid');
+        self::assertSame('expense_not_paid_classified', $this->reasonOf(fn () => $expense->classifyWithholding(null, $this->now)), 'a draft classified');
+        $expense->record($this->now);
+        self::assertSame('expense_recorded_already', $this->reasonOf(fn () => $expense->record($this->now)), 'recorded twice');
+        self::assertSame('expense_not_draft_changed', $this->reasonOf(fn () => $expense->revise($this->details(), ExpenseAmounts::one('30', 3, null), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now)), 'a recorded one revised');
+        self::assertSame('expense_not_draft_changed', $this->reasonOf(static fn () => $expense->askAmountChecked()), 'a recorded one flagged');
+        self::assertSame('expense_not_draft_deleted', $this->reasonOf(static fn () => $expense->assertDraft('deleted', deleting: true)), 'a recorded one deleted');
+        self::assertSame('expense_not_paid_classified', $this->reasonOf(fn () => $expense->classifyWithholding(null, $this->now)), 'a recorded one classified');
+        $paid($expense);
+        self::assertSame('expense_paid_already', $this->reasonOf(static fn () => $paid($expense)), 'paid twice');
+        self::assertSame('expense_recorded_already', $this->reasonOf(fn () => $expense->record($this->now)), 'a paid one recorded');
+        self::assertSame('expense_not_draft_changed', $this->reasonOf(static fn () => $expense->assertDraft('stripped of a file')), 'a paid one changed');
+    }
+
+    private function reasonOf(\Closure $attempt): string
+    {
+        try {
+            $attempt();
+        } catch (ExpenseTransitionRefused $refused) {
+            self::assertSame([], $refused->params, 'an expense is said from its own page, by no number');
+
+            return $refused->reason;
+        }
+        self::fail('the move was not refused');
+    }
+
     private function details(): ExpenseDetails
     {
         return new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Gasoil septembre', 'F-2026-118');

@@ -214,7 +214,13 @@
       "order_nothing_arrived": "Rien n’est encore reçu de la commande « {{reference}} » : elle s’annule, elle ne se clôture pas.",
       "order_not_closable": "La commande « {{reference}} » ne se clôture pas : seule une commande reçue en partie se clôture.",
       "order_sent_already": "La commande « {{reference}} » est déjà envoyée.",
-      "order_no_longer_draft": "La commande « {{reference}} » est envoyée : seul un brouillon se modifie."
+      "order_no_longer_draft": "La commande « {{reference}} » est envoyée : seul un brouillon se modifie.",
+      "expense_draft_not_paid": "Cette dépense est un brouillon : comptabilisez-la d’abord, puis marquez-la comme payée.",
+      "expense_paid_already": "Cette dépense est déjà payée.",
+      "expense_not_paid_classified": "Cette dépense n’est pas encore payée : son opération se dit une fois la dépense marquée comme payée.",
+      "expense_recorded_already": "Cette dépense est déjà comptabilisée.",
+      "expense_not_draft_deleted": "Cette dépense est comptabilisée : elle ne se supprime plus.",
+      "expense_not_draft_changed": "Cette dépense est comptabilisée : seul un brouillon se modifie."
     }
   }
 }

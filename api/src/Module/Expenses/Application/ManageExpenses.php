@@ -302,7 +302,7 @@ final readonly class ManageExpenses implements DeclaresAuditActions
     {
         $this->transactions->run(function () use ($company, $id, $actorUserId): void {
             $expense = $this->get($company, $id);
-            $expense->assertDraft('deleted');
+            $expense->assertDraft('deleted', deleting: true);
             $this->attachments->detachAll($company, self::ENTITY_TYPE, $id);
             $this->expenses->remove($expense);
             $this->record($company, $id, self::DELETED, [], $actorUserId);

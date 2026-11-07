@@ -79,6 +79,9 @@ import { FileDrop } from '../shared/form/file-drop';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalLine } from '../shared/documents/refusal-line';
+import { sayRefusal } from '../shared/form/refusal-words';
+import { saidAlready } from '../shared/errors/said-already';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -112,6 +115,7 @@ export class ExpensePage {
   private readonly facade = inject(ExpensesFacade);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
+  private readonly translate = inject(TranslateService);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -134,6 +138,13 @@ export class ExpensePage {
   protected readonly id = computed(() => this.expenseId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  /** The line above the form: what no field took, a move the expense's state refuses among them, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'expenses.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
   protected readonly readFailed = this.facade.readFailed;
   protected readonly attachments = this.facade.attachments;
   protected readonly options = this.facade.options;
@@ -586,7 +597,11 @@ export class ExpensePage {
     if (refused.length === 0) return;
     const form = this.mainForm();
     const left = form === undefined ? refused : form.showRefused(refused);
-    this.billView()?.showRefused(left, left.length === refused.length);
+    const bill = this.billView();
+    this.refusalLine.placed(
+      refused,
+      bill === undefined ? left : bill.showRefused(left, left.length === refused.length),
+    );
   }
 
   /** Saves what the form shows first, so what is recorded is what was read on screen. */
@@ -613,7 +628,12 @@ export class ExpensePage {
     if (!companyId || id === null || this.busy()) return;
     if ((await this.facade.payExpense(companyId, id, paymentInput(values))) === null) {
       // What names no field of the payment stays on the line above the form.
-      this.paymentView()?.showRefused(this.facade.refusals());
+      const refused = this.facade.refusals();
+      const payment = this.paymentView();
+      this.refusalLine.placed(
+        refused,
+        payment === undefined ? refused : payment.showRefused(refused),
+      );
     }
   }
 
@@ -672,10 +692,15 @@ export class ExpensePage {
     attachment: ExpenseAttachment,
   ): Promise<void> {
     const refused = await this.facade.restoreAttachment(companyId, id, attachment.id);
+    // A failure an interceptor has said in words (the demo's refusal, a write still being made) is not said again.
+    if (refused !== null && saidAlready(refused)) return;
+    const reason = refused?.refusals[0];
     if (refused === null) {
       this.feedback.success('expenses.attachments.restored', { name: attachment.name });
+    } else if (reason !== undefined) {
+      sayRefusal(this.feedback, this.translate, reason);
     } else {
-      this.feedback.failure(`expenses.errors.${refused}`);
+      this.feedback.failure(`expenses.errors.${refused.code}`);
     }
   }
 

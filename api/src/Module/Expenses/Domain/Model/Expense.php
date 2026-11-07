@@ -208,7 +208,7 @@ class Expense implements CompanyOwned
      */
     public function record(\DateTimeImmutable $now): void
     {
-        $this->assertDraft('recorded');
+        $this->assertDraft('recorded', recording: true);
         if (null === $this->category) {
             throw new InvalidExpense('categoryId', 'An expense is recorded under a category.', 'value_required');
         }
@@ -242,7 +242,7 @@ class Expense implements CompanyOwned
     public function pay(PaymentMethod $method, \DateTimeImmutable $paidOn, \DateTimeImmutable $today, \DateTimeImmutable $now, ?string $withholdingRate = null, int $currencyScale = 3, ?TejOperationCode $operationCode = null): void
     {
         if (ExpenseStatus::Recorded !== $this->status) {
-            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a recorded expense is paid.', $this->status->value));
+            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a recorded expense is paid.', $this->status->value), ExpenseStatus::Draft === $this->status ? 'expense_draft_not_paid' : 'expense_paid_already');
         }
         $day = self::day($paidOn);
         if ($day < $this->date) {
@@ -285,7 +285,7 @@ class Expense implements CompanyOwned
     public function classifyWithholding(?TejOperationCode $operationCode, \DateTimeImmutable $now): bool
     {
         if (ExpenseStatus::Paid !== $this->status) {
-            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a paid expense has a withholding to classify.', $this->status->value));
+            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a paid expense has a withholding to classify.', $this->status->value), 'expense_not_paid_classified');
         }
         $this->assertDeclarableToTej($operationCode);
         if ($operationCode === $this->withholdingOperationCode) {
@@ -305,11 +305,18 @@ class Expense implements CompanyOwned
         }
     }
 
-    /** @throws ExpenseTransitionRefused when the expense is no longer a draft */
-    public function assertDraft(string $action): void
+    /**
+     * @param bool $recording whether the move asked is recording it, said as done already
+     * @param bool $deleting  whether it is deleting it, said as no longer possible rather than as a change
+     *
+     * @throws ExpenseTransitionRefused when the expense is no longer a draft
+     */
+    public function assertDraft(string $action, bool $recording = false, bool $deleting = false): void
     {
         if (ExpenseStatus::Draft !== $this->status) {
-            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a draft is %s.', $this->status->value, $action));
+            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a draft is %s.', $this->status->value, $action), match (true) {
+                $recording => 'expense_recorded_already', $deleting => 'expense_not_draft_deleted', default => 'expense_not_draft_changed',
+            });
         }
     }
 

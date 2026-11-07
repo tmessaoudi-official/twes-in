@@ -3,6 +3,7 @@
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable } from '@angular/core';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
+import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { PickAsked } from '../shared/form/pick-api';
 import type { ExportFormat } from '../shared/list/export-address';
@@ -196,17 +197,19 @@ export class ExpensesFacade {
   /**
    * A file taken off put back where it was: what « Annuler » on its toast does. The toast outlives its page, so the
    * expense is read again only while it is still the one open, and a refusal is returned for the toast to say rather
-   * than written on whatever page is open now. Null once back.
+   * than written on whatever page is open now, with the reason it names. Null once back.
    */
   async restoreAttachment(
     companyId: string,
     expenseId: string,
     attachmentId: string,
-  ): Promise<ExpensesError | null> {
+  ): Promise<ExpensesRefused | null> {
     try {
       await this.api.restoreAttachment(companyId, expenseId, attachmentId);
     } catch (error) {
-      return codeOf(error);
+      return error instanceof ExpensesRefused
+        ? error
+        : refusedFor(error, new ExpensesRefused(codeOf(error)));
     }
     if (this.expenseSignal()?.id === expenseId) {
       await this.write(
@@ -286,11 +289,19 @@ export class ExpensesFacade {
     );
   }
 
+  /** A write whose refusal, a move the expense's state refuses, is kept with its reason for the page to say. */
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      await reload();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        await reload();
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof ExpensesRefused ? error.refusals : []),
+      },
+    );
   }
 }
 

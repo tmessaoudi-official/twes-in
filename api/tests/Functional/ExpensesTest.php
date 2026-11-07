@@ -347,6 +347,7 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame([['propertyPath' => 'categoryId', 'reason' => 'value_required', 'params' => []]], $this->refusals());
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $today->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
+        self::assertSame(['expense_draft_not_paid', []], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->sendJson('PUT', $this->path($id), $this->expense(['version' => 1, 'date' => $today->modify('-10 days')->format('Y-m-d'), 'categoryId' => $this->category('Carburant'), 'lines' => $this->line('200')]));
         self::assertResponseIsSuccessful();
@@ -356,9 +357,13 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->path($id).'/record', null);
         self::assertResponseIsSuccessful();
         self::assertSame('recorded', $this->json()['status']);
+        $this->postJson($this->path($id).'/record', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'recorded once');
+        self::assertSame(['expense_recorded_already', []], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->sendJson('PUT', $this->path($id), $this->expense(['version' => $this->versionOf($id), 'categoryId' => null]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['expense_not_draft_changed', []], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertStringNotContainsString('record-changed', (string) $this->client->getResponse()->getContent(), 'refused as recorded, not as stale');
         foreach (['paid_before_expense' => $today->modify('-11 days'), 'paid_after_today' => $today->modify('+1 day')] as $reason => $impossible) {
             $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $impossible->format('Y-m-d')]);
@@ -373,6 +378,7 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['paid', 'transfer', $today->modify('-2 days')->format('Y-m-d')], [$this->json()['status'], $this->json()['paymentMethod'], $this->json()['paidOn']]);
         $this->sendJson('DELETE', $this->path($id));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only a draft is deleted');
+        self::assertSame(['expense_not_draft_deleted', []], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertSame(['expense.created', 'expense.revised', 'expense.recorded', 'expense.paid'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
     }
 
@@ -490,6 +496,7 @@ final class ExpensesTest extends ApiTestCase
         $unsaid = $recorded();
         $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000002']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a recorded expense has no payment to classify');
+        self::assertSame(['expense_not_paid_classified', []], $this->refusedWholeAs(), 'the reason it is said with');
         $pay($unsaid, null);
         self::assertNull($this->json()['withholdingOperationCode'], 'nobody said: nothing is guessed');
         $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000002']);
@@ -666,8 +673,10 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a receipt arriving late is still attached');
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$photo);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'what a recorded expense rests on stays');
+        self::assertSame(['expense_not_draft_changed', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($id).'/attachments/'.$receiptId.'/restore', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'and nothing taken off a draft comes back onto a recorded one');
+        self::assertSame(['expense_not_draft_changed', []], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertContains('expense.attachment_restored', $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense'"));
     }
 
