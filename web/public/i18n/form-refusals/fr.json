@@ -220,7 +220,10 @@
       "expense_not_paid_classified": "Cette dépense n’est pas encore payée : son opération se dit une fois la dépense marquée comme payée.",
       "expense_recorded_already": "Cette dépense est déjà comptabilisée.",
       "expense_not_draft_deleted": "Cette dépense est comptabilisée : elle ne se supprime plus.",
-      "expense_not_draft_changed": "Cette dépense est comptabilisée : seul un brouillon se modifie."
+      "expense_not_draft_changed": "Cette dépense est comptabilisée : seul un brouillon se modifie.",
+      "company_closed_down": "Son propriétaire a clôturé cette entreprise : lui seul peut la rouvrir, dans les jours prévus.",
+      "company_has_owners": "Cette entreprise a déjà un propriétaire : c’est lui qui invite les suivants.",
+      "not_an_owner": "Ce compte ne possède plus aucune entreprise : son mot de passe se déverrouille de lui-même à l’heure dite, ou par le lien envoyé."
     }
   }
 }

@@ -3,9 +3,9 @@
     {{ 'platform.title' | translate }}
   </h1>
 
-  @if (error(); as code) {
+  @if (errorSaid(); as said) {
     <p role="alert" data-testid="platform-error" class="text-error">
-      {{ 'platform.errors.' + code | translate }}
+      {{ said.key | translate: said.params }}
     </p>
   }
 

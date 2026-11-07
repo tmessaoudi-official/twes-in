@@ -259,6 +259,8 @@ export type PlatformError =
   | 'record_changed'
   /** Refused on fields the answer names, each said under its own field. */
   | 'invalid'
+  /** Refused for the state of what it acts on, with the reason the answer names, said on the page's line. */
+  | 'conflict'
   | 'refused'
   | 'network';
 

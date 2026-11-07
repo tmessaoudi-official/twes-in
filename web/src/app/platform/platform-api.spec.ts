@@ -261,7 +261,34 @@ describe('PlatformApi', () => {
     expect((await done).passwordLockedUntil).toBeNull();
   });
 
-  it('names the refusal to lift the lock of an account that owns no company', async () => {
+  // A conflict naming its reason is kept with it for the page to say, never read as fields to correct.
+  it('keeps the reason a conflict names, an unlock of an account owning no company or a decision on a closed one', async () => {
+    const unlock = api.actOnAccount('u1', 'unlock');
+    http.expectOne('/api/platform/accounts/u1/unlock').flush(
+      {
+        violations: [{ propertyPath: 'account', payload: { reason: 'not_an_owner', params: [] } }],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(unlock).rejects.toMatchObject({
+      code: 'conflict',
+      refusals: [{ field: 'account', reason: 'not_an_owner', params: {} }],
+    });
+
+    const approve = api.approve('c1');
+    http.expectOne('/api/platform/companies/c1/approve').flush(
+      {
+        violations: [{ propertyPath: '', payload: { reason: 'company_closed_down', params: [] } }],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(approve).rejects.toMatchObject({
+      code: 'conflict',
+      refusals: [{ field: '', reason: 'company_closed_down', params: {} }],
+    });
+  });
+
+  it('names the refusal to lift the lock of an account that owns no company when the answer says no reason', async () => {
     const done = api.actOnAccount('u1', 'unlock');
 
     http

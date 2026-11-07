@@ -253,3 +253,6 @@ the end of § Lessons here.
   note's first case took 6.2 s and 6.4 s under two gates the same day, 565 ms and 702 ms alone, and reddened the gate
   twice. Measure it alone and read `uptime` before touching code; re-gate only once the load is measured quiet, never
   with a longer timeout (2026-11-06).
+- Prettier is not idempotent on a long member chain (`http.expectOne(…).flush({ violations: [ … ] }, …)`): its first
+  pass breaks the chain per call, a second joins it again, so `make check FIX=1` wrote the first form, said « ok » and
+  the gate's `prettier --check` reddened (2026-11-07). After `FIX=1`, run `make check` once more without it before staging.

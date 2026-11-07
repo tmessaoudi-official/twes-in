@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\CompanyStandings;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Approval\DecideCompanyApproval;
 use App\Tenancy\Application\Approval\PlatformCompanies;
 use App\Tenancy\Application\Company\CompanyNotFound;
@@ -20,7 +21,6 @@ use App\Tenancy\Domain\Exception\CompanyClosedDown;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\PlatformCompanyResource;
 use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -52,7 +52,7 @@ final readonly class DecideCompanyApprovalProcessor implements ProcessorInterfac
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
         } catch (CompanyClosedDown $closed) {
             // Its owner closed it down: only they take that back, and an operator's decision is no longer asked for.
-            throw new ConflictHttpException($closed->getMessage(), $closed);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $closed->getMessage(), 'company_closed_down', [], $closed);
         }
 
         return PlatformCompanyResource::of($this->companies->viewOf($company), $this->standings->of($company->getId()));

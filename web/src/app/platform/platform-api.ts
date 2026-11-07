@@ -361,8 +361,14 @@ export class PlatformApi {
     } catch (error) {
       // Its words opened before the form says them: a reason only one form meets is in the refusals' own part.
       const refusals = await formRefusalsIn(this.injector, error);
-      // A refusal that names its fields is said on them; the page line then only asks to correct what is marked.
-      const code = refusals.length > 0 ? 'invalid' : codeOf(error, conflict);
+      // A refusal that names its fields is said on them; the page line then only asks to correct what is marked. A
+      // conflict's reason is the state of what was acted on, which no field shows: the page's line says it.
+      const code =
+        refusals.length === 0
+          ? codeOf(error, conflict)
+          : error instanceof HttpErrorResponse && error.status === 409
+            ? 'conflict'
+            : 'invalid';
       throw refusedFor(error, new PlatformRefused(code, refusals));
     }
   }

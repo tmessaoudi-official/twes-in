@@ -139,6 +139,8 @@ final class PlatformOwnersTest extends ApiTestCase
         $this->postJson($this->ownersOf($company), ['email' => 'op@twes.local']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        // Said as the company's own state, never as an address that already belongs to it.
+        self::assertSame([['propertyPath' => '', 'reason' => 'company_has_owners', 'params' => []]], $this->refusals());
         self::assertSame([], $this->queued());
         self::assertSame([], $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM invitation'));
     }

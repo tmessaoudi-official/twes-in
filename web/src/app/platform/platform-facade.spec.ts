@@ -250,6 +250,24 @@ describe('PlatformFacade', () => {
     expect(facade.waiting()).toEqual([]);
   });
 
+  it('keeps the reason a decision or an account action was refused with, for the page to say', async () => {
+    await facade.load();
+    const closed = { field: '', reason: 'company_closed_down', params: {} };
+    api.approve.mockRejectedValue(new PlatformRefused('conflict', [closed]));
+
+    expect(await facade.approve('c1')).toBe(false);
+
+    expect(facade.error()).toBe('conflict');
+    expect(facade.refused()).toEqual({ at: 'decision', refusals: [closed] });
+
+    const notAnOwner = { field: 'account', reason: 'not_an_owner', params: {} };
+    api.actOnAccount.mockRejectedValue(new PlatformRefused('conflict', [notAnOwner]));
+
+    expect(await facade.actOnAccount('u1', 'unlock')).toBe(false);
+
+    expect(facade.refused()).toEqual({ at: 'account', refusals: [notAnOwner] });
+  });
+
   it('keeps the list and names the refusal when a decision fails', async () => {
     await facade.load();
     api.approve.mockRejectedValue(new PlatformRefused('not_found'));

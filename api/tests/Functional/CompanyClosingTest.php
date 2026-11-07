@@ -386,6 +386,8 @@ final class CompanyClosingTest extends ApiTestCase
         foreach (['approve', 'reject'] as $decision) {
             $this->postJson('/api/platform/companies/'.$this->company->getId()->toRfc4122().'/'.$decision, []);
             self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $decision);
+            // The operator's screen says why, not another refusal's words.
+            self::assertSame([['propertyPath' => '', 'reason' => 'company_closed_down', 'params' => []]], $this->refusals(), $decision);
             self::assertSame(Company::STATUS_CLOSED, $this->companyStatus(), $decision);
         }
     }

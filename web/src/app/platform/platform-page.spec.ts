@@ -67,6 +67,8 @@ class StaticLoader implements TranslateLoader {
       import: {
         rejections: {
           whole_number_between: 'Attendu : un nombre entier de {{min}} à {{max}}.',
+          company_closed_down:
+            'Son propriétaire a clôturé cette entreprise : lui seul peut la rouvrir, dans les jours prévus.',
           payment_already_decided:
             'Ce règlement a déjà été confirmé ou refusé, peut-être par un autre opérateur : la liste est relue.',
           trial_or_paid_required: 'Remplissez « Fin de l’essai », « Payé jusqu’au » ou les deux.',
@@ -2203,6 +2205,26 @@ describe('PlatformPage', () => {
     const { query } = await render();
 
     expect(query('platform-error')?.textContent).toContain('Introuvable');
+  });
+
+  // Approving a company its owner closed meanwhile said « you cannot deactivate your own account ».
+  it('says a conflict in its reason’s words, and the platform’s refusal when it names none', async () => {
+    error.set('conflict');
+    refused.set({
+      at: 'decision',
+      refusals: [{ field: '', reason: 'company_closed_down', params: {} }],
+    });
+
+    const { fixture, query } = await render();
+
+    expect(query('platform-error')?.textContent).toContain(
+      'Son propriétaire a clôturé cette entreprise',
+    );
+
+    refused.set({ at: null, refusals: [] });
+    fixture.detectChanges();
+
+    expect(query('platform-error')?.textContent).toContain('Refusé');
   });
   // Row 56: a mail the worker gave up on is said on the overview, by kind, with how to send it again; nothing when none.
   it('says on the overview how many messages failed for good, of which kinds, and how to retry them', async () => {

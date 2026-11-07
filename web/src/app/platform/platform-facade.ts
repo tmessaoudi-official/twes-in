@@ -251,13 +251,19 @@ export class PlatformFacade {
 
   /** The account is shown as the platform answers it, so a refused action leaves it as it was. */
   async actOnAccount(userId: string, action: AccountAction): Promise<boolean> {
-    return this.state.write(async () => {
-      const updated = await this.proven(() => this.api.actOnAccount(userId, action));
-      // The answer to an action does not carry the companies, which the row already holds.
-      this.accountsSignal.update((rows) =>
-        rows.map((row) => (row.id === updated.id ? { ...updated, companies: row.companies } : row)),
-      );
-    });
+    this.refusedSignal.set({ at: 'account', refusals: [] });
+    return this.state.write(
+      async () => {
+        const updated = await this.proven(() => this.api.actOnAccount(userId, action));
+        // The answer to an action does not carry the companies, which the row already holds.
+        this.accountsSignal.update((rows) =>
+          rows.map((row) =>
+            row.id === updated.id ? { ...updated, companies: row.companies } : row,
+          ),
+        );
+      },
+      { failed: this.refusedAt('account') },
+    );
   }
 
   /**
@@ -505,13 +511,17 @@ export class PlatformFacade {
 
   /** A decided company leaves the waiting list, so the list is read again rather than edited in place. */
   private async decide(call: () => Promise<unknown>): Promise<boolean> {
-    return this.state.write(async () => {
-      await this.proven(call);
-      await this.readCompanies();
-      // An operator can act on the company they are themselves working in, and its status, access and
-      // subscription are read from the session by the shell (developer sweep, 2026-09-20).
-      await this.auth.refresh();
-    });
+    this.refusedSignal.set({ at: 'decision', refusals: [] });
+    return this.state.write(
+      async () => {
+        await this.proven(call);
+        await this.readCompanies();
+        // An operator can act on the company they are themselves working in, and its status, access and
+        // subscription are read from the session by the shell.
+        await this.auth.refresh();
+      },
+      { failed: this.refusedAt('decision') },
+    );
   }
 }
 

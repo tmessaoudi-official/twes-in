@@ -26,7 +26,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom, map } from 'rxjs';
-import { refusalParams, sayRefusal } from '../shared/form/refusal-words';
+import { refusalParams, refusedError, sayRefusal } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
@@ -36,7 +36,11 @@ import { type PhonesOutsideRanges, Session } from '../shared/session/session';
 import { EndOtherSessions } from '../account/end-other-sessions';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  type DescriptorFormGroup,
+  type FieldError,
+} from '../shared/form/form-builder';
 import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { RefusedField } from '../shared/form/refused-field';
@@ -566,6 +570,21 @@ export class PlatformPage implements OnInit {
   );
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
+  /**
+   * What the page's line says: a conflict in its reason's words, since no field shows the state of what was acted on
+   * (a company its owner closed meanwhile, one that already has an owner, an account that owns none), else the code's.
+   * It reads the platform's refusals itself rather than through RefusalLine, which would also turn the line of a save
+   * refused on fields into the first field's words, where it now asks to correct what is marked.
+   */
+  protected readonly errorSaid = computed((): FieldError | null => {
+    const code = this.error();
+    if (code !== 'conflict')
+      return code === null ? null : { key: `platform.errors.${code}`, params: {} };
+    const [refusal] = this.platform.refused().refusals;
+    return refusal === undefined
+      ? { key: 'platform.errors.refused', params: {} }
+      : refusedError(this.translate, refusal);
+  });
   protected readonly accounts = this.platform.accounts;
   protected readonly companies = this.platform.companies;
   protected readonly companyName = signal('');

@@ -111,6 +111,61 @@ final class RefusalReasonsTest extends KernelTestCase
     }
 
     /**
+     * The reasons only the screen that sends the request reads, as a code of its own with its own words: no other reader
+     * meets them, so they need no form refusal text. Each names the file that reads it, which must still name it.
+     */
+    private const array READ_AS_CODES = [
+        'last_owner' => 'web/src/app/company/company-api.ts',
+        'own_membership' => 'web/src/app/company/company-api.ts',
+        'role_gone' => 'web/src/app/invitation/invitation-api.ts',
+    ];
+
+    /**
+     * A reason written in the `DomainRule` call itself reaches a screen that says it in its reason's words (the platform's
+     * line, a document's, a toast): it has its text, or the one screen that reads it as a code of its own is named above.
+     * Unlocking an account that owns no company said « correct the marked fields » with nothing marked, its reason
+     * having no words.
+     */
+    public function testEveryReasonADomainRuleIsWrittenWithIsTranslatedOrReadAsACode(): void
+    {
+        $root = \dirname(__DIR__, 2);
+        $translated = self::translated('fr', self::FORM_REFUSALS);
+        $found = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/src", \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            \assert($file instanceof \SplFileInfo);
+            // The settings engine's refusals are said by the settings screens, held to their own texts below.
+            if (str_starts_with($file->getPathname(), "$root/src/Settings/")) {
+                continue;
+            }
+            $source = (string) file_get_contents($file->getPathname());
+            preg_match_all('/DomainRule::(?:refused|conflict)\((.*?)\);/s', $source, $calls);
+            foreach ($calls[1] as $arguments) {
+                preg_match_all("/,\\s*'([a-z]+(?:_[a-z]+)+)'\\s*(?=[,)])/", $arguments, $reasons);
+                foreach ($reasons[1] as $reason) {
+                    $found[$reason][] = $file->getFilename();
+                }
+            }
+        }
+
+        self::assertGreaterThan(15, \count($found), 'the reasons written in DomainRule calls are found');
+        $unsaid = [];
+        foreach ($found as $reason => $where) {
+            if (\array_key_exists($reason, $translated)) {
+                continue;
+            }
+            $reader = self::READ_AS_CODES[$reason] ?? null;
+            if (null === $reader || !str_contains((string) file_get_contents(\dirname($root).'/'.$reader), "'$reason'")) {
+                $unsaid[] = $reason.' in '.implode(', ', array_unique($where));
+            }
+        }
+        self::assertSame([], $unsaid);
+        foreach (array_keys(self::READ_AS_CODES) as $reason) {
+            self::assertArrayHasKey($reason, $found, "$reason is still written in a DomainRule call");
+        }
+    }
+
+    /**
      * A document's, a delivery note's or an invoice's move, a stock movement's or place's, a fiscal value's or a drawing's refusal names
      * its reason, so the screen says why in the reader's words rather than « Valeur refusée. » or a line of its own that
      * guesses: a reason written in the call, spread from a helper that gives one, or carried from the refusal it

@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Invitation\CompanyHasOwners;
 use App\Tenancy\Application\Invitation\InviteOwnerFromPlatform;
@@ -48,8 +49,11 @@ final readonly class InviteOwnerProcessor implements ProcessorInterface
             $outcome = $this->invite->handle(CompanyPath::identifier($uriVariables, 'companyId'), $data->email, $account->getId());
         } catch (CompanyNotFound $notFound) {
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
-        } catch (AlreadyAMember|CompanyHasOwners $already) {
+        } catch (AlreadyAMember $already) {
             throw new ConflictHttpException($already->getMessage(), $already);
+        } catch (CompanyHasOwners $owned) {
+            // The company's own state, said as such: its owners invite the next ones, whatever the address typed.
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $owned->getMessage(), 'company_has_owners', [], $owned);
         } catch (RoleNotManageable $refused) {
             // An operator who is also a member below owner of this company is bounded by that role, as in the company.
             throw new AccessDeniedHttpException($refused->getMessage(), $refused);
