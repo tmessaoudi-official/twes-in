@@ -47,7 +47,7 @@ final readonly class BuildStockStructureProcessor implements ProcessorInterface
             // Validated by the resource's own Choice constraint before it reaches here, so anything else would be
             // a surface that stopped checking rather than something a request could have sent.
             $kind = StructureKind::tryFrom($data->kind)
-                ?? throw new InvalidVenue('kind', 'A piece of structure is a wall, a door, a post or a dock.');
+                ?? throw new InvalidVenue('kind', 'A piece of structure is a wall, a door, a post or a dock.', 'not_one_of', ['choices' => implode(', ', array_map(static fn (StructureKind $each): string => $each->value, StructureKind::cases()))]);
             $built = $operation instanceof Post
                 ? $this->venue->build($company, CompanyPath::identifier($uriVariables, 'floorId'), $kind, $data->name, $rect, $actor)
                 : $this->venue->reshapeStructure($company, CompanyPath::identifier($uriVariables, 'structureId'), $kind, $data->name, $rect, $actor, $data->version);

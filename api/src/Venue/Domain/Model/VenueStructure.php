@@ -194,7 +194,7 @@ class VenueStructure implements CompanyOwned
     {
         $trimmed = TypedText::trimmed($name);
         if (mb_strlen($trimmed) > self::NAME_MAX) {
-            throw new InvalidVenue('name', \sprintf('A piece of structure is named in at most %d characters.', self::NAME_MAX));
+            throw new InvalidVenue('name', \sprintf('A piece of structure is named in at most %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
 
         return $trimmed;

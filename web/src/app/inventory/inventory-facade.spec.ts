@@ -462,6 +462,17 @@ describe('InventoryFacade', () => {
     expect(facade.error()).toBe('code_taken');
     expect(facade.refusedEntry()).toBe('newPlaces[0].code');
     expect(facade.busy()).toBe(false);
+
+    // What the step was refused for is kept for the editor it opens, and let go by the next step.
+    const refusals = [{ field: 'newPlaces[0].code', reason: 'invalid_text', params: { max: 20 } }];
+    api.changePlan.mockRejectedValue(
+      new InventoryRefused('invalid', 'newPlaces[0].code', refusals),
+    );
+    await facade.changePlan('c1', 'f1', step);
+    expect(facade.refusals()).toEqual(refusals);
+    api.changePlan.mockResolvedValue(saved);
+    await facade.changePlan('c1', 'f1', step);
+    expect(facade.refusals()).toEqual([]);
   });
 
   it('reads the locations again after a repeat, not only the floor', async () => {

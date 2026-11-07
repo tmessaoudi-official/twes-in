@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { StockDrawingRow, StockLocationRow, StockStructureRow } from './inventory-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import {
   addDrawing,
   addStructure,
@@ -14,6 +15,7 @@ import {
   placeFor,
   placeStructure,
   rebased,
+  shapeRefusals,
   shownDrawings,
   shownFloorSize,
   shownStructures,
@@ -176,6 +178,27 @@ describe('the plan draft', () => {
     expect(sourceOf(sources, 'draws[0].locationId: …')).toBe(drawn.key);
     expect(sourceOf(sources, 'structureMoves[0].x: …')).toBe('w1');
     expect(sourceOf(sources, 'Something else.')).toBeNull();
+  });
+
+  it('says each refusal of the refused entry under the field of the editor it opens', () => {
+    const refusals: readonly FieldRefusal[] = [
+      { field: 'newPlaces[0].code', reason: 'invalid_text', params: { max: 20 } },
+      { field: 'newPlaces[0].x', reason: 'leaves_the_floor', params: {} },
+      { field: 'newPlaces[1].code', reason: 'invalid_text', params: { max: 20 } },
+      { field: 'structureBuilds[0].width', reason: 'above_zero', params: {} },
+      { field: 'floor.widthMetres', reason: 'above_zero', params: {} },
+    ];
+
+    // A new place's code, name and kind are the drawing editor's new location fields; its rectangle's are its own.
+    expect(shapeRefusals(refusals, 'newPlaces[0].code')).toEqual([
+      { field: 'newLocationCode', reason: 'invalid_text', params: { max: 20 } },
+      { field: 'x', reason: 'leaves_the_floor', params: {} },
+    ]);
+    expect(shapeRefusals(refusals, 'structureBuilds[0].width')).toEqual([
+      { field: 'width', reason: 'above_zero', params: {} },
+    ]);
+    expect(shapeRefusals(refusals, 'floor.widthMetres')).toEqual([]);
+    expect(shapeRefusals(refusals, null)).toEqual([]);
   });
 
   it('builds the step that puts a saved one back', () => {

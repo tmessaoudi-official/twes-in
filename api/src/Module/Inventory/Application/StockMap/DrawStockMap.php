@@ -313,7 +313,7 @@ final readonly class DrawStockMap
     public function repeat(Company $company, Uuid $drawingId, int $count, string $spacing, PlanWay $way, string $firstCode, ?Uuid $actorUserId): array
     {
         if ($count < 1 || $count > self::REPEAT_LIMIT) {
-            throw new InvalidVenue('count', \sprintf('A repeat makes between 1 and %d more of a rectangle.', self::REPEAT_LIMIT));
+            throw new InvalidVenue('count', \sprintf('A repeat makes between 1 and %d more of a rectangle.', self::REPEAT_LIMIT), 'whole_number_between', ['min' => 1, 'max' => self::REPEAT_LIMIT]);
         }
         $gap = PlanRect::distance('spacing', $spacing, false);
         $spot = $this->venue->spot($company, $drawingId);
@@ -365,7 +365,7 @@ final readonly class DrawStockMap
     private function steps(PlanRect $rect, int $count, string $gap, PlanWay $way): array
     {
         if (0 !== $rect->rotation % 90) {
-            throw new InvalidVenue('rotation', 'A rectangle is repeated from a quarter turn: 0, 90, 180 or 270 degrees.');
+            throw new InvalidVenue('rotation', 'A rectangle is repeated from a quarter turn: 0, 90, 180 or 270 degrees.', 'not_one_of', ['choices' => '0, 90, 180, 270']);
         }
         $turned = 0 !== ($rect->rotation / 90) % 2;
         $across = $way->isVertical() === $turned ? $rect->width : $rect->depth;
@@ -652,13 +652,13 @@ final readonly class DrawStockMap
             try {
                 $structure = $this->venue->structure($company, $structureId);
             } catch (VenueStructureNotFound) {
-                throw new InvalidVenue($field, 'No such piece of the building is drawn.');
+                throw new InvalidVenue($field, 'No such piece of the building is drawn.', 'piece_gone');
             }
             if (!$structure->getArea()->getId()->equals($floor->getId())) {
-                throw new InvalidVenue($field, 'This piece stands on another floor.');
+                throw new InvalidVenue($field, 'This piece stands on another floor.', 'piece_other_floor');
             }
             if (isset($named[$structureId->toRfc4122()])) {
-                throw new InvalidVenue($field, 'A piece is named once in a step.');
+                throw new InvalidVenue($field, 'A piece is named once in a step.', 'piece_named_twice');
             }
             $named[$structureId->toRfc4122()] = true;
         };
@@ -680,7 +680,7 @@ final readonly class DrawStockMap
         try {
             VenueStructure::trimmedName($name);
         } catch (InvalidVenue $refused) {
-            throw new InvalidVenue($field, $refused->getMessage());
+            throw new InvalidVenue($field, $refused->getMessage(), $refused->reason, $refused->params);
         }
     }
 

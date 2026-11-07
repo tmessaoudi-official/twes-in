@@ -15,6 +15,7 @@ use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\Service\WrittenDecimal;
 use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
@@ -243,18 +244,9 @@ class TaxComponent implements CompanyOwned
     /** What a value its shape refuses is refused for: not a number, below zero, or finer than the column's three decimals. */
     private static function malformed(string $field, string $value): InvalidFiscalValue
     {
-        $message = \sprintf('The %s is a non-negative decimal with at most three decimals.', $field);
-        if (!is_numeric($value)) {
-            return new InvalidFiscalValue($field, $message, 'not_a_number');
-        }
-        if (str_starts_with($value, '-')) {
-            return new InvalidFiscalValue($field, $message, 'not_negative');
-        }
-        $decimals = strpbrk($value, '.');
+        $refused = WrittenDecimal::refusal($value, 3, \sprintf('The %s is a non-negative decimal with at most three decimals.', $field));
 
-        return false !== $decimals && \strlen($decimals) > 4
-            ? new InvalidFiscalValue($field, $message, 'too_many_decimals', ['max' => 3])
-            : new InvalidFiscalValue($field, $message, 'not_a_number');
+        return new InvalidFiscalValue($field, $refused->message, $refused->reason, $refused->params);
     }
 
     /** The value written with its column's three decimals, as the database gives it back, or null when not applicable. */

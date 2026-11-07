@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Venue\Domain\ValueObject;
 
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\Service\WrittenDecimal;
 use App\Venue\Domain\Exception\InvalidVenue;
 
 /**
@@ -55,17 +56,17 @@ final readonly class PlanRect
         // Zero is allowed: a preparation bay or a pallet square is marked out on the floor and has no volume.
         $this->height = self::distance('height', $height, false);
         if ($rotation < 0 || $rotation > 359) {
-            throw new InvalidVenue('rotation', 'A rotation is a whole number of degrees from 0 to 359.');
+            throw new InvalidVenue('rotation', 'A rotation is a whole number of degrees from 0 to 359.', 'whole_number_between', ['min' => 0, 'max' => 359]);
         }
         // The floor's edge is checked on the body the plan shows, not on the unturned box: a 6 m wall standing at 90°
         // reaches 2.9 m left of its anchor, so it stands flush with the left edge at x = -2.9. An anchor of zero or more
         // is taken as it always was, so no plan saved while the anchor was the bound is refused now.
         [$leastX, $leastY] = $this->least();
         if (bccomp($this->x, '0', self::SCALE) < 0 && (float) $this->x < $leastX - self::TOLERANCE) { // float: compared within half a millimetre
-            throw new InvalidVenue('x', 'x is below zero by more than the turn allows: the rectangle would leave the floor by its left side.');
+            throw new InvalidVenue('x', 'x is below zero by more than the turn allows: the rectangle would leave the floor by its left side.', 'leaves_the_floor');
         }
         if (bccomp($this->y, '0', self::SCALE) < 0 && (float) $this->y < $leastY - self::TOLERANCE) { // float: compared within half a millimetre
-            throw new InvalidVenue('y', 'y is below zero by more than the turn allows: the rectangle would leave the floor by its top side.');
+            throw new InvalidVenue('y', 'y is below zero by more than the turn allows: the rectangle would leave the floor by its top side.', 'leaves_the_floor');
         }
     }
 
@@ -119,8 +120,11 @@ final readonly class PlanRect
      */
     public static function distance(string $field, string $value, bool $positive): string
     {
-        if (1 !== preg_match('/^(0|[1-9][0-9]{0,4})(?:\.([0-9]{1,3}))?$/', TypedText::trimmed($value), $found)) {
-            throw new InvalidVenue($field, \sprintf('%s is a distance in metres, zero or more, with at most %d decimals.', $field, self::SCALE));
+        $typed = TypedText::trimmed($value);
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,4})(?:\.([0-9]{1,3}))?$/', $typed, $found)) {
+            $refused = WrittenDecimal::refusal($typed, self::SCALE, \sprintf('%s is a distance in metres, zero or more, with at most %d decimals.', $field, self::SCALE), self::LIMIT);
+
+            throw new InvalidVenue($field, $refused->message, $refused->reason, $refused->params);
         }
         // Built from the captures rather than from the input, so what reaches bcmath is a number by construction.
         $metres = $found[1].'.'.str_pad($found[2] ?? '', self::SCALE, '0');
@@ -128,10 +132,10 @@ final readonly class PlanRect
             throw new \LogicException(\sprintf('The distance %s was not normalized to a number.', $metres));
         }
         if (bccomp($metres, self::LIMIT, self::SCALE) > 0) {
-            throw new InvalidVenue($field, \sprintf('%s stays under %s metres.', $field, self::LIMIT));
+            throw new InvalidVenue($field, \sprintf('%s stays under %s metres.', $field, self::LIMIT), 'at_most', ['max' => self::LIMIT]);
         }
         if ($positive && 0 === bccomp($metres, '0', self::SCALE)) {
-            throw new InvalidVenue($field, \sprintf('%s is more than zero: a rectangle without it is not a place.', $field));
+            throw new InvalidVenue($field, \sprintf('%s is more than zero: a rectangle without it is not a place.', $field), 'above_zero');
         }
 
         return $metres;

@@ -949,6 +949,38 @@ describe('InventoryApi', () => {
     await expect(pending).rejects.toMatchObject({ code: 'level_taken' });
   });
 
+  it('keeps each field a floor was refused on, with its reason, for the floor form to say it there', async () => {
+    const floor = {
+      establishmentId: 'e1',
+      name: 'Étage 1',
+      level: 1,
+      widthMetres: '0',
+      depthMetres: '20',
+      imageFileId: null,
+      imageMetresWide: null,
+      imageOpacity: 35,
+    };
+    const violations = {
+      violations: [
+        { propertyPath: 'widthMetres', message: 'x', payload: { reason: 'above_zero' } },
+      ],
+    };
+    const refusals = [{ field: 'widthMetres', reason: 'above_zero', params: {} }];
+
+    const created = api.createFloor('c1', floor);
+    http
+      .expectOne('/api/companies/c1/stock-floors')
+      .flush(violations, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(created).rejects.toMatchObject({ code: 'invalid', refusals });
+
+    const revised = api.reviseFloor('c1', 'f1', floor, 2);
+    http
+      .expectOne('/api/companies/c1/stock-floors/f1')
+      .flush(violations, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(revised).rejects.toMatchObject({ code: 'invalid', refusals });
+    expect(TestBed.inject(TextsParts).open).toHaveBeenCalledWith('form-refusals');
+  });
+
   it('reads one floor’s rectangles, in metres as the API holds them', async () => {
     const pending = api.drawings('c1', 'f1');
     const request = http.expectOne('/api/companies/c1/stock-floors/f1/drawings');
@@ -1053,13 +1085,23 @@ describe('InventoryApi', () => {
     };
     const url = '/api/companies/c1/stock-floors/f1/drawing-changes';
     const refused = api.changePlan('c1', 'f1', empty);
-    http
-      .expectOne(url)
-      .flush(
-        { violations: [{ propertyPath: 'newPlaces[0].code', message: 'Ce code est déjà pris.' }] },
-        { status: 422, statusText: 'Unprocessable Entity' },
-      );
-    await expect(refused).rejects.toMatchObject({ entry: 'newPlaces[0].code' });
+    http.expectOne(url).flush(
+      {
+        violations: [
+          {
+            propertyPath: 'newPlaces[0].code',
+            message: 'Ce code est déjà pris.',
+            payload: { reason: 'invalid_text', params: { max: 20 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    // The entry opens its shape's editor, and the reason is said under the field it names there.
+    await expect(refused).rejects.toMatchObject({
+      entry: 'newPlaces[0].code',
+      refusals: [{ field: 'newPlaces[0].code', reason: 'invalid_text', params: { max: 20 } }],
+    });
 
     const changed = api.changePlan('c1', 'f1', empty);
     http

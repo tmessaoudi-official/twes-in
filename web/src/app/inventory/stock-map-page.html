@@ -453,14 +453,16 @@
       <p data-testid="stock-map-no-company">{{ 'inventory.no_company' | translate }}</p>
     }
     @if (error(); as code) {
-      <app-read-failed
-        testId="stock-map-error"
-        retryTestId="stock-map-retry"
-        [retryable]="readFailed()"
-        (retry)="readAgain()"
-      >
-        {{ 'inventory.errors.' + code | translate }}
-      </app-read-failed>
+      @if (refusalLine.for(code); as said) {
+        <app-read-failed
+          testId="stock-map-error"
+          retryTestId="stock-map-retry"
+          [retryable]="readFailed()"
+          (retry)="readAgain()"
+        >
+          {{ said.key | translate: said.params }}
+        </app-read-failed>
+      }
     }
 
     <!-- The floor's own form, in the panel beside the board, or on its own while there is no floor to draw yet. -->
@@ -475,6 +477,7 @@
         }
         @if (floorDescriptor(); as descriptor) {
           <app-descriptor-form
+            #floorEditor
             [descriptor]="descriptor"
             [form]="group"
             [updated]="floorSync.updated()"
@@ -1633,6 +1636,7 @@
                   <!-- Every field writes into the board's draft as it is typed; « Enregistrer » above the board sends it. -->
                   <app-descriptor-form
                     [descriptor]="descriptor"
+                    #drawingEditor
                     [form]="group"
                     testId="stock-drawing-form"
                   >
@@ -1671,6 +1675,7 @@
                 @if (structureDescriptor(); as descriptor) {
                   <app-descriptor-form
                     [descriptor]="descriptor"
+                    #structureEditor
                     [form]="group"
                     testId="stock-structure-form"
                   >

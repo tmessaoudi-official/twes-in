@@ -10,6 +10,7 @@ import type {
 } from './inventory-types';
 import type { PlanRectangle } from './stock-map-geometry';
 import { typedText } from '../shared/form/typed-text';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /**
  * A floor's plan as it is being arranged and not saved yet. Every gesture and every typed measurement lands here, on
@@ -557,6 +558,36 @@ export function sourceOf(sources: PlanStepSources, refusal: string): string | nu
   const list = sources[found[1] as keyof PlanStepSources] as string[] | undefined;
 
   return list?.[Number(found[2])] ?? null;
+}
+
+/** A new place's own fields, as the drawing editor names them beside its rectangle's. */
+const NEW_PLACE_FIELDS: Readonly<Record<string, string>> = {
+  code: 'newLocationCode',
+  name: 'newLocationName',
+  kind: 'newLocationKind',
+};
+
+/**
+ * What a refused step was refused for on the shape its entry names, under the field ids of the editor that shape
+ * opens (`structureBuilds[0].width` → `width`); the other entries' refusals, and the floor's, are not that editor's.
+ */
+export function shapeRefusals(
+  refusals: readonly FieldRefusal[],
+  entry: string | null,
+): readonly FieldRefusal[] {
+  const shape = entry === null ? null : /^([A-Za-z]+)\[(\d+)\]\./.exec(typedText(entry));
+  if (shape === null) return [];
+  const [prefix, list] = [shape[0], shape[1]];
+
+  return refusals
+    .filter((refusal) => refusal.field.startsWith(prefix))
+    .map((refusal) => {
+      const field = refusal.field.slice(prefix.length);
+      return {
+        ...refusal,
+        field: (list === 'newPlaces' ? NEW_PLACE_FIELDS[field] : null) ?? field,
+      };
+    });
 }
 
 /** What a saved step created, in the order its lists were sent, as the API answers it. */

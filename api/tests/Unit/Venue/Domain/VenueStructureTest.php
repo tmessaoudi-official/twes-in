@@ -135,8 +135,11 @@ final class VenueStructureTest extends TestCase
 
     public function testANameLongerThanTheColumnIsRefused(): void
     {
-        $this->expectException(InvalidVenue::class);
-
-        VenueStructure::build($this->ground, StructureKind::Wall, str_repeat('m', VenueStructure::NAME_MAX + 1), new PlanRect('0', '0', '24', '0.2', 0, '3'), $this->now);
+        try {
+            VenueStructure::build($this->ground, StructureKind::Wall, str_repeat('m', VenueStructure::NAME_MAX + 1), new PlanRect('0', '0', '24', '0.2', 0, '3'), $this->now);
+            self::fail('A name longer than the column was kept.');
+        } catch (InvalidVenue $refused) {
+            self::assertSame(['name', 'invalid_text', ['max' => VenueStructure::NAME_MAX]], [$refused->field, $refused->reason, $refused->params]);
+        }
     }
 }

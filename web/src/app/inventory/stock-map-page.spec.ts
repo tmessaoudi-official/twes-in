@@ -15,6 +15,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
@@ -63,6 +64,12 @@ import { Immersive } from '../shared/ui/immersive';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: {
+          above_zero: 'Attendu : un nombre au-dessus de zéro.',
+          invalid_text: 'Texte refusé : {{max}} caractères au plus.',
+        },
+      },
       inventory: {
         plan: {
           plan_of: 'Plan de {{floor}} : {{count}} rectangle(s)',
@@ -192,6 +199,7 @@ describe('StockMapPage', () => {
   const whereabouts = signal<MapSearch | null>(null);
   const holdings = signal<ReadonlyMap<string, number>>(new Map());
   const refusedEntry = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const readFailed = signal(false);
   const facade = {
     countContexts: vi.fn(async () => []),
@@ -213,6 +221,7 @@ describe('StockMapPage', () => {
     error: error.asReadonly(),
     readFailed: readFailed.asReadonly(),
     refusedEntry: refusedEntry.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadPlanContext: vi.fn(),
     loadDrawings: vi.fn(),
     reloadDrawings: vi.fn(),
@@ -264,6 +273,7 @@ describe('StockMapPage', () => {
     planStorage = new PageMemoryStorage();
     error.set(null);
     refusedEntry.set(null);
+    refusals.set([]);
     busy.set(false);
     floors.set([upstairs, ground]);
     drawings.set([drawn]);
@@ -722,6 +732,26 @@ describe('StockMapPage', () => {
     expect(unsaved()).toBe('1');
   });
 
+  it('says why a step was refused under the field of the shape it opens', async () => {
+    q('stock-shape-rack')!.click();
+    await settle();
+    q('stock-drawing-close')!.click();
+    await settle();
+
+    facade.changePlan.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusedEntry.set('newPlaces[0].code');
+      refusals.set([{ field: 'newPlaces[0].code', reason: 'invalid_text', params: { max: 20 } }]);
+      return null;
+    });
+    await savePlanned();
+    await settle();
+
+    expect(q('field-error-newLocationCode')?.textContent).toContain(
+      'Texte refusé : 20 caractères au plus.',
+    );
+  });
+
   /** Slice 7b: a rack posed from the palette is a new rack, with the code after the establishment's last one. */
   it('poses a new place from the palette, proposing its kind and the next code', async () => {
     q('stock-shape-rack')!.click();
@@ -987,6 +1017,31 @@ describe('StockMapPage', () => {
       }),
       2,
     );
+  });
+
+  it('says why a floor was refused under the field the API named', async () => {
+    q('stock-floor-add')!.click();
+    await settle();
+    type('field-name', 'Mezzanine');
+    type('field-level', '2');
+    type('field-widthMetres', '30');
+    type('field-depthMetres', '20');
+    facade.createFloor.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'widthMetres', reason: 'above_zero', params: {} },
+        { field: 'imageMetresWide', reason: 'above_zero', params: {} },
+      ]);
+      return false;
+    });
+    q('stock-floor-save')!.click();
+    await settle();
+
+    expect(q('field-error-widthMetres')?.textContent).toContain(
+      'Attendu : un nombre au-dessus de zéro.',
+    );
+    // The plan's width has no field on this form: the line above it says it rather than « invalid ».
+    expect(q('stock-map-error')?.textContent).toContain('Attendu : un nombre au-dessus de zéro.');
   });
 
   it('says why a level was refused', async () => {

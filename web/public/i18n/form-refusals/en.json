@@ -137,7 +137,12 @@
       "nothing_to_print": "Nothing to print: the invoices chosen are drafts or cancelled invoices whose box is not ticked, or they no longer exist. Tick the box, or choose other invoices.",
       "at_most": "Expected: {{max}} at most.",
       "not_negative": "Expected: zero or more.",
-      "at_least": "Expected: {{min}} or more."
+      "at_least": "Expected: {{min}} or more.",
+      "above_zero": "Expected: a number above zero.",
+      "leaves_the_floor": "This rectangle would leave the plan on this side: bring it closer to the edge or turn it.",
+      "piece_gone": "This building element was erased in the meantime: discard the changes touching it, then start again.",
+      "piece_other_floor": "This building element is on another floor: change it from its own floor’s plan.",
+      "piece_named_twice": "This building element is changed twice in the same changes: keep only one."
     }
   }
 }

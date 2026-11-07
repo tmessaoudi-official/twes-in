@@ -268,20 +268,20 @@ final class StockMapStepTest extends ApiTestCase
         ];
         $moved = $this->pieceMoved(...);
         foreach ([
-            ['structureMoves[2].x', [...$start, 'structureMoves' => [$moved($a), $moved($b), $moved($c, ['x' => '-1'])]]],
+            ['structureMoves[2].x', [...$start, 'structureMoves' => [$moved($a), $moved($b), $moved($c, ['x' => '-1'])]], 'leaves_the_floor'],
             ['structureMoves[2].kind', [...$start, 'structureMoves' => [$moved($a), $moved($b), $moved($c, ['kind' => 'moat'])]]],
-            ['structureMoves[0].structureId', [...$start, 'structureMoves' => [$moved(Uuid::v7()->toRfc4122())]]],
+            ['structureMoves[0].structureId', [...$start, 'structureMoves' => [$moved(Uuid::v7()->toRfc4122())]], 'piece_gone'],
             ['moves[1].drawingId', [...$start, 'moves' => [...$start['moves'], ['drawingId' => 'R2', ...$this->drawing([]), 'version' => 1]]]],
-            ['structureMoves[0].structureId', [...$start, 'structureMoves' => [$moved($elsewhere)]]],
-            ['structureMoves[1].structureId', [...$start, 'structureMoves' => [$moved($a), $moved($a)]]],
+            ['structureMoves[0].structureId', [...$start, 'structureMoves' => [$moved($elsewhere)]], 'piece_other_floor'],
+            ['structureMoves[1].structureId', [...$start, 'structureMoves' => [$moved($a), $moved($a)]], 'piece_named_twice'],
             ['structureMoves[0].version', [...$start, 'structureMoves' => [['structureId' => $a, ...$this->piece([])]]]],
-            ['structureMoves[0].name', [...$start, 'structureMoves' => [$moved($a, ['name' => str_repeat('m', 121)])]]],
-            ['structureErasures[0].structureId', [...$start, 'structureMoves' => [$moved($a)], 'structureErasures' => [['structureId' => $a, 'version' => 1]]]],
-            ['structureErasures[0].structureId', [...$start, 'structureErasures' => [['structureId' => $elsewhere, 'version' => 1]]]],
+            ['structureMoves[0].name', [...$start, 'structureMoves' => [$moved($a, ['name' => str_repeat('m', 121)])]], 'invalid_text', ['max' => 120]],
+            ['structureErasures[0].structureId', [...$start, 'structureMoves' => [$moved($a)], 'structureErasures' => [['structureId' => $a, 'version' => 1]]], 'piece_named_twice'],
+            ['structureErasures[0].structureId', [...$start, 'structureErasures' => [['structureId' => $elsewhere, 'version' => 1]]], 'piece_other_floor'],
             ['structureErasures[0].version', [...$start, 'structureErasures' => [['structureId' => $b]]]],
             ['structureBuilds[1].kind', [...$start, 'structureBuilds' => [$this->piece([]), $this->piece(['kind' => 'moat'])]]],
-            ['structureBuilds[0].name', [...$start, 'structureBuilds' => [$this->piece(['name' => str_repeat('m', 121)])]]],
-            ['structureBuilds[0].depth', [...$start, 'structureBuilds' => [$this->piece(['depth' => '0'])]]],
+            ['structureBuilds[0].name', [...$start, 'structureBuilds' => [$this->piece(['name' => str_repeat('m', 121)])]], 'invalid_text', ['max' => 120]],
+            ['structureBuilds[0].depth', [...$start, 'structureBuilds' => [$this->piece(['depth' => '0'])]], 'above_zero'],
             ['newPlaces[1].code', [...$start, 'newPlaces' => [...$start['newPlaces'], $this->newPlace('rack', 'R1', 'Doublon', [])]]],
             ['newPlaces[1].code', [...$start, 'newPlaces' => [...$start['newPlaces'], $this->newPlace('rack', 'R8', 'Doublon', [])]]],
             ['newPlaces[0].code', [...$start, 'newPlaces' => [$this->newPlace('rack', 'R 8', 'Rayonnage 8', [])]]],
@@ -298,10 +298,15 @@ final class StockMapStepTest extends ApiTestCase
             ['draws[0].locationId', [...$start, 'moves' => [['drawingId' => $rack, ...$this->drawing([]), 'version' => 1, 'locationId' => $loose]], 'draws' => [['locationId' => $loose, ...$this->drawing(['y' => '12'])]]]],
             ['structureMoves', [...$start, 'structureMoves' => ['first' => $moved($a)]]],
             ['newPlaces', [...$start, 'newPlaces' => ['first' => $start['newPlaces'][0]]]],
-        ] as [$field, $body]) {
+        ] as $refused) {
+            [$field, $body] = $refused;
             $this->postJson($this->changes(), $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertSame([$field], array_column($this->refusals(), 'propertyPath'), $field.', refused as a violation on its entry');
+            // A piece's refusal says why, so the editor of the piece it opens reads more than « Valeur refusée. ».
+            if (isset($refused[2])) {
+                self::assertSame([[$refused[2], $refused[3] ?? []]], array_map(static fn (array $one): array => [$one['reason'], $one['params']], $this->refusals()), $field);
+            }
         }
 
         // A place the domain refuses names its field as a violation, which the screen reads under it, as every shape

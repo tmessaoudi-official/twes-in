@@ -111,7 +111,8 @@ final class RefusalReasonsTest extends KernelTestCase
     }
 
     /**
-     * A document's or a stock movement's refusal names its reason, so the screen says why in the reader's words rather than « Valeur refusée. »:
+     * A document's, a stock movement's, a fiscal value's or a drawing's refusal names its reason, so the screen says why
+     * in the reader's words rather than « Valeur refusée. »:
      * a reason written in the call, spread from a helper that gives one, or carried from the refusal it re-throws.
      */
     public function testEveryRefusalOfADocumentNamesItsReason(): void
@@ -123,7 +124,7 @@ final class RefusalReasonsTest extends KernelTestCase
         foreach ($files as $file) {
             \assert($file instanceof \SplFileInfo);
             $source = (string) file_get_contents($file->getPathname());
-            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement|FiscalValue)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
+            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement|FiscalValue|Venue)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
             foreach ($found[2] as [$arguments, $offset]) {
                 ++$statements;
                 if (1 === preg_match("/'[a-z]+(?:_[a-z]+)+'|\\.\\.\\.|->reason\\b/", $arguments)) {
@@ -144,7 +145,8 @@ final class RefusalReasonsTest extends KernelTestCase
     public function testEveryReasonAnImportOrADomainRuleRefusesWithIsTranslated(): void
     {
         $root = \dirname(__DIR__, 2).'/src';
-        $translated = self::translated();
+        // The import page opens the form refusals beside the screens' file, as every form does when a save is refused.
+        $translated = self::translated('fr', self::FORM_REFUSALS);
         $found = [];
         $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
         foreach ($files as $file) {

@@ -164,7 +164,7 @@ final class RepeatStockDrawingTest extends TestCase
             $this->map->repeat($this->company, $source, 1, '0.600', PlanWay::Down, 'R2', $this->actor);
             self::fail('A rectangle at thirty degrees was repeated.');
         } catch (InvalidVenue $refused) {
-            self::assertSame('rotation', $refused->field);
+            self::assertSame(['rotation', 'not_one_of', ['choices' => '0, 90, 180, 270']], [$refused->field, $refused->reason, $refused->params]);
         }
 
         self::assertCount(1, $this->spots->ofArea($this->ground));
@@ -264,7 +264,7 @@ final class RepeatStockDrawingTest extends TestCase
             $this->map->repeat($this->company, $source, $count, '0.600', PlanWay::Down, 'R2', $this->actor);
             self::fail(\sprintf('A repeat of %d was accepted.', $count));
         } catch (InvalidVenue $refused) {
-            self::assertSame('count', $refused->field);
+            self::assertSame(['count', 'whole_number_between', ['min' => 1, 'max' => DrawStockMap::REPEAT_LIMIT]], [$refused->field, $refused->reason, $refused->params]);
         }
 
         self::assertSame([], $this->codesLike('R'));

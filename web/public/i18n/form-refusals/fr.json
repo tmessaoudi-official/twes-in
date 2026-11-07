@@ -137,7 +137,12 @@
       "nothing_to_print": "Rien à imprimer : les factures choisies sont des brouillons ou des factures annulées dont la case n’est pas cochée, ou elles n’existent plus. Cochez la case, ou choisissez d’autres factures.",
       "at_most": "Attendu : {{max}} au plus.",
       "not_negative": "Attendu : zéro ou plus.",
-      "at_least": "Attendu : {{min}} ou plus."
+      "at_least": "Attendu : {{min}} ou plus.",
+      "above_zero": "Attendu : un nombre au-dessus de zéro.",
+      "leaves_the_floor": "Ce rectangle sortirait du plan de ce côté : rapprochez-le du bord ou tournez-le.",
+      "piece_gone": "Cet élément du bâtiment a été effacé entre-temps : abandonnez les changements qui le touchent, puis recommencez.",
+      "piece_other_floor": "Cet élément du bâtiment est sur un autre étage : changez-le depuis le plan de son étage.",
+      "piece_named_twice": "Cet élément du bâtiment est changé deux fois dans les mêmes changements : n’en gardez qu’un."
     }
   }
 }

@@ -643,6 +643,7 @@ export class InventoryFacade {
     step: PlanStep,
   ): Promise<StockPlanSaved | null> {
     this.refusedEntrySignal.set(null);
+    this.refusalsSignal.set([]);
     return this.state.writeAnswer(
       async () => {
         const saved = await this.api.changePlan(companyId, floorId, step);
@@ -654,8 +655,10 @@ export class InventoryFacade {
         return saved;
       },
       {
-        failed: (error) =>
-          this.refusedEntrySignal.set(error instanceof InventoryRefused ? error.entry : null),
+        failed: (error) => {
+          this.refusedEntrySignal.set(error instanceof InventoryRefused ? error.entry : null);
+          this.refusalsSignal.set(error instanceof InventoryRefused ? error.refusals : []);
+        },
       },
     );
   }

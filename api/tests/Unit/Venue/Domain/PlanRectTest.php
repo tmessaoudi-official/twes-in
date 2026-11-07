@@ -67,6 +67,36 @@ final class PlanRectTest extends TestCase
         self::assertSame('0.000', new PlanRect('-0', '-0.000', '6', '0.2', 0, '3')->x, 'no negative zero is kept');
     }
 
+    /** @return iterable<string, array{callable(): PlanRect, string, string, array<string, string|int>}> */
+    public static function refusals(): iterable
+    {
+        yield 'a turn past a whole one' => [static fn (): PlanRect => new PlanRect('3', '3', '6', '0.2', 360, '3'), 'rotation', 'whole_number_between', ['min' => 0, 'max' => 359]];
+        yield 'a body past the left edge' => [static fn (): PlanRect => new PlanRect('-2.901', '3', '6', '0.2', 90, '3'), 'x', 'leaves_the_floor', []];
+        yield 'a body past the top edge' => [static fn (): PlanRect => new PlanRect('3', '-2.901', '0.2', '6', 90, '3'), 'y', 'leaves_the_floor', []];
+        yield 'a side of no length' => [static fn (): PlanRect => new PlanRect('3', '3', '0', '0.2', 0, '3'), 'width', 'above_zero', []];
+        yield 'a side past the limit' => [static fn (): PlanRect => new PlanRect('3', '3', '6', '10000.001', 0, '3'), 'depth', 'at_most', ['max' => PlanRect::LIMIT]];
+        yield 'a side written past the limit' => [static fn (): PlanRect => new PlanRect('3', '3', '123456', '0.2', 0, '3'), 'width', 'at_most', ['max' => PlanRect::LIMIT]];
+        yield 'a side finer than the millimetre' => [static fn (): PlanRect => new PlanRect('3', '3', '6.0001', '0.2', 0, '3'), 'width', 'too_many_decimals', ['max' => PlanRect::SCALE]];
+        yield 'a height below zero' => [static fn (): PlanRect => new PlanRect('3', '3', '6', '0.2', 0, '-1'), 'height', 'not_negative', []];
+        yield 'a position in words' => [static fn (): PlanRect => new PlanRect('trois', '3', '6', '0.2', 0, '3'), 'x', 'not_a_number', []];
+        yield 'a position below zero finer than the millimetre' => [static fn (): PlanRect => new PlanRect('-2.9001', '3', '6', '0.2', 90, '3'), 'x', 'too_many_decimals', ['max' => PlanRect::SCALE]];
+    }
+
+    /**
+     * @param callable(): PlanRect      $drawn
+     * @param array<string, string|int> $params
+     */
+    #[DataProvider('refusals')]
+    public function testARefusedRectangleSaysWhyOnItsField(callable $drawn, string $field, string $reason, array $params): void
+    {
+        try {
+            $drawn();
+            self::fail('The rectangle was accepted.');
+        } catch (InvalidVenue $refused) {
+            self::assertSame([$field, $reason, $params], [$refused->field, $refused->reason, $refused->params]);
+        }
+    }
+
     public function testAPositionStillTakesAtMostThreeDecimalsAndStaysUnderTheLimit(): void
     {
         foreach (['-2.9001', '--1', '-', '-'.PlanRect::LIMIT.'1', '1,5'] as $x) {

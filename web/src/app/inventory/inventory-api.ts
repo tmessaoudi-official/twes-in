@@ -506,9 +506,12 @@ export class InventoryApi {
     );
   }
 
-  /** 409 when another floor of the same establishment is already at that level. */
+  /**
+   * 409 when another floor of the same establishment is already at that level; 422 naming each field refused, for the
+   * floor form to say it there.
+   */
   async createFloor(companyId: string, input: StockFloorInput): Promise<StockFloorRow> {
-    return this.guard(
+    return this.saving(
       async () =>
         toFloor(
           await firstValueFrom(
@@ -530,7 +533,7 @@ export class InventoryApi {
     version: number | null,
   ): Promise<StockFloorRow> {
     const body: StockFloorStockFloorRevise = { ...floorBody(input), version };
-    return this.guard(
+    return this.saving(
       async () =>
         toFloor(
           await firstValueFrom(
@@ -637,7 +640,12 @@ export class InventoryApi {
         floorVersion: raw.floorVersion ?? null,
       };
     } catch (error) {
-      throw refusedFor(error, new InventoryRefused(codeOf(error, 'invalid'), refusedEntry(error)));
+      // The entry opens the shape it names, and each refusal is said under its field in that shape's editor.
+      const refusals = await formRefusalsIn(this.injector, error);
+      throw refusedFor(
+        error,
+        new InventoryRefused(codeOf(error, 'invalid'), refusedEntry(error), refusals),
+      );
     }
   }
 

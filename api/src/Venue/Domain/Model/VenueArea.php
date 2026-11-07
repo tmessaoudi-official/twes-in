@@ -140,15 +140,20 @@ class VenueArea implements CompanyOwned
     public function showPlan(?Uuid $imageFileId, ?string $metresWide, int $opacity, \DateTimeImmutable $now): bool
     {
         if ($opacity < 0 || $opacity > 100) {
-            throw new InvalidVenue('imageOpacity', 'An opacity is a whole number from 0 to 100.');
+            throw new InvalidVenue('imageOpacity', 'An opacity is a whole number from 0 to 100.', 'whole_number_between', ['min' => 0, 'max' => 100]);
         }
         $width = null;
         if (null !== $imageFileId) {
             if (null === $metresWide) {
-                throw new InvalidVenue('imageMetresWide', 'A plan is placed by saying how many metres wide it really is.');
+                throw new InvalidVenue('imageMetresWide', 'A plan is placed by saying how many metres wide it really is.', 'value_required');
             }
-            // A rectangle of that width is exactly what the scale means, so the same rule measures it.
-            $width = new PlanRect('0', '0', $metresWide, '0.001', 0, '0')->width;
+            // A rectangle of that width is exactly what the scale means, so the same rule measures it, said on the
+            // plan's own field.
+            try {
+                $width = new PlanRect('0', '0', $metresWide, '0.001', 0, '0')->width;
+            } catch (InvalidVenue $refused) {
+                throw new InvalidVenue('imageMetresWide', $refused->getMessage(), $refused->reason, $refused->params);
+            }
         }
         // Measured after normalizing, so re-saving an unchanged form says nothing: it is the same plan at the same
         // scale, and an audit row for it would tell every other open plan to read itself again for nothing.
@@ -253,12 +258,12 @@ class VenueArea implements CompanyOwned
         try {
             $width = new PlanRect('0', '0', $width, '0.001', 0, '0')->width;
         } catch (InvalidVenue $refused) {
-            throw new InvalidVenue('widthMetres', $refused->getMessage());
+            throw new InvalidVenue('widthMetres', $refused->getMessage(), $refused->reason, $refused->params);
         }
         try {
             $depth = new PlanRect('0', '0', '0.001', $depth, 0, '0')->depth;
         } catch (InvalidVenue $refused) {
-            throw new InvalidVenue('depthMetres', $refused->getMessage());
+            throw new InvalidVenue('depthMetres', $refused->getMessage(), $refused->reason, $refused->params);
         }
 
         return [$width, $depth];
@@ -278,8 +283,11 @@ class VenueArea implements CompanyOwned
     private static function name(string $name): string
     {
         $trimmed = TypedText::trimmed($name);
-        if ('' === $trimmed || mb_strlen($trimmed) > self::NAME_MAX) {
-            throw new InvalidVenue('name', \sprintf('An area is named in 1 to %d characters.', self::NAME_MAX));
+        if ('' === $trimmed) {
+            throw new InvalidVenue('name', 'An area is named.', 'value_required');
+        }
+        if (mb_strlen($trimmed) > self::NAME_MAX) {
+            throw new InvalidVenue('name', \sprintf('An area is named in at most %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
 
         return $trimmed;
@@ -289,7 +297,7 @@ class VenueArea implements CompanyOwned
     private static function level(int $level): int
     {
         if ($level < self::LEVEL_MIN || $level > self::LEVEL_MAX) {
-            throw new InvalidVenue('level', \sprintf('A level is a whole number from %d to %d, the ground being %d.', self::LEVEL_MIN, self::LEVEL_MAX, self::LEVEL_MIN));
+            throw new InvalidVenue('level', \sprintf('A level is a whole number from %d to %d, the ground being %d.', self::LEVEL_MIN, self::LEVEL_MAX, self::LEVEL_MIN), 'whole_number_between', ['min' => self::LEVEL_MIN, 'max' => self::LEVEL_MAX]);
         }
 
         return $level;

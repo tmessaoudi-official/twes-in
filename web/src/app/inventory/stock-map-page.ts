@@ -24,7 +24,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltip } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { RefusalLine } from '../shared/documents/refusal-line';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
@@ -142,6 +144,7 @@ import {
   shownFloorSize,
   shownStructures,
   sizeFloor,
+  shapeRefusals,
   sourceOf,
   stepOf,
   type DraftPlace,
@@ -386,6 +389,16 @@ export class StockMapPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly readFailed = this.facade.readFailed;
+  /** The line above the board: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'inventory.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
+  private readonly floorEditor = viewChild<DescriptorForm>('floorEditor');
+  private readonly drawingEditor = viewChild<DescriptorForm>('drawingEditor');
+  private readonly structureEditor = viewChild<DescriptorForm>('structureEditor');
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
 
@@ -1346,11 +1359,26 @@ export class StockMapPage implements OnInit {
       return;
     }
     const entry = this.facade.refusedEntry();
+    const refused = this.facade.refusals();
     const id = entry === null ? null : sourceOf(sources, entry);
-    if (id === null) return;
-    const piece = this.builtRows().find((one) => one.id === id);
+    const piece = id === null ? undefined : this.builtRows().find((one) => one.id === id);
     if (piece !== undefined) this.openStructure(piece);
-    else if (this.drawnRows().some((one) => one.id === id)) this.openDrawing(id);
+    else if (id !== null && this.drawnRows().some((one) => one.id === id)) this.openDrawing(id);
+    else {
+      this.refusalLine.placed(refused, refused);
+      return;
+    }
+    // Said under its field once the shape's editor is drawn; what is not that shape's, or no field there takes, is
+    // said on the line above the board.
+    const shaped = shapeRefusals(refused, entry);
+    const others = refused.filter((one) => shapeRefusals([one], entry).length === 0);
+    afterNextRender(
+      () => {
+        const editor = piece !== undefined ? this.structureEditor() : this.drawingEditor();
+        this.refusalLine.placed(refused, [...others, ...(editor?.showRefused(shaped) ?? shaped)]);
+      },
+      { injector: this.injector },
+    );
   }
 
   /** « Abandonner les changements »: the board back to what is saved, with « Annuler » on the toast to undo that. */
@@ -2794,6 +2822,10 @@ export class StockMapPage implements OnInit {
     } else if (this.error() === 'record_changed') {
       this.facade.clearError();
       await this.floorSync.savedElsewhere();
+    } else {
+      // Each field the API refused said on that field; the line above says what none of them took.
+      const refused = this.facade.refusals();
+      this.refusalLine.placed(refused, this.floorEditor()?.showRefused(refused) ?? refused);
     }
   }
 
