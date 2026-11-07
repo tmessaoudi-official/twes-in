@@ -47,7 +47,9 @@ final readonly class SendPurchaseOrderProcessor implements ProcessorInterface
             $order = $this->workflow->send($company, CompanyPath::identifier($uriVariables, 'purchaseOrderId'), $this->guard->account()->getId());
         } catch (PurchaseOrderNotFound $absent) {
             throw new NotFoundHttpException('No such purchase order.', $absent);
-        } catch (PurchaseOrderTransitionRefused|NoNumberingSeries|InvalidNumbering|PurchaseOrderNumberTaken $conflict) {
+        } catch (PurchaseOrderTransitionRefused $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
+        } catch (NoNumberingSeries|InvalidNumbering|PurchaseOrderNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidPurchaseOrder $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);

@@ -204,7 +204,17 @@
       "draft_not_goods_invoice": "Ce brouillon est un avoir ou une facture d’acompte : seule une facture de biens se livre.",
       "quote_draft_not_accepted": "Ce devis est un brouillon : seul un devis accepté se livre. Envoyez-le, puis notez la réponse du client.",
       "chosen_not_a_deposit": "La facture choisie n’est pas une facture d’acompte : seul un acompte se rend sur une autre facture.",
-      "deposit_draft_not_issued": "L’acompte choisi est un brouillon : un acompte se rend une fois émis."
+      "deposit_draft_not_issued": "L’acompte choisi est un brouillon : un acompte se rend une fois émis.",
+      "order_draft_cancelled": "Cette commande a été annulée avant d’être envoyée : elle ne s’envoie plus, ne se modifie plus et rien n’en est attendu.",
+      "order_draft_not_sent": "Cette commande est un brouillon : envoyez-la d’abord, les marchandises se réceptionnent sur une commande envoyée.",
+      "order_not_open": "La commande « {{reference}} » n’attend plus rien : elle est reçue, clôturée ou annulée.",
+      "order_partly_received_closed": "Une partie de la commande « {{reference}} » est reçue : elle ne s’annule plus. Clôturez-la si le reste ne viendra pas.",
+      "order_not_cancellable": "La commande « {{reference}} » ne s’annule plus : seule une commande dont rien n’est reçu s’annule.",
+      "order_draft_not_closed": "Cette commande est un brouillon : seule une commande reçue en partie se clôture. Annulez-la si elle ne sera pas envoyée.",
+      "order_nothing_arrived": "Rien n’est encore reçu de la commande « {{reference}} » : elle s’annule, elle ne se clôture pas.",
+      "order_not_closable": "La commande « {{reference}} » ne se clôture pas : seule une commande reçue en partie se clôture.",
+      "order_sent_already": "La commande « {{reference}} » est déjà envoyée.",
+      "order_no_longer_draft": "La commande « {{reference}} » est envoyée : seul un brouillon se modifie."
     }
   }
 }

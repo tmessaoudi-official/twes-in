@@ -204,7 +204,17 @@
       "draft_not_goods_invoice": "This draft is a credit note or a deposit invoice: only an invoice of goods is delivered.",
       "quote_draft_not_accepted": "This quote is a draft: only an accepted quote is delivered. Send it, then record the customer’s answer.",
       "chosen_not_a_deposit": "The invoice chosen is not a deposit invoice: only a deposit is given back on another invoice.",
-      "deposit_draft_not_issued": "The deposit chosen is a draft: a deposit is given back once issued."
+      "deposit_draft_not_issued": "The deposit chosen is a draft: a deposit is given back once issued.",
+      "order_draft_cancelled": "This order was cancelled before it was sent: it is no longer sent or changed, and nothing is expected from it.",
+      "order_draft_not_sent": "This order is a draft: send it first, goods are received against a sent order.",
+      "order_not_open": "Order “{{reference}}” expects nothing more: it is received, closed or cancelled.",
+      "order_partly_received_closed": "Part of order “{{reference}}” is received: it is no longer cancelled. Close it if the rest will not come.",
+      "order_not_cancellable": "Order “{{reference}}” is no longer cancelled: only an order nothing was received against is cancelled.",
+      "order_draft_not_closed": "This order is a draft: only a partly received order is closed. Cancel it if it will not be sent.",
+      "order_nothing_arrived": "Nothing of order “{{reference}}” is received yet: it is cancelled, not closed.",
+      "order_not_closable": "Order “{{reference}}” is not closed: only a partly received order is closed.",
+      "order_sent_already": "Order “{{reference}}” is sent already.",
+      "order_no_longer_draft": "Order “{{reference}}” is sent: only a draft is changed."
     }
   }
 }

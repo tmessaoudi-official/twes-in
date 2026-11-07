@@ -17,9 +17,9 @@ use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Output\PurchaseOrderView;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -42,7 +42,7 @@ final readonly class CancelPurchaseOrderProcessor implements ProcessorInterface
         } catch (PurchaseOrderNotFound $absent) {
             throw new NotFoundHttpException('No such purchase order.', $absent);
         } catch (PurchaseOrderTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         }
 
         return $this->view->of($order);

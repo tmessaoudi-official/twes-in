@@ -180,8 +180,10 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertSame(['FRN-0001', 'Quincaillerie du Sud'], [$this->section($order, 'vendorSnapshot')['number'], $this->section($order, 'vendorSnapshot')['name']]);
         $this->sendJson('PUT', $this->path($id), ['vendorId' => $this->vendor, 'version' => $this->intAt($order, 'version'), 'lines' => [['productId' => $this->screws, 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent order is the vendor\'s now');
+        self::assertSame(['order_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($id).'/send', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['order_sent_already', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     public function testGoodsReceivedInPartsGoOnTheShelvesNamingTheirReceiptAndFinishTheOrder(): void
@@ -220,6 +222,7 @@ final class PurchaseOrdersTest extends ApiTestCase
 
         $this->postJson($this->path($id).'/receipts', ['receivedOn' => $this->today(), 'lines' => [['orderLineId' => $line, 'locationId' => $this->site, 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a received order takes no more goods');
+        self::assertSame(['order_not_open', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     public function testAReceiptBringsNoMoreThanIsExpectedAndARefusedOneMovesNothing(): void
@@ -343,12 +346,16 @@ final class PurchaseOrdersTest extends ApiTestCase
         $this->postJson($this->path($draft).'/cancel', null);
         self::assertResponseIsSuccessful();
         self::assertSame('cancelled', $this->json()['status']);
+        $this->postJson($this->path($draft).'/close', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft given up is not closed');
+        self::assertSame(['order_draft_cancelled', []], $this->refusedWholeAs(), 'an unnumbered order is said as given up, never by its id');
 
         $id = $this->sent([['productId' => $this->screws, 'quantity' => '10']]);
         $this->postJson($this->path($id).'/receipts', ['receivedOn' => $this->today(), 'lines' => [['orderLineId' => $this->lineIds($id)[0], 'locationId' => $this->site, 'quantity' => '3']]]);
         self::assertResponseIsSuccessful();
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'goods came: the order is closed, not cancelled');
+        self::assertSame(['order_partly_received_closed', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->postJson($this->path($id).'/close', null);
 
@@ -356,6 +363,7 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertSame(['closed', '7.000'], [$this->json()['status'], $this->rows($this->json(), 'lines')[0]['outstanding'] ?? null]);
         $this->postJson($this->path($id).'/receipts', ['receivedOn' => $this->today(), 'lines' => [['orderLineId' => $this->lineIds($id)[0], 'locationId' => $this->site, 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['order_not_open', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertSame(['purchase_order.cancelled', 'purchase_order.closed'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE action IN ('purchase_order.cancelled', 'purchase_order.closed') ORDER BY action"));
     }
 

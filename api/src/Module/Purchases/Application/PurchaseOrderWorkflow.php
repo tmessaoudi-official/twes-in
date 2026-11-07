@@ -83,7 +83,7 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             // Held and read as it stands before the series: a request that read the draft before another sent it is
             // refused here, and takes no number.
             $order = $this->locked($company, $id);
-            $order->assertDraft('is sent');
+            $order->assertDraft('is sent', sending: true);
             if ([] === $order->getLines()) {
                 throw new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.', 'lines_required');
             }

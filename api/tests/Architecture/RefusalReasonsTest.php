@@ -88,7 +88,7 @@ final class RefusalReasonsTest extends KernelTestCase
             foreach ($files as $file) {
                 \assert($file instanceof \SplFileInfo);
                 $source = (string) file_get_contents($file->getPathname());
-                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense|InvalidStockLocation|InvalidProductCategory|InvalidInvoice|InvalidDeliveryNote|InvalidQuote|InvalidPurchaseOrder|InvalidVenue|InvalidFiscalValue|QuoteInvoicingRefused|InvalidPriceList|InvalidCustomerGroup|InvalidCustomFieldDefinition|InvalidContact|InvalidNumbering|InvalidEstablishment|InvalidDocument|DeliveryNoteTransitionRefused|DeliveryNoteNotDraft|InvoiceTransitionRefused|InvoiceNotDraft|QuoteTransitionRefused|QuoteNotDraft|QuoteTargetInvoiceNotDraft)\((.*?)\);/s', $source, $found);
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense|InvalidStockLocation|InvalidProductCategory|InvalidInvoice|InvalidDeliveryNote|InvalidQuote|InvalidPurchaseOrder|InvalidVenue|InvalidFiscalValue|QuoteInvoicingRefused|InvalidPriceList|InvalidCustomerGroup|InvalidCustomFieldDefinition|InvalidContact|InvalidNumbering|InvalidEstablishment|InvalidDocument|DeliveryNoteTransitionRefused|DeliveryNoteNotDraft|InvoiceTransitionRefused|InvoiceNotDraft|QuoteTransitionRefused|QuoteNotDraft|QuoteTargetInvoiceNotDraft|PurchaseOrderTransitionRefused)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
                 // A record no new document may name says why as a reason of its own, which the documents' refusals spread;
@@ -125,7 +125,7 @@ final class RefusalReasonsTest extends KernelTestCase
         foreach ($files as $file) {
             \assert($file instanceof \SplFileInfo);
             $source = (string) file_get_contents($file->getPathname());
-            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement|StockLocation|FiscalValue|Venue)|QuoteInvoicingRefused|DeliveryNote(?:TransitionRefused|NotDraft)|Invoice(?:TransitionRefused|NotDraft)|Quote(?:TransitionRefused|NotDraft|TargetInvoiceNotDraft))(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
+            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement|StockLocation|FiscalValue|Venue)|QuoteInvoicingRefused|DeliveryNote(?:TransitionRefused|NotDraft)|Invoice(?:TransitionRefused|NotDraft)|Quote(?:TransitionRefused|NotDraft|TargetInvoiceNotDraft)|PurchaseOrderTransitionRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
             foreach ($found[2] as [$arguments, $offset]) {
                 ++$statements;
                 if (1 === preg_match("/'[a-z]+(?:_[a-z]+)+'|\\.\\.\\.|->reason\\b/", $arguments)) {

@@ -208,7 +208,7 @@ class PurchaseOrder implements CompanyOwned
      */
     public function send(string $number, \DateTimeImmutable $issueDate, VendorSnapshot $vendor, PurchaseOrderPrint $print, PrintedNames $names, \DateTimeImmutable $now): void
     {
-        $this->assertDraft('is sent');
+        $this->assertDraft('is sent', sending: true);
         if ($this->lines->isEmpty()) {
             throw new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.', 'lines_required');
         }
@@ -237,7 +237,11 @@ class PurchaseOrder implements CompanyOwned
     public function receive(\DateTimeImmutable $receivedOn, \DateTimeImmutable $today, ?string $supplierReference, array $goods, ?Uuid $recordedBy, \DateTimeImmutable $now, ReceiverRule $rule = ReceiverRule::Optional, ?Receiver $receiver = null): GoodsReceipt
     {
         if (!$this->status->open()) {
-            throw new PurchaseOrderTransitionRefused(\sprintf('The order %s is %s: goods are received against a sent order that is still open.', $this->reference(), $this->status->value));
+            $refused = \sprintf('The order %s is %s: goods are received against a sent order that is still open.', $this->reference(), $this->status->value);
+            throw match (true) {
+                null === $this->number => new PurchaseOrderTransitionRefused($refused, PurchaseOrderStatus::Cancelled === $this->status ? 'order_draft_cancelled' : 'order_draft_not_sent'),
+                default => new PurchaseOrderTransitionRefused($refused, 'order_not_open', ['reference' => $this->number]),
+            };
         }
         self::receiverAllowed($rule, $receiver);
         if ([] === $goods) {
@@ -357,7 +361,12 @@ class PurchaseOrder implements CompanyOwned
     public function cancel(\DateTimeImmutable $now): void
     {
         if (PurchaseOrderStatus::Draft !== $this->status && PurchaseOrderStatus::Sent !== $this->status) {
-            throw new PurchaseOrderTransitionRefused(\sprintf('The order %s is %s: only a draft or a sent order nothing has arrived against is cancelled; one partly received is closed.', $this->reference(), $this->status->value));
+            $refused = \sprintf('The order %s is %s: only a draft or a sent order nothing has arrived against is cancelled; one partly received is closed.', $this->reference(), $this->status->value);
+            throw match (true) {
+                null === $this->number => new PurchaseOrderTransitionRefused($refused, 'order_draft_cancelled'),
+                PurchaseOrderStatus::PartlyReceived === $this->status => new PurchaseOrderTransitionRefused($refused, 'order_partly_received_closed', ['reference' => $this->number]),
+                default => new PurchaseOrderTransitionRefused($refused, 'order_not_cancellable', ['reference' => $this->number]),
+            };
         }
         $this->status = PurchaseOrderStatus::Cancelled;
         $this->updatedAt = $now;
@@ -371,7 +380,12 @@ class PurchaseOrder implements CompanyOwned
     public function close(\DateTimeImmutable $now): void
     {
         if (PurchaseOrderStatus::PartlyReceived !== $this->status) {
-            throw new PurchaseOrderTransitionRefused(\sprintf('The order %s is %s: only a partly received order is closed; one nothing arrived against is cancelled.', $this->reference(), $this->status->value));
+            $refused = \sprintf('The order %s is %s: only a partly received order is closed; one nothing arrived against is cancelled.', $this->reference(), $this->status->value);
+            throw match (true) {
+                null === $this->number => new PurchaseOrderTransitionRefused($refused, PurchaseOrderStatus::Cancelled === $this->status ? 'order_draft_cancelled' : 'order_draft_not_closed'),
+                PurchaseOrderStatus::Sent === $this->status => new PurchaseOrderTransitionRefused($refused, 'order_nothing_arrived', ['reference' => $this->number]),
+                default => new PurchaseOrderTransitionRefused($refused, 'order_not_closable', ['reference' => $this->number]),
+            };
         }
         $this->status = PurchaseOrderStatus::Closed;
         $this->updatedAt = $now;
@@ -395,10 +409,20 @@ class PurchaseOrder implements CompanyOwned
         }
     }
 
-    public function assertDraft(string $what): void
+    /**
+     * A sent order is named by its number; an abandoned draft never had one, and is said as abandoned whatever was asked.
+     *
+     * @throws PurchaseOrderTransitionRefused
+     */
+    public function assertDraft(string $what, bool $sending = false): void
     {
         if (PurchaseOrderStatus::Draft !== $this->status) {
-            throw new PurchaseOrderTransitionRefused(\sprintf('The order %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));
+            $refused = \sprintf('The order %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what);
+            throw match (true) {
+                null === $this->number => new PurchaseOrderTransitionRefused($refused, 'order_draft_cancelled'),
+                $sending => new PurchaseOrderTransitionRefused($refused, 'order_sent_already', ['reference' => $this->number]),
+                default => new PurchaseOrderTransitionRefused($refused, 'order_no_longer_draft', ['reference' => $this->number]),
+            };
         }
     }
 

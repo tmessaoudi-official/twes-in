@@ -25,7 +25,6 @@ use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermis
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
@@ -77,7 +76,7 @@ final readonly class ReceiveGoodsProcessor implements ProcessorInterface
         } catch (PurchaseOrderNotFound $absent) {
             throw new NotFoundHttpException('No such purchase order.', $absent);
         } catch (PurchaseOrderTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvalidPurchaseOrder $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

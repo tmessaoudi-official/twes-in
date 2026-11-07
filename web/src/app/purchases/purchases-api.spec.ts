@@ -335,6 +335,28 @@ describe('PurchasesApi', () => {
     });
   });
 
+  it('hands over the reason a 409 names for a move the order’s state refuses', async () => {
+    const refused = api.send('c1', 'o1');
+    http.expectOne('/api/companies/c1/purchase-orders/o1/send').flush(
+      {
+        violations: [
+          {
+            propertyPath: '',
+            message: 'x',
+            payload: { reason: 'order_sent_already', params: { reference: 'BCF-2026-11-00001' } },
+          },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'conflict',
+      refusals: [
+        { field: '', reason: 'order_sent_already', params: { reference: 'BCF-2026-11-00001' } },
+      ],
+    });
+  });
+
   it('reads an unreachable API as a network failure', async () => {
     const pending = api.order('c1', 'o 1');
     http

@@ -364,6 +364,46 @@ final class PurchaseOrderTest extends TestCase
         }
     }
 
+    public function testEveryStateRefusalNamesItsReasonAndOnlyASentOrderByItsNumber(): void
+    {
+        $draft = $this->draft();
+        $abandoned = $this->draft();
+        $abandoned->cancel($this->now);
+        $sent = $this->sent();
+        $partly = $this->sent();
+        $partly->receive($this->now, $this->now, null, [new ReceivedGoods($partly->getLines()[0]->getId(), $this->shelf, '1')], null, $this->now);
+        $received = $this->sent();
+        [$screws, $wire] = $received->getLines();
+        $received->receive($this->now, $this->now, null, [new ReceivedGoods($screws->getId(), $this->shelf, '10'), new ReceivedGoods($wire->getId(), $this->shelf, '2.5')], null, $this->now);
+        $reference = ['reference' => 'BCF-2026-0001'];
+        $receive = fn (PurchaseOrder $order) => $order->receive($this->now, $this->now, null, [new ReceivedGoods($order->getLines()[0]->getId(), $this->shelf, '1')], null, $this->now);
+        $send = fn (PurchaseOrder $order) => $order->send('BCF-2026-0002', $this->now, $this->vendorSnapshot(), new PurchaseOrderPrint('fr', new PrintSettings('', 'auto', 'auto')), new PrintedNames([], []), $this->now);
+
+        foreach ([
+            'goods against a draft' => [static fn () => $receive($draft), 'order_draft_not_sent', []],
+            'goods against an abandoned draft' => [static fn () => $receive($abandoned), 'order_draft_cancelled', []],
+            'goods against a received order' => [static fn () => $receive($received), 'order_not_open', $reference],
+            'an abandoned draft cancelled again' => [fn () => $abandoned->cancel($this->now), 'order_draft_cancelled', []],
+            'an order partly received cancelled' => [fn () => $partly->cancel($this->now), 'order_partly_received_closed', $reference],
+            'a received order cancelled' => [fn () => $received->cancel($this->now), 'order_not_cancellable', $reference],
+            'a draft closed' => [fn () => $draft->close($this->now), 'order_draft_not_closed', []],
+            'an abandoned draft closed' => [fn () => $abandoned->close($this->now), 'order_draft_cancelled', []],
+            'a sent order nothing arrived against closed' => [fn () => $sent->close($this->now), 'order_nothing_arrived', $reference],
+            'a received order closed' => [fn () => $received->close($this->now), 'order_not_closable', $reference],
+            'an abandoned draft sent' => [static fn () => $send($abandoned), 'order_draft_cancelled', []],
+            'a sent order sent again' => [static fn () => $send($sent), 'order_sent_already', $reference],
+            'a sent order sent again through the workflow\'s check' => [static fn () => $sent->assertDraft('is sent', sending: true), 'order_sent_already', $reference],
+            'a sent order revised' => [static fn () => $sent->assertDraft('changes'), 'order_no_longer_draft', $reference],
+        ] as $case => [$attempt, $reason, $params]) {
+            try {
+                $attempt();
+                self::fail("accepted: $case");
+            } catch (PurchaseOrderTransitionRefused $refused) {
+                self::assertSame([$reason, $params], [$refused->reason, $refused->params], $case);
+            }
+        }
+    }
+
     private function assertTransitionRefused(\Closure $act): void
     {
         try {
