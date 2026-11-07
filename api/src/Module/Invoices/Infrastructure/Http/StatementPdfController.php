@@ -16,6 +16,7 @@ use App\Module\Invoices\Application\Statement\PrintStatement;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Domain\Service\WrittenDay;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -38,7 +39,7 @@ final readonly class StatementPdfController
     {
     }
 
-    #[Route('/api/companies/{companyId}/customers/{customerId}/statement/pdf', name: 'api_customer_statement_pdf', methods: ['GET'])]
+    #[Route('/api/companies/{companyId}/customers/{customerId}/statement/pdf', name: 'api_customer_statement_pdf', methods: ['GET'], defaults: ['_api_respond' => true])]
     public function __invoke(Request $request, string $companyId, string $customerId): Response
     {
         $ids = ['companyId' => $companyId, 'customerId' => $customerId];
@@ -55,7 +56,7 @@ final readonly class StatementPdfController
         } catch (CustomerNotFound $absent) {
             throw new NotFoundHttpException('No such customer.', $absent);
         } catch (InvalidStatementPeriod $refused) {
-            throw new UnprocessableEntityHttpException('to: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused('to', $refused->getMessage(), 'on_or_after', ['day' => $refused->from], $refused);
         } catch (PdfRenderingFailed $failure) {
             throw new ServiceUnavailableHttpException(30, 'The PDF could not be rendered; try again shortly.', $failure);
         }

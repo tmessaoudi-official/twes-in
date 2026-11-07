@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Invitation\PasswordBreached;
@@ -24,7 +25,6 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /** @implements ProcessorInterface<SignupResource, SignupResource> */
@@ -54,8 +54,12 @@ final readonly class CompleteSignupProcessor implements ProcessorInterface
             $outcome = $this->complete->handle(new CompleteSignupRequest($token, TypedText::trimmed($data->displayName), $data->password, TypedText::trimmed($data->companyName), $data->countryCode, $data->timezone));
         } catch (SignupNotUsable $unusable) {
             throw new NotFoundHttpException('That signup link cannot be used.', $unusable);
-        } catch (InvalidSignup|PasswordBreached|CompanyNameTaken $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (InvalidSignup $refused) {
+            throw DomainRule::refused($refused->field, $refused->getMessage(), 'invalid_value', [], $refused);
+        } catch (PasswordBreached $breached) {
+            throw DomainRule::refused('password', $breached->getMessage(), 'breached', [], $breached);
+        } catch (CompanyNameTaken $taken) {
+            throw DomainRule::refused('companyName', $taken->getMessage(), 'company_name_taken', [], $taken);
         }
 
         $resource = new SignupResource();

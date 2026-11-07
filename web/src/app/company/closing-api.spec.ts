@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { ClosingApi, ClosingRefused } from './closing-api';
 import { saidAlready } from '../shared/errors/said-already';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 describe('ClosingApi', () => {
   let api: ClosingApi;
@@ -12,7 +13,11 @@ describe('ClosingApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
+      ],
     });
     api = TestBed.inject(ClosingApi);
     http = TestBed.inject(HttpTestingController);
@@ -35,13 +40,27 @@ describe('ClosingApi', () => {
     expect(await closed).toEqual({ closedThrough: '2026-09-30', writable: true });
   });
 
-  it('says a refused day as invalid, which the page explains', async () => {
+  it('says a refused day as invalid, with the rule it broke and its day for the page to say', async () => {
     const closed = api.closeThrough('c1', '2026-08-31');
-    http
-      .expectOne('/api/companies/c1/closing')
-      .flush({ detail: 'closedThrough: never opens again' }, { status: 422, statusText: 'x' });
+    http.expectOne('/api/companies/c1/closing').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'closedThrough',
+            message:
+              'The books are closed through 2026-09-30, and a closed period never opens again.',
+            payload: { reason: 'on_or_after', params: { day: '2026-09-30' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
 
-    await expect(closed).rejects.toEqual(new ClosingRefused('invalid'));
+    await expect(closed).rejects.toEqual(
+      new ClosingRefused('invalid', [
+        { field: 'closedThrough', reason: 'on_or_after', params: { day: '2026-09-30' } },
+      ]),
+    );
   });
 
   it("keeps the demo's answer under its refusal, which the page leaves to the toast", async () => {

@@ -28,7 +28,9 @@ import { refusedByTheDemo } from '../shared/testing/said-answers';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({});
+    return of({
+      import: { rejections: { on_or_before: 'Date refusée : le {{day}} au plus tard.' } },
+    });
   }
 }
 
@@ -164,6 +166,28 @@ describe('ClosingPage', () => {
     expect(q('closing-error')?.textContent).toContain('company.closing.errors.invalid');
     // A refused day is not undone by reading again.
     expect(q('closing-retry')).toBeNull();
+  });
+
+  it('says the rule a day broke under the day, with its own day, which typing another takes away', async () => {
+    await open({ closedThrough: '2026-09-30', writable: true });
+    api.closeThrough.mockRejectedValue(
+      new ClosingRefused('invalid', [
+        { field: 'closedThrough', reason: 'on_or_before', params: { day: '2026-10-14' } },
+      ]),
+    );
+
+    await closeThrough('2026-10-15');
+
+    expect(q('closing-day-error')?.textContent?.trim()).toMatch(
+      /^Date refusée : le .*14.* au plus tard\.$/,
+    );
+    expect(q('closing-error')).toBeNull();
+
+    const input = q('closing-day') as HTMLInputElement;
+    input.value = '2026-10-13';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+    expect(q('closing-day-error')).toBeNull();
   });
 
   it('says the closing could not be read, and reads it again on « Réessayer »', async () => {

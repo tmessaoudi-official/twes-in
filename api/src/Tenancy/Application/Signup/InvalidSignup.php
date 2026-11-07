@@ -12,4 +12,9 @@ namespace App\Tenancy\Application\Signup;
 /** A finish the platform cannot honour: a country with no fiscal preset, a time zone that does not exist. */
 final class InvalidSignup extends \DomainException
 {
+    /** @param string $field what the form names that is refused: `countryCode`, `timezone` */
+    public function __construct(string $message, public readonly string $field)
+    {
+        parent::__construct($message);
+    }
 }

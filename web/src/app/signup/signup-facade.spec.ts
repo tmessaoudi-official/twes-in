@@ -70,8 +70,7 @@ describe('SignupFacade', () => {
     api.complete.mockResolvedValue({ companyName: 'Nouvelle Société', companyStatus: 'pending' });
 
     expect(await facade.complete('a-token', details)).toEqual({
-      companyName: 'Nouvelle Société',
-      companyStatus: 'pending',
+      kept: { companyName: 'Nouvelle Société', companyStatus: 'pending' },
     });
 
     expect(facade.completed()?.companyStatus).toBe('pending');
@@ -85,5 +84,15 @@ describe('SignupFacade', () => {
 
     expect(facade.completed()).toBeNull();
     expect(facade.error()).toBe('refused');
+  });
+
+  it('hands the form the fields a finish was refused on, saying nothing around it', async () => {
+    const refusal = { field: 'companyName', reason: 'company_name_taken', params: {} };
+    api.complete.mockRejectedValue(new SignupRefused('refused', [refusal]));
+
+    expect(await facade.complete('a-token', details)).toEqual({ refused: [refusal] });
+
+    expect(facade.completed()).toBeNull();
+    expect(facade.error()).toBeNull();
   });
 });

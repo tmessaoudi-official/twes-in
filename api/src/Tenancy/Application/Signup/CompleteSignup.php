@@ -76,10 +76,10 @@ final readonly class CompleteSignup implements DeclaresAuditActions
         $signup = $this->links->usable($request->rawToken) ?? throw new SignupNotUsable('That signup link cannot be used.');
 
         if (!$this->presets->has($request->countryCode)) {
-            throw new InvalidSignup(\sprintf('countryCode: there is no fiscal preset for %s, so a company there could not invoice.', $request->countryCode));
+            throw new InvalidSignup(\sprintf('There is no fiscal preset for %s, so a company there could not invoice.', $request->countryCode), 'countryCode');
         }
         if (!\in_array($request->timezone, \DateTimeZone::listIdentifiers(), true)) {
-            throw new InvalidSignup(\sprintf('timezone: %s is not a time zone.', $request->timezone));
+            throw new InvalidSignup(\sprintf('%s is not a time zone.', $request->timezone), 'timezone');
         }
         if (null !== $this->companies->ofName($request->companyName)) {
             throw new CompanyNameTaken(\sprintf('A company named "%s" already exists.', $request->companyName));

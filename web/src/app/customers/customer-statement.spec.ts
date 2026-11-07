@@ -231,6 +231,9 @@ describe('CustomerStatementView', () => {
 
     expect(text(el, 'statement-error')).toBe('Période refusée.');
     expect(el.querySelector('[data-testid="statement-table"]')).toBeNull();
+    // Asking again, or opening the period's PDF, would meet the same refusal: the days are what to change.
+    expect(el.querySelector('[data-testid="statement-retry"]')).toBeNull();
+    expect(el.querySelector('[data-testid="statement-pdf"]')).toBeNull();
   });
 
   it('reads the period on screen again on « Réessayer »', async () => {

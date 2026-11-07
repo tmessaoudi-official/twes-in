@@ -2673,7 +2673,7 @@
       "active": "{{company}} is ready. Sign in to start.",
       "errors": {
         "not_usable": "That link is no longer valid. Ask for a new one from the sign-up page.",
-        "refused": "That was refused: the company name may already be taken, or the password has appeared in a data breach.",
+        "refused": "That was refused: check what is written, then try again.",
         "too_many": "Too many requests. {{retry}}",
         "network": "The server could not be reached."
       }

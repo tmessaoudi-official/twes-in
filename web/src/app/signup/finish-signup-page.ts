@@ -6,7 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { Select } from '../shared/form/select';
 import { countriesNamed } from '../shared/i18n/country-names';
 import { LanguageFacade } from '../shared/i18n/language-facade';
@@ -54,6 +56,8 @@ export class FinishSignupPage implements OnInit {
   protected readonly completed = this.signup.completed;
   protected readonly busy = this.signup.busy;
   protected readonly error = this.signup.error;
+  /** What the API refused, said under each field it names, a refusal no field takes on the form's own line. */
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
   protected readonly countries = computed(() => this.signup.availability()?.countries ?? []);
   /** Each country as every screen names it, in the order of those names. */
   protected readonly countryOptions = computed(() =>
@@ -101,12 +105,25 @@ export class FinishSignupPage implements OnInit {
       return;
     }
     const value = this.form.getRawValue();
-    await this.signup.complete(this.token(), {
-      displayName: typedText(value.displayName),
-      password: value.password,
-      companyName: typedText(value.companyName),
-      countryCode: value.countryCode,
-      timezone: typedText(value.timezone),
-    });
+    await this.step.run(
+      () =>
+        this.signup.complete(this.token(), {
+          displayName: typedText(value.displayName),
+          password: value.password,
+          companyName: typedText(value.companyName),
+          countryCode: value.countryCode,
+          timezone: typedText(value.timezone),
+        }),
+      // A name already taken is said under the company's name, a breached password under the password: the words
+      // say what to change there, and typing there takes them away.
+      (refusals) =>
+        refusals.filter((refusal) => {
+          const control = this.form.get(refusal.field);
+          if (control === null) return true;
+          control.setErrors({ refused: this.step.wordsOf(refusal) });
+          control.markAsTouched();
+          return false;
+        }),
+    );
   }
 }

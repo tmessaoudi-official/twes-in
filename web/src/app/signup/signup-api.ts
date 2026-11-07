@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   SignupSignupAvailability,
@@ -15,9 +15,15 @@ import type {
   SignupError,
 } from './signup-types';
 import { refusedFor } from '../shared/errors/said-already';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 
+/** Why a call was refused, and the fields a finish was refused on, for the form to say under each. */
 export class SignupRefused extends Error {
-  constructor(readonly code: SignupError) {
+  constructor(
+    readonly code: SignupError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -26,6 +32,7 @@ export class SignupRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class SignupApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   async availability(): Promise<SignupAvailability> {
     return this.guard(async () => {
@@ -65,7 +72,10 @@ export class SignupApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new SignupRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new SignupRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

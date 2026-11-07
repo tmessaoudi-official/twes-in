@@ -44,7 +44,7 @@ final readonly class StatementOfAccount
         $to ??= $this->account->today($company);
         $from ??= $to->modify('first day of january this year');
         if ($from > $to) {
-            throw new InvalidStatementPeriod('The period ends before it starts.');
+            throw new InvalidStatementPeriod('The period ends before it starts.', $from->format('Y-m-d'));
         }
 
         $scale = $this->scales->of($company->getCurrency());

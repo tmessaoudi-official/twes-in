@@ -12,13 +12,13 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Shared\Domain\Service\WrittenDay;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Closing\ClosePeriod;
 use App\Tenancy\Domain\Exception\InvalidClosing;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyClosingResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<CompanyClosingResource, CompanyClosingResource> */
 final readonly class ClosePeriodProcessor implements ProcessorInterface
@@ -32,13 +32,13 @@ final readonly class ClosePeriodProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
         $day = WrittenDay::parsed((string) $data->closedThrough, zone: new \DateTimeZone('UTC'));
         if (null === $day) {
-            throw new UnprocessableEntityHttpException('closedThrough: a day written YYYY-MM-DD.');
+            throw DomainRule::refused('closedThrough', 'A day written YYYY-MM-DD.', 'invalid_value');
         }
 
         try {
             $this->close->handle($company, $day, $this->guard->account()->getId());
         } catch (InvalidClosing $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused('closedThrough', $refused->getMessage(), $refused->reason, ['day' => $refused->day], $refused);
         }
 
         return CompanyClosingResource::of($company, true);

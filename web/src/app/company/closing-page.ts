@@ -16,12 +16,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { runAction } from '../shared/actions/run-action';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { revealInvalid } from '../shared/form/reveal-invalid';
 import { todayIn } from '../shared/i18n/format';
 import { DayPipe } from '../shared/i18n/format-pipes';
@@ -63,6 +65,8 @@ export class ClosingPage implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
+  /** The words of a rule the day broke, its own day in the reader's format, said under the day. */
+  private readonly words = new FormStep(inject(TranslateService), inject(RefusalFigures));
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly closing = signal<CompanyClosing | null>(null);
@@ -130,7 +134,19 @@ export class ClosingPage implements OnInit {
       this.form.reset();
       this.feedback.effect('company.closing.closed', {}, 'definitif');
     } catch (error) {
-      this.requests.refuse(error);
+      // A day not before today or before the one closed is said under the day, with the day it may be at the latest
+      // or at the earliest; typing another takes the words away.
+      const refusal =
+        error instanceof ClosingRefused
+          ? error.refusals.find((each) => each.field === 'closedThrough')
+          : undefined;
+      if (refusal === undefined) {
+        this.requests.refuse(error);
+      } else {
+        const control = this.form.controls.day;
+        control.setErrors({ refused: this.words.wordsOf(refusal) });
+        control.markAsTouched();
+      }
     } finally {
       this.busy.set(false);
     }

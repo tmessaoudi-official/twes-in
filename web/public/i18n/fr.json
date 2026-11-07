@@ -2673,7 +2673,7 @@
       "active": "{{company}} est prête. Connectez-vous pour commencer.",
       "errors": {
         "not_usable": "Ce lien n’est plus valable. Demandez-en un nouveau depuis la page d’inscription.",
-        "refused": "Refusé : le nom de l’entreprise est peut-être déjà pris, ou le mot de passe est apparu dans une fuite de données.",
+        "refused": "Refusé : vérifiez ce qui est écrit, puis recommencez.",
         "too_many": "Trop de demandes. {{retry}}",
         "network": "Le serveur est injoignable."
       }

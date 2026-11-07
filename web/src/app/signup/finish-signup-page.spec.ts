@@ -19,6 +19,9 @@ import { provideKnownPasswordRule } from '../shared/testing/password-rule';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: { company_name_taken: 'Ce nom est déjà pris : choisissez-en un autre.' },
+      },
       signup: {
         finish: {
           title: 'Terminer l’inscription',
@@ -79,7 +82,7 @@ describe('FinishSignupPage', () => {
     facade.complete.mockReset().mockImplementation(async () => {
       const done = { companyName: 'Nouvelle Société', companyStatus: 'pending' };
       completed.set(done);
-      return done;
+      return { kept: done };
     });
     await TestBed.configureTestingModule({
       imports: [FinishSignupPage],
@@ -165,6 +168,33 @@ describe('FinishSignupPage', () => {
     expect(query('signup-completed')).not.toBeNull();
     expect(query('signup-completed-pending')?.textContent).toContain('Nouvelle Société');
     expect(query<HTMLAnchorElement>('signup-login')?.getAttribute('href')).toBe('/login');
+  });
+
+  it('says a refused finish under the field it names, which the next keystroke clears', async () => {
+    facade.complete.mockResolvedValueOnce({
+      refused: [{ field: 'companyName', reason: 'company_name_taken', params: {} }],
+    });
+    const { fixture, query } = await render();
+    type(query<HTMLInputElement>('signup-name')!, 'Nadia');
+    type(query<HTMLInputElement>('signup-password')!, 'a-long-enough-password');
+    type(query<HTMLInputElement>('signup-company')!, 'Nouvelle Société');
+    (
+      fixture.componentInstance as unknown as {
+        form: { controls: { countryCode: { setValue(v: string): void } } };
+      }
+    ).form.controls.countryCode.setValue('TN');
+    query<HTMLFormElement>('signup-finish-form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(query('signup-company-error')?.textContent?.trim()).toBe(
+      'Ce nom est déjà pris : choisissez-en un autre.',
+    );
+    expect(query('signup-finish-error')).toBeNull();
+
+    type(query<HTMLInputElement>('signup-company')!, 'Nouvelle Société Sfax');
+    fixture.detectChanges();
+    expect(query('signup-company-error')).toBeNull();
   });
 
   it('refuses a short password before asking', async () => {

@@ -210,6 +210,7 @@ final class CustomerStatementTest extends ApiTestCase
         $this->signedIn(['customer.read', 'invoice.read']);
         $this->client->request('GET', $this->path().'/pdf?from=2026-05-02&to=2026-05-01');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'to', 'reason' => 'on_or_after', 'params' => ['day' => '2026-05-02']]], $this->refusals(), 'the file is refused on its last day, as the statement is');
 
         $this->client->request('GET', $this->companyPath().'/customers/'.self::ABSENT.'/statement/pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -262,6 +263,10 @@ final class CustomerStatementTest extends ApiTestCase
     public function testAPeriodThatIsNotOneIsRefused(): void
     {
         $this->signedIn(['customer.read', 'invoice.read']);
+
+        $this->getJson($this->path().'?from=2026-05-02&to=2026-05-01');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'to', 'reason' => 'on_or_after', 'params' => ['day' => '2026-05-02']]], $this->refusals(), 'a period ends on its first day at the earliest');
 
         foreach (['?from=yesterday', '?to=2026-13-40', '?from=2026-05-02&to=2026-05-01'] as $query) {
             $this->getJson($this->path().$query);

@@ -455,11 +455,11 @@ class Company
     {
         $asked = $day->format('Y-m-d');
         if ($asked >= $today->format('Y-m-d')) {
-            throw new InvalidClosing(\sprintf('closedThrough: the books close through a day before today, %s, which is still being worked.', $today->format('Y-m-d')));
+            throw new InvalidClosing(\sprintf('The books close through a day before today, %s, which is still being worked.', $today->format('Y-m-d')), 'on_or_before', $today->modify('-1 day')->format('Y-m-d'));
         }
         $current = $this->closedThrough?->format('Y-m-d');
         if (null !== $current && $asked < $current) {
-            throw new InvalidClosing(\sprintf('closedThrough: the books are closed through %s, and a closed period never opens again.', $current));
+            throw new InvalidClosing(\sprintf('The books are closed through %s, and a closed period never opens again.', $current), 'on_or_after', $current);
         }
         if ($asked === $current) {
             return false;

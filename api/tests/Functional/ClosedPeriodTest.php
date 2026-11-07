@@ -62,7 +62,11 @@ final class ClosedPeriodTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->closingPath(), ['closedThrough' => $this->day(0)]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'today is still being worked');
-        self::assertStringStartsWith('closedThrough:', $this->detail());
+        self::assertSame([['propertyPath' => 'closedThrough', 'reason' => 'on_or_before', 'params' => ['day' => $this->day(-1)]]], $this->refusals(), 'yesterday at the latest');
+
+        $this->sendJson('PUT', $this->closingPath(), ['closedThrough' => '2026-13-45']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no such day');
+        self::assertSame([['propertyPath' => 'closedThrough', 'reason' => null, 'params' => []]], $this->refusals(), 'said on the day, by the day\'s own constraint');
 
         $this->sendJson('PUT', $this->closingPath(), ['closedThrough' => $this->day(-5)]);
         self::assertResponseIsSuccessful();
@@ -70,7 +74,7 @@ final class ClosedPeriodTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->closingPath(), ['closedThrough' => $this->day(-7)]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a closed period never opens again');
-        self::assertStringStartsWith('closedThrough:', $this->detail());
+        self::assertSame([['propertyPath' => 'closedThrough', 'reason' => 'on_or_after', 'params' => ['day' => $this->day(-5)]]], $this->refusals(), 'the day already closed at the earliest');
 
         $this->getJson($this->closingPath());
         self::assertSame($this->day(-5), $this->json()['closedThrough'] ?? null);

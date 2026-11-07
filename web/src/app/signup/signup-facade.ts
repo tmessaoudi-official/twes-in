@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable } from '@angular/core';
 import { SignupApi, SignupRefused } from './signup-api';
 import type {
@@ -72,12 +72,19 @@ export class SignupFacade {
     }, null);
   }
 
-  async complete(token: string, details: SignupDetails): Promise<SignupCompleted | null> {
-    return this.run(async () => {
-      const completed = await this.api.complete(token, details);
-      this.completedSignal.set(completed);
-      return completed;
-    }, null);
+  /**
+   * Makes the account and the company. A refusal naming fields (a company name taken, a password from a breach) is
+   * handed back for the form to say under each, and nothing is said around it; any other is the facade's error.
+   */
+  async complete(token: string, details: SignupDetails): Promise<FormAnswer<SignupCompleted>> {
+    return this.state.writeOrRefuse(
+      async () => {
+        const completed = await this.api.complete(token, details);
+        this.completedSignal.set(completed);
+        return completed;
+      },
+      (error) => (error instanceof SignupRefused ? error.refusals : []),
+    );
   }
 
   private async run<T>(call: () => Promise<T>, refused: T): Promise<T> {

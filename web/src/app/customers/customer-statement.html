@@ -38,21 +38,29 @@
       />
       <app-day-calendar-button matSuffix [field]="dayField" />
     </mat-form-field>
-    <a
-      mat-stroked-button
-      class="mt-1"
-      [href]="pdfUrl()"
-      target="_blank"
-      rel="noopener"
-      data-testid="statement-pdf"
-    >
-      <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
-      {{ 'customers.statement.pdf' | translate }}
-    </a>
+    <!-- A refused period's PDF is refused too: the days are what to change, as the line below says. -->
+    @if (error() !== 'invalid') {
+      <a
+        mat-stroked-button
+        class="mt-1"
+        [href]="pdfUrl()"
+        target="_blank"
+        rel="noopener"
+        data-testid="statement-pdf"
+      >
+        <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+        {{ 'customers.statement.pdf' | translate }}
+      </a>
+    }
   </div>
 
   @if (error(); as code) {
-    <app-read-failed testId="statement-error" retryTestId="statement-retry" (retry)="readAgain()">
+    <app-read-failed
+      testId="statement-error"
+      retryTestId="statement-retry"
+      [retryable]="code !== 'invalid'"
+      (retry)="readAgain()"
+    >
       {{ 'customers.statement.errors.' + code | translate }}
     </app-read-failed>
   }

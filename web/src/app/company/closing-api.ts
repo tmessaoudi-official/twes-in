@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   CompanyClosingCompanyClosingRead,
   CompanyClosingCompanyClosingWriteValidationCompanyClosingWrite as CompanyClosingWrite,
 } from '../api/types.gen';
 import { refusedFor } from '../shared/errors/said-already';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 
 /** The company's closed period: the last day no document is dated on or before, and whether the caller may close more. */
 export interface CompanyClosing {
@@ -19,9 +21,12 @@ export interface CompanyClosing {
 /** Why the API refused, as the page translates it: `invalid` is a day not before today or before the one closed. */
 export type ClosingError = 'network' | 'not_found' | 'invalid';
 
-/** Thrown when the API refuses; carries the code the page translates. */
+/** Thrown when the API refuses; carries the code the page translates, and the rule the day broke with its day. */
 export class ClosingRefused extends Error {
-  constructor(readonly code: ClosingError) {
+  constructor(
+    readonly code: ClosingError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -30,6 +35,7 @@ export class ClosingRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class ClosingApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   async read(companyId: string): Promise<CompanyClosing> {
     try {
@@ -51,7 +57,10 @@ export class ClosingApi {
         ),
       );
     } catch (error) {
-      throw refusedFor(error, new ClosingRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new ClosingRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

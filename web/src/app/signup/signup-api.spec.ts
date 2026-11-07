@@ -3,6 +3,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { SignupApi, SignupRefused } from './signup-api';
 import type { SignupDetails } from './signup-types';
 
@@ -20,7 +22,11 @@ describe('SignupApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
+      ],
     });
     api = TestBed.inject(SignupApi);
     http = TestBed.inject(HttpTestingController);
@@ -82,5 +88,26 @@ describe('SignupApi', () => {
       http.expectOne('/api/signup').flush(null, { status, statusText: 'x' });
       await expect(pending).rejects.toEqual(new SignupRefused(code as SignupRefused['code']));
     }
+  });
+
+  it('hands back the fields a finish was refused on, their words opened first', async () => {
+    const finished = api.complete('a-token', details);
+    http.expectOne('/api/signup/a-token/complete').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'companyName',
+            message: 'A company named "Nouvelle Société" already exists.',
+            payload: { reason: 'company_name_taken', params: [] },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(finished).rejects.toMatchObject({
+      code: 'refused',
+      refusals: [{ field: 'companyName', reason: 'company_name_taken', params: {} }],
+    });
+    expect(TestBed.inject(TextsParts).open).toHaveBeenCalledWith(FORM_REFUSAL_TEXTS);
   });
 });

@@ -18,6 +18,7 @@ use App\Module\Invoices\Application\Statement\StatementOfAccount;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\CustomerStatementResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Domain\Service\WrittenDay;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -45,7 +46,7 @@ final readonly class CustomerStatementProvider implements ProviderInterface
         } catch (CustomerNotFound $absent) {
             throw new NotFoundHttpException('No such customer.', $absent);
         } catch (InvalidStatementPeriod $refused) {
-            throw new UnprocessableEntityHttpException('to: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused('to', $refused->getMessage(), 'on_or_after', ['day' => $refused->from], $refused);
         }
     }
 

@@ -283,6 +283,21 @@ final class SignupTest extends ApiTestCase
         $this->postJson('/api/signup/'.$token.'/complete', $this->finish());
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'companyName', 'reason' => 'company_name_taken', 'params' => []]], $this->refusals(), 'said under the company name, which is what to change');
+    }
+
+    public function testACountryOrAZoneTheInstallationCannotServeIsRefusedOnItsField(): void
+    {
+        $this->openSignup();
+        $token = $this->requestALink();
+
+        $this->postJson('/api/signup/'.$token.'/complete', $this->finish(['countryCode' => 'ZZ']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'countryCode', 'reason' => 'invalid_value', 'params' => []]], $this->refusals(), 'a country no fiscal preset serves');
+
+        $this->postJson('/api/signup/'.$token.'/complete', $this->finish(['timezone' => 'Mars/Olympus']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'timezone', 'reason' => 'invalid_value', 'params' => []]], $this->refusals(), 'a zone that does not exist');
     }
 
     public function testClosingSignupClosesTheLinksAlreadySent(): void

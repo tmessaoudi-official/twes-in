@@ -44,7 +44,11 @@
             autocomplete="name"
             data-testid="signup-name"
           />
-          @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+          @if (form.controls.displayName.getError('refused'); as refused) {
+            <mat-error data-testid="signup-name-error">{{
+              refused.key | translate: refused.params
+            }}</mat-error>
+          } @else if (form.controls.displayName.touched && form.controls.displayName.invalid) {
             <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
           }
         </mat-form-field>
@@ -69,7 +73,11 @@
           @if (passwordMin(); as min) {
             <mat-hint>{{ 'signup.finish.password_hint' | translate: { min } }}</mat-hint>
           }
-          @if (form.controls.password.touched && form.controls.password.invalid) {
+          @if (form.controls.password.getError('refused'); as refused) {
+            <mat-error data-testid="signup-password-error">{{
+              refused.key | translate: refused.params
+            }}</mat-error>
+          } @else if (form.controls.password.touched && form.controls.password.invalid) {
             <mat-error data-testid="signup-password-error">{{
               (form.controls.password.hasError('minlength')
                 ? 'signup.finish.password_too_short'
@@ -93,7 +101,11 @@
             autocomplete="organization"
             data-testid="signup-company"
           />
-          @if (form.controls.companyName.touched && form.controls.companyName.invalid) {
+          @if (form.controls.companyName.getError('refused'); as refused) {
+            <mat-error data-testid="signup-company-error">{{
+              refused.key | translate: refused.params
+            }}</mat-error>
+          } @else if (form.controls.companyName.touched && form.controls.companyName.invalid) {
             <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
           }
         </mat-form-field>
@@ -115,7 +127,11 @@
           [required]="true"
           [options]="countryOptions()"
         />
-        @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
+        @if (form.controls.countryCode.getError('refused'); as refused) {
+          <span role="alert" class="px-2 text-xs text-error" data-testid="signup-country-error">{{
+            refused.key | translate: refused.params
+          }}</span>
+        } @else if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
           <span role="alert" class="px-2 text-xs text-error">{{
             'signup.finish.required' | translate
           }}</span>
@@ -134,13 +150,21 @@
             formControlName="timezone"
             data-testid="signup-timezone"
           />
-          @if (form.controls.timezone.touched && form.controls.timezone.invalid) {
+          @if (form.controls.timezone.getError('refused'); as refused) {
+            <mat-error data-testid="signup-timezone-error">{{
+              refused.key | translate: refused.params
+            }}</mat-error>
+          } @else if (form.controls.timezone.touched && form.controls.timezone.invalid) {
             <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
           }
         </mat-form-field>
       </div>
 
-      @if (error(); as code) {
+      @if (step.unplaced(); as said) {
+        <p role="alert" class="twes-auth-error" data-testid="signup-finish-error">
+          {{ said.key | translate: said.params }}
+        </p>
+      } @else if (error(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="signup-finish-error">
           {{ 'signup.finish.errors.' + code | translate: { retry: budget.retry() } }}
         </p>
