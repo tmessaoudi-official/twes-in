@@ -86,6 +86,15 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
         return $this->current()->read($id);
     }
 
+    /**
+     * A new session's id, made as PHP makes one and as Symfony's handlers do. PHP itself asks Symfony's proxy, which
+     * wraps this handler, so this one answers only what PHP 8.6 requires a session handler to declare; it opens nothing.
+     */
+    public function create_sid(): string
+    {
+        return session_create_id() ?: throw new \RuntimeException('Unable to create a session ID.');
+    }
+
     public function validateId(#[\SensitiveParameter] string $id): bool
     {
         return $this->current()->validateId($id);
