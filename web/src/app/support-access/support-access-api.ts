@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 /** Whether the company is open to support, and the windows an owner may open it for. */
 export interface SupportAccessState {
@@ -74,8 +75,11 @@ function refusal(error: unknown): SupportAccessRefused {
   }
   if (error.status === 404) return refusedFor(error, new SupportAccessRefused('not_found'));
   const body: unknown = error.error;
+  // The act refused is an `{error}`; the length or what is wrong refused, a violation on its field.
   const code =
-    typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['error'] : null;
+    (typeof body === 'object' && body !== null
+      ? (body as Record<string, unknown>)['error']
+      : null) ?? refusalsIn(body)[0]?.reason;
   return refusedFor(
     error,
     new SupportAccessRefused(

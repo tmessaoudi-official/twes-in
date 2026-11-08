@@ -32,6 +32,7 @@ import {
   successToasts,
 } from '../shared/testing/feedback';
 import type { TextDialogData } from './text-dialog';
+import type { RefusedFilter } from '../shared/errors/filter-refused';
 import { TextsFacade } from './texts-facade';
 import { TextsPage } from './texts-page';
 import type { TextRow } from './texts-types';
@@ -69,6 +70,7 @@ describe('TextsPage', () => {
     total: signal(0),
     busy: signal(false),
     failed: signal(false),
+    readRefusedFilter: signal<false | RefusedFilter>(false),
     load: vi.fn().mockResolvedValue(undefined),
     write: vi.fn(),
     reset: vi.fn(),
@@ -142,6 +144,17 @@ describe('TextsPage', () => {
     if (shown === undefined) throw new Error('No row shown');
     return shown;
   }
+
+  // A switch the catalogue refuses is named by the filter a person set it from, which offers to clear that one alone.
+  it('names the filter the catalogue refused the read for, by the parameter it was sent as', async () => {
+    await open();
+    facade.failed.set(true);
+    facade.readRefusedFilter.set({ asked: ['forms'] });
+    fixture.detectChanges();
+    const shown = fixture.nativeElement as HTMLElement;
+    expect(shown.querySelector('[data-testid="list-filter-refused-clear-one"]')).not.toBeNull();
+    expect(shown.querySelector('[data-testid="list-retry"]')).toBeNull();
+  });
 
   it('reads the company’s texts in the screen’s language, the list’s words and filters as the catalogue’s', async () => {
     await open();

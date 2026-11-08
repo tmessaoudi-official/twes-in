@@ -112,6 +112,29 @@ d=$(tree); add "$d" "<?php
 return new JsonResponse(['error' => \$refused->reason], 409);" SaidMissing.php
 out=$(run "$d"); check "a comment naming a class the tree does not hold is refused" $? 1 "$out" "SaidMissing.php:3: Missing"
 
+# An exception built from an enum carries the enum's codes besides its own constants: TextOverrideRefused::because
+# (TextRefusal) answered five codes no comment named. The class's comment names the enum too, which resolves to its cases.
+problem() {
+  cat > "$1/api/src/Things/Application/ThingProblem.php" <<'PHP'
+<?php
+enum ThingProblem: string
+{
+    case Late = 'thing_late';
+}
+PHP
+  sed -i 's/^    public const int LIMIT = 3;$/    public const int LIMIT = 3;\n\n    public static function because(ThingProblem $problem): self { return new self(); }/' "$1/api/src/Things/Application/ThingRefused.php"
+}
+d=$(tree); problem "$d"; printf 'thing_late act the thing came late\n' >> "$d/scripts/gates/error-codes.allowed"
+out=$(run "$d"); check "a class built from an enum whose comment names the class alone is refused, the enum named" $? 1 "$out" "ThingRefused is built from ThingProblem"
+
+d=$(tree); problem "$d"; printf 'thing_late act the thing came late\n' >> "$d/scripts/gates/error-codes.allowed"
+sed -i 's|// error-codes: ThingRefused$|// error-codes: ThingRefused ThingProblem|' "$d/api/src/Things/Infrastructure/Http/ThingsController.php"
+out=$(run "$d"); check "naming the enum too passes, its cases read as codes" $? 0 "$out" "OK — 4 "
+
+d=$(tree); problem "$d"
+sed -i 's|// error-codes: ThingRefused$|// error-codes: ThingRefused ThingProblem|' "$d/api/src/Things/Infrastructure/Http/ThingsController.php"
+out=$(run "$d"); check "an enum's case is held to the list like any code" $? 1 "$out" "thing_late is no code"
+
 d=$(tree); add "$d" "<?php
 // It once answered new JsonResponse(['error' => 'brand_new']), a body of its own.
 /* new JsonResponse(['error' => 'brand_new']) */" Comment.php

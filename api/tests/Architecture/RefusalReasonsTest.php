@@ -120,6 +120,12 @@ final class RefusalReasonsTest extends KernelTestCase
         'role_gone' => 'web/src/app/invitation/invitation-api.ts',
         // A code the authenticator does not give now, said by the two-factor screens that asked for it.
         'invalid_code' => 'web/src/app/auth/auth-facade.ts',
+        // What the erasure is asked to take, said by the erasure page beside the parts it offers.
+        'no_part' => 'web/src/app/data-erasure/data-erasure-api.ts',
+        'unknown_part' => 'web/src/app/data-erasure/data-erasure-api.ts',
+        // The support window's length and what is wrong, said by the owner's support page beside its two fields.
+        'support_window' => 'web/src/app/support-access/support-access-api.ts',
+        'support_reason' => 'web/src/app/support-access/support-access-api.ts',
         // A document refused its number is said wherever it was issued from, by the one interceptor saying numbering.
         'no_numbering_series' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',
         'series_number_taken' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',

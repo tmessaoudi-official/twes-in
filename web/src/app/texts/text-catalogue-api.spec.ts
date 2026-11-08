@@ -8,6 +8,11 @@ import { demoAnswer } from '../shared/testing/said-answers';
 import { TextCatalogueApi } from './text-catalogue-api';
 import { TextRefused } from './texts-types';
 
+/** A value sent refused, as API Platform writes the violation on its field. */
+function violation(propertyPath: string, reason: string): object {
+  return { violations: [{ propertyPath, message: reason, payload: { reason } }] };
+}
+
 describe('TextCatalogueApi', () => {
   let http: HttpTestingController;
   let api: TextCatalogueApi;
@@ -88,18 +93,25 @@ describe('TextCatalogueApi', () => {
     const placeholders = api.write(company, 'fr', title, 'Facture', 1);
     http
       .expectOne('/api/companies/c1/texts/fr/pdf/invoice.title')
-      .flush(
-        { error: 'placeholders', detail: 'Keep %number%.' },
-        { status: 422, statusText: 'Unprocessable Entity' },
-      );
+      .flush(violation('value', 'placeholders'), {
+        status: 422,
+        statusText: 'Unprocessable Entity',
+      });
     await expect(placeholders).rejects.toEqual(new TextRefused('placeholders'));
 
     // A mail's text whose forms no count would choose from, which would fail when the mail is sent.
     const forms = api.write(company, 'fr', title, '{0} Facture|{1} Factures', 1);
     http
       .expectOne('/api/companies/c1/texts/fr/pdf/invoice.title')
-      .flush({ error: 'forms', detail: 'x' }, { status: 422, statusText: 'Unprocessable Entity' });
+      .flush(violation('value', 'forms'), { status: 422, statusText: 'Unprocessable Entity' });
     await expect(forms).rejects.toEqual(new TextRefused('forms'));
+
+    // A text that cannot be worded otherwise is the act's refusal, not the value's.
+    const locked = api.write(company, 'fr', title, 'Facture', 1);
+    http
+      .expectOne('/api/companies/c1/texts/fr/pdf/invoice.title')
+      .flush({ error: 'locked', detail: 'x' }, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(locked).rejects.toEqual(new TextRefused('locked'));
 
     const since = api.write(company, 'fr', title, 'Facture', 1);
     http
@@ -115,10 +127,10 @@ describe('TextCatalogueApi', () => {
     const unknown = api.write(company, 'fr', title, 'Facture', 1);
     http
       .expectOne('/api/companies/c1/texts/fr/pdf/invoice.title')
-      .flush(
-        { error: 'invalid_body', detail: 'x' },
-        { status: 422, statusText: 'Unprocessable Entity' },
-      );
+      .flush(violation('value', 'invalid_value'), {
+        status: 422,
+        statusText: 'Unprocessable Entity',
+      });
     await expect(unknown).rejects.not.toBeInstanceOf(TextRefused);
 
     const demo = api.reset(company, 'fr', title);

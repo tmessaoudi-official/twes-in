@@ -28,12 +28,12 @@
     {{ (installation() ? 'texts.intro_installation' : 'texts.intro_company') | translate }}
   </p>
 
-  <!-- filter-refusal: the texts' reader checks no filter, so a list of texts is never refused one -->
   <app-data-list
     [descriptor]="list()"
     [rows]="views()"
     [loading]="loading()"
     [failed]="failed()"
+    [refusedFilter]="refusedFilter()"
     [total]="total()"
     [rowTestId]="rowTestId"
     (queryChange)="onQuery($event)"

@@ -69,9 +69,12 @@ final class TextCatalogueTest extends ApiTestCase
         self::assertSame(\array_slice($firstFour, 2), $this->found(), 'the second page of two is the third and fourth');
         self::assertSame(2, $this->json()['page'] ?? null);
         self::assertGreaterThan(4, $this->json()['total'] ?? 0);
-        $this->getJson($catalogue.'?itemsPerPage=100000');
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_query', $this->json()['error'] ?? null);
+        // An address the list does not read is refused on the filter it names, as every list refuses one.
+        foreach (['itemsPerPage=100000' => 'itemsPerPage', 'page=0' => 'page', 'changed=maybe' => 'changed', 'forms=2' => 'forms'] as $asked => $filter) {
+            $this->getJson($catalogue.'?'.$asked);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $asked);
+            self::assertSame(['filter_refused', []], $this->refusalOf($filter), $asked);
+        }
         $this->getJson("/api/companies/{$shop->getId()}/texts/de/catalogue");
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 

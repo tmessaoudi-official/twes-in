@@ -60,6 +60,7 @@ final readonly class OverrideText implements DeclaresAuditActions
      * Stores the text over the version the caller read, 0 meaning it read none at that level.
      *
      * @throws TextOverrideRefused
+     * @throws TextValueRefused
      * @throws RecordChanged
      */
     public function override(?Company $company, TextAddress $address, string $value, int $version, ?Uuid $actorUserId): TextOverride
@@ -67,12 +68,12 @@ final readonly class OverrideText implements DeclaresAuditActions
         $original = $this->original($address);
         $refusal = $this->rules->refusal($address->syntax(), $original, $value);
         if (null !== $refusal) {
-            throw TextOverrideRefused::because($refusal, $address);
+            throw new TextValueRefused($refusal, $address);
         }
         // Its code hands such a text the count that chooses a form, in every language and whatever the original holds;
         // written so that a count chooses none, it would throw when the mail is sent, long after this save said nothing.
         if (CountedTexts::counted($address) && !$this->forms->everyCountChooses($value, $address->language)) {
-            throw TextOverrideRefused::because(TextRefusal::Forms, $address);
+            throw new TextValueRefused(TextRefusal::Forms, $address);
         }
 
         return $this->transactions->run(function () use ($company, $address, $value, $original, $version, $actorUserId): TextOverride {

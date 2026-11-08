@@ -15,9 +15,11 @@ use App\Tenancy\Domain\Model\Company;
 use App\Texts\Application\OverrideText;
 use App\Texts\Application\ShippedTexts;
 use App\Texts\Application\TextOverrideRefused;
+use App\Texts\Application\TextValueRefused;
 use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\Repository\TextOverrideRepository;
 use App\Texts\Domain\ValueObject\TextAddress;
+use App\Texts\Domain\ValueObject\TextRefusal;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -90,8 +92,10 @@ final class OverrideTextTest extends KernelTestCase
         try {
             $this->overrideText()->override($company, $address, $value, 0, null);
             self::fail('stored a text it should refuse as '.$reason);
-        } catch (TextOverrideRefused $refused) {
+        } catch (TextOverrideRefused|TextValueRefused $refused) {
             self::assertSame($reason, $refused->reason);
+            // The value typed refused is a refusal of its own, which the API answers on the field; the address's are the act's.
+            self::assertSame(null !== TextRefusal::tryFrom($reason), $refused instanceof TextValueRefused, $reason);
         }
         self::assertSame(0, Rows::int($this->db()->fetchOne('SELECT count(*) FROM text_override WHERE company_id = ?', [$company->getId()->toRfc4122()])));
     }

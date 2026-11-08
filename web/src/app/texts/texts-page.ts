@@ -27,25 +27,8 @@ import type { EmptyState, ListDescriptor, ListQuery } from '../shared/list/list-
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { TextDialog, type TextDialogData } from './text-dialog';
 import { TextsFacade } from './texts-facade';
-import {
-  marksOf,
-  placeOf,
-  type SavedText,
-  type TextLevel,
-  TEXT_PLACES,
-  type TextRow,
-} from './texts-types';
-
-/** A text as the list shows it: where it is read, in the screen's words, beside its wording at each level. */
-interface TextView {
-  readonly id: string;
-  readonly where: string;
-  readonly key: string;
-  readonly original: string;
-  readonly installation: string | null;
-  readonly company: string | null;
-  readonly row: TextRow;
-}
+import { textSearch, textsListOf, type TextView } from './texts-list';
+import { marksOf, placeOf, type SavedText, type TextLevel, type TextRow } from './texts-types';
 
 /** The kind of live change a text worded otherwise is told by (the API's `OverrideText::ENTITY_TYPE`). */
 const TEXT_CHANGES = ['text'];
@@ -87,6 +70,7 @@ export class TextsPage implements OnInit {
 
   protected readonly loading = this.facade.busy;
   protected readonly failed = this.facade.failed;
+  protected readonly refusedFilter = this.facade.readRefusedFilter;
   protected readonly total = this.facade.total;
   protected readonly views = computed(() => {
     this.screen();
@@ -102,74 +86,8 @@ export class TextsPage implements OnInit {
   });
   protected readonly rowTestId = (view: TextView): string => `text-${view.row.domain}-${view.key}`;
 
-  // The four columns the catalogue's search reads (TextCatalogue::says), so the list draws its search box over them.
   protected readonly list = computed<ListDescriptor<TextView>>(() => ({
-    id: this.installation() ? 'platform-texts' : 'company-texts',
-    rowId: (view) => view.id,
-    pageSizes: [25, 50, 100, 200],
-    columns: [
-      { id: 'where', label: 'texts.columns.where', value: (view) => view.where, width: 140 },
-      {
-        id: 'original',
-        label: 'texts.columns.original',
-        value: (view) => view.original,
-        hideable: false,
-        filterable: true,
-        wraps: true,
-        width: 240,
-      },
-      {
-        id: 'installation',
-        label: this.installation() ? 'texts.columns.yours' : 'texts.columns.installation',
-        value: (view) => view.installation,
-        filterable: true,
-        wraps: true,
-        width: 240,
-        priority: this.installation() ? 'high' : 'normal',
-      },
-      ...(this.installation()
-        ? []
-        : [
-            {
-              id: 'company',
-              label: 'texts.columns.yours',
-              value: (view: TextView) => view.company,
-              filterable: true,
-              wraps: true,
-              width: 240,
-              priority: 'high' as const,
-            },
-          ]),
-      {
-        id: 'key',
-        label: 'texts.columns.key',
-        value: (view) => view.key,
-        filterable: true,
-        defaultHidden: true,
-        priority: 'low',
-      },
-    ],
-    filters: [
-      {
-        id: 'place',
-        label: 'texts.filters.place',
-        value: (view) => placeOf(view.row.domain),
-        options: TEXT_PLACES.map((place) => ({ value: place, label: `texts.where.${place}` })),
-      },
-      {
-        id: 'changed',
-        label: 'texts.filters.changed',
-        // A text may hold both reasons, an old wording a release changed the original of.
-        value: (view) => [
-          ...(view.row.originalChanged ? ['changed'] : []),
-          ...(view.row.formsMissing ? ['forms'] : []),
-        ],
-        options: [
-          { value: 'changed', label: 'texts.filters.original_changed' },
-          { value: 'forms', label: 'texts.filters.forms_missing' },
-        ],
-      },
-    ],
+    ...textsListOf(this.installation()),
     actions: [
       {
         id: 'edit',
@@ -225,14 +143,7 @@ export class TextsPage implements OnInit {
     const level = this.levelNow();
     const last = this.last;
     if (level === null || last === null) return;
-    await this.facade.load(level, this.language(), {
-      words: last.query,
-      place: TEXT_PLACES.find((place) => place === last.filters['place']) ?? null,
-      changed: last.filters['changed'] === 'changed',
-      forms: last.filters['changed'] === 'forms',
-      page: last.pageIndex + 1,
-      itemsPerPage: last.pageSize,
-    });
+    await this.facade.load(level, this.language(), textSearch(last));
   }
 
   private levelNow(): TextLevel | null {

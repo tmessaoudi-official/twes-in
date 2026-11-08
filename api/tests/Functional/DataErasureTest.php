@@ -144,10 +144,10 @@ final class DataErasureTest extends ApiTestCase
 
         $this->postJson($this->path('data-erasures'), ['parts' => ['stock_map', 'nothing_of_the_kind']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['error' => 'unknown_part', 'part' => 'nothing_of_the_kind'], $this->json());
+        self::assertSame(['unknown_part', ['part' => 'nothing_of_the_kind']], $this->refusalOf('parts'));
         $this->postJson($this->path('data-erasures'), ['parts' => []]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('no_part', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['no_part', []], $this->refusalOf('parts'));
     }
 
     public function testErasingTakesThePartsAwayAtOnceAndUndoPutsBackEveryRowAsItWas(): void

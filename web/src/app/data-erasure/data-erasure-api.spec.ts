@@ -15,6 +15,11 @@ const ERASURE: Erasure = {
   kinds: ['venue_area'],
 };
 
+/** A value sent refused, as API Platform writes the violation on its field. */
+function violation(propertyPath: string, reason: string): object {
+  return { violations: [{ propertyPath, message: reason, payload: { reason } }] };
+}
+
 describe('DataErasureApi', () => {
   let api: DataErasureApi;
   let http: HttpTestingController;
@@ -62,6 +67,15 @@ describe('DataErasureApi', () => {
       .expectOne('/api/companies/c1/data-erasures')
       .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
     await expect(stepUp).rejects.toEqual(new ErasureRefused('step_up_required'));
+
+    // The parts chosen are what was sent: a refusal of them is a violation on `parts`.
+    for (const code of ['no_part', 'unknown_part'] as const) {
+      const parts = api.erase('c1', []);
+      http
+        .expectOne('/api/companies/c1/data-erasures')
+        .flush(violation('parts', code), { status: 422, statusText: 'Unprocessable Entity' });
+      await expect(parts).rejects.toEqual(new ErasureRefused(code));
+    }
 
     const conflict = api.undo('c1', 'e1');
     http

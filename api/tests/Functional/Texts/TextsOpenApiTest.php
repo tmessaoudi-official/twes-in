@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Texts;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
+use ApiPlatform\OpenApi\Model\MediaType;
+use ApiPlatform\OpenApi\Model\Response;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -42,8 +44,31 @@ final class TextsOpenApiTest extends KernelTestCase
         self::assertSame(['value', 'version'], self::plain($schemas['TextOverrideChange'])['required'] ?? null);
         self::assertSame(['value', 'original', 'version'], self::plain($schemas['TextOverride'])['required'] ?? null);
         self::assertSame(['error', 'detail'], self::plain($schemas['TextOverrideRefusal'])['required'] ?? null);
+        // A text that cannot be worded otherwise is the act's {error}; a wording refused, or a catalogue address the list
+        // does not read, is a violation on what was sent.
+        $refusalCode = self::plain(self::plain(self::plain($schemas['TextOverrideRefusal'])['properties'] ?? null)['error'] ?? null);
+        self::assertSame(['unknown_text', 'language', 'locked'], $refusalCode['enum'] ?? null);
+        $refusedWriting = self::said($company->getPut()->getResponses()['422'] ?? null);
+        self::assertStringContainsString('ConstraintViolation', $refusedWriting);
+        self::assertStringContainsString('TextOverrideRefusal', $refusedWriting);
+        $refusedAddress = self::said($paths->getPath('/api/companies/{companyId}/texts/{language}/catalogue')->getGet()->getResponses()['422'] ?? null);
+        self::assertStringContainsString('ConstraintViolation', $refusedAddress);
+        self::assertStringContainsString('filter_refused', $refusedAddress);
         self::assertSame(['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged', 'counted', 'formsMissing'], self::plain($schemas['TextCatalogueEntry'])['required'] ?? null);
         self::assertSame(['items', 'total', 'page', 'itemsPerPage'], self::plain($schemas['TextCataloguePage'])['required'] ?? null);
+    }
+
+    /** What a response says: its description and the schema of each media type, as one string. */
+    private static function said(mixed $response): string
+    {
+        self::assertInstanceOf(Response::class, $response);
+        $said = [$response->getDescription()];
+        foreach ($response->getContent() ?? [] as $media) {
+            self::assertInstanceOf(MediaType::class, $media);
+            $said[] = json_encode($media->getSchema(), \JSON_THROW_ON_ERROR);
+        }
+
+        return implode(' ', $said);
     }
 
     /** @return array<array-key, mixed> */

@@ -38,7 +38,10 @@ export class TextsFacade {
   readonly rows = computed(() => this.pageSignal().rows);
   readonly total = computed(() => this.pageSignal().total);
   readonly busy = this.state.busy;
-  readonly failed = computed(() => this.state.error() !== null);
+  /** Whether the list could not be read: a refused save does not count, nor does it make the list unreadable. */
+  readonly failed = this.state.readFailed;
+  /** The filter the API refused the last read for, which the list names with « Effacer ce filtre »; false when none. */
+  readonly readRefusedFilter = this.state.readRefusedFilter;
 
   async load(level: TextLevel, language: string, query: TextQuery): Promise<void> {
     const current = this.latest.next();

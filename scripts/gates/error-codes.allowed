@@ -44,8 +44,6 @@ owner_only act only an owner may do this
 not_closed_down act the company to reopen is not closed
 reopen_period_over act the company's reopening window is over
 support_read_only act support access only reads
-support_window moving the hours chosen are not a support window offered: a violation on hours
-support_reason moving the reason is too long: a violation on reason
 demo_refused act a demo account does not do this
 demo_off act the demo is switched off here
 demo_busy act every demo is in use: try again in the seconds it says
@@ -65,8 +63,6 @@ merge_alias act a record merged away cannot be a survivor
 merge_mismatch act the records to merge are not of one kind
 merge_refused act the survivor or the merged-away record is refused, its reason beside
 merge_transacted act the record merged away carries documents and stays
-no_part moving no part of the data was chosen to erase: a violation on parts
-unknown_part moving a part named is not one erased: a violation on parts
 erasure_pending act an erasure already waits
 erasure_final act the erasure's day is over
 erasure_conflict act the erasure collides with a change made since
@@ -85,8 +81,6 @@ import_undone act the import was already taken back
 import_final act the import's day is over: it stays
 
 # Texts
-invalid_body moving the text sent is not a value and a version: a violation on value
-invalid_query moving the texts list's page, size or switches are not ones read: violations on them
 unknown_text act the address names no text
 language act the language is not one the texts speak
 locked act this text is not changed by a company

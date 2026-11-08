@@ -35,6 +35,8 @@ import { PURCHASES_LIST, purchaseOrderSearch } from './purchases/purchase-order-
 import { PurchasesApi } from './purchases/purchases-api';
 import { QUOTES_LIST, quoteSearch } from './quotes/quote-forms';
 import { QuotesApi } from './quotes/quotes-api';
+import { TextCatalogueApi } from './texts/text-catalogue-api';
+import { textSearch, textsListOf } from './texts/texts-list';
 import { VENDORS_LIST, vendorSearch } from './vendors/vendor-forms';
 import { VendorsApi } from './vendors/vendors-api';
 import { rangeKey, refusedFilterOf } from './shared/list/list-filters';
@@ -121,6 +123,16 @@ const LISTS: readonly Paged[] = [
     name: 'quotes',
     descriptor: QUOTES_LIST as ListDescriptor<never>,
     read: (query) => TestBed.inject(QuotesApi).quotes('c1', quoteSearch(query)),
+  },
+  {
+    name: 'texts',
+    descriptor: textsListOf(false) as ListDescriptor<never>,
+    read: (query) =>
+      TestBed.inject(TextCatalogueApi).page(
+        { kind: 'company', companyId: 'c1' },
+        'fr',
+        textSearch(query),
+      ),
   },
   {
     name: 'vendors',

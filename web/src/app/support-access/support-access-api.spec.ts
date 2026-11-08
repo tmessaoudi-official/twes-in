@@ -5,6 +5,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { SupportAccessApi, SupportAccessRefused } from './support-access-api';
 
+/** A value sent refused, as API Platform writes the violation on its field. */
+function violation(propertyPath: string, reason: string): object {
+  return { violations: [{ propertyPath, message: reason, payload: { reason } }] };
+}
+
 describe('SupportAccessApi', () => {
   let api: SupportAccessApi;
   let http: HttpTestingController;
@@ -30,19 +35,23 @@ describe('SupportAccessApi', () => {
 
   // docs/SPEC.md § 7, the step-up list: opening the company to support waits for the owner's recent proof.
   it('names each refusal the page translates, the proof the API waits for among them', async () => {
-    for (const code of [
-      'owner_only',
-      'support_window',
-      'support_reason',
-      'step_up_required',
+    for (const code of ['owner_only', 'step_up_required'] as const) {
+      const refused = api.grant('c1', 24, null);
+      http
+        .expectOne('/api/companies/c1/support-access')
+        .flush({ error: code }, { status: 403, statusText: 'No' });
+      await expect(refused).rejects.toEqual(new SupportAccessRefused(code));
+    }
+
+    // The length and what is wrong are what was sent: a refusal of either is a violation on its field.
+    for (const [field, code] of [
+      ['hours', 'support_window'],
+      ['reason', 'support_reason'],
     ] as const) {
       const refused = api.grant('c1', 24, null);
       http
         .expectOne('/api/companies/c1/support-access')
-        .flush(
-          { error: code },
-          { status: code.startsWith('support_') ? 422 : 403, statusText: 'No' },
-        );
+        .flush(violation(field, code), { status: 422, statusText: 'No' });
       await expect(refused).rejects.toEqual(new SupportAccessRefused(code));
     }
 

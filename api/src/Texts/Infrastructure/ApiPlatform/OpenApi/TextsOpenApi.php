@@ -17,6 +17,8 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
+use App\Texts\Application\TextOverrideRefused;
+use App\Texts\Domain\ValueObject\TextRefusal;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /**
@@ -61,7 +63,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             'type' => 'object',
             'required' => ['error', 'detail'],
             'properties' => [
-                'error' => ['type' => 'string', 'enum' => ['invalid_body', 'unknown_text', 'language', 'locked', 'empty', 'too_long', 'placeholders', 'plural', 'forms'], 'description' => 'Why the text is refused; the screen words it.'],
+                'error' => ['type' => 'string', 'enum' => [TextOverrideRefused::UNKNOWN_TEXT, TextOverrideRefused::LANGUAGE, TextOverrideRefused::LOCKED], 'description' => 'Why the text cannot be worded otherwise; the screen words it.'],
                 'detail' => ['type' => 'string'],
             ],
         ]);
@@ -105,7 +107,10 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             '200' => $json('TextOverride', 'Kept'),
             '401' => new Response('Not signed in'),
             '409' => new Response('Saved by someone else since that version was read (/problems/record-changed)'),
-            '422' => $json('TextOverrideRefusal', 'Refused, with its reason'),
+            '422' => new Response(
+                \sprintf('A wording refused: a violation on value, its reason one of %s, or on value or version sent as neither a text nor a version (invalid_value); or a text that cannot be worded otherwise, {error}', implode(', ', array_column(TextRefusal::cases(), 'value'))),
+                new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['oneOf' => [['$ref' => '#/components/schemas/ConstraintViolation'], ['$ref' => '#/components/schemas/TextOverrideRefusal']]]))]),
+            ),
         ];
         $notSpoken = new Response('Not a language the screens speak');
 
@@ -117,7 +122,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             new Parameter('page', 'query', 'From 1', false, schema: ['type' => 'integer', 'minimum' => 1]),
             new Parameter('itemsPerPage', 'query', 'Up to app.texts.catalogue_page_max', false, schema: ['type' => 'integer', 'minimum' => 1]),
         ];
-        $badQuery = new Response('invalid_query');
+        $badQuery = new Response('A page, a page size or a switch the catalogue does not read: a violation on it, filter_refused, as every list answers', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/ConstraintViolation']))]));
 
         $paths = $openApi->getPaths();
         $paths->addPath('/api/texts/{language}', new PathItem(get: new Operation(

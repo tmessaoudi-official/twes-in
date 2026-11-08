@@ -22,6 +22,7 @@ use App\Erasure\Application\UnknownErasurePart;
 use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -53,7 +54,7 @@ final readonly class DataErasureController
     ) {
     }
 
-    #[Route('/api/companies/{companyId}/data-erasure', name: 'api_data_erasure_preview', methods: ['GET'])]
+    #[Route('/api/companies/{companyId}/data-erasure', name: 'api_data_erasure_preview', defaults: ['_api_respond' => true], methods: ['GET'])]
     public function preview(string $companyId): Response
     {
         $company = $this->company($companyId);
@@ -66,7 +67,7 @@ final readonly class DataErasureController
         });
     }
 
-    #[Route('/api/companies/{companyId}/data-erasures', name: 'api_data_erasure_erase', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/data-erasures', name: 'api_data_erasure_erase', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function erase(Request $request, string $companyId): Response
     {
         $company = $this->company($companyId);
@@ -79,7 +80,7 @@ final readonly class DataErasureController
         return $this->answer(fn (): Response => new JsonResponse($this->described($this->erase->handle($company, $this->guard->account()->getId(), $body['parts'] ?? null)), Response::HTTP_CREATED));
     }
 
-    #[Route('/api/companies/{companyId}/data-erasures/pending', name: 'api_data_erasure_pending', methods: ['GET'])]
+    #[Route('/api/companies/{companyId}/data-erasures/pending', name: 'api_data_erasure_pending', defaults: ['_api_respond' => true], methods: ['GET'])]
     public function pending(string $companyId): Response
     {
         $company = $this->company($companyId);
@@ -91,7 +92,7 @@ final readonly class DataErasureController
         });
     }
 
-    #[Route('/api/companies/{companyId}/data-erasures/{erasureId}/undo', name: 'api_data_erasure_undo', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/data-erasures/{erasureId}/undo', name: 'api_data_erasure_undo', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function undo(string $companyId, string $erasureId): Response
     {
         $company = $this->company($companyId);
@@ -114,10 +115,10 @@ final readonly class DataErasureController
             return new JsonResponse(['error' => 'owner_only'], Response::HTTP_FORBIDDEN);
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
-        } catch (NoPartChosen) {
-            return new JsonResponse(['error' => 'no_part'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (NoPartChosen $none) {
+            throw DomainRule::refused('parts', 'Choose at least one part to erase.', 'no_part', previous: $none);
         } catch (UnknownErasurePart $unknown) {
-            return new JsonResponse(['error' => 'unknown_part', 'part' => $unknown->part], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw DomainRule::refused('parts', \sprintf('No part is named %s.', $unknown->part), 'unknown_part', ['part' => $unknown->part], $unknown);
         } catch (ErasurePending $pending) {
             return new JsonResponse(['error' => 'erasure_pending', 'id' => $pending->erasureId->toRfc4122()], Response::HTTP_CONFLICT);
         } catch (ErasureNoLongerPending) {

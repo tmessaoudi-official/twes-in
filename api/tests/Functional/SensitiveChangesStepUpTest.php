@@ -159,7 +159,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
         $this->createUser('manager@twes.local', self::PASSWORD, $this->company, ['company.settings'], 'manager');
         $this->postJson($this->path('support-access'), ['hours' => 2]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('support_window', $this->json()['error'] ?? null);
+        self::assertSame(['support_window', []], $this->refusalOf('hours'));
 
         $this->login('manager@twes.local', self::PASSWORD);
         $this->postJson($this->path('support-access'), ['hours' => 24]);

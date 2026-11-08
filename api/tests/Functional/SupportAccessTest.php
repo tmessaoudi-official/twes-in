@@ -349,7 +349,7 @@ final class SupportAccessTest extends ApiTestCase
         foreach ([42, ['a'], str_repeat('é', 501)] as $reason) {
             $this->postJson($this->path('/support-access'), ['hours' => 24, 'reason' => $reason]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, (string) json_encode($reason));
-            self::assertSame(['error' => 'support_reason', 'max' => 500], $this->json());
+            self::assertSame(['support_reason', ['max' => 500]], $this->refusalOf('reason'));
         }
         self::assertEquals(0, $this->connection()->fetchOne('SELECT COUNT(*) FROM support_grant'));
         $this->postJson($this->path('/support-access'), ['hours' => 24, 'reason' => str_repeat('é', 500)]);

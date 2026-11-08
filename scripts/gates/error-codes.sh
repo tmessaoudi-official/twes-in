@@ -10,7 +10,9 @@
 # constant of the class (`self::X`) or of a class the tree holds once (`Class::X`) is resolved here; a code made at run
 # time (`$refused->reason`) names what it may be in a comment on its line or the one above, `// error-codes: <tokens>`,
 # each token a code, `Class::NAME`, or a `Class` standing for every string constant it declares. A comment naming codes
-# goes stale when the exception gains a reason and the comment does not: naming the class keeps it current.
+# goes stale when the exception gains a reason and the comment does not: naming the class keeps it current. A class
+# built from a string-backed enum (a method taking it) may carry the enum's cases as codes, so the comment names the
+# enum too, whose cases are read as its codes.
 # It reads `error` as the body's FIRST key, as every such body here is written; a body naming it later escapes it.
 # A floor of answers read reds a gate gone blind.
 # Usage: error-codes.sh [--root DIR]
@@ -19,7 +21,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 [[ -d "$root/api/src" ]] || { echo "error-codes: FAIL — found no api/src under $root"; exit 1; }
 [[ -f "$root/scripts/gates/error-codes.allowed" ]] || { echo "error-codes: FAIL — found no scripts/gates/error-codes.allowed under $root"; exit 1; }
-ERROR_CODES_ROOT=$root ERROR_CODES_FLOOR=${ERROR_CODES_FLOOR:-90} ERROR_CODES_MOVING_CEILING=${ERROR_CODES_MOVING_CEILING:-6} python3 - <<'PY'
+ERROR_CODES_ROOT=$root ERROR_CODES_FLOOR=${ERROR_CODES_FLOOR:-90} ERROR_CODES_MOVING_CEILING=${ERROR_CODES_MOVING_CEILING:-0} python3 - <<'PY'
 import os
 import re
 import sys
@@ -51,12 +53,27 @@ for path in sources:
 
 
 def constants_of(src: str) -> dict:
-    return dict(re.findall(r'const\s+(?:string\s+)?([A-Z][A-Z0-9_]*)\s*=\s*[\'"]([^\'"]*)[\'"]', src))
+    found = dict(re.findall(r'const\s+(?:string\s+)?([A-Z][A-Z0-9_]*)\s*=\s*[\'"]([^\'"]*)[\'"]', src))
+    if re.search(r'\benum\s+\w+\s*:\s*string\b', src):
+        # A string-backed enum's cases are its codes, `case TooLong = 'too_long'`.
+        found.update(re.findall(r'\bcase\s+(\w+)\s*=\s*[\'"]([^\'"]*)[\'"]', src))
+    return found
 
 
 def class_constants(name: str):
     paths = by_class.get(name, [])
     return constants_of(sources[paths[0]]) if len(paths) == 1 else None
+
+
+def enums_built_from(name: str) -> list:
+    """The string-backed enums a class takes in a method, whose values it may carry as its code."""
+    paths = by_class.get(name, [])
+    if len(paths) != 1:
+        return []
+    taken = set()
+    for parameters in re.findall(r'function\s+\w+\s*\(([^)]*)\)', sources[paths[0]]):
+        taken.update(re.findall(r'\b([A-Z]\w*)\s+\$', parameters))
+    return sorted(t for t in taken if len(by_class.get(t, [])) == 1 and re.search(rf'\benum\s+{t}\s*:\s*string\b', sources[by_class[t][0]]))
 
 
 def resolve(expression: str, src: str):
@@ -75,6 +92,7 @@ def resolve(expression: str, src: str):
 
 def said(tokens: str, src: str, where: str):
     codes = []
+    named = set(re.split(r'[\s,]+', tokens.strip()))
     for token in re.split(r'[\s,]+', tokens.strip()):
         if not token:
             continue
@@ -86,6 +104,9 @@ def said(tokens: str, src: str, where: str):
                 problems.append(f'{where}: {token} names no class the tree holds once, with string constants')
                 continue
             codes.extend(table.values())
+            for enum in enums_built_from(token):
+                if enum not in named:
+                    problems.append(f'{where}: {token} is built from {enum}, whose cases are codes it may carry: name {enum} too')
         else:
             found = resolve(token, src)
             if found is None:

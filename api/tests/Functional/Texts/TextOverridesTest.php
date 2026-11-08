@@ -147,16 +147,26 @@ final class TextOverridesTest extends ApiTestCase
             '/fr/pdf/totals.total' => ['Montant', 'locked'],
             '/fr/screen/auth.mfa.nowhere' => ['Texte', 'unknown_text'],
             '/de/pdf/invoice.title' => ['Rechnung', 'language'],
-            '/fr/screen/auth.mfa.passkey_elsewhere' => ['Utilisez le code.', 'placeholders'],
-            '/fr/pdf/invoice.title' => [' ', 'empty'],
         ] as $path => [$value, $reason]) {
             $this->sendJson('PUT', $texts.$path, ['value' => $value, 'version' => 0]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $path);
             self::assertSame($reason, $this->json()['error'] ?? null, $path);
         }
+        // The text typed refused is a violation on its value, which the screen marks; the address's refusals stay the act's.
+        foreach ([
+            '/fr/screen/auth.mfa.passkey_elsewhere' => ['Utilisez le code.', 'placeholders'],
+            '/fr/pdf/invoice.title' => [' ', 'empty'],
+        ] as $path => [$value, $reason]) {
+            $this->sendJson('PUT', $texts.$path, ['value' => $value, 'version' => 0]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $path);
+            self::assertSame([$reason, []], $this->refusalOf('value'), $path);
+        }
         $this->sendJson('PUT', $texts.'/fr/pdf/invoice.title', ['value' => 'Facture']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a change says which version it read');
-        self::assertSame('invalid_body', $this->json()['error'] ?? null);
+        self::assertSame(['invalid_value', []], $this->refusalOf('version'));
+        $this->sendJson('PUT', $texts.'/fr/pdf/invoice.title', ['value' => 42, 'version' => 0]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a text is written as a string');
+        self::assertSame(['invalid_value', []], $this->refusalOf('value'));
 
         $this->sendJson('PUT', $texts.'/fr/pdf/invoice.title', ['value' => 'Facture de vente', 'version' => 0]);
         self::assertResponseIsSuccessful();

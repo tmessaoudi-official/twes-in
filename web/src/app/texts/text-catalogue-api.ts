@@ -20,6 +20,7 @@ import {
   TextRefused,
   type TextRow,
 } from './texts-types';
+import { refusalsIn } from '../shared/form/field-refusals';
 import { typedText } from '../shared/form/typed-text';
 
 /** The HTTP edge of « Textes »: the only code here that knows where a level's texts are read and written. */
@@ -93,7 +94,10 @@ function refused(error: unknown): unknown {
   if (error.status === 409 && isRecordChanged(error.error)) {
     return refusedFor(error, new TextRefused('changed'));
   }
-  const code = (error.error as Partial<TextOverrideRefusal> | null)?.error;
+  // A text that cannot be worded otherwise is the act's `{error}`; a wording refused is a violation on `value`.
+  const code =
+    (error.error as Partial<TextOverrideRefusal> | null)?.error ??
+    refusalsIn(error.error).find((refusal) => refusal.field === 'value')?.reason;
   const known = TEXT_REFUSALS.find((each) => each === code);
   return error.status === 422 && known !== undefined
     ? refusedFor(error, new TextRefused(known))

@@ -11,7 +11,9 @@ namespace App\Texts\Infrastructure\Http;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Shared\Application\RecordChanged;
+use App\Shared\Domain\Exception\InvalidFilter;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -22,6 +24,7 @@ use App\Texts\Application\Catalogue\TextCatalogueQuery;
 use App\Texts\Application\OverrideText;
 use App\Texts\Application\ReadTextOverrides;
 use App\Texts\Application\TextOverrideRefused;
+use App\Texts\Application\TextValueRefused;
 use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\ValueObject\TextAddress;
 use App\Texts\Infrastructure\Security\TextsPermission;
@@ -41,9 +44,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * company.texts. A key with dots and a page's file (`screen:two-factor`) travel in the path as they are, which an API
  * Platform route's `.{_format}` would not let through. Documented in TextsOpenApi.
  *
- * A change answers 200 with the text, the original it replaces and its version; 422 `{error}` with the reason it is
- * refused (TextOverrideRefused, `invalid_body`); 409 `/problems/record-changed` over a version saved since; 403
- * `step_up_required` for an operator without a proof given again a few minutes ago.
+ * A change answers 200 with the text, the original it replaces and its version; 422 a violation on `value` for a
+ * wording refused (TextValueRefused), or on `value` or `version` sent as neither a text nor a version; 422 `{error}` for a
+ * text that cannot be worded otherwise (TextOverrideRefused); 409 `/problems/record-changed` over a version saved since;
+ * 403 `step_up_required` for an operator without a proof given again a few minutes ago. The catalogue refuses an address
+ * it does not read on the parameter it names, `filter_refused`, as every list does.
  */
 #[AsController]
 final readonly class TextsController
@@ -74,7 +79,7 @@ final readonly class TextsController
         return $this->screens($request, $this->companyFor($companyId, TextsPermission::READ), $language);
     }
 
-    #[Route('/api/platform/texts/{language}/catalogue', name: 'api_platform_text_catalogue', requirements: self::REQUIREMENTS, methods: ['GET'])]
+    #[Route('/api/platform/texts/{language}/catalogue', name: 'api_platform_text_catalogue', requirements: self::REQUIREMENTS, defaults: ['_api_respond' => true], methods: ['GET'])]
     public function installationCatalogue(Request $request, string $language): Response
     {
         $this->refuseUnlessOperator();
@@ -82,13 +87,13 @@ final readonly class TextsController
         return $this->catalogue($request, null, $language);
     }
 
-    #[Route('/api/companies/{companyId}/texts/{language}/catalogue', name: 'api_company_text_catalogue', requirements: self::REQUIREMENTS, methods: ['GET'])]
+    #[Route('/api/companies/{companyId}/texts/{language}/catalogue', name: 'api_company_text_catalogue', requirements: self::REQUIREMENTS, defaults: ['_api_respond' => true], methods: ['GET'])]
     public function companyCatalogue(Request $request, string $companyId, string $language): Response
     {
         return $this->catalogue($request, $this->companyFor($companyId, TextsPermission::WRITE), $language);
     }
 
-    #[Route('/api/platform/texts/{language}/{domain}/{key}', name: 'api_platform_text_write', requirements: self::REQUIREMENTS, methods: ['PUT'])]
+    #[Route('/api/platform/texts/{language}/{domain}/{key}', name: 'api_platform_text_write', requirements: self::REQUIREMENTS, defaults: ['_api_respond' => true], methods: ['PUT'])]
     public function writeInstallation(Request $request, string $language, string $domain, string $key): Response
     {
         $this->refuseUnlessOperator();
@@ -105,7 +110,7 @@ final readonly class TextsController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    #[Route('/api/companies/{companyId}/texts/{language}/{domain}/{key}', name: 'api_company_text_write', requirements: self::REQUIREMENTS, methods: ['PUT'])]
+    #[Route('/api/companies/{companyId}/texts/{language}/{domain}/{key}', name: 'api_company_text_write', requirements: self::REQUIREMENTS, defaults: ['_api_respond' => true], methods: ['PUT'])]
     public function writeCompany(Request $request, string $companyId, string $language, string $domain, string $key): Response
     {
         return $this->write($request, $this->companyFor($companyId, TextsPermission::WRITE), new TextAddress($language, $domain, $key));
@@ -148,9 +153,16 @@ final readonly class TextsController
         $domain = $asked->has('domain') ? $asked->getString('domain') : null;
         $changed = $asked->getString('changed', '0');
         $forms = $asked->getString('forms', '0');
-        if (1 !== preg_match('/^[1-9][0-9]{0,5}$/', $page) || 1 !== preg_match('/^[1-9][0-9]{0,5}$/', $perPage) || (int) $perPage > $this->pageMax
-            || !\in_array($changed, ['0', '1', 'true', 'false'], true) || !\in_array($forms, ['0', '1', 'true', 'false'], true)) {
-            return new JsonResponse(['error' => 'invalid_query', 'detail' => \sprintf('page from 1, itemsPerPage from 1 to %d, q and domain a text, changed and forms 1 or 0.', $this->pageMax)], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (1 !== preg_match('/^[1-9][0-9]{0,5}$/', $page)) {
+            throw new InvalidFilter('page', 'a page is counted from 1');
+        }
+        if (1 !== preg_match('/^[1-9][0-9]{0,5}$/', $perPage) || (int) $perPage > $this->pageMax) {
+            throw new InvalidFilter('itemsPerPage', \sprintf('a page holds 1 to %d texts', $this->pageMax));
+        }
+        foreach (['changed' => $changed, 'forms' => $forms] as $switch => $asked) {
+            if (!\in_array($asked, ['0', '1', 'true', 'false'], true)) {
+                throw new InvalidFilter($switch, 'a switch is 1 or 0');
+            }
         }
         $query = new TextCatalogueQuery(TypedText::trimmedOrNull($search), TypedText::trimmedOrNull($domain), \in_array($changed, ['1', 'true'], true), \in_array($forms, ['1', 'true'], true), (int) $page, (int) $perPage);
         $found = $this->catalogue->page($company, $language, $query);
@@ -180,11 +192,16 @@ final readonly class TextsController
         } catch (\JsonException) {
             $body = null;
         }
-        if (!\is_array($body) || !\is_string($body['value'] ?? null) || !\is_int($body['version'] ?? null) || $body['version'] < 0) {
-            return new JsonResponse(['error' => 'invalid_body', 'detail' => 'A text is its value and the version read, 0 when there was none.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!\is_array($body) || !\is_string($body['value'] ?? null)) {
+            throw DomainRule::refused('value', 'A text is written as a string.', 'invalid_value');
+        }
+        if (!\is_int($body['version'] ?? null) || $body['version'] < 0) {
+            throw DomainRule::refused('version', 'A text names the version read, 0 when there was none.', 'invalid_value');
         }
         try {
             $override = $this->override->override($company, $address, $body['value'], $body['version'], $this->account()->getId());
+        } catch (TextValueRefused $refused) {
+            throw DomainRule::refused('value', $refused->getMessage(), $refused->reason, previous: $refused);
         } catch (TextOverrideRefused $refused) {
             // error-codes: TextOverrideRefused
             return new JsonResponse(['error' => $refused->reason, 'detail' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);

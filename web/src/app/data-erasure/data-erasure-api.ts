@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 /** The parts « Effacer des données » offers today, in the page's order. */
 export const ERASURE_PARTS = ['stock_map', 'drafts'] as const;
@@ -114,8 +115,11 @@ function refusal(error: unknown): ErasureRefused {
   }
   if (error.status === 404) return refusedFor(error, new ErasureRefused('not_found'));
   const body: unknown = error.error;
+  // The act refused is an `{error}`; the parts chosen refused, a violation on `parts`.
   const code =
-    typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['error'] : null;
+    (typeof body === 'object' && body !== null
+      ? (body as Record<string, unknown>)['error']
+      : null) ?? refusalsIn(body)[0]?.reason;
   const table =
     typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['table'] : null;
   const known = CODES.find((candidate) => candidate === code);

@@ -10,11 +10,11 @@ declare(strict_types=1);
 namespace App\Texts\Application;
 
 use App\Texts\Domain\ValueObject\TextAddress;
-use App\Texts\Domain\ValueObject\TextRefusal;
 
 /**
- * A text not stored, and why, as a stable `reason` the screen words: `unknown_text` (no text at that address),
- * `language` (a language the screens do not speak), `locked` (a text the law fixes), or one of {@see TextRefusal}.
+ * A text that cannot be worded otherwise, and why, as a stable `reason` the screen words: `unknown_text` (no text at that
+ * address), `language` (a language the screens do not speak), `locked` (a text the law fixes). A wording refused is
+ * {@see TextValueRefused}.
  */
 final class TextOverrideRefused extends \DomainException
 {
@@ -25,10 +25,5 @@ final class TextOverrideRefused extends \DomainException
     public function __construct(public readonly string $reason, TextAddress $address)
     {
         parent::__construct(\sprintf('The text %s of %s in %s is refused: %s.', $address->key, $address->domain, $address->language, $reason));
-    }
-
-    public static function because(TextRefusal $refusal, TextAddress $address): self
-    {
-        return new self($refusal->value, $address);
     }
 }
