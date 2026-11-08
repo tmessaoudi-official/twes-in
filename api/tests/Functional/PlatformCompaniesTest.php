@@ -104,7 +104,7 @@ final class PlatformCompaniesTest extends ApiTestCase
 
         foreach (['status[]=pending&status[]=sleeping', 'countryCode[]=TN&countryCode[]=tunisia'] as $refused) {
             $this->getJson(self::PATH.'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

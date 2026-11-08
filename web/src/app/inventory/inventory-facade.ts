@@ -106,6 +106,7 @@ export class InventoryFacade {
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
   readonly readFailed = this.state.readFailed;
+  readonly readRefusedFilter = this.state.readRefusedFilter;
   /** The entry of the last floor step the API refused by name (`moves[2].x`), so the screen can show that shape. */
   readonly refusedEntry = this.refusedEntrySignal.asReadonly();
   /** Each field a location's save was refused on, for its form to say under that field. */

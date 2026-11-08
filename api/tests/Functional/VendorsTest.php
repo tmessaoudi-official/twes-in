@@ -386,7 +386,7 @@ final class VendorsTest extends ApiTestCase
 
         foreach (['paymentTermsDays[min]=7.5', 'paymentTermsDays[min]=thirty', 'paymentTermsDays[min]=60&paymentTermsDays[max]=30', 'createdAt[from]=2026-02-30'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

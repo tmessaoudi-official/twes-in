@@ -91,6 +91,7 @@ describe('ExpensesPage', () => {
     total: signal(1).asReadonly(),
     error: signal<ExpensesError | null>(null).asReadonly(),
     readFailed: signal(false).asReadonly(),
+    readRefusedFilter: signal(false).asReadonly(),
     options: options.asReadonly(),
     statusCounts: statusCounts.asReadonly(),
     loadPage: vi.fn(),

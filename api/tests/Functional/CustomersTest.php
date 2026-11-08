@@ -513,7 +513,7 @@ final class CustomersTest extends ApiTestCase
 
         foreach (['kind[]=company&kind[]=robot', 'customerGroupId[]=not-a-uuid', 'taxRegime[]=nowhere', 'createdAt[from]=2026-03-20&createdAt[to]=2026-03-10', 'createdAt[from]=2026-02-30'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

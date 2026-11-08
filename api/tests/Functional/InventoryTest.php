@@ -1659,7 +1659,7 @@ final class InventoryTest extends ApiTestCase
 
         foreach (['kind[]=sideways', 'reason[]=vanished', 'costToComplete=maybe', 'movedAt[from]=2026-02-30', 'locationId[]=not-an-id'] as $refused) {
             $this->getJson($this->path('stock-movements').'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 
@@ -1790,7 +1790,7 @@ final class InventoryTest extends ApiTestCase
 
         foreach (['negative=maybe', 'expired=perhaps', 'lotExpiresOn[from]=2026-13-01', 'categoryId[]=not-an-id', 'establishmentId[]=not-an-id'] as $refused) {
             $this->getJson($this->path('stock-levels').'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

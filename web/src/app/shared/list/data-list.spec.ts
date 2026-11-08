@@ -136,6 +136,7 @@ class Host {
       [facetCounts]="facetCounts()"
       [loading]="false"
       [failed]="failed()"
+      [refusedFilter]="refusedFilter()"
       (queryChange)="queries.push($event)"
       testId="customers-table"
       [rowTestId]="rowTestId"
@@ -151,6 +152,7 @@ class ServerHost {
   readonly total = signal(30);
   readonly facetCounts = signal<ListFacetCounts | null>(null);
   readonly failed = signal(false);
+  readonly refusedFilter = signal(false);
   readonly queries: ListQuery[] = [];
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
@@ -327,6 +329,7 @@ class StaticLoader implements TranslateLoader {
         selection_clear: 'Clear selection',
         loading: 'Loading…',
         failed: 'The list could not be loaded.',
+        filter_refused: 'A filter in this page’s address is no longer valid.',
         filters_clear_all: 'Clear all',
         nothing_yet: 'Nothing here yet.',
         paginator: {
@@ -1151,6 +1154,51 @@ describe('DataList', () => {
 
       expect(queries()).toHaveLength(before + 1);
       expect(queries().at(-1)).toEqual(queries().at(-2));
+    });
+
+    // A filter the API refuses (an address kept from before) would be refused again: the list says so and offers to clear
+    // the search and the filters, the way back « no match » offers, rather than « Réessayer ».
+    it('says a filter of the address is refused and asks again without the search and the filters', async () => {
+      await chooseFacet('active', settleServer);
+      server.componentInstance.rows.set([]);
+      server.componentInstance.failed.set(true);
+      server.componentInstance.refusedFilter.set(true);
+      await settleServer();
+
+      expect(q('list-failed-state')?.getAttribute('role')).toBe('alert');
+      expect(q('list-failed')?.textContent?.trim()).toBe(
+        'A filter in this page’s address is no longer valid.',
+      );
+      expect(q('list-retry')).toBeNull();
+      expect(q('list-filter-refused-clear')?.textContent?.trim()).toBe('Clear all');
+
+      q('list-filter-refused-clear')!.click();
+      await settleServer();
+      expect(queries().at(-1)?.filters).toEqual({});
+      expect(queries().at(-1)?.query).toBe('');
+    });
+
+    it('says a refused filter it does not hold without offering what would ask the same again', async () => {
+      server.componentInstance.rows.set([]);
+      server.componentInstance.failed.set(true);
+      server.componentInstance.refusedFilter.set(true);
+      await settleServer();
+
+      expect(q('list-failed')?.textContent?.trim()).toBe(
+        'A filter in this page’s address is no longer valid.',
+      );
+      expect(q('list-filter-refused-clear')).toBeNull();
+      expect(q('list-retry')).toBeNull();
+    });
+
+    it('offers to try again for any other failure of a paged list', async () => {
+      server.componentInstance.rows.set([]);
+      server.componentInstance.failed.set(true);
+      await settleServer();
+
+      expect(q('list-failed')?.textContent?.trim()).toBe('The list could not be loaded.');
+      expect(q('list-retry')).not.toBeNull();
+      expect(q('list-filter-refused-clear')).toBeNull();
     });
 
     it('asks nothing again for what it already asked, such as an option picked twice', async () => {

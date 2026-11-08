@@ -1,6 +1,7 @@
 api_platform:
-    # Giving a list a filter value it has not is the caller's mistake: 422, naming the filter. This replaces the bundle's own
-    # map rather than adding to it, so its four entries are restated.
+    # Giving a list a filter value it has not is the caller's mistake: 422, naming the filter. InvalidFilterListener answers
+    # it first, as a violation on the filter with its reason; this status stays should that listener not run. This
+    # replaces the bundle's own map rather than adding to it, so its four entries are restated.
     exception_to_status:
         Symfony\Component\Serializer\Exception\ExceptionInterface: 400
         ApiPlatform\Metadata\Exception\InvalidArgumentException: 400

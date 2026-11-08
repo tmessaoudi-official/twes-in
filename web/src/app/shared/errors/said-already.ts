@@ -28,16 +28,25 @@ export function refusedFor<R extends Error>(answer: unknown, refusal: R): R {
  * refusal was built from.
  */
 export function saidAlready(error: unknown): boolean {
-  let seen: unknown = error;
-  for (let depth = 0; depth < 4 && seen !== undefined && seen !== null; depth++) {
-    if (
+  return answersUnder(error).some(
+    (seen) =>
       isDemoRefused(seen) ||
       submissionProblemOf(seen) !== null ||
       isBusy(seen) ||
-      isNumberingRefused(seen)
-    )
-      return true;
-    seen = seen instanceof Error ? answers.get(seen) : undefined;
+      isNumberingRefused(seen),
+  );
+}
+
+/**
+ * A failure and the answers it was built from, the failure first: what a reader of the API's own words looks through
+ * when a feature's refusal stands in front of them. Four deep at most, so a refusal built from itself ends.
+ */
+export function answersUnder(error: unknown): readonly unknown[] {
+  const seen: unknown[] = [];
+  let next: unknown = error;
+  for (let depth = 0; depth < 4 && next !== undefined && next !== null; depth++) {
+    seen.push(next);
+    next = next instanceof Error ? answers.get(next) : undefined;
   }
-  return false;
+  return seen;
 }

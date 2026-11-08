@@ -363,6 +363,12 @@ export class DataList<Row> implements OnInit {
   readonly loading = input.required<boolean>();
   /** Whether the last read failed, which the list says instead of calling itself empty. */
   readonly failed = input.required<boolean>();
+  /**
+   * Whether that read failed because the API refused a filter it asked for (a facade's `readRefusedFilter()`): an
+   * address kept from before, or typed by hand. Reading again would meet the same refusal, so the list says so and offers
+   * to clear the search and the filters instead of « Réessayer ».
+   */
+  readonly refusedFilter = input(false);
   readonly testId = input('data-list');
   readonly rowTestId = input<((row: Row) => string) | null>(null);
   /** What the list says when there is nothing at all yet; null says a plain « nothing yet ». */
@@ -408,6 +414,13 @@ export class DataList<Row> implements OnInit {
   private lastQuery: string | null = null;
   protected readonly byApi = computed(() => this.total() !== null);
   protected readonly chosenFilters = signal<ListFilterValues>({});
+  /**
+   * Whether the list holds a search or a filter to clear. A refused filter it does not hold (one the page's address adds
+   * on its own, such as a lot) is said without the offer, which would ask the same question again.
+   */
+  protected readonly clearable = computed(
+    () => this.query() !== '' || Object.keys(this.chosenFilters()).length > 0,
+  );
   protected readonly viewsOpen = signal(false);
   protected readonly panelOpen = signal(false);
   /** What each picked record is called, by id, for its chip. */

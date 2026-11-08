@@ -83,6 +83,7 @@ describe('CustomersPage', () => {
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     readFailed: signal(false).asReadonly(),
+    readRefusedFilter: signal(false).asReadonly(),
     customFields: signal([]).asReadonly(),
     options: signal(null).asReadonly(),
     total: signal(2).asReadonly(),

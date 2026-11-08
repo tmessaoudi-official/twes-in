@@ -1015,7 +1015,7 @@ final class DeliveryNotesTest extends ApiTestCase
 
         foreach (['status=delivered-ish', 'status[]=draft&status[]=delivered-ish', 'customerId=not-an-id', 'customerId[]=nope', 'issueDate[from]=yesterday', 'deliveryDate[to]=2026-02-30'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

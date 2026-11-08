@@ -706,7 +706,7 @@ final class ProductsTest extends ApiTestCase
 
         foreach (['kind[]=goods&kind[]=robot', 'tracking[]=batch', 'categoryId[]=not-a-uuid', 'unitPriceNet[min]=ten', 'unitPriceNet[min]=9&unitPriceNet[max]=1'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

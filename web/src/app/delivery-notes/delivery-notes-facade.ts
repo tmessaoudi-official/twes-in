@@ -53,6 +53,7 @@ export class DeliveryNotesFacade {
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
   readonly readFailed = this.state.readFailed;
+  readonly readRefusedFilter = this.state.readRefusedFilter;
   /** Each field the last step was refused on, with why; empty after a step the API took. */
   readonly refusals = this.refusalsSignal.asReadonly();
 

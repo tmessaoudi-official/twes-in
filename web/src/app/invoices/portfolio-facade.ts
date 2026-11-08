@@ -28,6 +28,7 @@ export class PortfolioFacade {
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
   readonly readFailed = this.state.readFailed;
+  readonly readRefusedFilter = this.state.readRefusedFilter;
 
   /** One page of the search. Only the latest search's answer is shown: pages may come back out of order. */
   async loadPage(companyId: string, search: PortfolioSearch): Promise<void> {

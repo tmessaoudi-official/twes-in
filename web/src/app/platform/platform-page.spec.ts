@@ -420,6 +420,7 @@ describe('PlatformPage', () => {
     busy,
     error,
     readFailed: computed(() => error() !== null),
+    readRefusedFilter: signal(false).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     approve: vi.fn(),

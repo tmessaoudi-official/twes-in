@@ -80,6 +80,7 @@
     @if (state().status !== 'gone') {
       <!-- One table per subject: a new descriptor is a new table, which asks for its own first page. -->
       @for (table of [kind()]; track table) {
+        <!-- filter-refusal: a watch's reader checks no filter, so a subject's list is never refused one -->
         <app-data-list
           [descriptor]="current.list"
           [rows]="rows()"

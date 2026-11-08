@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { HttpErrorResponse } from '@angular/common/http';
 import { effect } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { FILTER_REFUSED } from '../errors/filter-refused';
 import { refusedFor } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
 import { SUBMISSION_IN_PROGRESS, SUBMISSION_UNANSWERED } from '../submissions/submission-keys';
@@ -328,6 +330,36 @@ describe('requestState', () => {
     expect(state.busy()).toBe(false);
     state.clearError();
     expect(state.error()).toBeNull();
+  });
+
+  it('says a read was refused for a filter, which reading again would meet, until the next request', async () => {
+    const answer = new HttpErrorResponse({
+      status: 422,
+      error: { violations: [{ propertyPath: 'status', payload: { reason: FILTER_REFUSED } }] },
+    });
+
+    await state.read(() => Promise.reject(answer));
+    expect(state.readFailed()).toBe(true);
+    expect(state.readRefusedFilter()).toBe(true);
+
+    await state.read(() => Promise.resolve());
+    expect(state.readRefusedFilter()).toBe(false);
+
+    await state.read(() => Promise.reject(refusedFor(answer, new Refused('not_found'))));
+    expect(state.readRefusedFilter()).toBe(true);
+    state.clearError();
+    expect(state.readRefusedFilter()).toBe(false);
+
+    await state.read(() => Promise.reject(answer));
+    await state.write(() => Promise.reject(answer));
+    expect(state.readFailed()).toBe(false);
+    expect(state.readRefusedFilter()).toBe(false);
+  });
+
+  it('says nothing of a filter for any other failed read', async () => {
+    await state.read(() => Promise.reject(new Refused('not_found')));
+    expect(state.readFailed()).toBe(true);
+    expect(state.readRefusedFilter()).toBe(false);
   });
 
   it('marks work busy and lets its failure through untouched', async () => {

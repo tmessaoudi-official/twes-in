@@ -30,6 +30,7 @@
     [rows]="rows()"
     [loading]="facade.busy()"
     [failed]="facade.readFailed()"
+    [refusedFilter]="facade.readRefusedFilter()"
     [total]="total()"
     [pickSources]="pickSources"
     (queryChange)="onQuery($event)"

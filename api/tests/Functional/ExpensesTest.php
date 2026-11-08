@@ -871,7 +871,7 @@ final class ExpensesTest extends ApiTestCase
         // to a request that asked for part of it.
         foreach (['status=spent-ish', 'vendorId=not-an-id', 'categoryId=not-an-id'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 
@@ -935,7 +935,7 @@ final class ExpensesTest extends ApiTestCase
 
         foreach (['withheld=maybe', 'paymentMethod[]=barter', 'date[from]=2026-13-01', 'date[from]=2026-09-10&date[to]=2026-09-01', 'amountGross[min]=abc', 'categoryId[]=not-an-id', 'vendorId[]=not-an-id'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

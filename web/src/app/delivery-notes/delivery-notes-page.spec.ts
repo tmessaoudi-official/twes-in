@@ -98,6 +98,7 @@ describe('DeliveryNotesPage', () => {
     error: error.asReadonly(),
     refusals: refusals.asReadonly(),
     readFailed: computed(() => error() !== null),
+    readRefusedFilter: signal(false).asReadonly(),
     total: signal(2).asReadonly(),
     statusCounts: statusCounts.asReadonly(),
     loadListContext: vi.fn(),

@@ -1305,7 +1305,7 @@ final class InvoicesTest extends ApiTestCase
         }
         foreach (['kind[]=cheque', 'kind=cheque', 'customerId[]=nope', 'dueOn[from]=soon', 'dueOn[to]=2026-02-30', 'amount[min]=abc', 'amount[max]=-1', 'status[]=open&status[]=settled'] as $refused) {
             $this->getJson($portfolio.'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
 
         // Cashed, a traite leaves what is open and stays in the record.
@@ -1531,7 +1531,7 @@ final class InvoicesTest extends ApiTestCase
 
         foreach (['status=paid-ish', 'status[]=draft&status[]=paid-ish', 'documentType[]=receipt', 'customerId[]=nope', 'issueDate[from]=yesterday', 'dueDate[to]=2026-02-30', 'totalGross[min]=abc', 'amountDue[max]=1e3', 'totalGross[min]=-1'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+            $this->assertFilterRefused($refused);
         }
     }
 

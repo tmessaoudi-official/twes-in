@@ -167,6 +167,7 @@ describe('StockPage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
+    readRefusedFilter: signal(false).asReadonly(),
     refusals: refusals.asReadonly(),
     total: signal(1).asReadonly(),
     loadStockContext: vi.fn(),

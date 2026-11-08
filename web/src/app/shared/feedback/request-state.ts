@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, type Signal, signal, untracked } from '@angular/core';
+import { isFilterRefused } from '../errors/filter-refused';
 import { saidAlready } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
 import { QuietReads } from './quiet-reads';
@@ -55,6 +56,14 @@ export class RequestState<E> {
   readonly readFailed: Signal<boolean> = computed(
     () => this.errorSignal() !== null && !this.writeRefusedSignal(),
   );
+  private readonly filterRefusedSignal = signal(false);
+  /**
+   * Whether the read failed because a filter it asked for is refused (`isFilterRefused`): reading again would meet the
+   * same refusal, so a list says to clear its filters rather than « Réessayer ».
+   */
+  readonly readRefusedFilter: Signal<boolean> = computed(
+    () => this.readFailed() && this.filterRefusedSignal(),
+  );
 
   constructor(
     private readonly quietReads: QuietReads,
@@ -73,7 +82,7 @@ export class RequestState<E> {
       return options.current?.() ?? true;
     } catch (error) {
       if (options.current?.() === false) return false;
-      if (!keepsRefusal) this.say(this.shown(error, this.code), false);
+      if (!keepsRefusal) this.say(this.shown(error, this.code), false, isFilterRefused(error));
       options.failed?.(error);
       return false;
     } finally {
@@ -123,7 +132,7 @@ export class RequestState<E> {
 
   /** A failure outside a marked request, such as a picker's search: said, busy left as it is. */
   fail(error: unknown): void {
-    this.say(this.shown(error, this.code), false);
+    this.say(this.shown(error, this.code), false, isFilterRefused(error));
   }
 
   /**
@@ -155,9 +164,10 @@ export class RequestState<E> {
     }
   }
 
-  private say(error: E | null, fromWrite: boolean): void {
+  private say(error: E | null, fromWrite: boolean, filterRefused = false): void {
     this.errorSignal.set(error);
     this.writeRefusedSignal.set(fromWrite && error !== null);
+    this.filterRefusedSignal.set(!fromWrite && error !== null && filterRefused);
   }
 
   /** What the screen says of a failure: nothing when an interceptor already said it. */

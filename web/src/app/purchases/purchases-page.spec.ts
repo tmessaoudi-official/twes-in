@@ -78,6 +78,7 @@ describe('PurchasesPage', () => {
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     readFailed: signal(false).asReadonly(),
+    readRefusedFilter: signal(false).asReadonly(),
     loadPage: vi.fn(),
     loadStatusCounts: vi.fn(),
     pickVendors: vi.fn(),

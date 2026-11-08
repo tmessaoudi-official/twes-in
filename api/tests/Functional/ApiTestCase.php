@@ -525,6 +525,24 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * A list asked for a filter value it has not, answered as the screen reads one: a 422 with one violation on that
+     * filter, as the query named it (`status`, `date[from]`), its reason `filter_refused`, so the list says to clear its
+     * filters rather than to try again.
+     */
+    protected function assertFilterRefused(string $query): void
+    {
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $query);
+        $refusals = $this->refusals();
+        self::assertCount(1, $refusals, $query);
+        ['propertyPath' => $filter, 'reason' => $reason, 'params' => $params] = $refusals[0];
+        self::assertSame('filter_refused', $reason, $query);
+        self::assertSame([], $params, $query);
+        self::assertIsString($filter, $query);
+        self::assertNotSame('', $filter, $query);
+        self::assertStringContainsString($filter, urldecode($query), $query.': the violation names the filter asked');
+    }
+
+    /**
      * The reason a request was refused with as a whole, and the names of its parameters: for a refusal whose values
      * (a document's number) the unit test of its rule pins, the functional case asserts what reaches the screen.
      *

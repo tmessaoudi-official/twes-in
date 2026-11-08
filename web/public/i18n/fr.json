@@ -801,6 +801,7 @@
     },
     "loading": "Chargement…",
     "failed": "La liste n’a pas pu être chargée.",
+    "filter_refused": "Un filtre de l’adresse de cette page n’est plus valable.",
     "view_deleted": "La vue {{name}} a été supprimée.",
     "view_undo": "Annuler"
   },

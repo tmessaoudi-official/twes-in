@@ -101,6 +101,7 @@ describe('ProductsPage', () => {
     total: signal(1).asReadonly(),
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
+    readRefusedFilter: signal(false).asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
     exportUrl: vi.fn(

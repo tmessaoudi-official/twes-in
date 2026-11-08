@@ -62,6 +62,7 @@ describe('PortfolioPage', () => {
     total: signal(1).asReadonly(),
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
+    readRefusedFilter: signal(false).asReadonly(),
     loadPage: vi.fn(),
   };
   const auth = {

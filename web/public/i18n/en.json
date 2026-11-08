@@ -801,6 +801,7 @@
     },
     "loading": "Loading…",
     "failed": "The list could not be loaded.",
+    "filter_refused": "A filter in this page’s address is no longer valid.",
     "view_deleted": "The view {{name}} was deleted.",
     "view_undo": "Undo"
   },
