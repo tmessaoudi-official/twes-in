@@ -22,21 +22,26 @@ use Symfony\Component\HttpFoundation\Request;
 final class ReceivedFile
 {
     public const string PART = 'file';
+    public const string NOT_SENT = 'value_required';
+    public const string TOO_LARGE = 'file_too_large';
+    public const string NOT_RECEIVED = 'file_not_received';
+    /** Every reason a file is refused with here, before any route reads it. */
+    public const array REASONS = [self::NOT_SENT, self::TOO_LARGE, self::NOT_RECEIVED];
 
     public static function of(Request $request): UploadedFile
     {
         $file = $request->files->get(self::PART);
         if (!$file instanceof UploadedFile) {
-            throw self::refused('Send the file as a multipart part named file.', 'value_required');
+            throw self::refused('Send the file as a multipart part named file.', self::NOT_SENT);
         }
         if ($file->isValid()) {
             return $file;
         }
 
         throw match ($file->getError()) {
-            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => self::refused($file->getErrorMessage(), 'file_too_large', ['bytes' => self::phpLimit()]),
-            \UPLOAD_ERR_NO_FILE => self::refused($file->getErrorMessage(), 'value_required'),
-            default => self::refused($file->getErrorMessage(), 'file_not_received'),
+            \UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE => self::refused($file->getErrorMessage(), self::TOO_LARGE, ['bytes' => self::phpLimit()]),
+            \UPLOAD_ERR_NO_FILE => self::refused($file->getErrorMessage(), self::NOT_SENT),
+            default => self::refused($file->getErrorMessage(), self::NOT_RECEIVED),
         };
     }
 

@@ -680,6 +680,26 @@ final class ExpensesTest extends ApiTestCase
         self::assertContains('expense.attachment_restored', $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense'"));
     }
 
+    public function testAReceiptIsNotPutBackOnAnExpenseAlreadyHoldingAsManyAsItMay(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense());
+        $id = $this->stringAt($this->json(), 'id');
+        $this->uploadFile($this->path($id).'/attachments', 'premier.pdf', AttachmentsTest::PDF);
+        $first = $this->stringAt($this->json(), 'id');
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$first);
+        $max = static::getContainer()->getParameter('app.files.attachments_per_subject');
+        for ($i = 0; $i < $max; ++$i) {
+            $this->uploadFile($this->path($id).'/attachments', \sprintf('recu-%d.pdf', $i), AttachmentsTest::PDF);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+
+        $this->postJson($this->path($id).'/attachments/'.$first.'/restore', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => '', 'reason' => 'too_many_files', 'params' => ['max' => $max]]], $this->refusals(), 'said on the whole request: a restore sends no file');
+    }
+
     public function testADraftIsDeletedWithItsAttachments(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);

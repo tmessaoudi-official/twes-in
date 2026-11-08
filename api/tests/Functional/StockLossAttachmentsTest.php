@@ -132,7 +132,7 @@ final class StockLossAttachmentsTest extends ApiTestCase
         $this->postJson($this->path($loss).'/'.$first.'/restore', null);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['too_many_files', ['max' => 10]], [$this->json()['code'] ?? null, $this->json()['params'] ?? null]);
+        self::assertSame([['propertyPath' => '', 'reason' => 'too_many_files', 'params' => ['max' => 10]]], $this->refusals(), 'said on the whole request: a restore sends no file');
     }
 
     public function testOnlyALossOfTheCompanyKeepsFiles(): void

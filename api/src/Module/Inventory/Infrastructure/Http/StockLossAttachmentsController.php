@@ -59,7 +59,7 @@ final readonly class StockLossAttachmentsController
     }
 
     /** Puts back a file taken off, where it was: what « Annuler » after taking it off sends. */
-    #[Route('/api/companies/{companyId}/stock-movements/{movementId}/attachments/{attachmentId}/restore', name: 'api_stock_loss_attachment_restore', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/stock-movements/{movementId}/attachments/{attachmentId}/restore', name: 'api_stock_loss_attachment_restore', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function restore(string $companyId, string $movementId, string $attachmentId): Response
     {
         $ids = ['companyId' => $companyId, 'movementId' => $movementId, 'attachmentId' => $attachmentId];
@@ -70,7 +70,8 @@ final readonly class StockLossAttachmentsController
         } catch (StockMovementNotFound|StockLossAttachmentNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (AttachmentRefused $refused) {
-            return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            // Said on the whole request: a restore sends no file.
+            throw DomainRule::refused(DomainRule::WHOLE_REQUEST, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);

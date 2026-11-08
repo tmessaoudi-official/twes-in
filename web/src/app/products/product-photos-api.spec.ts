@@ -83,19 +83,45 @@ describe('ProductPhotosApi', () => {
     expect(api.url('c 1', 'p1', 'a', 'small')).toBe(`${base}/a/content?size=small`);
   });
 
-  it('carries the API’s refusal code and its numbers, the size said in megabytes', async () => {
+  it('carries the API’s refusal reason and its numbers, the size said in megabytes', async () => {
     const pending = api.add('c 1', 'p1', new File(['x'], 'x.jpg'));
-    http.expectOne(base).flush(
-      {
-        code: 'too_large',
-        params: { maxBytes: 5242880 },
-        message: 'A photo is at most 5120 KB.',
-      },
-      { status: 422, statusText: 'Unprocessable' },
-    );
+    http.expectOne(base).flush(refused('file', 'too_large', { maxBytes: 5242880 }), {
+      status: 422,
+      statusText: 'Unprocessable',
+    });
 
     await expect(pending).rejects.toEqual(
       new ProductPhotosRefused({ code: 'too_large', params: { maxBytes: 5242880, megabytes: 5 } }),
+    );
+  });
+
+  it.each([
+    ['no file sent', 'value_required', {}, { code: 'empty', params: {} }],
+    ['a file not received whole', 'file_not_received', {}, { code: 'empty', params: {} }],
+    [
+      'a file over what the server takes',
+      'file_too_large',
+      { bytes: 8388608 },
+      { code: 'too_large', params: { maxBytes: 8388608, megabytes: 8 } },
+    ],
+  ] as const)('says %s in the photo’s own words', async (_case, reason, params, said) => {
+    const pending = api.add('c 1', 'p1', new File(['x'], 'x.jpg'));
+    http
+      .expectOne(base)
+      .flush(refused('file', reason, params), { status: 422, statusText: 'Unprocessable' });
+
+    await expect(pending).rejects.toEqual(new ProductPhotosRefused(said));
+  });
+
+  it('says a gallery full on a photo put back, refused on the whole request', async () => {
+    const restored = api.restore('c 1', 'p1', 'b');
+    http.expectOne(`${base}/b/restore`).flush(refused('', 'too_many_photos', { max: 6 }), {
+      status: 422,
+      statusText: 'Unprocessable',
+    });
+
+    await expect(restored).rejects.toEqual(
+      new ProductPhotosRefused({ code: 'too_many_photos', params: { max: 6 } }),
     );
   });
 
@@ -109,3 +135,8 @@ describe('ProductPhotosApi', () => {
     await expect(main).rejects.toMatchObject({ refusal: { code: 'not_found' } });
   });
 });
+
+/** A 422's body as the API writes a refusal: one violation, its reason and numbers in the payload. */
+function refused(path: string, reason: string, params: Readonly<Record<string, number>>): object {
+  return { violations: [{ propertyPath: path, message: reason, payload: { reason, params } }] };
+}

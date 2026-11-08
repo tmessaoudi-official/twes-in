@@ -513,7 +513,15 @@ describe('ExpensesApi', () => {
     const restore = http.expectOne('/api/companies/c1/expenses/e1/attachments/a1/restore');
     expect(restore.request.method).toBe('POST');
     restore.flush(
-      { code: 'too_many_files', params: { max: 10 }, message: 'full' },
+      {
+        violations: [
+          {
+            propertyPath: '',
+            message: 'full',
+            payload: { reason: 'too_many_files', params: { max: 10 } },
+          },
+        ],
+      },
       { status: 422, statusText: 'Unprocessable Entity' },
     );
     await expect(full).rejects.toEqual(new ExpensesRefused('files_full'));

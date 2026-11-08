@@ -59,7 +59,7 @@ final readonly class QuoteAttachmentsController
     }
 
     /** Puts back a file taken off, where it was: what « Annuler » after taking it off sends. */
-    #[Route('/api/companies/{companyId}/quotes/{quoteId}/attachments/{attachmentId}/restore', name: 'api_quote_attachment_restore', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/quotes/{quoteId}/attachments/{attachmentId}/restore', name: 'api_quote_attachment_restore', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function restore(string $companyId, string $quoteId, string $attachmentId): Response
     {
         $ids = ['companyId' => $companyId, 'quoteId' => $quoteId, 'attachmentId' => $attachmentId];
@@ -70,7 +70,8 @@ final readonly class QuoteAttachmentsController
         } catch (QuoteNotFound|QuoteAttachmentNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (AttachmentRefused $refused) {
-            return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            // Said on the whole request: a restore sends no file.
+            throw DomainRule::refused(DomainRule::WHOLE_REQUEST, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);

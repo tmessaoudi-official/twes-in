@@ -79,18 +79,7 @@ final readonly class QuotesOpenApi implements OpenApiFactoryInterface
                 '204' => new Response('Back where it was'),
                 '401' => new Response('Not signed in'),
                 '404' => new Response('No such file on this quote, no quote.write, or the module is switched off'),
-                '422' => new Response(
-                    'Not put back, and why: a stable code, translated by the screen, with its parameters',
-                    new \ArrayObject(['application/json' => new MediaType(new \ArrayObject([
-                        'type' => 'object',
-                        'required' => ['code', 'params', 'message'],
-                        'properties' => [
-                            'code' => ['type' => 'string', 'enum' => [AttachmentRefused::TOO_MANY_FILES]],
-                            'params' => ['type' => 'object', 'additionalProperties' => ['type' => 'integer'], 'description' => 'too_many_files: max.'],
-                            'message' => ['type' => 'string'],
-                        ],
-                    ]))]),
-                ),
+                '422' => new Response(\sprintf('Not put back: the quote already holds as many files as it may. A violation on the whole request, reason %s, params max.', AttachmentRefused::TOO_MANY_FILES)),
             ],
             summary: 'Puts back a file taken off, where it was',
             description: 'What « Annuler » sends after a file is taken off. A file still there is left as it is.',

@@ -607,6 +607,26 @@ final class QuotesTest extends ApiTestCase
         self::assertSame(['all' => 3, 'statuses' => ['draft' => 2, 'sent' => 1, 'accepted' => 0, 'refused' => 0, 'cancelled' => 0]], $this->json());
     }
 
+    public function testASignedCopyIsNotPutBackOnAQuoteAlreadyHoldingAsManyAsItMay(): void
+    {
+        $this->signedIn(self::WRITER);
+        $id = $this->sent();
+        $pdf = "%PDF-1.4\n%âãÏÓ\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF";
+        $this->uploadFile($this->path($id).'/attachments', 'premier.pdf', $pdf);
+        $first = $this->stringAt($this->json(), 'id');
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$first);
+        $max = static::getContainer()->getParameter('app.files.attachments_per_subject');
+        for ($i = 0; $i < $max; ++$i) {
+            $this->uploadFile($this->path($id).'/attachments', \sprintf('copie-%d.pdf', $i), $pdf);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+
+        $this->postJson($this->path($id).'/attachments/'.$first.'/restore', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => '', 'reason' => 'too_many_files', 'params' => ['max' => $max]]], $this->refusals(), 'said on the whole request: a restore sends no file');
+    }
+
     public function testTheSignedCopyIsAttachedAndTheQuotePrints(): void
     {
         $this->signedIn(self::WRITER);

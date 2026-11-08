@@ -67,6 +67,7 @@ final readonly class TejDeclarationController implements BulkFile, DeclaresAudit
         try {
             $declaration = $this->declare->declare($company, (int) $year, (int) $month);
         } catch (TejDeclarationRefused $refused) {
+            // refusal-shape: the refusal carries the expenses that stop the declaration, a list the screen opens.
             return new JsonResponse(
                 ['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage(), 'expenses' => $refused->expenses],
                 Response::HTTP_UNPROCESSABLE_ENTITY,

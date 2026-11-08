@@ -18,6 +18,7 @@ use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use App\Module\Products\Application\Photo\ProductPhotoRefused;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /** Documents what ProductPhotosController answers, which API Platform does not describe: bytes and coded refusals. */
@@ -32,18 +33,6 @@ final readonly class ProductPhotosOpenApi implements OpenApiFactoryInterface
     {
         $openApi = ($this->decorated)($context);
         $uuid = static fn (string $name, string $description): Parameter => new Parameter($name, 'path', $description, true, schema: ['type' => 'string', 'format' => 'uuid']);
-        $refused = new Response(
-            'The photo is not kept, and why: a stable code, translated by the screen, with its parameters',
-            new \ArrayObject(['application/json' => new MediaType(new \ArrayObject([
-                'type' => 'object',
-                'required' => ['code', 'params', 'message'],
-                'properties' => [
-                    'code' => ['type' => 'string', 'enum' => ProductPhotoRefused::REASONS],
-                    'params' => ['type' => 'object', 'additionalProperties' => ['type' => 'integer'], 'description' => 'too_large: maxBytes; too_many_pixels: maxMegapixels; too_many_photos: max.'],
-                    'message' => ['type' => 'string'],
-                ],
-            ]))]),
-        );
         $paths = $openApi->getPaths();
 
         $collection = '/api/companies/{companyId}/products/{productId}/photos';
@@ -55,7 +44,7 @@ final readonly class ProductPhotosOpenApi implements OpenApiFactoryInterface
                 '201' => new Response('The photo', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/ProductPhoto-product_photo.read']))])),
                 '401' => new Response('Not signed in'),
                 '404' => new Response('No such product in this company, no product.write, or the module is switched off'),
-                '422' => $refused,
+                '422' => new Response(\sprintf('The photo is not kept: a violation on file, its reason one of %s, with its params (too_large: maxBytes; too_many_pixels: maxMegapixels; too_many_photos: max; file_too_large: bytes).', implode(', ', [...ReceivedFile::REASONS, ...ProductPhotoRefused::REASONS]))),
             ],
             summary: 'Adds a photo to a product',
             description: 'JPEG, PNG or WebP, read from the bytes; at most 6 photos a product, 5 MB and 16 megapixels each by default. The first photo of a product is its main one. The server keeps the photo as sent and cuts a small and a large copy.',
@@ -74,7 +63,7 @@ final readonly class ProductPhotosOpenApi implements OpenApiFactoryInterface
                 '204' => new Response('Back in the gallery where it was, main again if it was'),
                 '401' => new Response('Not signed in'),
                 '404' => new Response('No such photo of this product, no product.write, or the module is switched off'),
-                '422' => $refused,
+                '422' => new Response(\sprintf('Not put back: the product already holds as many photos as it may. A violation on the whole request, reason %s, params max.', ProductPhotoRefused::TOO_MANY_PHOTOS)),
             ],
             summary: 'Puts a removed photo back',
             parameters: [$uuid('companyId', 'The company'), $uuid('productId', 'The product'), $uuid('photoId', 'The photo')],

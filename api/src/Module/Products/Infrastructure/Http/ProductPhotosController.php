@@ -16,9 +16,10 @@ use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Domain\ValueObject\PhotoSize;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductPhotoResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,8 +30,9 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * A product's photo sent as a multipart part named `file` (product.write), its pictures given back as bytes
  * (product.read), the main one's copies to the customer screen (product.read), and a removed one put back
- * (product.write). Plain controllers rather than resources: bytes, and a
- * refusal whose code the screen translates. The module guard still applies, through this class's namespace.
+ * (product.write). Plain controllers rather than resources: bytes. A refusal is a violation with its reason, as every
+ * file's is: on `file` for the photo sent, on the whole request for one put back. The module guard still applies,
+ * through this class's namespace.
  * Documented in ProductPhotosOpenApi.
  */
 #[AsController]
@@ -40,34 +42,26 @@ final readonly class ProductPhotosController
     {
     }
 
-    #[Route('/api/companies/{companyId}/products/{productId}/photos', name: 'api_product_photo_upload', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/products/{productId}/photos', name: 'api_product_photo_upload', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function upload(Request $request, string $companyId, string $productId): JsonResponse
     {
         $ids = ['companyId' => $companyId, 'productId' => $productId];
         $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), ProductPermission::WRITE);
 
-        $file = $request->files->get('file');
-        if (!$file instanceof UploadedFile || !$file->isValid()) {
-            // A part over PHP's own upload limit arrives as an invalid file: to the person, the photo was too large.
-            $tooLarge = $file instanceof UploadedFile && \in_array($file->getError(), [\UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE], true);
-
-            return self::refused($tooLarge
-                ? new ProductPhotoRefused($file->getErrorMessage(), ProductPhotoRefused::TOO_LARGE)
-                : new ProductPhotoRefused('Send the photo as a multipart part named file.', ProductPhotoRefused::EMPTY));
-        }
+        $file = ReceivedFile::of($request);
 
         try {
             $photo = $this->photos->add($company, CompanyPath::identifier($ids, 'productId'), $file->getClientOriginalName(), (string) file_get_contents($file->getPathname()), $this->guard->account()->getId());
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ProductPhotoRefused $refused) {
-            return self::refused($refused);
+            throw DomainRule::refused(ReceivedFile::PART, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new JsonResponse(ProductPhotoResource::of($photo)->toArray(), Response::HTTP_CREATED);
     }
 
-    #[Route('/api/companies/{companyId}/products/{productId}/photos/{photoId}/restore', name: 'api_product_photo_restore', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/products/{productId}/photos/{photoId}/restore', name: 'api_product_photo_restore', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function restore(string $companyId, string $productId, string $photoId): Response
     {
         $ids = ['companyId' => $companyId, 'productId' => $productId, 'photoId' => $photoId];
@@ -78,7 +72,7 @@ final readonly class ProductPhotosController
         } catch (ProductNotFound|ProductPhotoNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ProductPhotoRefused $refused) {
-            return self::refused($refused);
+            throw DomainRule::refused(DomainRule::WHOLE_REQUEST, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);
@@ -134,10 +128,5 @@ final readonly class ProductPhotosController
             // Private, since only who may read the product may see them.
             'Cache-Control' => 'private, max-age=31536000, immutable',
         ]);
-    }
-
-    private static function refused(ProductPhotoRefused $refused): JsonResponse
-    {
-        return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 }

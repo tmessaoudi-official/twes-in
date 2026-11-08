@@ -73,7 +73,8 @@ final readonly class ExpenseAttachmentsController
         } catch (ExpenseTransitionRefused $conflict) {
             throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (AttachmentRefused $refused) {
-            return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            // Said on the whole request: a restore sends no file.
+            throw DomainRule::refused(DomainRule::WHOLE_REQUEST, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);

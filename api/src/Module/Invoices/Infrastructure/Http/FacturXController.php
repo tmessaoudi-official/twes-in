@@ -90,6 +90,7 @@ final readonly class FacturXController
 
     private static function refusal(FacturXRefused $refused): JsonResponse
     {
+        // refusal-shape: the refusal carries the invoice's gaps, each with its code, which the screen lists.
         return new JsonResponse(
             ['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage(), 'gaps' => array_map(static fn (array $gap): array => ['code' => $gap['code'], 'params' => (object) $gap['params']], $refused->gaps)],
             FacturXRefused::NOT_ISSUED === $refused->reason ? Response::HTTP_CONFLICT : Response::HTTP_UNPROCESSABLE_ENTITY,

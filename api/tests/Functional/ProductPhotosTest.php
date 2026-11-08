@@ -183,14 +183,14 @@ final class ProductPhotosTest extends ApiTestCase
 
         $this->uploadFile($this->photos($product), 'seventh.jpg', self::jpeg(20, 20));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['code' => 'too_many_photos', 'params' => ['max' => 6]], array_intersect_key($this->json(), ['code' => 1, 'params' => 1]));
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'too_many_photos', 'params' => ['max' => 6]]], $this->refusals());
 
         $this->sendJson('DELETE', $this->photos($product).'/'.$photos[0]);
         $this->added($product, self::jpeg(20, 20));
 
         $this->postJson($this->photos($product).'/'.$photos[0].'/restore', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the gallery filled up meanwhile');
-        self::assertSame('too_many_photos', $this->stringAt($this->json(), 'code'));
+        self::assertSame([['propertyPath' => '', 'reason' => 'too_many_photos', 'params' => ['max' => 6]]], $this->refusals(), 'said on the whole request: a restore sends no file');
     }
 
     public function testOnlyARasterPictureIsKept(): void
@@ -207,8 +207,11 @@ final class ProductPhotosTest extends ApiTestCase
         ] as $why => [$name, $bytes, $code]) {
             $this->uploadFile($this->photos($product), $name, $bytes);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $why);
-            self::assertSame($code, $this->stringAt($this->json(), 'code'), $why);
+            self::assertSame($code, $this->refusalOf('file')[0], $why);
         }
+        $this->uploadFile($this->photos($product), 'photo.jpg', self::jpeg(20, 20), 'document');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no part named file');
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'value_required', 'params' => []]], $this->refusals(), 'no part named file');
         $this->getJson($this->photos($product));
         self::assertSame([], $this->jsonList(), 'a refused file leaves no photo');
     }
@@ -220,11 +223,11 @@ final class ProductPhotosTest extends ApiTestCase
 
         $this->uploadFile($this->photos($product), 'big.jpg', self::jpeg(20, 20).str_repeat("\0", 5 * 1024 * 1024));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['code' => 'too_large', 'params' => ['maxBytes' => 5242880]], array_intersect_key($this->json(), ['code' => 1, 'params' => 1]));
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'too_large', 'params' => ['maxBytes' => 5242880]]], $this->refusals());
 
         $this->uploadFile($this->photos($product), 'bomb.png', self::pngClaiming(20000, 20000));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['code' => 'too_many_pixels', 'params' => ['maxMegapixels' => 16]], array_intersect_key($this->json(), ['code' => 1, 'params' => 1]));
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'too_many_pixels', 'params' => ['maxMegapixels' => 16]]], $this->refusals());
     }
 
     public function testPhotosCountInWhatTheCompanyKeeps(): void

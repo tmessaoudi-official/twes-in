@@ -12,6 +12,7 @@ import {
 } from './product-photos-types';
 import { productPhotoUrl } from './product-photo-url';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 /** Thrown when the API refuses a photo or a change to the gallery; carries what the screen says. */
 export class ProductPhotosRefused extends Error {
@@ -89,21 +90,34 @@ export class ProductPhotosApi {
   }
 }
 
-/** The API's own code when it gave one; otherwise what its status says. */
+/**
+ * A file the server took no photo from, refused before it was read as one (`ReceivedFile`): said in the photo's own
+ * words, its limit the one the photo's text reads.
+ */
+const RECEIVED_FILE_REFUSALS: Readonly<Record<string, ProductPhotoRefusal['code']>> = {
+  value_required: 'empty',
+  file_not_received: 'empty',
+  file_too_large: 'too_large',
+};
+
+/** The reason the API refused with when it gave one; otherwise what its status says. */
 export function refusalOf(error: unknown): ProductPhotoRefusal {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return { code: 'network', params: {} };
   }
-  const body: unknown = error.error;
-  if (typeof body === 'object' && body !== null && 'code' in body) {
-    const code = PHOTO_REFUSALS.find((known) => known === body.code);
-    if (code !== undefined) {
-      const params = paramsOf(body);
-      const maxBytes = params['maxBytes'];
-      // Said in megabytes, as a person reads a file's size.
-      if (maxBytes !== undefined) params['megabytes'] = Math.round(maxBytes / 1048576);
-      return { code, params };
+  for (const { reason, params: given } of refusalsIn(error.error)) {
+    const received = reason === null ? undefined : RECEIVED_FILE_REFUSALS[reason];
+    const code = received ?? PHOTO_REFUSALS.find((known) => known === reason);
+    if (code === undefined) continue;
+    const params = numbersOf(given);
+    if (received === 'too_large' && params['bytes'] !== undefined) {
+      params['maxBytes'] = params['bytes'];
+      delete params['bytes'];
     }
+    const maxBytes = params['maxBytes'];
+    // Said in megabytes, as a person reads a file's size.
+    if (maxBytes !== undefined) params['megabytes'] = Math.round(maxBytes / 1048576);
+    return { code, params };
   }
   switch (error.status) {
     case 404:
@@ -117,9 +131,8 @@ export function refusalOf(error: unknown): ProductPhotoRefusal {
   }
 }
 
-function paramsOf(body: object): Record<string, number> {
-  const params = 'params' in body ? body.params : null;
-  if (typeof params !== 'object' || params === null) return {};
+/** The numbers among a refusal's parameters: a photo's texts say only those. */
+function numbersOf(params: Readonly<Record<string, number | string>>): Record<string, number> {
   return Object.fromEntries(
     Object.entries(params).filter(
       (entry): entry is [string, number] => typeof entry[1] === 'number',
