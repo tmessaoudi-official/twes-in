@@ -35,4 +35,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: make rc-lane
       - if: always()
-        run: if [ -f var/rc-lane/summary.md ]; then cat var/rc-lane/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+        # tee: the page shows the summary, and the job's log carries it too, where `gh run view --log` reads it.
+        run: if [ -f var/rc-lane/summary.md ]; then tee -a "$GITHUB_STEP_SUMMARY" < var/rc-lane/summary.md; fi
