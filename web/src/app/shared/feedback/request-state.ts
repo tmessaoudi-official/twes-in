@@ -48,22 +48,23 @@ export class RequestState<E> {
 
   readonly busy: Signal<boolean> = this.busySignal.asReadonly();
   readonly error: Signal<E | null> = this.errorSignal.asReadonly();
-  /**
-   * Whether the error shown is a read's failure: what a list says in place of its rows, with « Réessayer ». A refused
-   * save sets the same `error`, and reading again would not undo it, so a list bound to `error` alone would call a
-   * refused save on an empty list a list it could not read.
-   */
-  readonly readFailed: Signal<boolean> = computed(
-    () => this.errorSignal() !== null && !this.writeRefusedSignal(),
-  );
+  /** Whether the last read was refused for a filter it asked for; such a read sets no `error`. */
   private readonly filterRefusedSignal = signal(false);
   /**
-   * Whether the read failed because a filter it asked for is refused (`isFilterRefused`): reading again would meet the
-   * same refusal, so a list says to clear its filters rather than « Réessayer ».
+   * Whether the last read failed: what a list says in place of its rows, with « Réessayer » (or, for a refused filter,
+   * « Effacer tout »). A refused save sets the same `error`, and reading again would not undo it, so a list bound to
+   * `error` alone would call a refused save on an empty list a list it could not read.
    */
-  readonly readRefusedFilter: Signal<boolean> = computed(
-    () => this.readFailed() && this.filterRefusedSignal(),
+  readonly readFailed: Signal<boolean> = computed(
+    () => (this.errorSignal() !== null && !this.writeRefusedSignal()) || this.filterRefusedSignal(),
   );
+  /**
+   * Whether the read failed because a filter it asked for is refused (`isFilterRefused`): reading again would meet the
+   * same refusal, so a list says to clear its filters rather than « Réessayer ». Such a read sets no `error`: the list
+   * says it in place of its rows, and a page's own error line would say it a second time, in a facade's words for a
+   * 422, which are a refused save's.
+   */
+  readonly readRefusedFilter: Signal<boolean> = this.filterRefusedSignal.asReadonly();
 
   constructor(
     private readonly quietReads: QuietReads,
@@ -82,7 +83,7 @@ export class RequestState<E> {
       return options.current?.() ?? true;
     } catch (error) {
       if (options.current?.() === false) return false;
-      if (!keepsRefusal) this.say(this.shown(error, this.code), false, isFilterRefused(error));
+      if (!keepsRefusal) this.sayRead(error);
       options.failed?.(error);
       return false;
     } finally {
@@ -132,7 +133,7 @@ export class RequestState<E> {
 
   /** A failure outside a marked request, such as a picker's search: said, busy left as it is. */
   fail(error: unknown): void {
-    this.say(this.shown(error, this.code), false, isFilterRefused(error));
+    this.sayRead(error);
   }
 
   /**
@@ -164,10 +165,16 @@ export class RequestState<E> {
     }
   }
 
+  /** A read's failure: a refused filter as itself, with no code; any other as the facade's code. */
+  private sayRead(error: unknown): void {
+    if (isFilterRefused(error)) this.say(null, false, true);
+    else this.say(this.shown(error, this.code), false);
+  }
+
   private say(error: E | null, fromWrite: boolean, filterRefused = false): void {
     this.errorSignal.set(error);
     this.writeRefusedSignal.set(fromWrite && error !== null);
-    this.filterRefusedSignal.set(!fromWrite && error !== null && filterRefused);
+    this.filterRefusedSignal.set(!fromWrite && filterRefused);
   }
 
   /** What the screen says of a failure: nothing when an interceptor already said it. */
