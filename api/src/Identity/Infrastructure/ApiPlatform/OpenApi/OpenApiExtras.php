@@ -115,6 +115,9 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
 
         $me = $this->meSchemaName($schemas);
         $errorResponse = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/AuthError']))]));
+        // A value sent refused is a violation on its field, written by API Platform's error handling as for a resource.
+        $violation = new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/ConstraintViolation']));
+        $violationResponse = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/problem+json' => $violation, 'application/json' => $violation]));
         // A spent budget says when to come back, in seconds, as SpentBudget writes it.
         $spentResponse = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/AuthError']))]), new \ArrayObject(['Retry-After' => ['description' => 'Seconds until the budget may be spent again', 'schema' => ['type' => 'integer', 'minimum' => 1]]]));
 
@@ -231,7 +234,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             responses: [
                 '200' => $jsonOf('MfaRecoveryCodes', 'Enrolled; the recovery codes are shown once'),
                 '401' => $errorResponse('Not signed in'),
-                '422' => $errorResponse('The code does not match the pending secret'),
+                '422' => $violationResponse('A violation on code (invalid_code): it does not match the pending secret'),
                 '429' => $spentResponse('Too many attempts'),
             ],
             summary: 'Confirm the authenticator and receive the recovery codes',
@@ -254,7 +257,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             responses: [
                 '200' => $jsonOf('MfaRecoveryCodes', 'The new app is in force; new recovery codes, shown once; every other session ended'),
                 '401' => $errorResponse('Not signed in'),
-                '422' => $errorResponse('No replacement waiting, or the code is not the new app\'s'),
+                '422' => $violationResponse('A violation on code (invalid_code): no replacement waiting, or the code is not the new app\'s'),
                 '429' => $spentResponse('Too many attempts'),
             ],
             summary: 'Confirm the new authenticator with one of its codes',
@@ -266,7 +269,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             responses: [
                 '200' => $jsonOf('MfaRecoveryCodes', 'A new set; every earlier code stops working'),
                 '401' => $errorResponse('Not signed in'),
-                '422' => $errorResponse('No authenticator, or the code is not a current authenticator code'),
+                '422' => $violationResponse('A violation on code (invalid_code): no authenticator, or the code is not a current authenticator code'),
                 '429' => $spentResponse('Too many attempts'),
             ],
             summary: 'Replace the recovery codes, proven by a current authenticator code',

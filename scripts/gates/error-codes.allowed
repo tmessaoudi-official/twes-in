@@ -36,14 +36,7 @@ passkey_sign_in_needs_passkey act a passkey-only sign-in asks a passkey first
 enabled_required act the switch was sent without saying on or off
 not_found act the company to prove oneself for is not one the person belongs to
 link_not_usable act the reset link is used, expired or never was
-invalid_code moving the code typed is wrong: a violation on code
-
-# Passwords
-invalid_email moving the address typed is no e-mail address: a violation on email
-current_password moving the current password typed is wrong: a violation on currentPassword
-too_short moving the new password is too short: a violation on newPassword
-unchanged moving the new password is the current one: a violation on newPassword
-breached moving the new password is in a known breach: a violation on newPassword
+invalid_code act the code typed at sign-in or for a company's proof is wrong
 
 # Companies, support and the demo
 company_closed act the company is closed: read-only to its members

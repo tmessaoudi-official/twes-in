@@ -59,6 +59,11 @@ const owner: Me = {
   phonesOutsideRanges: 'refuse',
 };
 
+/** A value sent refused, as API Platform writes the violation on its field. */
+function violation(propertyPath: string, reason: string): object {
+  return { violations: [{ propertyPath, message: reason, payload: { reason } }] };
+}
+
 describe('AuthApi', () => {
   let api: AuthApi;
   let http: HttpTestingController;
@@ -330,9 +335,10 @@ describe('AuthApi', () => {
     expect(await confirmed).toEqual(['aaaa-bbbb', 'cccc-dddd']);
 
     const wrong = api.confirmTotpEnrolment('000000');
-    http
-      .expectOne('/api/auth/mfa/enrolment/confirm')
-      .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
+    http.expectOne('/api/auth/mfa/enrolment/confirm').flush(violation('code', 'invalid_code'), {
+      status: 422,
+      statusText: 'Unprocessable Content',
+    });
     await expect(wrong).rejects.toEqual(new AuthRefused('invalid_code'));
   });
 
@@ -359,7 +365,10 @@ describe('AuthApi', () => {
     const wrong = api.confirmTotpReplacement('000000');
     http
       .expectOne('/api/auth/mfa/authenticator/replacement/confirm')
-      .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
+      .flush(violation('code', 'invalid_code'), {
+        status: 422,
+        statusText: 'Unprocessable Content',
+      });
     await expect(wrong).rejects.toEqual(new AuthRefused('invalid_code'));
   });
 
@@ -371,9 +380,10 @@ describe('AuthApi', () => {
     expect(await pending).toEqual(['eeeee-fffff']);
 
     const refused = api.regenerateRecoveryCodes('aaaaa-bbbbb');
-    http
-      .expectOne('/api/auth/mfa/recovery-codes')
-      .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
+    http.expectOne('/api/auth/mfa/recovery-codes').flush(violation('code', 'invalid_code'), {
+      status: 422,
+      statusText: 'Unprocessable Content',
+    });
     await expect(refused).rejects.toEqual(new AuthRefused('invalid_code'));
   });
 
@@ -408,9 +418,10 @@ describe('AuthApi', () => {
     await changed;
 
     const refused = api.changePassword('faux', 'nouveau-mot-de-passe');
-    http
-      .expectOne('/api/auth/password')
-      .flush({ error: 'current_password' }, { status: 422, statusText: 'Unprocessable Content' });
+    http.expectOne('/api/auth/password').flush(violation('currentPassword', 'current_password'), {
+      status: 422,
+      statusText: 'Unprocessable Content',
+    });
     await expect(refused).rejects.toEqual(new AuthRefused('current_password'));
   });
 

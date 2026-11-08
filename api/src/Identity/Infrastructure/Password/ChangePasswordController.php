@@ -15,7 +15,6 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -37,7 +36,7 @@ final readonly class ChangePasswordController
     ) {
     }
 
-    #[Route('/api/auth/password', name: 'api_auth_password_change', methods: ['PUT'])]
+    #[Route('/api/auth/password', name: 'api_auth_password_change', defaults: ['_api_respond' => true], methods: ['PUT'])]
     public function __invoke(Request $request): Response
     {
         $account = $this->security->getUser();
@@ -61,8 +60,7 @@ final readonly class ChangePasswordController
         try {
             $this->change->handle($account->getId(), \is_string($current) ? $current : '', \is_string($new) ? $new : '');
         } catch (NewPasswordRefused $refused) {
-            // error-codes: NewPasswordRefused
-            return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw PasswordRefusals::of($refused);
         }
         $attempts->reset();
 

@@ -153,7 +153,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['invalid_code', []], $this->refusalOf('code'));
 
         $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);

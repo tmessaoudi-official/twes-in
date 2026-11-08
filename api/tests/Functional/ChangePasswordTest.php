@@ -60,7 +60,7 @@ final class ChangePasswordTest extends ApiTestCase
         $this->sendJson('PUT', self::PATH, ['currentPassword' => 'not-the-password', 'newPassword' => self::NEXT]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('current_password', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['current_password', []], $this->refusalOf('currentPassword'));
         self::assertSame(1, $this->audited('auth.password_change_refused'));
         $this->client->request('GET', '/api/auth/me');
         self::assertResponseIsSuccessful();
@@ -72,10 +72,10 @@ final class ChangePasswordTest extends ApiTestCase
         $this->login('someone@twes.local', self::PASSWORD);
 
         $this->sendJson('PUT', self::PATH, ['currentPassword' => self::PASSWORD, 'newPassword' => 'short']);
-        self::assertSame('too_short', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['too_short', []], $this->refusalOf('newPassword'));
 
         $this->sendJson('PUT', self::PATH, ['currentPassword' => self::PASSWORD, 'newPassword' => self::PASSWORD]);
-        self::assertSame('unchanged', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['unchanged', []], $this->refusalOf('newPassword'));
 
         $this->sendJson('PUT', self::PATH, []);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);

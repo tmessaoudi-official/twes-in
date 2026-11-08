@@ -364,7 +364,10 @@ test('an account moves its authenticator to a new app, proving itself with its p
   // A code from the old app does not confirm the new one; the new app's does, with a new set of recovery codes.
   await page.getByTestId('two-factor-replace-code').fill(totp(oldSecret));
   await page.getByTestId('two-factor-replace-submit').click();
-  await expect(page.getByTestId('two-factor-replace-error')).toBeVisible();
+  // Said as the code's refusal, the API's violation on the code read as such, never as a wrong password.
+  await expect(page.getByTestId('two-factor-replace-error')).toContainText(
+    /code n’est pas valide|code is not valid|الرمز غير صالح/,
+  );
   await page.getByTestId('two-factor-replace-code').fill(totp(newSecret));
   await page.getByTestId('two-factor-replace-submit').click();
   await expect(recovery).toHaveCount(10);

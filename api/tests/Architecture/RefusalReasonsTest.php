@@ -118,6 +118,8 @@ final class RefusalReasonsTest extends KernelTestCase
         'last_owner' => 'web/src/app/company/company-api.ts',
         'own_membership' => 'web/src/app/company/company-api.ts',
         'role_gone' => 'web/src/app/invitation/invitation-api.ts',
+        // A code the authenticator does not give now, said by the two-factor screens that asked for it.
+        'invalid_code' => 'web/src/app/auth/auth-facade.ts',
         // A document refused its number is said wherever it was issued from, by the one interceptor saying numbering.
         'no_numbering_series' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',
         'series_number_taken' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',

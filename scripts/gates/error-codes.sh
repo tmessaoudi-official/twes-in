@@ -19,7 +19,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 [[ -d "$root/api/src" ]] || { echo "error-codes: FAIL — found no api/src under $root"; exit 1; }
 [[ -f "$root/scripts/gates/error-codes.allowed" ]] || { echo "error-codes: FAIL — found no scripts/gates/error-codes.allowed under $root"; exit 1; }
-ERROR_CODES_ROOT=$root ERROR_CODES_FLOOR=${ERROR_CODES_FLOOR:-90} ERROR_CODES_MOVING_CEILING=${ERROR_CODES_MOVING_CEILING:-12} python3 - <<'PY'
+ERROR_CODES_ROOT=$root ERROR_CODES_FLOOR=${ERROR_CODES_FLOOR:-90} ERROR_CODES_MOVING_CEILING=${ERROR_CODES_MOVING_CEILING:-6} python3 - <<'PY'
 import os
 import re
 import sys

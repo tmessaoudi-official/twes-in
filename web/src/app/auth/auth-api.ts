@@ -35,6 +35,7 @@ import type {
   TotpEnrolment,
 } from './auth-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 const ACCESSES: readonly CompanyAccess[] = ['full', 'read_only', 'locked'];
 const STAGES: readonly CompanySubscription['stage'][] = [
@@ -375,10 +376,15 @@ function toPasskey(passkey: Passkey): PasskeySummary {
   };
 }
 
+/**
+ * Why the API refused, as the auth screens name it: the code of a refused act or session state, or the reason of a
+ * value sent refused on its field (a code typed to confirm an authenticator, a new password).
+ */
 function codeOf(error: unknown): LoginError {
   if (error instanceof HttpErrorResponse && error.status > 0) {
     const body = error.error as Partial<AuthError> | null;
-    return body?.error ?? 'invalid_credentials';
+    const reason = refusalsIn(body)[0]?.reason as LoginError | null | undefined;
+    return body?.error ?? reason ?? 'invalid_credentials';
   }
   return 'network';
 }

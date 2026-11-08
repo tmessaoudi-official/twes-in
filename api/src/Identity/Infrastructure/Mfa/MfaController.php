@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Mfa;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Identity\Application\Login\SignInFactors;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
@@ -27,6 +28,7 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -100,7 +102,7 @@ final readonly class MfaController
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         } catch (SecondFactorUnreadable) {
             // The stored secret cannot be read with the current APP_MFA_KEY: refused, but not a guess, so it does not
-            // count toward the lock (docs/SPEC.md § 8 row 26). The client hears the same invalid_code, which is what it
+            // count toward the lock. The client hears the same invalid_code, which is what it
             // can act on (a recovery code, or re-enrolment); the audit row `unreadable_secret` tells the operator why.
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         }
@@ -129,7 +131,7 @@ final readonly class MfaController
      * the login code, since a guess that lands installs an app and hands over its recovery codes, but on a budget of its
      * own: a person setting up an app may well mistype it, and must still prove who they are and sign in. No lock.
      */
-    #[Route('/api/auth/mfa/enrolment/confirm', name: 'api_auth_mfa_enrolment_confirm', methods: ['POST'])]
+    #[Route('/api/auth/mfa/enrolment/confirm', name: 'api_auth_mfa_enrolment_confirm', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function confirm(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
@@ -140,8 +142,8 @@ final readonly class MfaController
 
         try {
             $codes = $this->confirmEnrolment->handle($userId, self::codeIn($request));
-        } catch (SecondFactorRefused|SecondFactorUnreadable) {
-            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (SecondFactorRefused|SecondFactorUnreadable $refused) {
+            throw self::codeRefused($refused);
         }
 
         return new JsonResponse(['recoveryCodes' => $codes]);
@@ -188,7 +190,7 @@ final readonly class MfaController
      * post codes here and a guess that lands hands over ten recovery codes and signs the owner out everywhere, but on
      * the setup's own budget: a mistyped code from the new phone must not stop its owner signing in.
      */
-    #[Route('/api/auth/mfa/authenticator/replacement/confirm', name: 'api_auth_mfa_authenticator_replacement_confirm', methods: ['POST'])]
+    #[Route('/api/auth/mfa/authenticator/replacement/confirm', name: 'api_auth_mfa_authenticator_replacement_confirm', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function confirmReplacement(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
@@ -199,8 +201,8 @@ final readonly class MfaController
 
         try {
             $codes = $this->confirmReplacement->handle($userId, self::codeIn($request), $request->getSession()->getId());
-        } catch (SecondFactorRefused|SecondFactorUnreadable) {
-            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (SecondFactorRefused|SecondFactorUnreadable $refused) {
+            throw self::codeRefused($refused);
         }
 
         return new JsonResponse(['recoveryCodes' => $codes]);
@@ -210,7 +212,7 @@ final readonly class MfaController
      * A new set of recovery codes against a current authenticator code. Throttled on the same budget as the login code,
      * because it is the same six digits to guess, and a guess here that lands hands over a whole set of codes.
      */
-    #[Route('/api/auth/mfa/recovery-codes', name: 'api_auth_mfa_recovery_codes', methods: ['POST'])]
+    #[Route('/api/auth/mfa/recovery-codes', name: 'api_auth_mfa_recovery_codes', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function regenerateRecoveryCodes(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
@@ -229,17 +231,26 @@ final readonly class MfaController
 
         try {
             $codes = $this->regenerateRecoveryCodes->handle($userId, self::codeIn($request));
-        } catch (SecondFactorRefused) {
+        } catch (SecondFactorRefused $refused) {
             $this->lockout->recordWrongCode($userId);
 
-            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (SecondFactorUnreadable) {
-            // Not a guess, as at login: refused with the same answer, never counted (docs/SPEC.md § 8 row 26).
-            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw self::codeRefused($refused);
+        } catch (SecondFactorUnreadable $unreadable) {
+            // Not a guess, as at login: refused with the same answer, never counted.
+            throw self::codeRefused($unreadable);
         }
         $attempts->reset();
 
         return new JsonResponse(['recoveryCodes' => $codes]);
+    }
+
+    /**
+     * A code typed once signed in, to confirm an authenticator or to ask new recovery codes, refused on the code: the
+     * screen marks the field it was typed in. The code typed at sign-in is a refusal of the sign-in, never of a field.
+     */
+    private static function codeRefused(\Throwable $refused): ValidationException
+    {
+        return DomainRule::refused('code', 'The code is not one the authenticator gives now.', 'invalid_code', previous: $refused);
     }
 
     private function currentUserId(): \Symfony\Component\Uid\Uuid

@@ -12,7 +12,7 @@ set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 [[ -d "$root/api/src" ]] || { echo "refusal-shapes: FAIL — found no api/src under $root"; exit 1; }
-REFUSAL_SHAPES_ROOT=$root REFUSAL_SHAPES_FLOOR=${REFUSAL_SHAPES_FLOOR:-160} python3 - <<'PY'
+REFUSAL_SHAPES_ROOT=$root REFUSAL_SHAPES_FLOOR=${REFUSAL_SHAPES_FLOOR:-145} python3 - <<'PY'
 import os
 import re
 import sys

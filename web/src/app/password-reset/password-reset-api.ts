@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { type PasswordResetError, resetErrorOf } from './password-reset-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class PasswordResetRefused extends Error {
@@ -33,8 +34,10 @@ export class PasswordResetApi {
       await firstValueFrom(request);
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status > 0) {
+        // A refused act answers its code; a value sent refused (the address, the new password), its reason.
         const body = error.error as { error?: string } | null;
-        throw refusedFor(error, new PasswordResetRefused(resetErrorOf(body?.error)));
+        const code = body?.error ?? refusalsIn(body)[0]?.reason ?? undefined;
+        throw refusedFor(error, new PasswordResetRefused(resetErrorOf(code)));
       }
       throw refusedFor(error, new PasswordResetRefused('network'));
     }

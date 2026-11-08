@@ -138,6 +138,7 @@ final class PasswordResetTest extends ApiTestCase
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->postJson(self::FORGOT, ['email' => 'not-an-address']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['invalid_email', []], $this->refusalOf('email'));
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
@@ -161,7 +162,7 @@ final class PasswordResetTest extends ApiTestCase
         $this->deliverQueued();
         $token = $this->tokenInMail();
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => 'short']);
-        self::assertSame('too_short', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['too_short', []], $this->refusalOf('newPassword'));
 
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a refused password leaves the link usable');

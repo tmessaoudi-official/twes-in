@@ -13,6 +13,7 @@ use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\Password\ResetLinkNotUsable;
 use App\Identity\Application\Password\ResetPassword;
 use App\Identity\Domain\ValueObject\Email;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -42,7 +43,7 @@ final readonly class PasswordResetController
     ) {
     }
 
-    #[Route('/api/auth/password/forgot', name: 'api_auth_password_forgot', methods: ['POST'])]
+    #[Route('/api/auth/password/forgot', name: 'api_auth_password_forgot', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function forgot(Request $request): Response
     {
         $limit = $this->clientLimiter->create($request->getClientIp() ?? '')->consume();
@@ -53,8 +54,8 @@ final readonly class PasswordResetController
         $body = self::body($request);
         try {
             $email = Email::fromString(\is_string($body['email'] ?? null) ? $body['email'] : '');
-        } catch (\InvalidArgumentException) {
-            return new JsonResponse(['error' => 'invalid_email'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\InvalidArgumentException $malformed) {
+            throw DomainRule::refused('email', 'Write an e-mail address as name@domain.extension.', 'invalid_email', previous: $malformed);
         }
 
         if ($this->addressLimiter->create(hash('sha256', $email->value))->consume()->isAccepted()) {
@@ -64,7 +65,7 @@ final readonly class PasswordResetController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    #[Route('/api/auth/password/reset', name: 'api_auth_password_reset', methods: ['POST'])]
+    #[Route('/api/auth/password/reset', name: 'api_auth_password_reset', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function reset(Request $request): Response
     {
         $limit = $this->useLimiter->create($request->getClientIp() ?? '')->consume();
@@ -81,8 +82,7 @@ final readonly class PasswordResetController
         } catch (ResetLinkNotUsable) {
             return new JsonResponse(['error' => 'link_not_usable'], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (NewPasswordRefused $refused) {
-            // error-codes: NewPasswordRefused
-            return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw PasswordRefusals::of($refused);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);

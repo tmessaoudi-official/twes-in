@@ -108,7 +108,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         $this->postJson(self::CONFIRM, ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable('+30 seconds'))]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['invalid_code', []], $this->refusalOf('code'));
         self::assertSame(0, $this->audited('auth.totp_replaced'));
     }
 
@@ -119,7 +119,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         $this->postJson(self::CONFIRM, ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable('+30 seconds'))]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['invalid_code', []], $this->refusalOf('code'));
     }
 
     public function testTheSameCodeCannotConfirmTwice(): void

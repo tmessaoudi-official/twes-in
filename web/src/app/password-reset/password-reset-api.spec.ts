@@ -42,6 +42,30 @@ describe('PasswordResetApi', () => {
       .expectOne('/api/auth/password/reset')
       .flush({ error: 'link_not_usable' }, { status: 422, statusText: 'Unprocessable Content' });
     await expect(refused).rejects.toEqual(new PasswordResetRefused('link_not_usable'));
+
+    const short = api.reset('c'.repeat(64), 'x');
+    http.expectOne('/api/auth/password/reset').flush(
+      {
+        violations: [
+          { propertyPath: 'newPassword', message: 'Too short', payload: { reason: 'too_short' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(short).rejects.toEqual(new PasswordResetRefused('too_short'));
+  });
+
+  it('says an address that is none by the reason on its field', async () => {
+    const malformed = api.forgot('not-an-address', 'fr');
+    http.expectOne('/api/auth/password/forgot').flush(
+      {
+        violations: [
+          { propertyPath: 'email', message: 'No address', payload: { reason: 'invalid_email' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(malformed).rejects.toEqual(new PasswordResetRefused('invalid_email'));
   });
 
   it('reads an unknown code as a plain refusal and an unreachable server as the network', async () => {

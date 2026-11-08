@@ -70,7 +70,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         $this->postJson(self::PATH, ['code' => $this->firstCodes[0]]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['invalid_code', []], $this->refusalOf('code'));
         self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
 
         // The set it tried to replace is untouched, and the code it offered is not spent either.
@@ -98,7 +98,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         $this->postJson(self::PATH, ['code' => '123456']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        self::assertSame(['invalid_code', []], $this->refusalOf('code'));
     }
 
     /**
@@ -135,7 +135,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         for ($attempt = 0; $attempt < 5; ++$attempt) {
             $this->postJson(self::PATH, ['code' => $this->nextCode()]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-            self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+            self::assertSame(['invalid_code', []], $this->refusalOf('code'));
         }
 
         self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
