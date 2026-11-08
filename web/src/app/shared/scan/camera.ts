@@ -19,7 +19,11 @@ export class CameraRefused extends Error {
   }
 }
 
-/** The port to this device's cameras (docs/SPEC.md § 7, 2026-09-23 09:45, slice 3). */
+/**
+ * The port to this device's cameras. It answers for itself wherever it is injected, so the application's start names
+ * no camera and the first page carries none: only the lazy shell and the scanning screens open one.
+ */
+@Injectable({ providedIn: 'root', useFactory: () => new BrowserCamera() })
 export abstract class Camera {
   /** Whether this browser can open a camera at all: it needs a secure origin and the media devices API. */
   abstract available(): boolean;
@@ -28,7 +32,6 @@ export abstract class Camera {
   abstract open(deviceId: string | null): Promise<MediaStream>;
 }
 
-@Injectable()
 export class BrowserCamera extends Camera {
   available(): boolean {
     return (

@@ -256,3 +256,7 @@ the end of § Lessons here.
 - Prettier is not idempotent on a long member chain (`http.expectOne(…).flush({ violations: [ … ] }, …)`): its first
   pass breaks the chain per call, a second joins it again, so `make check FIX=1` wrote the first form, said « ok » and
   the gate's `prettier --check` reddened (2026-11-07). After `FIX=1`, run `make check` once more without it before staging.
+- A provider named in `app.config.ts` puts its class on the first page even when only lazy screens inject it: the camera's
+  two ports rode it for months (1.39 kB). Give a port its default where it is declared, `@Injectable({ providedIn: 'root',
+  useFactory: () => new Adapter() })` (a factory: the adapter is declared below the port or imports it), and keep
+  `app.config.ts` for what the start itself uses; `scan-ports.spec.ts` is the pattern (2026-11-08).
