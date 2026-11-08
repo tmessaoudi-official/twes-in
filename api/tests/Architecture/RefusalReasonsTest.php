@@ -121,6 +121,10 @@ final class RefusalReasonsTest extends KernelTestCase
         // A document refused its number is said wherever it was issued from, by the one interceptor saying numbering.
         'no_numbering_series' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',
         'series_number_taken' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',
+        // Why a stock location is kept, said by the locations' own screens.
+        'location_default' => 'web/src/app/inventory/inventory-api.ts',
+        'location_holds' => 'web/src/app/inventory/inventory-api.ts',
+        'location_moved' => 'web/src/app/inventory/inventory-api.ts',
     ];
 
     /**

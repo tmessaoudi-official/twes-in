@@ -88,6 +88,7 @@ import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { typedText } from '../shared/form/typed-text';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -487,12 +488,19 @@ export class InventoryApi {
     );
   }
 
-  /** 409 for a default location, or one that still holds a location or a movement. */
+  /** 409 naming why the location is kept: the default, goods moved through it, or locations it holds. */
   async deleteLocation(companyId: string, id: string): Promise<void> {
-    await this.guard(
-      async () => firstValueFrom(this.http.delete(path(companyId, 'stock-locations', id))),
-      'in_use',
-    );
+    try {
+      await firstValueFrom(this.http.delete(path(companyId, 'stock-locations', id)));
+    } catch (error) {
+      const kept =
+        error instanceof HttpErrorResponse && error.status === 409
+          ? refusalsIn(error.error)
+              .map((refusal) => refusal.reason)
+              .find(isKeptLocation)
+          : undefined;
+      throw refusedFor(error, new InventoryRefused(kept ?? codeOf(error, 'in_use')));
+    }
   }
 
   /** Every floor the company's stock is drawn on, each carrying how many rectangles it already holds. */
@@ -832,6 +840,16 @@ function toMoveFailure(failure: StockMoveFailureStockMoveFailureRead): StockMove
     failedAt: failure.failedAt ?? '',
   };
 }
+
+/** Why the API keeps a stock location, each said by its own sentence. */
+type KeptLocation = 'location_default' | 'location_moved' | 'location_holds';
+const KEPT_LOCATION: ReadonlySet<string> = new Set<KeptLocation>([
+  'location_default',
+  'location_moved',
+  'location_holds',
+]);
+const isKeptLocation = (reason: string | null): reason is KeptLocation =>
+  reason !== null && KEPT_LOCATION.has(reason);
 
 function codeOf(
   error: unknown,

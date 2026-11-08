@@ -93,6 +93,8 @@ the end of § Lessons here.
   before committing such a change, and read list cells by `[data-column="<id>"]`, never by index (2026-09-23: two reds).
   A required field added to a type is a compile error in every spec building one, which `make check` does not open:
   `make web-tools CMD='npx tsc -p tsconfig.spec.json --noEmit'` type-checks them all in a minute (`TextQuery.forms`, 2026-11-05).
+  Vitest strips types, so a green spec says nothing of the code it tests either: a guard typed `string` handed to `.find()`
+  over `string | null` passed its spec and stopped the image build. Add `tsc -p tsconfig.app.json --noEmit` (2026-11-08).
 - A `FormGroup` built in a `computed` over facade signals is rebuilt by any reload that returns equal data as new
   objects, discarding what was typed (2026-09-14: revising a product right after creating it saved the old price and
   said "saved"). Key the form on the record's id and the descriptor's content, and read its inputs `untracked`. A list

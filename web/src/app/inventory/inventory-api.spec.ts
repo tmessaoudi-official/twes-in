@@ -570,6 +570,20 @@ describe('InventoryApi', () => {
     await expect(deleted).rejects.toMatchObject({ code: 'in_use' });
   });
 
+  it.each(['location_default', 'location_moved', 'location_holds'] as const)(
+    'says why a location is kept as the API names it: %s',
+    async (reason) => {
+      const deleted = api.deleteLocation('c1', 'l2');
+      http
+        .expectOne('/api/companies/c1/stock-locations/l2')
+        .flush(
+          { violations: [{ propertyPath: '', payload: { reason, params: {} } }] },
+          { status: 409, statusText: 'Conflict' },
+        );
+      await expect(deleted).rejects.toMatchObject({ code: reason });
+    },
+  );
+
   it('records a delivery shared over several places in one request, whole or refused', async () => {
     const input = {
       productId: 'p1',

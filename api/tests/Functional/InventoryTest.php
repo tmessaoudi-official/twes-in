@@ -134,8 +134,10 @@ final class InventoryTest extends ApiTestCase
 
         $this->sendJson('DELETE', $this->path('stock-locations', $zoneId));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a location holding another is kept');
+        self::assertSame([['propertyPath' => '', 'reason' => 'location_holds', 'params' => ['locations' => 1]]], $this->refusals(), 'said as what it holds, not guessed among three');
         $this->sendJson('DELETE', $this->path('stock-locations', $defaultId));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'the default location is kept');
+        self::assertSame([['propertyPath' => '', 'reason' => 'location_default', 'params' => []]], $this->refusals());
         $this->sendJson('DELETE', $this->path('stock-locations', $rackId));
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->sendJson('DELETE', $this->path('stock-locations', $rackId));
@@ -143,6 +145,15 @@ final class InventoryTest extends ApiTestCase
 
         $actions = $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'stock_location'");
         self::assertEqualsCanonicalizing(['stock_location.created', 'stock_location.created', 'stock_location.revised', 'stock_location.deleted'], $actions);
+
+        // A location goods have moved through is kept for good, whatever it holds: that is what is said first.
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'M1', 'name' => 'Quai']));
+        $quayId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $quayId, 'quantity' => '1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('DELETE', $this->path('stock-locations', $quayId));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a location goods moved through is kept');
+        self::assertSame([['propertyPath' => '', 'reason' => 'location_moved', 'params' => ['movements' => 1]]], $this->refusals());
     }
 
     public function testADeliveryIsSharedOutOverSeveralPlacesInOneRequestAndRefusedWholeWhenAnyPartIs(): void

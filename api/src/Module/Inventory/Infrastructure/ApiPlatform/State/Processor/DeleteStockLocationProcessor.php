@@ -11,14 +11,15 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Module\Inventory\Application\Location\ManageStockLocations;
 use App\Module\Inventory\Application\Location\StockLocationInUse;
 use App\Module\Inventory\Application\Location\StockLocationNotFound;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockLocationResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<StockLocationResource, null> */
@@ -37,9 +38,25 @@ final readonly class DeleteStockLocationProcessor implements ProcessorInterface
         } catch (StockLocationNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (StockLocationInUse $inUse) {
-            throw new ConflictHttpException($inUse->getMessage(), $inUse);
+            throw self::kept($inUse);
         }
 
         return null;
+    }
+
+    /**
+     * Why the location is kept, said as the one cause the person can act on: goods it has seen move keep it for good,
+     * whatever it holds; else the locations it holds, which can be moved away; else its being the default.
+     */
+    private static function kept(StockLocationInUse $inUse): ValidationException
+    {
+        if (!$inUse->isDefault && $inUse->movements > 0) {
+            return DomainRule::conflict(DomainRule::WHOLE_REQUEST, $inUse->getMessage(), 'location_moved', ['movements' => $inUse->movements], $inUse);
+        }
+        if (!$inUse->isDefault) {
+            return DomainRule::conflict(DomainRule::WHOLE_REQUEST, $inUse->getMessage(), 'location_holds', ['locations' => $inUse->locations], $inUse);
+        }
+
+        return DomainRule::conflict(DomainRule::WHOLE_REQUEST, $inUse->getMessage(), 'location_default', [], $inUse);
     }
 }
