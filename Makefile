@@ -46,7 +46,7 @@ WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile 
 WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
+.PHONY: rc-lane rc-tools-image stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -303,6 +303,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-clock.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/docs-run-lines.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/rc-lane.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
@@ -435,6 +436,22 @@ stress: tools-image
 	docker compose up -d --wait --no-recreate postgres
 	( flock -n 9 || { echo "make stress: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
 	  $(TOOLS) sh -c 'cd api && php tests/Concurrency/Support/prepare.php && vendor/bin/phpunit -c phpunit.stress.xml' ) 9>/tmp/twes-in-gate.lock
+
+rc-tools-image: ## build the RC lane's toolchain: the tools image on PHP's next release candidate (infra/api/rc.Dockerfile)
+	docker build -q --load $(EXTRA_CA_SECRET) -f infra/api/rc.Dockerfile -t twes-in-tools-rc . >/dev/null
+# The RC lane (scripts/rc-lane/rc-lane.sh, CI's rc-lane workflow): api/ copied outside the tree onto Symfony's next
+# minor and PHP's release candidate, then its deprecations, PHPStan and the suite on a database of its own
+# (twes_test_rc*); the report is var/rc-lane/summary.md. It reports and never fails on what it finds. The whole suite
+# runs, so it takes the gate's lock and never runs beside a gate.
+rc-lane:       ## the API on PHP's release candidate and Symfony's next minor, on a copy: var/rc-lane/summary.md
+rc-lane: rc-tools-image
+	docker compose up -d --wait --no-recreate postgres
+	mkdir -p $(TOOLS_TMP)
+	( flock -n 9 || { echo "make rc-lane: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
+	  docker run --rm --network host -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e IN_TOOLS=1 -e TMPDIR=$(TOOLS_TMP) \
+	    -e GITHUB_ACTIONS -e RC_SYMFONY -e COMPOSER_CACHE_DIR=$(CURDIR)/var/cache/composer \
+	    -v $(CURDIR):$(CURDIR) -v $(TOOLS_TMP):$(TOOLS_TMP) -w $(CURDIR) \
+	    twes-in-tools-rc bash scripts/rc-lane/rc-lane.sh run var/rc-lane < /dev/null ) 9>/tmp/twes-in-gate.lock
 
 test-api: tools-image
 	docker compose up -d --wait --no-recreate postgres

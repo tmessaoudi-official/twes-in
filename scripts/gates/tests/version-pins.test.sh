@@ -25,6 +25,12 @@ FROM dunglas/frankenphp:1.12.7-php8.5-trixie
 RUN install-php-extensions pdo_pgsql intl zip opcache bcmath
 COPY --from=docker:29.9.2-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker:29.9.2-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+COPY --from=composer:2.11.1 /usr/bin/composer /usr/bin/composer
+EOF
+  cat > "$d/infra/api/rc.Dockerfile" <<'EOF'
+FROM php:8.6-rc-cli-trixie
+RUN install-php-extensions pdo_pgsql intl zip opcache bcmath mbstring
+COPY --from=composer:2.11.1 /usr/bin/composer /usr/bin/composer
 EOF
   printf 'FROM postgres:18.6-trixie\nRUN apt-get install -y pgbackrest\n' > "$d/infra/postgres/Dockerfile"
   printf '[twes]\npg1-path=/var/lib/postgresql/18/docker\n' > "$d/infra/postgres/pgbackrest.conf"
@@ -58,7 +64,7 @@ EOF
 run() { bash "$GATE" --root "$1" 2>&1; }
 echo "version-pins gate"
 
-d=$(tree); out=$(run "$d"); check "every copy agreeing passes" $? 0 "$out" "OK — 10 pins agree"
+d=$(tree); out=$(run "$d"); check "every copy agreeing passes" $? 0 "$out" "OK — 12 pins agree"
 d=$(tree); sed -i 's/caddy:2.11.6-alpine/caddy:2.11.5-alpine/' "$d/compose.deploy.yaml"
 out=$(run "$d"); check "the edge on another Caddy than the LAN door is refused" $? 1 "$out" "caddy image"
 d=$(tree); printf 'services:\n  edge:\n    image: nginx:1\n' > "$d/compose.deploy.yaml"
@@ -149,5 +155,20 @@ out=$(run "$d"); check "the docker CLI and its compose plugin copied from two re
 
 d=$(tree); sed -i '/COPY --from=docker/d' "$d/infra/api/Dockerfile"
 out=$(run "$d"); check "a tools image copying no docker CLI is refused, not skipped" $? 1 "$out" "docker CLI"
+
+d=$(tree); sed -i 's/composer:2.11.1/composer:2.10.3/' "$d/infra/api/rc.Dockerfile"
+out=$(run "$d"); check "the RC lane on another Composer than the API image is named with its file" $? 1 "$out" "infra/api/rc.Dockerfile"
+
+d=$(tree); sed -i '/COPY --from=composer/d' "$d/infra/api/Dockerfile"
+out=$(run "$d"); check "an API image copying no Composer is refused, not skipped" $? 1 "$out" "Composer"
+
+d=$(tree); rm "$d/infra/api/rc.Dockerfile"
+out=$(run "$d"); check "a missing RC lane image is refused, not skipped" $? 1 "$out" "infra/api/rc.Dockerfile"
+
+d=$(tree); sed -i 's/ bcmath mbstring/ mbstring/' "$d/infra/api/rc.Dockerfile"
+out=$(run "$d"); check "the RC lane missing an extension the API installs is named with the extension" $? 1 "$out" "bcmath"
+
+d=$(tree)
+out=$(run "$d"); check "the RC lane may add an extension FrankenPHP builds in (mbstring)" $? 0 "$out" "version-pins: OK"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

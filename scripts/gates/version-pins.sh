@@ -20,6 +20,9 @@
 #   registry               the throwaway registry of the shop check (scripts/onprem/onprem-check.sh) = the staging
 #                          check's (scripts/staging/staging-check.sh)
 #   docker CLI             the tools image copies the CLI and its compose plugin from one docker image (infra/api/Dockerfile)
+#   Composer               infra/api/Dockerfile's composer image = the RC lane's (infra/api/rc.Dockerfile)
+#   PHP extensions         every extension infra/api/Dockerfile installs is installed by the RC lane too (it may add
+#                          what FrankenPHP builds in), so the lane tests the PHP the API runs, one release later
 # Usage: version-pins.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -141,10 +144,25 @@ docker_cli=$(grab infra/api/Dockerfile 'COPY --from=docker:[^[:space:]]+' | sed 
 if [[ -z "$docker_cli" ]]; then problem "docker CLI: found no COPY --from=docker:<tag> in infra/api/Dockerfile"
 elif [[ "$(wc -l <<<"$docker_cli")" -ne 1 ]]; then problem "docker CLI: infra/api/Dockerfile copies from $(inline "$docker_cli")"; fi
 
+# Composer and the extensions: the RC lane (infra/api/rc.Dockerfile) is the API's toolchain on the next PHP
+api_composer=$(grab infra/api/Dockerfile 'COPY --from=composer:[^[:space:]]+' | sed 's/.*=//' | sort -u)
+rc_composer=$(grab infra/api/rc.Dockerfile 'COPY --from=composer:[^[:space:]]+' | sed 's/.*=//' | sort -u)
+if [[ -z "$api_composer" ]]; then problem "Composer: found no COPY --from=composer:<tag> in infra/api/Dockerfile"
+elif [[ "$(wc -l <<<"$api_composer")" -ne 1 ]]; then problem "Composer: infra/api/Dockerfile copies from $(inline "$api_composer")"
+elif [[ ! -f "$root/infra/api/rc.Dockerfile" ]]; then problem "Composer: infra/api/rc.Dockerfile (the RC lane) is missing"
+elif [[ "$rc_composer" != "$api_composer" ]]; then problem "Composer: infra/api/rc.Dockerfile copies from $(inline "${rc_composer:-nothing}"), infra/api/Dockerfile from $api_composer"; fi
+exts() { grab "$1" 'install-php-extensions( +[a-z0-9_]+)+' | sed 's/install-php-extensions//' | tr ' ' '\n' | sed '/^$/d' | sort -u; }
+if [[ -f "$root/infra/api/rc.Dockerfile" ]]; then
+  api_ext=$(exts infra/api/Dockerfile)
+  missing_ext=$(comm -23 <(printf '%s\n' "$api_ext") <(exts infra/api/rc.Dockerfile) | sed '/^$/d')
+  if [[ -z "$api_ext" ]]; then problem "PHP extensions: found no install-php-extensions in infra/api/Dockerfile"
+  elif [[ -n "$missing_ext" ]]; then problem "PHP extensions: infra/api/rc.Dockerfile does not install $(inline "$missing_ext"), which infra/api/Dockerfile does"; fi
+fi
+
 if ((${#problems[@]})); then
   printf 'version-pins: FAIL — %d cop(ies) disagree (a bump moves every copy: docs/UPDATE.md):\n' "${#problems[@]}"
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'version-pins: OK — 10 pins agree across their copies (postgres %s, Caddy %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s, registry %s, docker CLI %s)\n' \
-  "${compose_pg#postgres:}" "$(sed 's/^caddy://; s/@sha256:\(.\{12\}\).*/@\1…/' <<<"$lan_caddy")" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core" "${onprem_registry#registry:}" "${docker_cli#docker:}"
+printf 'version-pins: OK — 12 pins agree across their copies (postgres %s, Caddy %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s, registry %s, docker CLI %s, Composer %s, the RC lane'"'"'s %s extensions)\n' \
+  "${compose_pg#postgres:}" "$(sed 's/^caddy://; s/@sha256:\(.\{12\}\).*/@\1…/' <<<"$lan_caddy")" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core" "${onprem_registry#registry:}" "${docker_cli#docker:}" "${api_composer#composer:}" "$(wc -l <<<"$api_ext")"

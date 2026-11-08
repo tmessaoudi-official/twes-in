@@ -471,8 +471,17 @@ make gate-web         # regenerate the API types, lint, format, unit tests, prod
 make gate             # the three above
 make gate-stamps      # the Decisions Log stamps alone, as the decision-stamps workflow checks a push touching only docs/SPEC.md
 make stress           # the race tests (api/tests/Concurrency) on their own database, twes_test_stress, as CI's api job runs them
+make rc-lane          # the API on PHP's release candidate and Symfony's next minor, on a copy: var/rc-lane/summary.md
 make e2e              # Playwright against the running stack (make up first)
 ```
+
+`make rc-lane` is the RC lane (`scripts/rc-lane/rc-lane.sh`, `infra/api/rc.Dockerfile`), which CI's `rc-lane` workflow
+runs weekly, by hand, and on a push changing the dependencies. It copies `api/` into the toolchain's temporary
+directory, never the tree, moves the copy to Symfony's next minor (`RC_SYMFONY`, default 8.2) on PHP's release candidate,
+then installs it, lists the container's deprecations, runs PHPStan and the suite on a database of its own (`twes_test_rc*`),
+and writes what each step gave to `var/rc-lane/summary.md`. It reports and never fails on what it finds: on GitHub a
+failed step is a warning on the run's page. php-cs-fixer is not run there, since it refuses a PHP it does not know yet.
+It runs the whole suite, so it takes the gate's lock: never beside a gate.
 
 `make check` is the quick look before them, in seconds rather than the gate's quarter of an hour: each tool is given
 only the files changed against HEAD and the untracked ones (`FILES='api/src/… web/src/…'` names others), within the

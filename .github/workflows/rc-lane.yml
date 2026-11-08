@@ -1,0 +1,38 @@
+# The RC lane (scripts/rc-lane/rc-lane.sh, `make rc-lane`, docs/plans/version-updates.plan.md row 17): the API on PHP's
+# next release candidate and Symfony's next minor, on a copy of api/, so what an upgrade breaks is known before the
+# release. It reports and never blocks: a step that fails is a warning on the run's page and a line in its summary, with
+# the container's deprecations listed every run. Weekly, by hand, and on a push that changes the dependencies or the
+# lane itself, as restore-drill runs. Not one of ci.yml's required checks.
+name: rc-lane
+
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [master, 'release/**']
+    paths:
+      - api/composer.json
+      - api/composer.lock
+      - infra/api/rc.Dockerfile
+      - infra/api/conf.d/**
+      - scripts/rc-lane/**
+      - .github/workflows/rc-lane.yml
+
+# Every job reads the checkout and nothing more (security map F9: the default token's rights depend on a repository setting).
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: make rc-lane
+      - if: always()
+        run: if [ -f var/rc-lane/summary.md ]; then cat var/rc-lane/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
