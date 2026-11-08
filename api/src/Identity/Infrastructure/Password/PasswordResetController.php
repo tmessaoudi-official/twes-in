@@ -81,6 +81,7 @@ final readonly class PasswordResetController
         } catch (ResetLinkNotUsable) {
             return new JsonResponse(['error' => 'link_not_usable'], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (NewPasswordRefused $refused) {
+            // error-codes: NewPasswordRefused
             return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

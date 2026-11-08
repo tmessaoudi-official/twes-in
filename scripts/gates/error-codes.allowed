@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The `{error: <code>}` codes the API answers (error-codes.sh), one a line: <code> act|moving <what it refuses>.
+# `act`: the act or the session's state is refused, so no field is marked and the screen of that act says it.
+# `moving`: a value a person typed or chose is refused; it moves to a violation on its field (DomainRule::refused, read
+# by refusalsIn) with docs/plans/stable-release.plan.md row S5.38, and leaves this list when its last answer does.
+# A new code is a line here, read in review: a field refused is a violation from the start, never a new `moving` line.
+
+# Who is at the screen, and the session
+authentication_required act no session: the person signs in first
+csrf_token_missing act a write sent without the session's anti-forgery token
+csrf_token_invalid act a write sent with an anti-forgery token the session did not give
+too_many_attempts act the attempts of a window are spent: wait the seconds it says
+step_up_required act the proof of who is at the screen is not recent: give it again
+step_up_exhausted act the proof's wrong answers are spent: the sign-in ends
+invalid_credentials act the address or the password is wrong, never told which
+account_locked act the account is locked after too many wrong answers
+account_disabled act the account was deactivated, told only to the right password
+session_not_found act the session to end is no longer one of the person's
+customer_screen_locked act the customer screen holds this session to itself
+platform_operator act an operator's account is not deleted from the account screen
+sole_owner act the person is the only owner of companies named beside the code
+
+# Second factors and passkeys
+mfa_not_pending act no sign-in waits for a second factor
+mfa_already_enrolled act an authenticator is already enrolled
+mfa_authenticator_required act the company asks an authenticator, which cannot be taken off
+mfa_enrolment_required act the company asks a second factor the person has not set yet
+mfa_last_factor act the last factor is never taken off while one is required
+totp_not_enrolled act no authenticator is enrolled to confirm or remove
+invalid_passkey act the passkey's proof did not verify
+passkey_not_found act the passkey named is not one of the person's
+passkey_required act this entry asks a passkey the person has not
+passkey_sign_in_off act signing in with a passkey alone is switched off
+passkey_sign_in_needs_authenticator act a passkey-only sign-in asks an authenticator kept as a way back
+passkey_sign_in_needs_passkey act a passkey-only sign-in asks a passkey first
+enabled_required act the switch was sent without saying on or off
+not_found act the company to prove oneself for is not one the person belongs to
+link_not_usable act the reset link is used, expired or never was
+invalid_code moving the code typed is wrong: a violation on code
+
+# Passwords
+invalid_email moving the address typed is no e-mail address: a violation on email
+current_password moving the current password typed is wrong: a violation on currentPassword
+too_short moving the new password is too short: a violation on newPassword
+unchanged moving the new password is the current one: a violation on newPassword
+breached moving the new password is in a known breach: a violation on newPassword
+
+# Companies, support and the demo
+company_closed act the company is closed: read-only to its members
+owner_only act only an owner may do this
+not_closed_down act the company to reopen is not closed
+reopen_period_over act the company's reopening window is over
+support_read_only act support access only reads
+support_window moving the hours chosen are not a support window offered: a violation on hours
+support_reason moving the reason is too long: a violation on reason
+demo_refused act a demo account does not do this
+demo_off act the demo is switched off here
+demo_busy act every demo is in use: try again in the seconds it says
+unknown_country act the demo has no company of that country
+
+# The bin, merges and erasure
+no_record act nothing was chosen to remove
+record_used act the records named beside the code are in use
+removal_final act the removal's day is over: it cannot come back
+removal_restored act the removal already came back
+merge_undone act the merge was already undone
+restore_conflict act what comes back collides with a record made since
+merge_into_itself act a record is not merged into itself
+merge_cycle act the survivor was itself merged into what it absorbs
+merge_conflict act the merge collides with a record made since
+merge_alias act a record merged away cannot be a survivor
+merge_mismatch act the records to merge are not of one kind
+merge_refused act the survivor or the merged-away record is refused, its reason beside
+merge_transacted act the record merged away carries documents and stays
+no_part moving no part of the data was chosen to erase: a violation on parts
+unknown_part moving a part named is not one erased: a violation on parts
+erasure_pending act an erasure already waits
+erasure_final act the erasure's day is over
+erasure_conflict act the erasure collides with a change made since
+
+# Imports
+invalid_request moving the import's file, mode or pairing is missing or wrong: violations on their fields
+unreadable act the file cannot be read as a spreadsheet
+xml_doctype act the spreadsheet declares a document type, refused
+unreadable_encoding act the file's characters are in no encoding read
+empty act the file holds no row
+unknown_columns act the file holds columns the import does not know, named beside
+missing_columns act the file lacks columns the import needs, named beside
+duplicate_columns act the file names a column twice
+too_many_rows act the file holds more rows than an import takes, the limit beside
+invalid_pairing act the columns paired do not match the file
+import_undone act the import was already taken back
+import_final act the import's day is over: it stays
+
+# Texts
+invalid_body moving the text sent is not a value and a version: a violation on value
+invalid_query moving the texts list's page, size or switches are not ones read: violations on them
+unknown_text act the address names no text
+language act the language is not one the texts speak
+locked act this text is not changed by a company
+
+# The phone paired as a scanner
+unknown act the pairing is not one there is
+claimed act another phone already took the pairing
+expired act the pairing's code expired before a phone took it
+ended act the pairing was ended
+invalid act the pairing request is malformed (no tab named, or a body the pairing does not read), its detail beside
+
+# Error reports sent by the screens
+report_too_large act an error report over the size taken
+invalid_report act an error report without its message

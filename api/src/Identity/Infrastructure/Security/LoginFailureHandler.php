@@ -39,6 +39,7 @@ final class LoginFailureHandler implements AuthenticationFailureHandlerInterface
             $exception instanceof SecondFactorRequired => new JsonResponse(['mfaRequired' => true]),
             // Symfony's login throttling says its wait in whole minutes, the window it is spent for.
             $exception instanceof TooManyLoginAttemptsAuthenticationException => SpentBudget::answerIn(self::secondsOf($exception)),
+            // error-codes: UserChecker::ACCOUNT_DISABLED
             $exception instanceof CustomUserMessageAccountStatusException => new JsonResponse(['error' => $exception->getMessageKey()], Response::HTTP_UNAUTHORIZED),
             default => new JsonResponse(['error' => self::INVALID_CREDENTIALS], Response::HTTP_UNAUTHORIZED),
         };

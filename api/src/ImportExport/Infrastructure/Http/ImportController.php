@@ -135,8 +135,10 @@ final readonly class ImportController
                 $answers,
             );
         } catch (UnreadableSpreadsheet $unreadable) {
+            // error-codes: UnreadableSpreadsheet
             return new JsonResponse(['error' => $unreadable->reason, 'columns' => [], 'encoding' => $encoding?->value], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (UnreadableImport $refused) {
+            // error-codes: UnreadableImport
             return new JsonResponse(['error' => $refused->reason, 'columns' => $refused->columns, 'limit' => $refused->limit, 'encoding' => $encoding?->value], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);

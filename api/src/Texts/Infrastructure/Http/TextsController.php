@@ -186,6 +186,7 @@ final readonly class TextsController
         try {
             $override = $this->override->override($company, $address, $body['value'], $body['version'], $this->account()->getId());
         } catch (TextOverrideRefused $refused) {
+            // error-codes: TextOverrideRefused
             return new JsonResponse(['error' => $refused->reason, 'detail' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (RecordChanged $changed) {
             // A plain route's exception would be Symfony's error page: the problem is answered as API Platform words it.

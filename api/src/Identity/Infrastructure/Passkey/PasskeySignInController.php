@@ -88,6 +88,7 @@ final readonly class PasskeySignInController
         } catch (PasskeyRefused) {
             return self::refused();
         } catch (AccountStatusException $refused) {
+            // error-codes: UserChecker::ACCOUNT_DISABLED
             return new JsonResponse(['error' => $refused->getMessageKey()], Response::HTTP_UNAUTHORIZED);
         }
 
@@ -117,6 +118,7 @@ final readonly class PasskeySignInController
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         } catch (PasskeySignInRefused $refused) {
+            // error-codes: PasskeySignInRefused
             return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

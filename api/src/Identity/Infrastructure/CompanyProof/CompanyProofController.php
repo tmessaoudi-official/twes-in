@@ -111,6 +111,7 @@ final readonly class CompanyProofController
         } catch (NotAMember) {
             return self::noSuchCompany();
         } catch (EntryProofRefused $refused) {
+            // error-codes: EntryProofRefused
             return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (StepUpExhausted) {
             // The sign-in spent its wrong answers: it ends as a logout would, and the account stays open for a new one.

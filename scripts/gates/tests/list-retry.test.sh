@@ -8,33 +8,49 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 repo() { local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x"; echo "$d"; }
 echo "list-retry gate"
 d=$(repo); printf '<app-data-list\n  [rows]="rows()"\n  [failed]="readFailed()"\n  (retry)="readAgain()"\n/>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a list reading again on retry passes" $? 0 "$out" "OK — 1 "
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a list reading again on retry passes" $? 0 "$out" "OK — 1 "
 printf '<app-data-list [failed]="f()" [refusedFilter]="r()" (queryChange)="ask($event)"></app-data-list>\n' > "$d/web/src/app/x/b.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a paged list, asking its page again, passes" $? 0 "$out" "OK — 2 "
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a paged list, asking its page again, passes" $? 0 "$out" "OK — 2 "
 printf '<p>x</p>\n<app-data-list\n  [rows]="rows()"\n  [failed]="facade.readFailed()"\n  testId="t"\n>\n  <ng-template (retry)="no()"></ng-template>\n</app-data-list>\n' > "$d/web/src/app/x/c.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a list whose failure has no way to read again is named, a binding inside it not counting" $? 1 "$out" "x/c.html:2"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a list whose failure has no way to read again is named, a binding inside it not counting" $? 1 "$out" "x/c.html:2"
 rm "$d/web/src/app/x/c.html"; git -C "$d" add -A
 printf '<app-data-list [rows]="rows()" testId="t" />\n' > "$d/web/src/app/x/c.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a list that cannot fail is not asked" $? 0 "$out" "OK — 2 "
-out=$(bash "$GATE" --root "$d" --floor 3 --refused-floor 0 2>&1); check "fewer failing lists than the floor reds" $? 1 "$out" "floor"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a list that cannot fail is not asked" $? 0 "$out" "OK — 2 "
+out=$(bash "$GATE" --root "$d" --table none --floor 3 --refused-floor 0 2>&1); check "fewer failing lists than the floor reds" $? 1 "$out" "floor"
 printf '<app-data-list [failed]="f()" [rowTestId]="(row) => row.id" (retry)="again()" />\n' > "$d/web/src/app/x/c.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "an arrow inside a value does not end the tag" $? 0 "$out" "OK — 3 "
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "an arrow inside a value does not end the tag" $? 0 "$out" "OK — 3 "
 printf '<app-data-list [failed]="facade.error() !== null" (retry)="again()" />\n' > "$d/web/src/app/x/d.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a list failing on the facade's whole error, which a refused save sets too, is named" $? 1 "$out" "x/d.html:1"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a list failing on the facade's whole error, which a refused save sets too, is named" $? 1 "$out" "x/d.html:1"
 printf '<app-data-list [failed]="readFailed() || error() !== null" (retry)="again()" />\n' > "$d/web/src/app/x/d.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "any error() in the failure is named" $? 1 "$out" "refused save"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "any error() in the failure is named" $? 1 "$out" "refused save"
 printf '<app-data-list [failed]="readFailed()" [rows]="errors()" (retry)="again()" />\n' > "$d/web/src/app/x/d.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "an error read by another binding of the tag is not the failure's" $? 0 "$out" "OK — 4 "
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "an error read by another binding of the tag is not the failure's" $? 0 "$out" "OK — 4 "
 # A paged list asks the API with its filters, which the API may refuse: retrying would meet the refusal again.
 printf '<app-data-list [failed]="facade.readFailed()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/x/e.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a paged list not told its filter was refused is named" $? 1 "$out" "x/e.html:1 asks the API with its filters"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a paged list not told its filter was refused is named" $? 1 "$out" "x/e.html:1 asks the API with its filters"
 printf '<!-- filter-refusal: its reader takes no filter the API checks -->\n<app-data-list [failed]="f()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/x/e.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a paged list saying why it is told nothing passes" $? 0 "$out" "OK — 5 "
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a paged list saying why it is told nothing passes" $? 0 "$out" "OK — 5 "
 printf '<!-- filter-refusal: -->\n<app-data-list [failed]="f()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/x/e.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a reason left empty is no reason" $? 1 "$out" "x/e.html:2"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a reason left empty is no reason" $? 1 "$out" "x/e.html:2"
 printf '<!-- filter-refusal: none here -->\n<p>x</p>\n<app-data-list [failed]="f()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/x/e.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 0 2>&1); check "a reason above another element is not the list's" $? 1 "$out" "x/e.html:3"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 0 2>&1); check "a reason above another element is not the list's" $? 1 "$out" "x/e.html:3"
 printf '<app-data-list [failed]="f()" [refusedFilter]="facade.readRefusedFilter()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/x/e.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 2 2>&1); check "paged lists told their filter was refused count against their own floor" $? 0 "$out" "2 told a refused filter"
-out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 3 2>&1); check "fewer told than their floor reds" $? 1 "$out" "refused-filter floor"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 2 2>&1); check "paged lists told their filter was refused count against their own floor" $? 0 "$out" "2 told a refused filter"
+out=$(bash "$GATE" --root "$d" --table none --floor 1 --refused-floor 3 2>&1); check "fewer told than their floor reds" $? 1 "$out" "refused-filter floor"
+# The table spec (filters-sent-as.spec.ts) reads each paged list's real read; a list told a refused filter and missing
+# from it would name no filter it refused. Its rows, by the folder their descriptor comes from, match the bindings.
+table() { mkdir -p "$1/web/src/app"; printf "import { A_LIST } from './x/a-forms';\nimport {\n  B_LIST,\n  bSearch,\n} from './y/b-forms';\nconst LISTS = [\n  { name: 'a', descriptor: A_LIST as ListDescriptor<never> },\n  { name: 'b', descriptor: B_LIST as ListDescriptor<never> },\n%b];\n" "${2:-}" > "$1/web/src/app/filters-sent-as.spec.ts"; }
+d=$(repo); mkdir -p "$d/web/src/app/y"
+printf '<app-data-list [failed]="f()" [refusedFilter]="r()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/x/a.html"
+printf '<app-data-list [failed]="f()" [refusedFilter]="r()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/y/b.html"
+table "$d"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 1 2>&1); check "lists told a refused filter, each a row of the table by its folder, pass" $? 0 "$out" "2 told a refused filter, each a row of"
+printf '<app-data-list [failed]="f()" [refusedFilter]="r()" (queryChange)="ask($event)" />\n' > "$d/web/src/app/y/c.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 1 2>&1); check "a list told a refused filter with no row in the table is named by its folder" $? 1 "$out" "y: 2 lists told a refused filter, 1 row"
+rm "$d/web/src/app/y/c.html"; table "$d" "  { name: 'c', descriptor: C_LIST },\n"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 1 2>&1); check "a row whose descriptor no import names is named" $? 1 "$out" "C_LIST"
+table "$d" "  { name: 'a2', descriptor: A_LIST as ListDescriptor<never> },\n"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 1 2>&1); check "a row with no list told a refused filter is named too" $? 1 "$out" "x: 1 lists told a refused filter, 2 rows"
+rm "$d/web/src/app/filters-sent-as.spec.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --floor 1 --refused-floor 1 2>&1); check "no table reds" $? 1 "$out" "filters-sent-as.spec.ts"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

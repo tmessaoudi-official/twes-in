@@ -24,6 +24,7 @@ final class PairingErrors
             return new JsonResponse(['error' => 'unknown'], Response::HTTP_NOT_FOUND);
         }
 
+        // error-codes: claimed expired ended
         return new JsonResponse(['error' => $refused->reason], Response::HTTP_GONE);
     }
 

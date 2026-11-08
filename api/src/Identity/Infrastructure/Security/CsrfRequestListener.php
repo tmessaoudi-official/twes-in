@@ -68,6 +68,7 @@ final readonly class CsrfRequestListener
 
     private static function refuse(string $error): Response
     {
+        // error-codes: self::TOKEN_MISSING self::TOKEN_INVALID
         return new JsonResponse(['error' => $error], Response::HTTP_FORBIDDEN);
     }
 }

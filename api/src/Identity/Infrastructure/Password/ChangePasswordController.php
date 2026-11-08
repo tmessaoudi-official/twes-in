@@ -61,6 +61,7 @@ final readonly class ChangePasswordController
         try {
             $this->change->handle($account->getId(), \is_string($current) ? $current : '', \is_string($new) ? $new : '');
         } catch (NewPasswordRefused $refused) {
+            // error-codes: NewPasswordRefused
             return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $attempts->reset();

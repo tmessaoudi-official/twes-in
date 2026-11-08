@@ -179,6 +179,7 @@ final readonly class RecordRemovalController
         } catch (RecordsInUse $used) {
             return new JsonResponse(['error' => 'record_used', 'records' => $used->records], Response::HTTP_CONFLICT);
         } catch (RemovalNoLongerPending $over) {
+            // error-codes: RemovalNoLongerPending
             return new JsonResponse(['error' => $over->reason], Response::HTTP_CONFLICT);
         } catch (RemovalConflict $conflict) {
             return new JsonResponse(['error' => 'restore_conflict', 'table' => $conflict->table], Response::HTTP_CONFLICT);
