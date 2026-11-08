@@ -397,6 +397,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 - S0.10i: waits on the developer's marks on the S0.10 page (https://claude.ai/artifact/UqoJRxiEXufS3BeJ53GUdP, 114 picks in its first section).
 ### Needs input
 - S1.14 (licensing, asked): the TEJ schemas' only source, https://jibaya.tn/wp-content/uploads/2026/09/plateforme-TEJ-shemas-xsd.zip, timed out from this machine on 2026-11-04 (IPv4 41.225.7.186, 60 s, twice), so CI cannot fetch it reliably; keeping a copy ourselves (a CI cache, a private artifact) distributes a file whose licence is unchecked. Which: fetch at test time and accept a skipped run when the site is down, or check the schemas' licence and keep a copy.
+- S5.37 (a shown wording): when a list's address holds a refused filter, whether its own field is marked refused with the value kept and « Effacer » offered on that one filter, or « Effacer tout » alone stays enough; and the field's words if marked. Built only once answered.
 - S2.1: the output of `twes doctor --network` run at the shop (TODO.md 6A or 6B), which S2.2's Tailscale ruling and S2.3's host values wait on.
 ### Needs research
 ### Fragile
