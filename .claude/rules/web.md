@@ -262,3 +262,7 @@ the end of § Lessons here.
   two ports rode it for months (1.39 kB). Give a port its default where it is declared, `@Injectable({ providedIn: 'root',
   useFactory: () => new Adapter() })` (a factory: the adapter is declared below the port or imports it), and keep
   `app.config.ts` for what the start itself uses; `scan-ports.spec.ts` is the pattern (2026-11-08).
+- A screenshot taken as evidence passes `animations: 'disabled'`, as the gallery's do, or waits for the motion to end: a
+  tab change slides for 500 ms, and a shot waiting only on the new tab's text showed the previous tab cut at the left
+  edge and the new one past the right, read as a layout defect (S5.39, 2026-11-08). Measure `scrollLeft` and the
+  `mat-tab-body-animating` class before calling a shifted panel a defect.
