@@ -151,11 +151,15 @@ the same eight extensions as FrankenPHP's, Symfony 8.2.0-BETA1):
 | 19 | PHP 8.6 switch at 8.6.1: waits on a FrankenPHP php8.6 image and php-cs-fixer support for 8.6 | M | blocked | - | infra/api/Dockerfile api/composer.json |
 | 20 | PostgreSQL 19 at 19.1: dump and restore on every shop, `pgbackrest stanza-upgrade`, rehearsed by `make onprem-check` and `make update-rehearsal` | L | todo | - | compose*.yaml infra/postgres/** scripts/onprem/** |
 | 21 | Class « a release learnt of late »: a script reading each pin's upstream calendar (php.net, symfony.com/releases, Docker Hub tags, npm dist-tags, Node's schedule) beside `make versions` | M | todo | - | scripts/versions.sh scripts/** |
-| 22 | minimatch 11.0.1 (dev-only, Dependabot #5) once its dependents allow | S | todo | - | web/package.json web/package-lock.json |
+| 22 | minimatch 11.0.1 (dev-only, Dependabot #5) once its dependents allow | S | blocked | - | web/package.json web/package-lock.json |
 | 23 | The RC lane's targets once released: Docker Hub keeps an `X.Y-rc` tag after the release (`8.4-rc-cli`, `8.5-rc-cli-trixie` both active, last pushed 2026-10-21), so from PHP 8.6.0 (19 Nov) the lane would test the last RC in silence: move `infra/api/rc.Dockerfile` to `php:8.6-cli-trixie` until row 19 switches the API, then to `8.7-rc` when one is published. Symfony is loud by design: once the API is on 8.2, `rewrite` refuses « already on 8.2 » and the run goes red until `RC_SYMFONY` names the next minor | S | blocked | - | infra/api/rc.Dockerfile scripts/rc-lane/rc-lane.sh docs/UPDATE.md |
 <!-- /progress-block -->
 ### Blocked
 - 19: no FrankenPHP image on PHP 8.6 (Docker Hub, 2026-11-07); php-cs-fixer refuses 8.6.
+- 22: every dependent still asks `^10` in its latest release (eslint 10.14.0 of 2026-10-30, @eslint/config-array 0.23.5,
+  @typescript-eslint/typescript-estree 8.72.1; npm registry, 2026-11-08), and GHSA-g3hv-75wg-m249 is fixed only in 11.0.1, no
+  10.x patch. An npm override would break the range eslint declares; the alert's scope is development (eslint reads our own
+  patterns). Read again at each eslint or typescript-eslint release.
 - 23: waits on PHP 8.6.0's release (planned 2026-11-19, wiki.php.net/todo/php86).
 ### Needs input
 - npm 11.20 warns that five packages run install scripts not covered by `allowScripts` (@parcel/watcher, esbuild, lmdb,
