@@ -79,7 +79,6 @@ erasure_final act the erasure's day is over
 erasure_conflict act the erasure collides with a change made since
 
 # Imports
-invalid_request moving the import's file, mode or pairing is missing or wrong: violations on their fields
 unreadable act the file cannot be read as a spreadsheet
 xml_doctype act the spreadsheet declares a document type, refused
 unreadable_encoding act the file's characters are in no encoding read

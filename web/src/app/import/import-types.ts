@@ -27,7 +27,10 @@ export const TEXT_ENCODINGS: readonly TextEncoding[] = [
 /** A file refused WHOLE, before any row ran: its reason, and whatever that reason names. */
 export interface ImportRefusal {
   reason:
-    | 'invalid_request'
+    // The file did not arrive whole, or no file was sent.
+    | 'not_received'
+    // A value only the screen builds (the mode, an encoding, a switch, a choice, the pairing) the import does not offer.
+    | 'unknown_choice'
     | 'unreadable'
     | 'empty'
     | 'unknown_columns'

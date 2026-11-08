@@ -98,6 +98,25 @@ test('a file is previewed before it is imported, and a refused row says why', as
 // A shop's own file, written in its own words: each heading the subject does not know is paired once, the pairing is
 // kept with the import, and the next file written the same way is read without asking. The headings carry the run's
 // mark, so a pairing another run left in the shared company never answers for this one.
+// A file the import does not read (picked through « Tous les fichiers ») is said in the import's own words, on the screen
+// that sent it, never as a request not understood: the API refuses it on the file, by its format.
+test('a file that is no spreadsheet is said to be one the import does not read', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/customers');
+  await expect(page.getByTestId('import-columns')).toBeVisible();
+
+  await choose(page, `clients-${RUN}.pdf`, '%PDF-1.7');
+  await page.getByTestId('import-preview').click();
+
+  await expect(page.getByTestId('import-refusal')).toHaveText(
+    'Le fichier n’est ni un .csv ni un .xlsx lisible.',
+  );
+  await expect(page.getByTestId('import-report')).toHaveCount(0);
+});
+
 test('a file with its own headings is paired once, and the next one is read the same way', async ({
   page,
 }) => {

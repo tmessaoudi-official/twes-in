@@ -19,8 +19,10 @@ use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use App\ImportExport\Application\Undo\ImportNotUndoable;
 use App\ImportExport\Application\UnreadableImport;
+use App\ImportExport\Infrastructure\Http\ImportController;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /**
@@ -89,7 +91,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
             'type' => 'object',
             'required' => ['error'],
             'properties' => [
-                'error' => ['type' => 'string', 'enum' => ['invalid_request', UnreadableImport::UNREADABLE, UnreadableImport::EMPTY, UnreadableImport::UNKNOWN_COLUMNS, UnreadableImport::DUPLICATE_COLUMNS, UnreadableImport::MISSING_COLUMNS, UnreadableImport::TOO_MANY_ROWS, UnreadableImport::INVALID_PAIRING, UnreadableImport::UNREADABLE_ENCODING, UnreadableSpreadsheet::DOCUMENT_TYPE]],
+                'error' => ['type' => 'string', 'enum' => [UnreadableImport::UNREADABLE, UnreadableImport::EMPTY, UnreadableImport::UNKNOWN_COLUMNS, UnreadableImport::DUPLICATE_COLUMNS, UnreadableImport::MISSING_COLUMNS, UnreadableImport::TOO_MANY_ROWS, UnreadableImport::INVALID_PAIRING, UnreadableImport::UNREADABLE_ENCODING, UnreadableSpreadsheet::DOCUMENT_TYPE]],
                 'columns' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'The columns the reason names.'],
                 'limit' => ['type' => ['integer', 'null'], 'description' => 'The row cap, for `too_many_rows`.'],
             ],
@@ -104,7 +106,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                 '401' => new Response('Not signed in'),
                 '403' => new Response('`step_up_required`: the file sets or changes what asks who is at the screen (a vendor\'s IBAN or BIC) and the proof is not recent; nothing was stored. A preview never asks', $json(['type' => 'object', 'properties' => ['error' => ['type' => 'string', 'enum' => ['step_up_required']]]])),
                 '404' => new Response('No such subject, its module switched off, or no permission to write it'),
-                '422' => new Response('The file refused whole, or an import stopped by rejected rows, in which case nothing was stored', $json(['oneOf' => [$report, $refused]])),
+                '422' => new Response(\sprintf('A value sent refused: a violation on file (its reason one of %s; file_too_large with bytes), or on mode, encoding, switches, choices or pairing (%s); a file refused whole; or an import stopped by rejected rows. Nothing was stored', implode(', ', [...ReceivedFile::REASONS, ImportController::FILE_FORMAT]), ImportController::NOT_OFFERED), $json(['oneOf' => [$report, $refused]])),
             ],
             summary: 'Import a CSV or .xlsx file, or preview what it would do',
             parameters: [$company, $subject],

@@ -89,7 +89,14 @@ final class ImportFileFuzzTest extends ApiTestCase
             self::assertSame(UnreadableSpreadsheet::DOCUMENT_TYPE, $preview['body']['error'] ?? null, $named);
         }
         if (null === $file->format()) {
-            self::assertSame('invalid_request', $preview['body']['error'] ?? null, $named.': a format the import does not read is refused by its name');
+            self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $preview['status'], $named);
+            $violations = $preview['body']['violations'] ?? null;
+            self::assertIsArray($violations, $named.': a format the import does not read is refused on the file');
+            $violation = $violations[0] ?? null;
+            self::assertIsArray($violation, $named);
+            $payload = $violation['payload'] ?? null;
+            self::assertIsArray($payload, $named);
+            self::assertSame(['file', 'file_format'], [$violation['propertyPath'] ?? null, $payload['reason'] ?? null], $named.': a format the import does not read is refused by its name, on the file');
         }
 
         $this->send($subject, $file, false);

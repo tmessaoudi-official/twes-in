@@ -176,6 +176,44 @@ describe('ImportApi', () => {
     });
   });
 
+  it('reads a value the API refused on its field: the file, by what became of it, any other as a choice no longer offered', async () => {
+    const violation = (
+      propertyPath: string,
+      reason: string,
+      params: Record<string, number> = {},
+    ) => ({
+      violations: [{ propertyPath, message: 'Refused.', payload: { reason, params } }],
+    });
+    const answered = async (body: object): Promise<unknown> => {
+      const pending = api.run('c1', 'customers', new File(['x'], 'clients.csv'), 'create', true);
+      http
+        .expectOne('/api/companies/c1/imports/customers')
+        .flush(body, { status: 422, statusText: 'Unprocessable Content' });
+      return pending.catch((error: unknown) => error);
+    };
+    const reasonOf = async (body: object) =>
+      ((await answered(body)) as ImportNotKept).refusal?.reason;
+
+    expect(await reasonOf(violation('file', 'value_required'))).toBe('not_received');
+    expect(await reasonOf(violation('file', 'file_not_received'))).toBe('not_received');
+    expect(await reasonOf(violation('file', 'file_format'))).toBe('unreadable');
+    for (const field of ['mode', 'encoding', 'switches', 'choices', 'pairing']) {
+      expect(await reasonOf(violation(field, 'unknown_choice'))).toBe('unknown_choice');
+    }
+    const tooLarge = await answered(violation('file', 'file_too_large', { bytes: 10485760 }));
+    expect(tooLarge).toBeInstanceOf(ImportRefused);
+    expect((tooLarge as ImportRefused).code).toBe('file_too_large');
+    const full = (await answered(violation('file', 'value_required'))) as ImportNotKept;
+    expect(full).toBeInstanceOf(ImportNotKept);
+    expect(full.report).toBeNull();
+    expect(full.refusal).toEqual({
+      reason: 'not_received',
+      columns: [],
+      limit: null,
+      encoding: null,
+    });
+  });
+
   it('sends the encoding chosen for a CSV, none when the API is to find it, and reads the one used', async () => {
     const file = new File(['x'], 'clients.csv', { type: 'text/csv' });
     const chosen = api.run('c1', 'customers', file, 'create', true, [], 'windows-1256');

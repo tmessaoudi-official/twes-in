@@ -218,7 +218,8 @@
       "import_final": "This import can no longer be undone: the time to undo it ({{duration}}) is over."
     },
     "refusals": {
-      "invalid_request": "The request was not understood.",
+      "not_received": "The file did not arrive: choose it again.",
+      "unknown_choice": "This choice is no longer offered: pick another.",
       "unreadable": "The file is neither a readable .csv nor a readable .xlsx.",
       "xml_doctype": "This workbook holds a document type declaration (DOCTYPE), which no spreadsheet application writes: it is refused for safety. Open it in Excel or LibreOffice and save it again as .xlsx, or start from the template.",
       "empty": "The file holds no row.",

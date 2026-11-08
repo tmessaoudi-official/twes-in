@@ -496,8 +496,31 @@ final class CustomerImportTest extends ApiTestCase
         foreach (['not json', '["number"]', '{"Réf": 1}', '"number"'] as $pairing) {
             $this->uploadFile($this->companyPath().'/imports/customers', 'customers.csv', "number,name\nCLI-0001,Carthage Conseil\n", 'file', ['mode' => 'create', 'dryRun' => '1', 'pairing' => $pairing]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $pairing);
-            self::assertSame(['error' => 'invalid_request'], $this->json(), $pairing);
+            self::assertSame(['unknown_choice', []], $this->refusalOf('pairing'), $pairing);
         }
+    }
+
+    /**
+     * What the screen sends beside the file is refused on the value it sent, as a violation the screen reads, and a file
+     * that never arrived on the file: the request is never answered as a whole not understood.
+     */
+    public function testWhatTheScreenSendsIsRefusedOnItsOwnValue(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $csv = "number,name\nCLI-0001,Carthage Conseil\n";
+        $sent = [
+            'no file' => ['upload', ['mode' => 'create'], 'file', 'value_required'],
+            'a mode no import has' => ['file', ['mode' => 'merge'], 'mode', 'unknown_choice'],
+            'a switch that is not a name' => ['file', ['mode' => 'create', 'switches' => [['recount']]], 'switches', 'unknown_choice'],
+            'a choice that is not an answer' => ['file', ['mode' => 'create', 'choices' => ['vat' => ['standard']]], 'choices', 'unknown_choice'],
+        ];
+        foreach ($sent as $what => [$part, $parameters, $field, $reason]) {
+            $this->uploadFile($this->companyPath().'/imports/customers', 'customers.csv', $csv, $part, $parameters);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $what);
+            self::assertSame([$reason, []], $this->refusalOf($field), $what);
+            self::assertCount(1, $this->refusals(), $what);
+        }
+        self::assertSame(0, $this->customers());
     }
 
     public function testNoImportYetOffersNoPairing(): void
@@ -677,7 +700,8 @@ final class CustomerImportTest extends ApiTestCase
         $this->signedIn(['customer.read', 'customer.write']);
 
         $this->import('%PDF-1.7', name: 'customers.pdf');
-        self::assertSame(['error' => 'invalid_request'], $this->json());
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['file_format', []], $this->refusalOf('file'));
 
         $this->import('not a zip archive', name: 'customers.xlsx');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);

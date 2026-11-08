@@ -22,6 +22,7 @@ import {
   type TextEncoding,
 } from './import-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 /** Thrown when the API refuses the request itself; carries the code the screen translates. */
 export class ImportRefused extends Error {
@@ -197,11 +198,26 @@ function conflictOf(error: HttpErrorResponse): ImportRefused {
   );
 }
 
-/** A 422 carries either the report of a run that was rolled back, or the reason the file was refused whole. */
+/**
+ * A 422 carries the report of a run that was rolled back, a value sent refused on its field, or the reason the file was
+ * refused whole.
+ */
 function notKept(error: HttpErrorResponse): Error {
   const answer = error.error as Record<string, unknown> | null;
   if (answer !== null && typeof answer === 'object' && 'rejected' in answer) {
     return new ImportNotKept(toReport(answer), null);
+  }
+  const [refused] = refusalsIn(answer);
+  if (refused !== undefined) {
+    if (refused.field === 'file' && refused.reason === 'file_too_large') {
+      return refusedFor(error, new ImportRefused('file_too_large'));
+    }
+    return new ImportNotKept(null, {
+      reason: valueRefusalOf(refused.field, refused.reason),
+      columns: [],
+      limit: null,
+      encoding: null,
+    });
   }
   const reason = answer?.['error'];
   if (typeof reason !== 'string') {
@@ -214,6 +230,15 @@ function notKept(error: HttpErrorResponse): Error {
     limit: typeof answer?.['limit'] === 'number' ? answer['limit'] : null,
     encoding: encodingOf(answer?.['encoding']),
   });
+}
+
+/**
+ * What the screen says of a value refused: the file did not arrive, or is no file the import reads; any other value is
+ * one only the screen builds (the mode, an encoding, a switch, a choice, the pairing), which a stale screen alone sends.
+ */
+function valueRefusalOf(field: string, reason: string | null): ImportRefusal['reason'] {
+  if (field !== 'file') return 'unknown_choice';
+  return reason === 'file_format' ? 'unreadable' : 'not_received';
 }
 
 function encodingOf(value: unknown): TextEncoding | null {

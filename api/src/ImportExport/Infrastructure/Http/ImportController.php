@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Infrastructure\Http;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportMode;
@@ -19,12 +20,13 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetReader;
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\LongRequest;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,7 +45,8 @@ use Symfony\Component\Routing\Attribute\Route;
  * Stateless on purpose: the preview keeps nothing, and the import is the same file sent again without `dryRun`, so it is
  * checked against the data as it is when it runs, never against a preview another member's changes have overtaken.
  *
- * 200 answers what was done or would be; 422 a file refused whole (`error`, `columns`) or an import that stopped on
+ * 200 answers what was done or would be; 422 a value sent refused (a violation on `file`, `mode`, `encoding`, `switches`,
+ * `choices` or `pairing`, with its reason), a file refused whole (`error`, `columns`) or an import that stopped on
  * rejected rows (the report, `committed` false), in which case nothing was stored; 403 `step_up_required` an import
  * that changes what asks who is at the screen again (a vendor's bank details), kept nothing, and is sent again once
  * the person proved it.
@@ -51,6 +54,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AsController]
 final readonly class ImportController
 {
+    /** A file of a format the import does not read, refused on the file. */
+    public const string FILE_FORMAT = 'file_format';
+    /** A value only the screen builds that is none the import offers, refused on its field. */
+    public const string NOT_OFFERED = 'unknown_choice';
+
     public function __construct(
         private ImportCatalogue $catalogue,
         private RunImport $import,
@@ -60,7 +68,7 @@ final readonly class ImportController
     ) {
     }
 
-    #[Route('/api/companies/{companyId}/imports/{subject}', name: 'api_import', requirements: ['subject' => '[a-z-]+'], defaults: [Submissions::ROUTE_DEFAULT => true], methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/imports/{subject}', name: 'api_import', requirements: ['subject' => '[a-z-]+'], defaults: [Submissions::ROUTE_DEFAULT => true, '_api_respond' => true], methods: ['POST'])]
     public function __invoke(string $companyId, string $subject, Request $request, #[Autowire(service: 'profiler')] ?Profiler $profiler = null): Response
     {
         // Symfony's documented way to keep one action out of the profiler, which only development has (null elsewhere): it keeps
@@ -77,18 +85,16 @@ final readonly class ImportController
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         }
 
-        $file = $request->files->get('file');
-        $mode = ImportMode::tryFrom($request->request->getString('mode', ImportMode::Create->value));
-        $format = $file instanceof UploadedFile ? SpreadsheetFormat::ofFilename($file->getClientOriginalName()) : null;
-        if (!$file instanceof UploadedFile || !$file->isValid() || null === $format || null === $mode) {
-            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        $file = ReceivedFile::of($request);
+        $format = SpreadsheetFormat::ofFilename($file->getClientOriginalName())
+            ?? throw DomainRule::refused(ReceivedFile::PART, 'An import reads a .csv or a .xlsx file.', self::FILE_FORMAT);
+        $mode = ImportMode::tryFrom($request->request->getString('mode', ImportMode::Create->value)) ?? throw self::notOffered('mode');
 
         // A CSV's encoding, as the person chose it; none chosen is found on the file. A workbook has none to choose.
         $chosen = $request->request->getString('encoding');
         $encoding = '' === $chosen ? null : TextEncoding::tryFrom($chosen);
         if ('' !== $chosen && null === $encoding) {
-            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw self::notOffered('encoding');
         }
         $encoding = SpreadsheetFormat::Csv === $format ? ($encoding ?? $this->reader->encodingOf($file->getPathname(), $format)) : null;
 
@@ -96,30 +102,23 @@ final readonly class ImportController
         $switches = [];
         foreach ($request->request->all('switches') as $switch) {
             if (!\is_string($switch)) {
-                return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                throw self::notOffered('switches');
             }
             $switches[] = $switch;
         }
         $named = [];
         foreach ($request->request->all('choices') as $key => $answer) {
             if (!\is_string($answer)) {
-                return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                throw self::notOffered('choices');
             }
             $named[(string) $key] = $answer;
         }
-        $answers = $columns->chosen($named);
-        if (null === $answers) {
-            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-        $pairing = $this->pairing($request->request->getString('pairing'));
-        if (null === $pairing) {
-            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-        // The file's bytes, so the same file sent again is known whatever it is named.
-        $contentHash = hash_file('sha256', $file->getPathname());
-        if (false === $contentHash) {
-            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        $answers = $columns->chosen($named) ?? throw self::notOffered('choices');
+        $pairing = $this->pairing($request->request->getString('pairing')) ?? throw self::notOffered('pairing');
+        // The file's bytes, so the same file sent again is known whatever it is named; bytes that cannot be read back
+        // did not arrive whole.
+        $contentHash = hash_file('sha256', $file->getPathname())
+            ?: throw DomainRule::refused(ReceivedFile::PART, 'The file could not be read back.', ReceivedFile::NOT_RECEIVED);
         try {
             $report = $this->import->run(
                 $declaration,
@@ -179,5 +178,11 @@ final readonly class ImportController
         }
 
         return $pairing;
+    }
+
+    /** A value only the screen builds (the mode, an encoding, a switch, a choice, the pairing), refused on its field. */
+    private static function notOffered(string $field): ValidationException
+    {
+        return DomainRule::refused($field, \sprintf('The %s sent is not one this import offers.', $field), self::NOT_OFFERED);
     }
 }

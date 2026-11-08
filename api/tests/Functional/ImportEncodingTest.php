@@ -112,7 +112,7 @@ final class ImportEncodingTest extends ApiTestCase
         $this->import("number,name,kind\nCLI-0001,Carthage,individual\n", ['encoding' => 'ebcdic']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame('invalid_request', $this->json()['error']);
+        self::assertSame(['unknown_choice', []], $this->refusalOf('encoding'));
     }
 
     public function testAWorkbookHasNoEncodingAndIgnoresOneChosen(): void

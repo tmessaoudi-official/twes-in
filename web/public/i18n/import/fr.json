@@ -218,7 +218,8 @@
       "import_final": "Cet import ne s’annule plus : le délai de {{duration}} pour l’annuler est passé."
     },
     "refusals": {
-      "invalid_request": "La demande n’a pas été comprise.",
+      "not_received": "Le fichier n’est pas arrivé : choisissez-le de nouveau.",
+      "unknown_choice": "Ce choix n’est plus proposé : choisissez-en un autre.",
       "unreadable": "Le fichier n’est ni un .csv ni un .xlsx lisible.",
       "xml_doctype": "Ce classeur contient une déclaration de type de document (DOCTYPE), qu’aucun tableur n’écrit : il est refusé par sécurité. Ouvrez-le dans Excel ou LibreOffice et enregistrez-le de nouveau en .xlsx, ou repartez du modèle.",
       "empty": "Le fichier ne contient aucune ligne.",
