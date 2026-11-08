@@ -259,7 +259,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     },
   ],
   ranges: INVOICE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
-  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
+  picks: [{ id: 'customer', label: `${FIELDS}.customer`, asked: ['customerId'] }],
   filters: [
     {
       id: 'status',
@@ -274,6 +274,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     },
     {
       id: 'type',
+      asked: ['documentType'],
       label: `${FIELDS}.type`,
       multiple: true,
       value: (row) => row.kind,

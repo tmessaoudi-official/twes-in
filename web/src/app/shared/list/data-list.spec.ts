@@ -10,6 +10,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import type { RefusedFilter } from '../errors/filter-refused';
 import { Session } from '../session/session';
 import { provideQuietFeedback, RecordedFeedback } from '../testing/feedback';
 import { Feedback } from '../feedback/feedback';
@@ -152,7 +153,7 @@ class ServerHost {
   readonly total = signal(30);
   readonly facetCounts = signal<ListFacetCounts | null>(null);
   readonly failed = signal(false);
-  readonly refusedFilter = signal(false);
+  readonly refusedFilter = signal<boolean | RefusedFilter>(false);
   readonly queries: ListQuery[] = [];
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
@@ -330,6 +331,8 @@ class StaticLoader implements TranslateLoader {
         loading: 'Loading…',
         failed: 'The list could not be loaded.',
         filter_refused: 'A filter in this page’s address is no longer valid.',
+        filter_refused_named: 'The filter “{{name}}” in this page’s address is no longer valid.',
+        filter_refused_clear: 'Clear this filter',
         filters_clear_all: 'Clear all',
         nothing_yet: 'Nothing here yet.',
         paginator: {
@@ -1176,6 +1179,46 @@ describe('DataList', () => {
       await settleServer();
       expect(queries().at(-1)?.filters).toEqual({});
       expect(queries().at(-1)?.query).toBe('');
+    });
+
+    // The API names the parameter it refused; the list names the filter a person set under it, by its own label, and
+    // offers to take out that one, keeping the search and the other filters, beside « Effacer tout ».
+    it('names the filter of the address the API refused and asks again without that one alone', async () => {
+      const field = q('list-filter') as HTMLInputElement;
+      field.value = 'Tunis';
+      field.dispatchEvent(new Event('input'));
+      await pause();
+      await settleServer();
+      await chooseFacet('active', settleServer);
+      server.componentInstance.rows.set([]);
+      server.componentInstance.failed.set(true);
+      server.componentInstance.refusedFilter.set({ asked: ['status'] });
+      await settleServer();
+
+      expect(q('list-failed')?.textContent?.trim()).toBe(
+        'The filter “Status” in this page’s address is no longer valid.',
+      );
+      expect(q('list-filter-refused-clear-one')?.textContent?.trim()).toBe('Clear this filter');
+      expect(q('list-filter-refused-clear')?.textContent?.trim()).toBe('Clear all');
+
+      q('list-filter-refused-clear-one')!.click();
+      await settleServer();
+      expect(queries().at(-1)?.filters).toEqual({});
+      expect(queries().at(-1)?.query).toBe('Tunis');
+    });
+
+    it('says a filter is refused without naming one when no filter of the list is sent as what the API names', async () => {
+      await chooseFacet('active', settleServer);
+      server.componentInstance.rows.set([]);
+      server.componentInstance.failed.set(true);
+      server.componentInstance.refusedFilter.set({ asked: ['taxRegime'] });
+      await settleServer();
+
+      expect(q('list-failed')?.textContent?.trim()).toBe(
+        'A filter in this page’s address is no longer valid.',
+      );
+      expect(q('list-filter-refused-clear-one')).toBeNull();
+      expect(q('list-filter-refused-clear')).not.toBeNull();
     });
 
     it('says a refused filter it does not hold without offering what would ask the same again', async () => {

@@ -933,7 +933,27 @@
       class="flex flex-wrap items-center justify-center gap-2"
       data-testid="list-failed-state"
     >
-      @if (refusedFilter()) {
+      @if (refusedNamed(); as named) {
+        <span data-testid="list-failed">{{
+          'list.filter_refused_named' | translate: { name: (named.label | translate) }
+        }}</span>
+        <button
+          mat-button
+          type="button"
+          (click)="clearRefused(named)"
+          data-testid="list-filter-refused-clear-one"
+        >
+          {{ 'list.filter_refused_clear' | translate }}
+        </button>
+        <button
+          mat-button
+          type="button"
+          (click)="clearSearchAndFilters()"
+          data-testid="list-filter-refused-clear"
+        >
+          {{ 'list.filters_clear_all' | translate }}
+        </button>
+      } @else if (refusedFilter()) {
         <span data-testid="list-failed">{{ 'list.filter_refused' | translate }}</span>
         @if (clearable()) {
           <button

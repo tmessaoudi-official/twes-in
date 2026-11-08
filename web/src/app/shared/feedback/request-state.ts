@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, type Signal, signal, untracked } from '@angular/core';
-import { isFilterRefused } from '../errors/filter-refused';
+import { refusedFilterIn, type RefusedFilter } from '../errors/filter-refused';
 import { saidAlready } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
 import { QuietReads } from './quiet-reads';
@@ -48,23 +48,25 @@ export class RequestState<E> {
 
   readonly busy: Signal<boolean> = this.busySignal.asReadonly();
   readonly error: Signal<E | null> = this.errorSignal.asReadonly();
-  /** Whether the last read was refused for a filter it asked for; such a read sets no `error`. */
-  private readonly filterRefusedSignal = signal(false);
+  /** What the last read was refused for among the filters it asked for, or false; such a read sets no `error`. */
+  private readonly filterRefusedSignal = signal<false | RefusedFilter>(false);
   /**
    * Whether the last read failed: what a list says in place of its rows, with « Réessayer » (or, for a refused filter,
    * « Effacer tout »). A refused save sets the same `error`, and reading again would not undo it, so a list bound to
    * `error` alone would call a refused save on an empty list a list it could not read.
    */
   readonly readFailed: Signal<boolean> = computed(
-    () => (this.errorSignal() !== null && !this.writeRefusedSignal()) || this.filterRefusedSignal(),
+    () =>
+      (this.errorSignal() !== null && !this.writeRefusedSignal()) ||
+      this.filterRefusedSignal() !== false,
   );
   /**
    * Whether the read failed because a filter it asked for is refused (`isFilterRefused`): reading again would meet the
    * same refusal, so a list says to clear its filters rather than « Réessayer ». Such a read sets no `error`: the list
    * says it in place of its rows, and a page's own error line would say it a second time, in a facade's words for a
-   * 422, which are a refused save's.
+   * 422, which are a refused save's. It carries the API's parameters refused, from which the list names the filter.
    */
-  readonly readRefusedFilter: Signal<boolean> = this.filterRefusedSignal.asReadonly();
+  readonly readRefusedFilter: Signal<false | RefusedFilter> = this.filterRefusedSignal.asReadonly();
 
   constructor(
     private readonly quietReads: QuietReads,
@@ -167,14 +169,19 @@ export class RequestState<E> {
 
   /** A read's failure: a refused filter as itself, with no code; any other as the facade's code. */
   private sayRead(error: unknown): void {
-    if (isFilterRefused(error)) this.say(null, false, true);
+    const refused = refusedFilterIn(error);
+    if (refused !== null) this.say(null, false, refused);
     else this.say(this.shown(error, this.code), false);
   }
 
-  private say(error: E | null, fromWrite: boolean, filterRefused = false): void {
+  private say(
+    error: E | null,
+    fromWrite: boolean,
+    filterRefused: false | RefusedFilter = false,
+  ): void {
     this.errorSignal.set(error);
     this.writeRefusedSignal.set(fromWrite && error !== null);
-    this.filterRefusedSignal.set(!fromWrite && filterRefused);
+    this.filterRefusedSignal.set(fromWrite ? false : filterRefused);
   }
 
   /** What the screen says of a failure: nothing when an interceptor already said it. */

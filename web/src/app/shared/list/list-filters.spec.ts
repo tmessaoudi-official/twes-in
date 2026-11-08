@@ -9,6 +9,7 @@ import {
   patchFilters,
   rangeKey,
   rangeParams,
+  refusedFilterOf,
   toggleValue,
   validRangeValue,
 } from './list-filters';
@@ -179,5 +180,49 @@ describe('the chips of what is filtered', () => {
 
   it('leave out a filter nobody declared and a value its options no longer offer', () => {
     expect(activeFilterChips(descriptor, { nonsense: 'x', status: 'gone' }, {})).toEqual([]);
+  });
+});
+
+describe('the filter a read was refused for', () => {
+  const aliased: ListDescriptor<{ id: string }> = {
+    ...descriptor,
+    filters: [{ ...descriptor.filters![0], asked: ['statusCode'] }],
+    ranges: [{ id: 'issueDate', label: 'f.issued', kind: 'day', asked: ['issuedOn'] }],
+    picks: [{ id: 'customer', label: 'f.customer', asked: ['customerId'] }],
+  };
+
+  it('is found by its id, with the keys that take it out of the query', () => {
+    expect(refusedFilterOf(descriptor, ['status'])).toEqual({
+      label: 'f.status',
+      clear: { status: null },
+    });
+    expect(refusedFilterOf(descriptor, ['issueDate'])).toEqual({
+      label: 'f.issued',
+      clear: { 'issueDate.from': null, 'issueDate.to': null },
+    });
+    expect(refusedFilterOf(descriptor, ['totalGross'])).toEqual({
+      label: 'f.total',
+      clear: { 'totalGross.min': null, 'totalGross.max': null },
+    });
+    expect(refusedFilterOf(descriptor, ['customer'])).toEqual({
+      label: 'f.customer',
+      clear: { customer: null },
+    });
+  });
+
+  it('is found by the parameters it is sent as where the API names it otherwise, then never by its id', () => {
+    expect(refusedFilterOf(aliased, ['statusCode'])?.label).toBe('f.status');
+    expect(refusedFilterOf(aliased, ['issuedOn'])?.clear).toEqual({
+      'issueDate.from': null,
+      'issueDate.to': null,
+    });
+    expect(refusedFilterOf(aliased, ['customerId'])?.label).toBe('f.customer');
+    expect(refusedFilterOf(aliased, ['status'])).toBeNull();
+  });
+
+  it('is the first the list declares among those named, and none for a name no filter is sent as', () => {
+    expect(refusedFilterOf(descriptor, ['nonsense', 'totalGross'])?.label).toBe('f.total');
+    expect(refusedFilterOf(descriptor, ['nonsense'])).toBeNull();
+    expect(refusedFilterOf(descriptor, [])).toBeNull();
   });
 });

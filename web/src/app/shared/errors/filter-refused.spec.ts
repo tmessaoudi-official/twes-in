@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpErrorResponse } from '@angular/common/http';
-import { FILTER_REFUSED, isFilterRefused } from './filter-refused';
+import { FILTER_REFUSED, isFilterRefused, refusedFilterIn } from './filter-refused';
 import { refusedFor } from './said-already';
 
 class Refused extends Error {}
@@ -56,5 +56,54 @@ describe('isFilterRefused', () => {
     const looped = new Refused('invalid');
 
     expect(isFilterRefused(refusedFor(looped, looped))).toBe(false);
+  });
+});
+
+describe('refusedFilterIn', () => {
+  function refusedAt(...paths: readonly string[]): HttpErrorResponse {
+    return new HttpErrorResponse({
+      status: 422,
+      error: {
+        violations: paths.map((propertyPath) => ({
+          propertyPath,
+          message: 'x',
+          payload: { reason: FILTER_REFUSED },
+        })),
+      },
+    });
+  }
+
+  it('names the parameters the API refused, without an entry index or an interval end', () => {
+    expect(refusedFilterIn(refusedAt('taxRegime[0]'))).toEqual({ asked: ['taxRegime'] });
+    expect(refusedFilterIn(refusedAt('issueDate[from]', 'status'))).toEqual({
+      asked: ['issueDate', 'status'],
+    });
+    expect(refusedFilterIn(refusedAt('totalGross.max'))).toEqual({ asked: ['totalGross'] });
+  });
+
+  it('reads them under a refusal a feature built, and only the filter refusals of the answer', () => {
+    const answer = new HttpErrorResponse({
+      status: 422,
+      error: {
+        violations: [
+          { propertyPath: 'kind', payload: { reason: 'invalid_value' } },
+          { propertyPath: 'customerGroupId[1]', payload: { reason: FILTER_REFUSED } },
+        ],
+      },
+    });
+
+    expect(refusedFilterIn(refusedFor(answer, new Refused('invalid')))).toEqual({
+      asked: ['customerGroupId'],
+    });
+  });
+
+  it('says one name once, however many of its entries were refused', () => {
+    expect(refusedFilterIn(refusedAt('kind[0]', 'kind[1]'))).toEqual({ asked: ['kind'] });
+  });
+
+  it('is null for every failure that is not a filter refused', () => {
+    expect(refusedFilterIn(refusedOn('invalid_value'))).toBeNull();
+    expect(refusedFilterIn(new HttpErrorResponse({ status: 0 }))).toBeNull();
+    expect(refusedFilterIn(null)).toBeNull();
   });
 });

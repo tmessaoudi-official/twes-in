@@ -88,7 +88,7 @@ export const PORTFOLIO_LIST: ListDescriptor<PortfolioRow> = {
     },
   ],
   ranges: PORTFOLIO_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
-  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
+  picks: [{ id: 'customer', label: `${FIELDS}.customer`, asked: ['customerId'] }],
   filters: [
     {
       id: 'kind',

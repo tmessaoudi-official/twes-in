@@ -137,7 +137,7 @@ export const QUOTES_LIST: ListDescriptor<QuoteListRow> = {
     },
   ],
   ranges: [{ id: 'issueDate', kind: 'day', label: `${FIELDS}.issueDate` }],
-  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
+  picks: [{ id: 'customer', label: `${FIELDS}.customer`, asked: ['customerId'] }],
   filters: [
     {
       id: 'status',

@@ -340,7 +340,7 @@ describe('requestState', () => {
 
     await state.read(() => Promise.reject(answer));
     expect(state.readFailed()).toBe(true);
-    expect(state.readRefusedFilter()).toBe(true);
+    expect(state.readRefusedFilter()).toEqual({ asked: ['status'] });
     // The list says it in place of its rows; a page's own error line, reading `error()`, says nothing more, which a
     // facade mapping every 422 to a refused save once made « La modification a été refusée ».
     expect(state.error()).toBeNull();
@@ -350,14 +350,14 @@ describe('requestState', () => {
     expect(state.readRefusedFilter()).toBe(false);
 
     await state.read(() => Promise.reject(refusedFor(answer, new Refused('not_found'))));
-    expect(state.readRefusedFilter()).toBe(true);
+    expect(state.readRefusedFilter()).toEqual({ asked: ['status'] });
     expect(state.error()).toBeNull();
     state.clearError();
     expect(state.readFailed()).toBe(false);
     expect(state.readRefusedFilter()).toBe(false);
 
     state.fail(answer);
-    expect(state.readRefusedFilter()).toBe(true);
+    expect(state.readRefusedFilter()).toEqual({ asked: ['status'] });
     expect(state.error()).toBeNull();
 
     await state.read(() => Promise.reject(answer));

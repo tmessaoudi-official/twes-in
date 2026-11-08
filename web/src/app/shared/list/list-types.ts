@@ -214,6 +214,11 @@ export interface ListFilter<Row> {
    * « Active » read « Toutes ». A translation key.
    */
   anyLabel?: string;
+  /**
+   * The API's query parameters this filter is sent as, where they are not its id (`taxRegime` for `regime`): a read the
+   * API refuses for a filter names the parameter as the API reads it, and the list names the filter set from it.
+   */
+  asked?: readonly string[];
 }
 
 /**
@@ -225,6 +230,8 @@ export interface ListRangeFilter {
   /** A translation key. */
   label: string;
   kind: 'day' | 'amount';
+  /** As a facet's `asked`: the API's parameters the interval is sent as, where they are not its id. */
+  asked?: readonly string[];
 }
 
 /**
@@ -235,6 +242,8 @@ export interface ListPickFilter {
   id: string;
   /** A translation key. */
   label: string;
+  /** As a facet's `asked`: the API's parameters the picked records are sent as, where they are not its id. */
+  asked?: readonly string[];
 }
 
 /**

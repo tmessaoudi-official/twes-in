@@ -388,6 +388,7 @@ export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
   filters: [
     {
       id: 'kind',
+      asked: ['entityType'],
       label: 'activity.fields.record',
       anyLabel: 'list.filter_any_feminine',
       multiple: true,
@@ -396,7 +397,7 @@ export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
     },
   ],
   ranges: RANGES,
-  picks: [{ id: 'actor', label: 'activity.fields.actor' }],
+  picks: [{ id: 'actor', label: 'activity.fields.actor', asked: ['actorId'] }],
 };
 
 /** What the API is asked for the page of the journal the list shows: every filter is sent, none applied here. */

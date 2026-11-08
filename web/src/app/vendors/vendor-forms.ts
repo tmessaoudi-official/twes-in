@@ -94,6 +94,7 @@ export const VENDORS_LIST: ListDescriptor<VendorRow> = {
   filters: [
     {
       id: 'status',
+      asked: ['isActive'],
       label: `${FIELDS}.isActive`,
       value: (row) => (row.isActive ? 'active' : 'inactive'),
       options: ['active', 'inactive'].map((status) => ({

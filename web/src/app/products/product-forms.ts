@@ -166,7 +166,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
     },
   ],
   ranges: [{ id: 'unitPriceNet', kind: 'amount', label: `${FIELDS}.unitPriceNet` }],
-  picks: [{ id: 'category', label: `${FIELDS}.categoryId` }],
+  picks: [{ id: 'category', label: `${FIELDS}.categoryId`, asked: ['categoryId'] }],
   filters: [
     {
       id: 'kind',
@@ -189,6 +189,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
     },
     {
       id: 'status',
+      asked: ['isActive'],
       label: `${FIELDS}.isActive`,
       value: (row) => (row.isActive ? 'active' : 'inactive'),
       options: ['active', 'inactive'].map((status) => ({

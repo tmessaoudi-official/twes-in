@@ -118,8 +118,8 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
   ],
   ranges: EXPENSE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
   picks: [
-    { id: 'vendor', label: `${FIELDS}.vendorId` },
-    { id: 'category', label: `${FIELDS}.categoryId` },
+    { id: 'vendor', asked: ['vendorId'], label: `${FIELDS}.vendorId` },
+    { id: 'category', asked: ['categoryId'], label: `${FIELDS}.categoryId` },
   ],
   filters: [
     {

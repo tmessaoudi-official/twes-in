@@ -270,13 +270,14 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
   ],
   ranges: STOCK_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
   picks: [
-    { id: 'product', label: `${STOCK_FIELDS}.product` },
-    { id: 'location', label: `${STOCK_FIELDS}.location` },
+    { id: 'product', asked: ['productId'], label: `${STOCK_FIELDS}.product` },
+    { id: 'location', asked: ['locationId'], label: `${STOCK_FIELDS}.location` },
   ],
   filters: [
     // The company's establishments, which only the page knows: it fills the options in.
     {
       id: 'establishment',
+      asked: ['establishmentId'],
       label: `${STOCK_FIELDS}.establishment`,
       multiple: true,
       value: (row) => row.establishmentId,
@@ -412,8 +413,8 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
   ],
   ranges: MOVEMENT_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
   picks: [
-    { id: 'product', label: `${STOCK_FIELDS}.product` },
-    { id: 'location', label: `${STOCK_FIELDS}.location` },
+    { id: 'product', asked: ['productId'], label: `${STOCK_FIELDS}.product` },
+    { id: 'location', asked: ['locationId'], label: `${STOCK_FIELDS}.location` },
   ],
   filters: [
     {
@@ -429,6 +430,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
     },
     {
       id: 'source',
+      asked: ['sourceType'],
       label: `${STOCK_FIELDS}.source`,
       anyLabel: 'list.filter_any_feminine',
       multiple: true,

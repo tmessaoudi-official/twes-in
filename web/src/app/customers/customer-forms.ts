@@ -130,6 +130,7 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     },
     {
       id: 'status',
+      asked: ['isActive'],
       label: `${FIELDS}.isActive`,
       value: (row) => (row.isActive ? 'active' : 'inactive'),
       options: ['active', 'inactive'].map((status) => ({
@@ -140,6 +141,7 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     // The company's own groups and its preset's regimes, which only the page knows: it fills the options in.
     {
       id: 'group',
+      asked: ['customerGroupId'],
       label: `${FIELDS}.customerGroupId`,
       multiple: true,
       value: (row) => row.customerGroupId,
@@ -147,6 +149,7 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     },
     {
       id: 'regime',
+      asked: ['taxRegime'],
       label: `${FIELDS}.taxRegime`,
       multiple: true,
       value: (row) => row.taxRegime,

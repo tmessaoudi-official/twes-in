@@ -111,6 +111,37 @@ export function idValues(value: string | undefined): string[] {
   return filterValues(value).filter((each) => ID.test(each));
 }
 
+/** The filter a read was refused for, as the list says it: its label, and the keys that take it out of the query. */
+export interface RefusedListFilter {
+  /** A translation key, the filter's own label. */
+  readonly label: string;
+  readonly clear: Readonly<Record<string, null>>;
+}
+
+/**
+ * The first filter the list declares, facets, then intervals, then pickers, that is sent as one of the parameters the API
+ * refused (`asked`, else its id); null when none is, and the list says a filter is refused without naming it.
+ */
+export function refusedFilterOf<Row>(
+  descriptor: ListDescriptor<Row>,
+  asked: readonly string[],
+): RefusedListFilter | null {
+  const sentAs = (filter: { id: string; asked?: readonly string[] }): boolean =>
+    (filter.asked ?? [filter.id]).some((name) => asked.includes(name));
+  const facet = (descriptor.filters ?? []).find(sentAs);
+  if (facet !== undefined) return { label: facet.label, clear: { [facet.id]: null } };
+  const range = (descriptor.ranges ?? []).find(sentAs);
+  if (range !== undefined) {
+    const ends = endsOf(range.kind);
+    return {
+      label: range.label,
+      clear: Object.fromEntries(ends.map((end) => [rangeKey(range.id, end), null])),
+    };
+  }
+  const pick = (descriptor.picks ?? []).find(sentAs);
+  return pick === undefined ? null : { label: pick.label, clear: { [pick.id]: null } };
+}
+
 /** The filters with these keys set, an empty or null one dropped. */
 export function patchFilters(
   chosen: ListFilterValues,

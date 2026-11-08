@@ -802,6 +802,8 @@
     "loading": "Loading…",
     "failed": "The list could not be loaded.",
     "filter_refused": "A filter in this page’s address is no longer valid.",
+    "filter_refused_named": "The filter “{{name}}” in this page’s address is no longer valid.",
+    "filter_refused_clear": "Clear this filter",
     "view_deleted": "The view {{name}} was deleted.",
     "view_undo": "Undo"
   },

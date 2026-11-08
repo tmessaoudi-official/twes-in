@@ -177,6 +177,25 @@ test('« Facturer ce client » from a customer just created opens a new invoice 
   }
 });
 
+// An address holding a filter value the API refuses (kept from before, or typed by hand) names that filter by its label,
+// and « Effacer ce filtre » takes out that one alone, the other filters kept: the API names the parameter as it reads
+// it (`taxRegime`), the list the filter a person set (« Régime fiscal »).
+test('a refused filter of the address is named, and cleared alone', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/customers?kind=company&regime=nowhere');
+
+  await expect(page.getByTestId('list-failed')).toHaveText(
+    'Le filtre « Régime fiscal » de l’adresse de cette page n’est plus valable.',
+  );
+  await expect(page.getByTestId('list-filter-refused-clear')).toHaveText('Effacer tout');
+  await page.getByTestId('list-filter-refused-clear-one').click();
+
+  await expect(page).not.toHaveURL(/regime=/);
+  await expect(page).toHaveURL(/kind=company/);
+  await expect(page.getByTestId('list-failed')).toHaveCount(0);
+});
+
 // Closing or reloading the tab is not a navigation the app can guard: the browser's own question holds it, and only
 // while something is unsaved (docs/SPEC.md § 7, 2026-09-21 18:20). `signIn` answers it by leaving.
 test('a reload asks the browser’s question while a new customer is half typed, and not once nothing is', async ({

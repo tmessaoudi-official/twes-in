@@ -99,6 +99,7 @@ export function companiesListOf(
       },
       {
         id: 'country',
+        asked: ['countryCode'],
         label: `${COMPANY_FIELDS}.country`,
         multiple: true,
         value: (row) => row.countryCode,
@@ -167,6 +168,7 @@ export const ACCOUNTS_LIST: ListDescriptor<PlatformAccountRow> = {
   filters: [
     {
       id: 'state',
+      asked: ['active'],
       label: `${ACCOUNT_FIELDS}.state`,
       multiple: true,
       value: (row) => (row.active ? 'active' : 'inactive'),
@@ -177,6 +179,7 @@ export const ACCOUNTS_LIST: ListDescriptor<PlatformAccountRow> = {
     },
     {
       id: 'role',
+      asked: ['platformOperator'],
       label: `${ACCOUNT_FIELDS}.role`,
       multiple: true,
       value: (row) => (row.platformOperator ? 'operator' : 'member'),

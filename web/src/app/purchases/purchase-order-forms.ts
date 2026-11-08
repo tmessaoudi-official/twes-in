@@ -138,7 +138,7 @@ export const PURCHASES_LIST: ListDescriptor<PurchaseOrderRow> = {
     },
   ],
   ranges: INTERVALS.map(({ id, label }) => ({ id, label, kind: 'day' as const })),
-  picks: [{ id: 'vendor', label: `${FIELDS}.vendorId` }],
+  picks: [{ id: 'vendor', label: `${FIELDS}.vendorId`, asked: ['vendorId'] }],
   filters: [
     {
       id: 'status',

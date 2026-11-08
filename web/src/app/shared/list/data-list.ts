@@ -103,9 +103,12 @@ import {
   joinValues,
   patchFilters,
   rangeKey,
+  refusedFilterOf,
   validRangeValue,
   type FilterChip,
+  type RefusedListFilter,
 } from './list-filters';
+import type { RefusedFilter } from '../errors/filter-refused';
 import { menuOrder } from '../actions/record-action';
 import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
@@ -366,9 +369,10 @@ export class DataList<Row> implements OnInit {
   /**
    * Whether that read failed because the API refused a filter it asked for (a facade's `readRefusedFilter()`): an
    * address kept from before, or typed by hand. Reading again would meet the same refusal, so the list says so and offers
-   * to clear the search and the filters instead of « Réessayer ».
+   * to clear the search and the filters instead of « Réessayer ». Given the API's parameters refused, it names the filter
+   * a person set under them (`refusedFilterOf`) and offers to take out that one alone.
    */
-  readonly refusedFilter = input(false);
+  readonly refusedFilter = input<boolean | RefusedFilter>(false);
   readonly testId = input('data-list');
   readonly rowTestId = input<((row: Row) => string) | null>(null);
   /** What the list says when there is nothing at all yet; null says a plain « nothing yet ». */
@@ -1458,6 +1462,17 @@ export class DataList<Row> implements OnInit {
 
   protected removeChip(chip: FilterChip): void {
     this.patch(chip.remove);
+  }
+
+  /** The filter the API refused, named by its label, when the list declares one sent as what it named. */
+  protected readonly refusedNamed = computed(() => {
+    const refused = this.refusedFilter();
+    return typeof refused === 'object' ? refusedFilterOf(this.descriptor(), refused.asked) : null;
+  });
+
+  /** The way back from a filter refused: that one taken out, the search and the other filters kept. */
+  protected clearRefused(refused: RefusedListFilter): void {
+    this.patch(refused.clear);
   }
 
   protected clearAllFilters(): void {

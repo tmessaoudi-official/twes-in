@@ -9,15 +9,31 @@ import { answersUnder } from './said-already';
  */
 export const FILTER_REFUSED = 'filter_refused';
 
+/**
+ * What a read refused for a filter asked: the API's parameters, each once, without an entry's index or an interval's
+ * end (`taxRegime[0]`, `issueDate[from]` and `totalGross.max` name `taxRegime`, `issueDate`, `totalGross`). A list
+ * finds the filter a person set from them, since the API names a parameter as it reads it, not as the list does.
+ */
+export interface RefusedFilter {
+  readonly asked: readonly string[];
+}
+
 /** Whether a read failed because a filter it asked for is refused, bare or under the refusal a feature built from it. */
 export function isFilterRefused(error: unknown): boolean {
-  return answersUnder(error).some((seen) => {
+  return refusedFilterIn(error) !== null;
+}
+
+/** The filters a read was refused for, bare or under the refusal a feature built from it; null for any other failure. */
+export function refusedFilterIn(error: unknown): RefusedFilter | null {
+  for (const seen of answersUnder(error)) {
     const answer = refusedAnswer(seen);
-    return (
-      answer !== null &&
-      refusalsIn(answer.error).some((refusal) => refusal.reason === FILTER_REFUSED)
-    );
-  });
+    if (answer === null) continue;
+    const refused = refusalsIn(answer.error).filter((refusal) => refusal.reason === FILTER_REFUSED);
+    if (refused.length > 0) {
+      return { asked: [...new Set(refused.map((refusal) => refusal.field.split(/[[.]/)[0]))] };
+    }
+  }
+  return null;
 }
 
 /**

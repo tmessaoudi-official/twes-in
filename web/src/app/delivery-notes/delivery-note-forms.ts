@@ -168,7 +168,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
     },
   ],
   ranges: DELIVERY_NOTE_INTERVALS.map(({ id, label }) => ({ id, label, kind: 'day' as const })),
-  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
+  picks: [{ id: 'customer', label: `${FIELDS}.customer`, asked: ['customerId'] }],
   filters: [
     {
       id: 'status',
