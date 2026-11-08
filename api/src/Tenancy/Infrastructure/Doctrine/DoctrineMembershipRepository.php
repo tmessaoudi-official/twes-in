@@ -111,7 +111,7 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
     {
         /** @var list<array{email: \Stringable|string}> $rows */
         $rows = $this->entityManager->createQuery(
-            'SELECT u.email AS email FROM '.Membership::class.' m JOIN m.user u WHERE m.company = :company AND m.role = :role ORDER BY m.createdAt ASC',
+            'SELECT u.email AS email FROM '.Membership::class.' m JOIN m.user u WHERE m.company = :company AND m.role = :role ORDER BY m.createdAt ASC, m.id ASC',
         )
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('role', $roleId, 'uuid')

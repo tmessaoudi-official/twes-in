@@ -86,7 +86,7 @@ final readonly class DoctrineDemoSandboxRepository implements DemoSandboxReposit
     public function buildingSince(\DateTimeImmutable $before): array
     {
         $ids = $this->entityManager->getConnection()->fetchFirstColumn(
-            'SELECT id FROM demo_sandbox WHERE state = ? AND build_started_at < ? ORDER BY build_started_at',
+            'SELECT id FROM demo_sandbox WHERE state = ? AND build_started_at < ? ORDER BY build_started_at, id',
             [SandboxState::Building->value, $before],
             [1 => 'datetime_immutable'],
         );

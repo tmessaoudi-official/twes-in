@@ -26,7 +26,7 @@ final readonly class DoctrineSupportGrantRepository implements SupportGrantRepos
     public function liveIn(Uuid $companyId, \DateTimeImmutable $now): ?SupportGrant
     {
         /** @var list<SupportGrant> $live */
-        $live = $this->entityManager->createQuery('SELECT g FROM '.SupportGrant::class.' g WHERE g.company = :company AND '.self::LIVE.' ORDER BY g.endsAt DESC')
+        $live = $this->entityManager->createQuery('SELECT g FROM '.SupportGrant::class.' g WHERE g.company = :company AND '.self::LIVE.' ORDER BY g.endsAt DESC, g.id DESC')
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
             ->setMaxResults(1)

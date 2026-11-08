@@ -107,7 +107,7 @@ final readonly class DoctrineUserRepository implements UserRepository
         /** @var list<User> $users */
         $users = $this->entityManager->createQueryBuilder()->select('u')->from(User::class, 'u')
             ->where('u.deletionRequestedAt < :moment')->setParameter('moment', $moment, Types::DATETIME_IMMUTABLE)
-            ->orderBy('u.deletionRequestedAt')->getQuery()->getResult();
+            ->orderBy('u.deletionRequestedAt')->addOrderBy('u.id')->getQuery()->getResult();
 
         return $users;
     }

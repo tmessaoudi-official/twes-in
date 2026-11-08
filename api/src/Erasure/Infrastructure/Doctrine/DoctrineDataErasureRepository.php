@@ -54,7 +54,7 @@ final readonly class DoctrineDataErasureRepository implements DataErasureReposit
             ->andWhere('e.effectiveAt <= :now')
             ->setParameter('pending', ErasureState::Pending->value)
             ->setParameter('now', $now, 'datetime_immutable')
-            ->orderBy('e.effectiveAt');
+            ->orderBy('e.effectiveAt')->addOrderBy('e.id');
         if (null !== $companyId) {
             $query->andWhere('e.company = :company')->setParameter('company', $companyId, 'uuid');
         }

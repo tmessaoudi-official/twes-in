@@ -67,7 +67,7 @@ final readonly class DoctrineRecordRemovalRepository implements RecordRemovalRep
             ->andWhere('r.effectiveAt <= :now')
             ->setParameter('pending', RemovalState::Pending->value)
             ->setParameter('now', $now, 'datetime_immutable')
-            ->orderBy('r.effectiveAt');
+            ->orderBy('r.effectiveAt')->addOrderBy('r.id');
         if (null !== $companyId) {
             $query->andWhere('r.company = :company')->setParameter('company', $companyId, 'uuid');
         }

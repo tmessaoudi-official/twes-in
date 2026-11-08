@@ -39,7 +39,7 @@ final readonly class DoctrineStockMoveFailureRepository implements StockMoveFail
             ->from(StockMoveFailure::class, 'f')
             ->where('f.company = :company')
             ->andWhere('f.documentId = :document')
-            ->orderBy('f.failedAt', \SortDirection::Ascending)
+            ->orderBy('f.failedAt', \SortDirection::Ascending)->addOrderBy('f.id', \SortDirection::Ascending)
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('document', $documentId, 'uuid')
             ->getQuery()
