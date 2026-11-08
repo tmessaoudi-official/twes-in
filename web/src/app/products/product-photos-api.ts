@@ -36,7 +36,7 @@ export class ProductPhotosApi {
     );
   }
 
-  /** A multipart part named `file`; 422 with a code for a photo not kept, 413 when the proxy finds it too large. */
+  /** A multipart part named `file`; 422 with a violation on it for a photo not kept, 413 when the proxy finds it too large. */
   async add(companyId: string, productId: string, file: File): Promise<ProductPhotoRow> {
     const body = new FormData();
     body.append('file', file, file.name);

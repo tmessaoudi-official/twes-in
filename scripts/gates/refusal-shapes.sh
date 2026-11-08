@@ -6,6 +6,7 @@
 # that way while the same file's upload answered a violation. Every `new JsonResponse([...'code' => ...` in api/src is
 # refused, but where its line or the one above says why the shape is its own: `// refusal-shape: <why>` (a declaration
 # answering the list of what is missing beside its reason). A floor of JSON answers read reds a gate gone blind.
+# It reads `code` as the body's FIRST key, as every such body here was written; a body naming it later escapes it.
 # Usage: refusal-shapes.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
