@@ -46,7 +46,9 @@ import type { ListDescriptor, ListQuery } from './shared/list/list-types';
  * Every list the API pages sends each of its filters under a name the list reads back: a read the API refuses for a
  * filter names the parameter as the API reads it (`taxRegime[0]`), and the list names the filter a person set from it
  * (`refusedFilterOf`, through the filter's `asked`, else its id). Each list's query holds every filter set; every
- * parameter its read sends, but the page, the search and the sort, must name one of its filters.
+ * parameter its read sends, but the page, the search and the sort, must name one of its filters. A filter may be sent
+ * under another name for another option (the texts' « changed » facet sends `changed` or `forms`), so every option of
+ * every facet is read in turn, and the names it adds must name that facet.
  */
 
 const AN_ID = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
@@ -141,10 +143,18 @@ const LISTS: readonly Paged[] = [
   },
 ];
 
-/** A query holding every filter the list declares: each facet its first option, each interval both ends, each picker an id. */
+/**
+ * The values a facet is read with: each of its options, or an id for a facet the page fills in (the company's customer
+ * groups, its establishments), whose read keeps only an id and would send nothing for any other word.
+ */
+function valuesOf(facet: { readonly options: readonly { readonly value: string }[] }): string[] {
+  return facet.options.length > 0 ? facet.options.map((option) => option.value) : [AN_ID];
+}
+
+/** A query holding every filter the list declares: each facet its first value, each interval both ends, each picker an id. */
 function everyFilterSet(descriptor: ListDescriptor<never>): ListQuery {
   const filters: Record<string, string> = {};
-  for (const facet of descriptor.filters ?? []) filters[facet.id] = facet.options[0]?.value ?? 'x';
+  for (const facet of descriptor.filters ?? []) filters[facet.id] = valuesOf(facet)[0];
   for (const range of descriptor.ranges ?? []) {
     if (range.kind === 'day') {
       filters[rangeKey(range.id, 'from')] = '2026-01-01';
@@ -156,6 +166,19 @@ function everyFilterSet(descriptor: ListDescriptor<never>): ListQuery {
   }
   for (const pick of descriptor.picks ?? []) filters[pick.id] = AN_ID;
   return { query: '', filters, sort: null, pageIndex: 0, pageSize: 25 };
+}
+
+/** Every filter set, but the facet named: left out (null), or set to the value given. */
+function withFacet(
+  descriptor: ListDescriptor<never>,
+  facet: string,
+  value: string | null,
+): ListQuery {
+  const query = everyFilterSet(descriptor);
+  const filters = { ...query.filters };
+  if (value === null) delete filters[facet];
+  else filters[facet] = value;
+  return { ...query, filters };
 }
 
 /** The parameters a read sent, as a refusal names them: without an entry's index or an interval's end. */
@@ -177,18 +200,49 @@ describe('the filters every paged list sends', () => {
 
   afterEach(() => http.verify());
 
+  /** The names one read of the list sends for the query, its answer an empty page. */
+  async function namesSent(list: Paged, query: ListQuery): Promise<string[]> {
+    const pending = list.read(query).catch(() => undefined);
+    const [request] = http.match(() => true);
+    const sent = sentNames(request.request.params);
+    request.flush({ member: [], totalItems: 0 });
+    await pending;
+    return sent;
+  }
+
   it.each(LISTS)(
     'are each named so the $name list can say which one the API refused',
     async (list) => {
-      const pending = list.read(everyFilterSet(list.descriptor)).catch(() => undefined);
-      const [request] = http.match(() => true);
-      const sent = sentNames(request.request.params);
+      const sent = await namesSent(list, everyFilterSet(list.descriptor));
 
       expect(sent.length).toBeGreaterThan(0);
       expect(sent.filter((name) => refusedFilterOf(list.descriptor, [name]) === null)).toEqual([]);
+    },
+  );
 
-      request.flush({ member: [], totalItems: 0 });
-      await pending;
+  it.each(LISTS)(
+    'send each option of a $name facet under a name that facet answers to',
+    async (list) => {
+      const unheld: string[] = [];
+      for (const facet of list.descriptor.filters ?? []) {
+        const without = await namesSent(list, withFacet(list.descriptor, facet.id, null));
+        for (const value of valuesOf(facet)) {
+          const sent = await namesSent(list, withFacet(list.descriptor, facet.id, value));
+          const added = sent.filter((name) => !without.includes(name));
+          const where = `${facet.id}=${value}`;
+          if (added.length === 0) unheld.push(`${where} sends nothing`);
+          for (const name of added) {
+            const named = refusedFilterOf(list.descriptor, [name]);
+            if (named === null) unheld.push(`${where} sends ${name}, which names no filter`);
+            else if (!(facet.id in named.clear))
+              unheld.push(
+                `${where} sends ${name}, which names ${Object.keys(named.clear).join(', ')}`,
+              );
+          }
+        }
+      }
+
+      expect(unheld).toEqual([]);
     },
   );
 });
