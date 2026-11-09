@@ -58,6 +58,13 @@ interface ProductRepository
      */
     public function pick(Uuid $companyId, string $words, int $limit, ?ProductKind $kind = null): array;
 
+    /**
+     * How many of the company's products the words find as `pick` finds them, active or switched off as `$active` says
+     * (null for both), of one kind or any: what a picker says it did not offer when it offers nothing. Asked only then,
+     * so the count it costs is paid once, never per keystroke.
+     */
+    public function countMatching(Uuid $companyId, string $words, ?bool $active, ?ProductKind $kind = null): int;
+
     /** Null for a product that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product;
 

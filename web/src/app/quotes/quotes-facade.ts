@@ -26,6 +26,7 @@ import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
+import type { ProductSelector } from '../shared/unoffered/unoffered-products-api';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -33,6 +34,8 @@ import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiv
  */
 @Injectable({ providedIn: 'root' })
 export class QuotesFacade implements LineCatalogue {
+  /** The options its product picker is read under (`LineCatalogue`). */
+  readonly productSelector: ProductSelector = 'quote-options';
   private readonly api = inject(QuotesApi);
   private readonly quotesSignal = sessionSignal<readonly QuoteRow[]>([]);
   private readonly optionsSignal = sessionSignal<InvoiceOptions | null>(null);

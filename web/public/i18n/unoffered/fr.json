@@ -1,0 +1,9 @@
+{
+  "unoffered": {
+    "deactivated": "Aucun produit actif ne correspond. {{count}} {count, plural, one {produit désactivé correspond : réactivez-le} other {produits désactivés correspondent : réactivez-les}} depuis « Produits ».",
+    "services": "{{count}} {count, plural, one {service correspond} other {services correspondent}} : seules les marchandises sont proposées ici.",
+    "not_stocked": "{{count}} {count, plural, one {produit correspond mais son stock n’est pas suivi : activez « Suivre le stock » dans sa fiche} other {produits correspondent mais leur stock n’est pas suivi : activez « Suivre le stock » dans leur fiche}}.",
+    "see_deactivated": "Voir les produits désactivés",
+    "see_products": "Voir ces produits"
+  }
+}

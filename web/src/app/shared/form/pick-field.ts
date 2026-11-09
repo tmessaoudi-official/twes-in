@@ -22,8 +22,10 @@ import {
 } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { RouterLink } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { ScanGap } from '../scan/scan-gap';
+import type { ExplainNone, NoneFound } from '../unoffered/unoffered-products';
 import { typedText } from './typed-text';
 
 /** One thing a person may pick: what they type to find it, and what they read to recognise it. */
@@ -55,7 +57,13 @@ export const PICK_PAUSE_MS = 300;
  */
 @Component({
   selector: 'app-pick-field',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatAutocompleteModule],
+  imports: [
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatAutocompleteModule,
+    RouterLink,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-form-field class="w-full">
@@ -126,12 +134,28 @@ export const PICK_PAUSE_MS = 300;
           >
         }
         @if (asked() && offered().length === 0) {
-          <mat-option disabled [attr.data-testid]="testId() + '-none-found'"
-            ><bdi>{{ noneFoundLabel() }}</bdi></mat-option
-          >
+          <mat-option disabled [attr.data-testid]="testId() + '-none-found'">
+            @if (noneFound(); as why) {
+              <!-- value-direction: sentences in the screen's language, which read in the screen's direction -->
+              <span class="whitespace-normal">{{ why.sentences.join(' ') }}</span>
+            } @else {
+              <bdi>{{ noneFoundLabel() }}</bdi>
+            }
+          </mat-option>
         }
       </mat-autocomplete>
     </mat-form-field>
+    <!-- Under the field, where Tab reaches it: a row of the list cannot take the focus while the box keeps it. -->
+    @if (noneFound()?.link; as link) {
+      <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
+      <a
+        class="mb-2 block text-sm text-accent-text underline"
+        [routerLink]="link.path"
+        [queryParams]="link.query"
+        [attr.data-testid]="testId() + '-unoffered-link'"
+        >{{ link.label }}</a
+      >
+    }
   `,
 })
 export class PickField {
@@ -155,6 +179,12 @@ export class PickField {
   readonly clearable = input(false);
   readonly noneLabel = input('—');
   readonly noneFoundLabel = input('—');
+  /**
+   * Asked once an answer comes back empty for words typed, to say why rather than that nothing exists: a product
+   * selector says the products switched off that the words match (`UnofferedProducts`). Left out, the field says
+   * `noneFoundLabel` alone.
+   */
+  readonly explainNone = input<ExplainNone | null>(null);
   /** A line under the box saying what to type; left out, the input describes nothing, which is what axe asks. */
   readonly hint = input('');
   /**
@@ -181,6 +211,8 @@ export class PickField {
   protected readonly offered = signal<readonly PickOption[]>([]);
   /** Whether an answer has come back for what is typed, so "nothing found" is never shown before asking. */
   protected readonly asked = signal(false);
+  /** Why the last answer was empty, when the screen could tell; null otherwise or once something is offered. */
+  protected readonly noneFound = signal<NoneFound | null>(null);
   /** Whether the characters are arriving too fast for a hand — see `clocked` below. */
   protected readonly scanning = signal(false);
   private readonly scanGap = inject(ScanGap);
@@ -219,11 +251,13 @@ export class PickField {
       const search = this.search();
       const turn = ++this.asking;
       this.asked.set(false);
+      this.noneFound.set(null);
       const found = await search(words);
       // A later keystroke may have asked again while this one was answering; its answer wins.
       if (turn !== this.asking) return;
       this.offered.set(found);
       this.asked.set(true);
+      await this.explain(found, words, turn);
     });
   }
 
@@ -248,6 +282,7 @@ export class PickField {
       this.asking += 1;
       this.offered.set([]);
       this.asked.set(false);
+      this.noneFound.set(null);
     }
   }
 
@@ -266,14 +301,25 @@ export class PickField {
 
     event.preventDefault();
     this.scanning.set(false);
+    const turn = ++this.asking;
+    this.noneFound.set(null);
     const found = await this.search()(words);
     this.offered.set(found);
     this.asked.set(true);
+    void this.explain(found, words, turn);
     if (found.length === 1) {
       this.typed.setValue(found[0], { emitEvent: false });
       this.picked.emit(found[0]);
       this.scanned.emit(words);
     }
+  }
+
+  /** Asks the screen why words typed found nothing; an answer for words since replaced is dropped, as a search's is. */
+  private async explain(found: readonly PickOption[], words: string, turn: number): Promise<void> {
+    const explainNone = this.explainNone();
+    if (found.length > 0 || words === '' || explainNone === null) return;
+    const why = await explainNone(words);
+    if (turn === this.asking) this.noneFound.set(why);
   }
 
   /**

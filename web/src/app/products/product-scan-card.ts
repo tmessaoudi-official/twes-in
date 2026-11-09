@@ -28,6 +28,7 @@ import { ProductThumbnail } from './product-thumbnail';
 import type { ProductOnViewRef } from './product-on-view';
 import type { IconName } from '../shared/icons/icons';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 export interface ProductScanCardData {
   /** What the scanner read, as it came. */
@@ -250,6 +251,14 @@ export class ProductScanCard implements OnInit {
     this.dialog.close();
     void this.router.navigateByUrl(action.url);
   }
+
+  /** Why the products the code may be added to found nothing: the products switched off that the words match. */
+  protected readonly explainProducts = inject(UnofferedProducts).deactivatedExplainer((words) => {
+    const companyId = this.auth.me()?.company?.id;
+    return companyId === undefined
+      ? Promise.resolve(null)
+      : this.api.countDeactivated(companyId, words);
+  });
 
   /** The products the code may be added to: those still sold, found by their words. */
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {

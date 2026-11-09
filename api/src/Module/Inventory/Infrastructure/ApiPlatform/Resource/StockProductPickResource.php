@@ -11,10 +11,14 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\QueryParameter;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\StockProductPickProvider;
+use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\StockUnofferedProductsProvider;
 use App\Module\Products\Domain\Model\Product;
+use App\Shared\Infrastructure\ApiPlatform\Output\UnofferedProducts;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
@@ -46,11 +50,27 @@ use Symfony\Component\Uid\Uuid;
                 ),
             ],
         ),
+        new Get(
+            uriTemplate: '/companies/{companyId}/stock-options/products/unoffered',
+            name: self::UNOFFERED,
+            openapi: new OpenApiOperation(summary: 'What the words find that the picker beside this does not offer.', description: 'Counts what the same words match and the picker leaves out (goods switched off, services, and active goods whose stock is not kept), so an empty picker says why rather than that no product exists; a count is 0 where it hides nothing of that sort, and every count is 0 without words. Asks stock.read, as the picker does.'),
+            provider: StockUnofferedProductsProvider::class,
+            security: 'is_granted("ROLE_USER")',
+            output: UnofferedProducts::class,
+            normalizationContext: ['groups' => [UnofferedProducts::READ]],
+            parameters: [
+                'q' => new QueryParameter(
+                    schema: ['type' => 'string', 'maxLength' => 100],
+                    description: 'The words typed in the picker, matched as the picker matches them.',
+                ),
+            ],
+        ),
     ],
 )]
 final class StockProductPickResource
 {
     public const string READ = 'stock_product_pick:read';
+    public const string UNOFFERED = 'stock_unoffered_products';
     public const string PICK = 'stock_product_pick';
 
     // No identifier: reached only through the uriTemplate above.

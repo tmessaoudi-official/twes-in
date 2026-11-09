@@ -25,6 +25,7 @@
               [label]="'delivery_notes.lines.product' | translate"
               [testId]="'line-' + i + '-product'"
               [search]="searchProducts"
+              [explainNone]="explainProducts"
               [value]="productOf(line)"
               [disabled]="readOnly()"
               [clearable]="true"

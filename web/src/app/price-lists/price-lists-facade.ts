@@ -91,6 +91,11 @@ export class PriceListsFacade {
     this.state.clearError();
   }
 
+  /** How many products switched off the words find, which the product picker leaves out. */
+  deactivatedProducts(companyId: string, words: string): Promise<number> {
+    return this.products.countDeactivated(companyId, words);
+  }
+
   /** The few products the words name, as a picker shows them. */
   async pickProducts(companyId: string, words: string): Promise<PickOption[]> {
     const page = await this.products.products(companyId, {

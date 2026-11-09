@@ -12,6 +12,7 @@ namespace App\Module\Products\Application;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductPhotoRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -39,6 +40,23 @@ final readonly class PickProducts
     public function matching(Company $company, string $words, int $limit = self::SHOWN): array
     {
         return $this->rows($company, $this->products->pick($company->getId(), $words, max(1, min($limit, self::SHOWN))));
+    }
+
+    /**
+     * What the words find that a picker offering only `$offered` products (or every kind) leaves out, so an empty picker
+     * says why rather than that nothing exists: the products switched off of the kind it offers, and, where it offers
+     * goods alone, the services, on or off, which reactivating would not bring.
+     *
+     * @return array{deactivated: int, services: int}
+     */
+    public function unoffered(Company $company, string $words, ?ProductKind $offered = null): array
+    {
+        $id = $company->getId();
+
+        return [
+            'deactivated' => $this->products->countMatching($id, $words, false, $offered),
+            'services' => ProductKind::Goods === $offered ? $this->products->countMatching($id, $words, null, ProductKind::Service) : 0,
+        ];
     }
 
     /**

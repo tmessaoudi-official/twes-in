@@ -58,6 +58,7 @@ import { typedText } from '../form/typed-text';
               [label]="pick.label | translate"
               [testId]="testId() + '-' + pick.id"
               [search]="source.search"
+              [explainNone]="source.explainNone ?? null"
               [value]="null"
               [hint]="'list.pick_hint' | translate"
               [noneFoundLabel]="'form.none_found' | translate"

@@ -4,6 +4,7 @@ import type { ActionGroup } from '../actions/record-action';
 import type { ActionConfirm, ScreenAction } from '../actions/screen-action';
 import type { IconName } from '../icons/icons';
 import type { StatusTone } from '../theme/accent-theme';
+import type { ExplainNone } from '../unoffered/unoffered-products';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -183,6 +184,8 @@ export interface ListPickSource {
   search: (words: string) => Promise<readonly { id: string; code: string; name: string }[]>;
   /** Exactly these records, whether or not they are still offered by `search`. */
   byIds: (ids: readonly string[]) => Promise<readonly { id: string; code: string; name: string }[]>;
+  /** Why `search` found nothing, where the screen can tell (a product filter, `UnofferedProducts`). */
+  explainNone?: ExplainNone;
 }
 
 export interface ListFilterOption {

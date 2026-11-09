@@ -61,6 +61,7 @@ import type { FieldError } from '../shared/form/form-builder';
 import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -466,6 +467,11 @@ export class InvoiceLines {
     return pickedProduct(line);
   }
 
+  /** Why the product picker found nothing for words typed: what they match that it does not offer. */
+  protected readonly explainProducts = inject(UnofferedProducts).explainer(
+    () => this.companyId(),
+    this.facade.productSelector,
+  );
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
     const found = await this.facade.pickProducts(this.companyId(), { words });
     for (const product of found) this.known.set(product.id, product);

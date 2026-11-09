@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Purchases;
 
+use App\Module\Products\Application\PickProducts;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\Repository\ProductRepository;
@@ -25,13 +26,18 @@ final readonly class ProductsForOrders implements OrderProducts
     /** As many as a picker shows, the same as every other picker. */
     private const int SHOWN = 20;
 
-    public function __construct(private ProductRepository $products)
+    public function __construct(private ProductRepository $products, private PickProducts $picks)
     {
     }
 
     public function matching(Company $company, string $words): array
     {
         return array_map(self::product(...), $this->products->pick($company->getId(), $words, self::SHOWN, ProductKind::Goods));
+    }
+
+    public function unoffered(Company $company, string $words): array
+    {
+        return $this->picks->unoffered($company, $words, ProductKind::Goods);
     }
 
     public function ofIds(Company $company, array $ids): array

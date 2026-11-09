@@ -31,10 +31,13 @@ import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
+import type { ProductSelector } from '../shared/unoffered/unoffered-products-api';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class InvoicesFacade {
+  /** The options its product picker is read under (`LineCatalogue`). */
+  readonly productSelector: ProductSelector = 'invoice-options';
   private readonly api = inject(InvoicesApi);
   private readonly invoicesSignal = sessionSignal<readonly InvoiceRow[]>([]);
   private readonly optionsSignal = sessionSignal<InvoiceOptions | null>(null);

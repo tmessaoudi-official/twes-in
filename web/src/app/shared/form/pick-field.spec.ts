@@ -3,6 +3,8 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { provideRouter } from '@angular/router';
+import type { ExplainNone, NoneFound } from '../unoffered/unoffered-products';
 import { PickField, type PickOption } from './pick-field';
 
 const SCREW: PickOption = { id: 'p1', code: 'VIS-6X40', name: 'Vis 6x40' };
@@ -19,6 +21,7 @@ const BOLT: PickOption = { id: 'p2', code: 'BOU-001', name: 'Boulon inox' };
       [clearable]="true"
       noneLabel="Aucun produit"
       noneFoundLabel="Rien trouvé"
+      [explainNone]="explain"
       [inputId]="outside() ? 'expense-form-vendorId' : ''"
       [labelInside]="!outside()"
       (picked)="taken.set($event)"
@@ -33,6 +36,14 @@ class Host {
   readonly asked: string[] = [];
   readonly scans: string[] = [];
   answer: readonly PickOption[] = [SCREW, BOLT];
+  /** The words the field asked why it found nothing for. */
+  readonly explainedFor: string[] = [];
+  /** What the screen says of an empty answer; null for a screen that cannot tell why. */
+  why: NoneFound | null = null;
+  explain: ExplainNone | null = (words) => {
+    this.explainedFor.push(words);
+    return Promise.resolve(this.why);
+  };
   /** When set, the question asked on no words waits for this before answering, as a slow API does. */
   firstAnswer: Promise<void> | null = null;
 
@@ -108,7 +119,10 @@ describe('PickField', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     TestBed.configureTestingModule({
       imports: [Host],
-      providers: [{ provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } }],
+      providers: [
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        provideRouter([]),
+      ],
     });
     fixture = TestBed.createComponent(Host);
     host = fixture.componentInstance;
@@ -202,6 +216,79 @@ describe('PickField', () => {
     await settle();
 
     expect(options().map((o) => o.textContent?.trim())).toContain('Rien trouvé');
+  });
+
+  describe('when the answer is empty', () => {
+    const DEACTIVATED: NoneFound = {
+      sentences: ['2 produits désactivés correspondent.', '1 service correspond.'],
+      link: {
+        label: 'Voir les produits désactivés',
+        path: '/products',
+        query: { q: 'caf', status: 'inactive' },
+      },
+    };
+    const link = (): HTMLAnchorElement | null =>
+      fixture.nativeElement.querySelector('[data-testid="pick-unoffered-link"]');
+
+    async function opened(): Promise<string[]> {
+      const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+      input.dispatchEvent(new Event('focusin'));
+      await settle();
+      return options().map((o) => o.textContent?.trim() ?? '');
+    }
+
+    it('says why it found nothing, and offers the way to what would answer under the field', async () => {
+      host.answer = [];
+      host.why = DEACTIVATED;
+      await type('caf');
+
+      const shown = await opened();
+      expect(shown).toContain('2 produits désactivés correspondent. 1 service correspond.');
+      expect(shown).not.toContain('Rien trouvé');
+      // Under the field, where Tab reaches it: a row of the list cannot be focused while the box keeps the focus.
+      expect(link()?.textContent?.trim()).toBe('Voir les produits désactivés');
+      expect(link()?.getAttribute('href')).toBe('/products?q=caf&status=inactive');
+    });
+
+    it('asks why only for words typed that found nothing', async () => {
+      host.why = DEACTIVATED;
+      await type('vis');
+      host.answer = [];
+      await type('   ');
+      expect(host.explainedFor).toEqual([]);
+
+      await type('caf');
+      expect(host.explainedFor).toEqual(['caf']);
+
+      // Words finding something again take the reason and its way away.
+      host.answer = [SCREW];
+      await type('vis');
+      expect(link()).toBeNull();
+      expect(await opened()).not.toContain(
+        '2 produits désactivés correspondent. 1 service correspond.',
+      );
+    });
+
+    it('says only that none was found where the screen cannot tell why', async () => {
+      host.answer = [];
+      await type('zzz');
+
+      expect(host.explainedFor).toEqual(['zzz']);
+      expect(await opened()).toContain('Rien trouvé');
+      expect(link()).toBeNull();
+    });
+
+    it('says why a scanned code found nothing', async () => {
+      host.answer = [];
+      host.why = DEACTIVATED;
+      scan('3017620422003');
+      await settle();
+      await Promise.resolve();
+      await settle();
+
+      expect(host.explainedFor).toContain('3017620422003');
+      expect(link()).not.toBeNull();
+    });
   });
 
   /**

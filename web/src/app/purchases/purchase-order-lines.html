@@ -25,6 +25,7 @@
             [label]="'purchases.lines.productId' | translate"
             [testId]="'purchase-line-' + i + '-product'"
             [search]="searchProducts"
+            [explainNone]="explainProducts"
             [value]="productOf(line)"
             [noneFoundLabel]="'purchases.lines.no_product_found' | translate"
             (picked)="chooseProduct(line, $event)"

@@ -27,4 +27,11 @@ interface QuoteProducts
      * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null}>
      */
     public function byIds(Company $company, array $ids): array;
+
+    /**
+     * What the words find that `matching` leaves out: the products switched off, so an empty picker says why.
+     *
+     * @return array{deactivated: int, services: int}
+     */
+    public function unoffered(Company $company, string $words): array;
 }

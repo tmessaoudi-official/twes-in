@@ -308,6 +308,7 @@
         [noneFoundLabel]="'inventory.plan.search.none_found' | translate"
         testId="stock-map-search"
         [search]="searchProducts"
+        [explainNone]="explainProducts"
         [value]="searchPick()"
         (picked)="searchFor($event)"
       />

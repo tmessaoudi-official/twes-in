@@ -55,6 +55,7 @@ import { countAddress, type StockMovementSearch } from './inventory-types';
 import { ReceiptCostDialog, type ReceiptCostDialogData } from './receipt-cost-dialog';
 import { LossFilesDialog, type LossFilesDialogData } from './loss-files-dialog';
 import { typedText } from '../shared/form/typed-text';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 /**
  * How stock moved: one product's movements when the address names it, one lot's or serial number's when it names that
@@ -291,10 +292,16 @@ export class StockMovementsPage {
    * are searched by the API, never read whole; the locations are already here, each named by its path, since picking
    * one lists what moved under it too.
    */
+  /** Why the product picker found nothing for words typed: what they match that it does not offer. */
+  private readonly explainProducts = inject(UnofferedProducts).explainer(
+    () => this.company()?.id,
+    'stock-options',
+  );
   protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
     product: {
       search: (words) => this.pickProducts({ words }),
       byIds: (ids) => this.pickProducts({ ids }),
+      explainNone: (words) => this.explainProducts(words),
     },
     location: {
       search: async (words) => {

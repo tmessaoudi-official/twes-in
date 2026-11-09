@@ -24,6 +24,7 @@ import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type LineGroup, lineGroup, plainDecimal } from './purchase-order-forms';
 import { PurchasesFacade } from './purchases-facade';
 import type { ProductOption } from './purchases-types';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 /** The fields of a line a person fills in, each with its own message when it is wrong. */
 type LineField = 'productId' | 'description' | 'quantity' | 'unitPriceNet';
@@ -81,6 +82,11 @@ export class PurchaseOrderLines {
     });
   }
 
+  /** Why the product picker found nothing for words typed: what they match that it does not offer. */
+  protected readonly explainProducts = inject(UnofferedProducts).explainer(
+    () => this.companyId(),
+    'purchase-order-options',
+  );
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.companyId();
     if (companyId === '') return [];

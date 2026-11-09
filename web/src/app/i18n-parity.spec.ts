@@ -113,6 +113,9 @@ import frTexts from '../../public/i18n/texts/fr.json';
 import arTwoFactor from '../../public/i18n/two-factor/ar.json';
 import enTwoFactor from '../../public/i18n/two-factor/en.json';
 import frTwoFactor from '../../public/i18n/two-factor/fr.json';
+import arUnoffered from '../../public/i18n/unoffered/ar.json';
+import enUnoffered from '../../public/i18n/unoffered/en.json';
+import frUnoffered from '../../public/i18n/unoffered/fr.json';
 import { directionOf, INTERFACE_LANGUAGES } from './shared/i18n/languages';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { NAMED_TABLES } from './shared/records/record-tables';
@@ -171,6 +174,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },
   texts: { fr: frTexts, en: enTexts, ar: arTexts },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },
+  unoffered: { fr: frUnoffered, en: enUnoffered, ar: arUnoffered },
 };
 
 /** Two files' texts as one, refusing a key both hold: the part would silently win where the page reads it. */

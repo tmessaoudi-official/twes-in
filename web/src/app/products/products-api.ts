@@ -128,6 +128,27 @@ export class ProductsApi {
   }
 
   /** One page of the products the search finds, as Hydra carries it: the rows and the total. */
+  /**
+   * How many products switched off the words find, as the list finds them: what a picker reading the active ones says
+   * when it offers nothing (`UnofferedProducts`).
+   */
+  async countDeactivated(companyId: string, words: string): Promise<number> {
+    const page = await this.products(companyId, {
+      page: 1,
+      itemsPerPage: 1,
+      q: words,
+      kinds: [],
+      trackings: [],
+      categoryIds: [],
+      isActive: false,
+      toCheck: null,
+      checkReasons: [],
+      intervals: {},
+      order: null,
+    });
+    return page.total;
+  }
+
   async products(companyId: string, search: ProductSearch): Promise<ListPage<ProductRow>> {
     return this.guard(async () => {
       const page = await firstValueFrom(

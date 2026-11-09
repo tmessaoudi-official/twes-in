@@ -43,7 +43,7 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 final readonly class StockProductPickProvider implements ProviderInterface
 {
     /** How many matching goods the setting is walked over before the answer is cut short. */
-    private const int SCANNED = 200;
+    public const int SCANNED = 200;
 
     public function __construct(
         private CompanyGuard $guard,

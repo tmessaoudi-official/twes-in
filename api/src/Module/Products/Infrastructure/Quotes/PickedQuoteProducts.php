@@ -29,4 +29,9 @@ final readonly class PickedQuoteProducts implements QuoteProducts
     {
         return $this->products->byIds($company, $ids);
     }
+
+    public function unoffered(Company $company, string $words): array
+    {
+        return $this->products->unoffered($company, $words);
+    }
 }

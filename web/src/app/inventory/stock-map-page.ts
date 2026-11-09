@@ -177,6 +177,7 @@ import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 /** Above this many metres a floor's grid is drawn every five metres rather than every one. */
 const GRID_FINE_LIMIT = 60;
@@ -634,6 +635,11 @@ export class StockMapPage implements OnInit {
       ? null
       : { id: found.productId, code: found.productReference, name: found.productName };
   });
+  /** Why the product picker found nothing for words typed: what they match that it does not offer. */
+  protected readonly explainProducts = inject(UnofferedProducts).explainer(
+    () => this.company()?.id,
+    'stock-options',
+  );
   /** Only goods whose stock is kept can be anywhere, so the picker offers those alone. */
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.company()?.id;

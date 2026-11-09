@@ -65,6 +65,7 @@ import {
 } from './price-lists-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 const SCOPES: readonly PriceListScope[] = ['everyone', 'group', 'customer'];
 
@@ -501,6 +502,11 @@ export class PriceListsPage implements OnInit {
 
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> =>
     this.facade.pickProducts(this.company()?.id ?? '', words);
+  /** Why the product picker found nothing for words typed: the products switched off that they match. */
+  protected readonly explainProducts = inject(UnofferedProducts).deactivatedExplainer((words) => {
+    const companyId = this.company()?.id;
+    return companyId ? this.facade.deactivatedProducts(companyId, words) : Promise.resolve(null);
+  });
 
   protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> =>
     this.facade.pickCustomers(this.company()?.id ?? '', words);

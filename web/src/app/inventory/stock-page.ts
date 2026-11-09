@@ -79,6 +79,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { addCount } from '../shared/scan/scan-lines';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 /** What is on hand of each product whose stock is kept, per location, with goods received and counts recorded here. */
 @Component({
@@ -309,6 +310,11 @@ export class StockPage implements OnInit {
   });
   /** Every product the picker has answered, so what is chosen can be found again from the id in the form. */
   private readonly known = new Map<string, StockProductOption>();
+  /** Why the product picker found nothing for words typed: what they match that it does not offer. */
+  protected readonly explainProducts = inject(UnofferedProducts).explainer(
+    () => this.company()?.id,
+    'stock-options',
+  );
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.company()?.id;
     if (!companyId) return [];
@@ -647,6 +653,7 @@ export class StockPage implements OnInit {
     product: {
       search: (words) => this.pickProducts({ words }),
       byIds: (ids) => this.pickProducts({ ids }),
+      explainNone: (words) => this.explainProducts(words),
     },
     location: {
       search: async (words) => {

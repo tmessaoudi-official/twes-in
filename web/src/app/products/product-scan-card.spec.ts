@@ -13,6 +13,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { ScanOffers } from '../shared/scan/scan-offers';
+import { Session } from '../shared/session/session';
 import { ProductScanCard, type ProductScanCardData } from './product-scan-card';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan } from './products-types';
@@ -92,6 +93,7 @@ describe('ProductScanCard', () => {
         { provide: MatDialogRef, useValue: { close } },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useValue: auth },
         { provide: ProductsApi, useValue: { scan, products } },
         { provide: FormatFacade, useValue: { day: (value: string) => value } },
       ],

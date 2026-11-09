@@ -177,6 +177,7 @@
                       [label]="'price_lists.prices.product' | translate"
                       [testId]="'price-row-' + i + '-product'"
                       [search]="searchProducts"
+                      [explainNone]="explainProducts"
                       [value]="productOf(row)"
                       [noneFoundLabel]="'price_lists.no_product_found' | translate"
                       (picked)="chooseProduct(row, $event)"

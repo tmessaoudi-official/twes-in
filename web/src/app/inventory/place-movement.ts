@@ -41,6 +41,7 @@ import type {
   StockMovementInput,
   StockProductOption,
 } from './inventory-types';
+import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 
 /** What a line of « Ce qu'il y a ici » was asked to do: move it, count it where it is, or receive more of it there. */
 export interface MovementAsked {
@@ -103,6 +104,11 @@ export class PlaceMovement implements OnInit {
       ? null
       : { id: product.id, code: product.reference, name: product.name };
   });
+  /** Why the product picker found nothing for words typed: what they match that it does not offer. */
+  protected readonly explainProducts = inject(UnofferedProducts).explainer(
+    () => this.companyId(),
+    'stock-options',
+  );
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
     const found = await this.facade.pickProducts(this.companyId(), { words });
     for (const product of found) this.known.set(product.id, product);

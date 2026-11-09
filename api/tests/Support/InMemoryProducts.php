@@ -88,6 +88,17 @@ final class InMemoryProducts implements ProductRepository
         return \array_slice($found, 0, $limit);
     }
 
+    public function countMatching(Uuid $companyId, string $words, ?bool $active, ?ProductKind $kind = null): int
+    {
+        if ('' === trim($words)) {
+            return 0;
+        }
+
+        return \count(array_filter($this->ofCompany($companyId), static fn (Product $p): bool => (null === $active || $p->isActive() === $active)
+            && (null === $kind || $p->getDetails()->kind === $kind)
+            && (InMemorySearch::finds($words, $p->getReference(), [$p->getDetails()->name]) || self::holds($p, $words))));
+    }
+
     public function ofIdsInCompany(array $ids, Uuid $companyId): array
     {
         $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);

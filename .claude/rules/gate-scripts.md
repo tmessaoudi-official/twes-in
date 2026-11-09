@@ -42,3 +42,7 @@ the end of § Lessons here.
   on the host's git 2.56 and NOTHING in the tools image's 2.47 once a spec was staged, so `read-retry.sh`'s test passed
   on the host and reddened the snapshot gate. Filter with `| grep -v '\.spec\.ts$'`, as the sibling gates do, and run a
   new gate's test once through `make tools CMD=…` before gating (2026-11-06).
+- A gate reading a template or an object literal reads it as prettier lays it out, not as it was typed: `product-pickers-explain.sh`
+  first read a descriptor entry on one line, passed, and went red an hour later once `make check FIX=1` put one property a
+  line. Read an entry to the brace closing it (counting braces), give the test a fixture in prettier's layout, and run the
+  gate again after `FIX=1` (2026-11-09).

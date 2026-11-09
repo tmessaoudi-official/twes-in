@@ -35,6 +35,14 @@ interface OrderProducts
     public function ofIds(Company $company, array $ids): array;
 
     /**
+     * What the words find that `matching` leaves out: the goods switched off, and the services, which an order never
+     * offers, so an empty picker says why.
+     *
+     * @return array{deactivated: int, services: int}
+     */
+    public function unoffered(Company $company, string $words): array;
+
+    /**
      * The vendor's own code for those of these products it has one for, by product id: the product's supplier code
      * naming the vendor that enters one piece, the first in the product's code order when there are several. A code
      * entering a carton is left out, as a line counts the product's own unit.

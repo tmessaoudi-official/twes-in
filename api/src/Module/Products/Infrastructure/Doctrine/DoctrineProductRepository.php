@@ -164,6 +164,26 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $products;
     }
 
+    public function countMatching(Uuid $companyId, string $words, ?bool $active, ?ProductKind $kind = null): int
+    {
+        $words = TypedText::trimmed($words);
+        if ('' === $words) {
+            return 0;
+        }
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')->from(Product::class, 'p')
+            ->where('p.company = :company')->setParameter('company', $companyId, 'uuid');
+        if (null !== $active) {
+            $query->andWhere('p.isActive = :active')->setParameter('active', $active);
+        }
+        if (null !== $kind) {
+            $query->andWhere('p.kind = :kind')->setParameter('kind', $kind->value);
+        }
+        $this->matchWords($query, $companyId, $words);
+
+        return Rows::int($query->getQuery()->getSingleScalarResult());
+    }
+
     public function ofIdsInCompany(array $ids, Uuid $companyId): array
     {
         return [] === $ids ? [] : $this->entityManager->getRepository(Product::class)->findBy(['id' => $ids, 'company' => $companyId]);

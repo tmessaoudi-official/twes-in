@@ -4,6 +4,7 @@ import { inject, Injectable } from '@angular/core';
 import type { PickAsked } from '../shared/form/pick-api';
 import { InvoicesFacade } from './invoices-facade';
 import type { ProductOption, ResolvedPrice } from './invoices-types';
+import type { ProductSelector } from '../shared/unoffered/unoffered-products-api';
 
 /**
  * Where a document's lines find their products and the price each starts at. The invoice's own facade unless the
@@ -12,6 +13,8 @@ import type { ProductOption, ResolvedPrice } from './invoices-types';
 @Injectable({ providedIn: 'root', useFactory: () => inject(InvoicesFacade) })
 export abstract class LineCatalogue {
   abstract pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]>;
+  /** The options its product picker is read under, which also say what that picker left out of what was typed. */
+  abstract readonly productSelector: ProductSelector;
 
   /** What the product sells at for that customer and quantity; null where the price cannot be read. */
   abstract productPrice(

@@ -1,0 +1,9 @@
+{
+  "unoffered": {
+    "deactivated": "No active product matches. {{count}} {count, plural, one {deactivated product matches: reactivate it} other {deactivated products match: reactivate them}} from “Products”.",
+    "services": "{{count}} {count, plural, one {service matches} other {services match}}: only goods are offered here.",
+    "not_stocked": "{{count}} {count, plural, one {product matches but its stock is not tracked: turn on “Track stock” in its record} other {products match but their stock is not tracked: turn on “Track stock” in their records}}.",
+    "see_deactivated": "See deactivated products",
+    "see_products": "See these products"
+  }
+}

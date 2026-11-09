@@ -33,6 +33,7 @@ import { DayCalendarButton } from './day-calendar-button';
 import { DayInput } from './day-input';
 import { emailTypo } from './email-rule';
 import { PickField, type PickOption } from './pick-field';
+import type { ExplainNone } from '../unoffered/unoffered-products';
 import { Select } from './select';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
 import type { FieldRefusal } from './field-refusals';
@@ -62,6 +63,8 @@ export interface PickSource {
   value: PickOption | null;
   /** For a `picks` field, the records it holds as the record itself names them. */
   values?: readonly PickOption[];
+  /** Why the search found nothing, where the screen can tell (a product selector, `UnofferedProducts`). */
+  explainNone?: ExplainNone;
 }
 
 /**

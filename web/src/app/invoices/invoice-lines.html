@@ -81,6 +81,7 @@
                 [label]="'invoices.lines.product' | translate"
                 [testId]="'line-' + i + '-product'"
                 [search]="searchProducts"
+                [explainNone]="explainProducts"
                 [value]="productOf(line)"
                 [disabled]="readOnly() || fromDeliveryNote(line)"
                 [clearable]="true"

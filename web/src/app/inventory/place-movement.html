@@ -21,7 +21,13 @@
       <app-descriptor-form
         [descriptor]="descriptor"
         [form]="form"
-        [pickers]="{ productId: { search: searchProducts, value: productShown() } }"
+        [pickers]="{
+          productId: {
+            search: searchProducts,
+            explainNone: explainProducts,
+            value: productShown(),
+          },
+        }"
         testId="place-movement-form"
         (submitted)="save($event)"
       >
