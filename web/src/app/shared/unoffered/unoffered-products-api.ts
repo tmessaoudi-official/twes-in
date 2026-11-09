@@ -3,17 +3,27 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import type {
+  DeliveryNoteUnofferedProductsResponse,
+  InvoiceUnofferedProductsResponse,
+  PurchaseOrderUnofferedProductsResponse,
+  QuoteUnofferedProductsResponse,
+  StockUnofferedProductsResponse,
+} from '../../api/types.gen';
 import { typedText } from '../form/typed-text';
 
-/** What the words typed in a product selector find that the selector does not offer, each count 0 when none. */
-export interface UnofferedCounts {
-  /** Products switched off, of the kind the selector offers. */
-  readonly deactivated: number;
-  /** Services, where the selector offers goods alone (an order, the stock). */
-  readonly services: number;
-  /** Active goods whose stock is not kept, which the stock's selectors leave out. */
-  readonly notStocked: number;
-}
+/**
+ * What the words typed in a product selector find that the selector does not offer, each count 0 when none: the
+ * products switched off, the services where goods alone are offered, the goods whose stock is not kept. Read from each
+ * selector's own answer, so a count the API renames or drops is a type error here.
+ */
+export type UnofferedCounts = Readonly<
+  | InvoiceUnofferedProductsResponse
+  | QuoteUnofferedProductsResponse
+  | DeliveryNoteUnofferedProductsResponse
+  | PurchaseOrderUnofferedProductsResponse
+  | StockUnofferedProductsResponse
+>;
 
 /** Every product selector whose API answers `…/products/unoffered` beside its picker, by the options it is read under. */
 export type ProductSelector =
