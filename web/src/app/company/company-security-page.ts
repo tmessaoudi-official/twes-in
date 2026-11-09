@@ -15,6 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySecurityFacade } from './company-security-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
@@ -23,7 +24,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
  */
 @Component({
   selector: 'app-company-security-page',
-  imports: [ReadFailed, MatSlideToggleModule, TranslatePipe],
+  imports: [ReadFailed, RefusalPipe, MatSlideToggleModule, TranslatePipe],
   templateUrl: './company-security-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -38,6 +38,7 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import { withUnitChoice } from '../settings/settings-forms';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { ReadFailed } from '../shared/feedback/read-failed';
 
 const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
@@ -50,6 +51,7 @@ const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
   selector: 'app-article-defaults',
   imports: [
     ReadFailed,
+    RefusalPipe,
     MatButtonModule,
     TranslatePipe,
     DescriptorForm,

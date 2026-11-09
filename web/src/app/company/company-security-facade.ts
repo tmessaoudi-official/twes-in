@@ -12,6 +12,7 @@ import {
 } from './company-security-api';
 import { sessionSignal } from '../shared/session/session-data';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { SettingRow } from '../shared/settings/settings-types';
 
 /** The setting saying whether a member may enter the company with a passkey instead of the password. */
@@ -88,7 +89,8 @@ export class CompanySecurityFacade {
   }
 }
 
-function codeOf(error: unknown): CompanySecurityError {
+/** A settings write's refusal is relayed as the settings said it, an answer they had no words for included. */
+function codeOf(error: unknown): CompanySecurityError | UnknownRefusal {
   if (error instanceof SettingsRefused) return error.code;
   return error instanceof CompanySecurityRefused ? error.code : 'network';
 }

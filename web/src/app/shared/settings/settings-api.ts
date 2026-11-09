@@ -21,6 +21,8 @@ import type {
 import { SILENT } from '../feedback/activity-interceptor';
 import { isRecordChanged } from '../errors/record-changed';
 import { refusedFor } from '../errors/said-already';
+import { codeText } from '../errors/unknown-refusal';
+import { isUnreachable, unknownRefusal } from '../errors/unknown-refusal-api';
 import type { FieldRefusal } from '../form/field-refusals';
 import { TextsParts } from '../i18n/texts-part';
 
@@ -36,7 +38,7 @@ export class SettingsRefused extends Error {
     readonly code: SettingsError,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -189,7 +191,14 @@ export class SettingsApi {
       ) {
         throw refusedFor(error, new SettingsRefused('record_changed'));
       }
-      throw refusedFor(error, new SettingsRefused('network'));
+      throw refusedFor(
+        error,
+        new SettingsRefused(
+          error instanceof HttpErrorResponse && !isUnreachable(error)
+            ? unknownRefusal(error)
+            : 'network',
+        ),
+      );
     }
   }
 }

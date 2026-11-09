@@ -5,13 +5,15 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { NotificationMailStop } from '../api/types.gen';
 import { refusedFor } from '../shared/errors/said-already';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { isUnreachable, unknownRefusal } from '../shared/errors/unknown-refusal-api';
 
 /** Why a stop link did not go through, as the page says it. */
 export type StopMailError = 'link_not_usable' | 'too_many_attempts' | 'network';
 
 export class StopMailRefused extends Error {
-  constructor(readonly code: StopMailError) {
-    super(code);
+  constructor(readonly code: StopMailError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -31,9 +33,9 @@ export class StopMailApi {
   }
 }
 
-function refusalOf(error: unknown): StopMailError {
-  if (!(error instanceof HttpErrorResponse)) return 'network';
+function refusalOf(error: unknown): StopMailError | UnknownRefusal {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   if (error.status === 404) return 'link_not_usable';
   if (error.status === 429) return 'too_many_attempts';
-  return 'network';
+  return unknownRefusal(error);
 }

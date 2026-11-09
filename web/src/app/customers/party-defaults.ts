@@ -36,6 +36,7 @@ import { levelOf, PartySettings } from './party-settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { ReadFailed } from '../shared/feedback/read-failed';
 
 const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
@@ -48,6 +49,7 @@ const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
   selector: 'app-party-defaults',
   imports: [
     ReadFailed,
+    RefusalPipe,
     MatButtonModule,
     TranslatePipe,
     DescriptorForm,

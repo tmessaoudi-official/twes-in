@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { TranslateService } from '@ngx-translate/core';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 import { ErasureRefused } from './data-erasure-api';
 
 /** The tables a conflict names that the page says in words; any other is said as « something made since ». */
@@ -29,5 +30,5 @@ export function refusalToast(
           params: { table: translate.instant(`data_erasure.tables.${named}`) },
         };
   }
-  return { key: `data_erasure.errors.${code}`, params: {} };
+  return refusalKey('data_erasure.errors', code);
 }

@@ -28,7 +28,7 @@
         [retryable]="readFailed()"
         (retry)="readAgain()"
       >
-        <p>{{ 'settings.errors.' + code | translate }}</p>
+        <p>{{ code | refusal: 'settings.errors' }}</p>
         <app-setting-refusal-lines
           [rows]="rows()"
           [refusals]="unplaced()"

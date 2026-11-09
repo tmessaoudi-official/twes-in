@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { UnknownRefusal } from '../errors/unknown-refusal';
 import type { FieldValue } from '../form/form-types';
 
 /**
@@ -72,7 +73,8 @@ export interface SettingValuesInUse {
   parties: readonly unknown[] | null;
 }
 
-export type SettingsError = 'not_found' | 'invalid' | 'record_changed' | 'network';
+/** Why a settings read or change failed; an answer the screen has no words for keeps the code it named. */
+export type SettingsError = 'not_found' | 'invalid' | 'record_changed' | 'network' | UnknownRefusal;
 
 /** Whom a parties-chain read or change is for, below the company: one customer, or one customer group. */
 export type PartySubject = { customerId: string } | { customerGroupId: string };

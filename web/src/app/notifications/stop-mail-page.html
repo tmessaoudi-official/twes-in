@@ -18,7 +18,7 @@
     <p class="twes-auth-intro">{{ 'notification_stop.intro' | translate }}</p>
     @if (error(); as code) {
       <p role="alert" class="twes-auth-error" data-testid="stop-mail-error">
-        {{ 'notification_stop.errors.' + code | translate: { retry: budget.retry() } }}
+        {{ code | refusal: 'notification_stop.errors' : { retry: budget.retry() } }}
       </p>
     }
     <button

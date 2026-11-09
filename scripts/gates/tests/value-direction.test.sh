@@ -17,6 +17,10 @@ d=$(repo); printf '<span class="truncate">{{ current()?.name ?? (%s | translate)
 out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a value that falls back on a text is still a value" $? 1 "$out" "a.html:1"
 d=$(repo); printf '<span class="truncate">{{ %s + company.role | translate }}</span>\n<span class="truncate">{{ %s | translate: { n: 2 } }}</span>\n' "'roles.'" "'x.y'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a text of the screen's own reads its way and passes" $? 0 "$out" "OK — 0 twes-value"
+d=$(repo); printf '<p>{{ code | refusal: %s }}</p>\n<span class="truncate">{{ e | refusal: %s : { retry: 3 } }}</span>\n' "'x.errors'" "'y.errors'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a refusal said in the screen's own words is a screen text and passes" $? 0 "$out" "OK — 0 twes-value"
+d=$(repo); printf '<p>{{ refusals }}</p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a value merely named like a refusal is still a value" $? 1 "$out" "a.html:1"
 d=$(repo); printf '<span class="twes-value">{{ row.name }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a twes-value without dir=auto is caught" $? 1 "$out" "without dir=\"auto\""
 d=$(repo); printf '<span class="twes-value" dir="ltr">{{ row.name }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A

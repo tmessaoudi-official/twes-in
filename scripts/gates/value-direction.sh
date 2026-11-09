@@ -5,11 +5,12 @@
 # letters (« …791728493868 »). Such a value sits in a `twes-value` box, which takes its direction from what it holds
 # (`dir="auto"`) and sits at the start of the box around it. Two rules over templates and inline component templates
 # from the index, specs excluded: every `twes-value` carries `dir="auto"`, and no `truncate` box holds an
-# interpolation alone unless it is a text of the screen's own (`… | translate`), which reads in the screen's direction.
+# interpolation alone unless it is a text of the screen's own (`… | translate`, or a refusal said in the screen's words,
+# `… | refusal`), which reads in the screen's direction.
 # A third rule holds what is not cut: a value standing alone between two tags (« TVA 19 % », « Livrer au quai 3. »),
 # its trailing sign or full stop being neutral, goes to the wrong end of a Latin value on an Arabic screen. Such a value
 # sits in a `<bdi>` (or a `dir="auto"` box), which reads it its own way and leaves the line's alignment alone. A screen
-# text (`| translate`), a figure (`| amount`, `| day`, `| moment`, `| measure`, whose sign the formatter marks) and what
+# text (`| translate`, `| refusal`), a figure (`| amount`, `| day`, `| moment`, `| measure`, whose sign the formatter marks) and what
 # is no running text (an icon's ligature, a key cap, code, SVG) are left alone; a line saying
 # `value-direction: <why>` on the box's line or the one above leaves it alone too.
 # A fourth holds signed figures: a change written « +6,2 % » or « −3,1 % » goes through the `signed` pipe
@@ -68,7 +69,7 @@ result=$(cd "$root" && perl -CSD -0777 -ne '
     my $rest = substr($_, $end);
     next unless $rest =~ /\A\s*\{\{\s*(.*?)\s*\}\}\s*<\/\Q$tag\E>/s;
     my $expression = $1;
-    next if $expression =~ /\|\s*translate(?:\s*:[^|]*)?$/s;
+    next if $expression =~ /\|\s*(?:translate|refusal)(?:\s*:[^|]*)?$/s;
     $expression =~ s/\s+/ /g;
     print "CUT $ARGV:$line {{ $expression }}\n";
   }
@@ -78,7 +79,7 @@ result=$(cd "$root" && perl -CSD -0777 -ne '
     next unless $run =~ /\{\{/;
     (my $around = $run) =~ s/\{\{.*?\}\}//gs;
     next if $around =~ /[\p{L}\d{}@]/;
-    my @values = grep { !/\|\s*translate\b/ && !/\|\s*(?:amount|day|moment|measure|signed)\b/ } ($run =~ /\{\{\s*(.*?)\s*\}\}/gs);
+    my @values = grep { !/\|\s*(?:translate|refusal)\b/ && !/\|\s*(?:amount|day|moment|measure|signed)\b/ } ($run =~ /\{\{\s*(.*?)\s*\}\}/gs);
     next unless @values;
     my $before = substr($_, 0, $start + 1);
     next unless $before =~ /<([a-zA-Z][\w-]*)\b((?:[^>"]|"[^"]*")*)>\z/s;

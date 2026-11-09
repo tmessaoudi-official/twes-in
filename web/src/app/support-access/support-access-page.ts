@@ -19,6 +19,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { saidAlready } from '../shared/errors/said-already';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 import { RefusedField } from '../shared/form/refused-field';
 import { typedText } from '../shared/form/typed-text';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -166,6 +167,7 @@ export class SupportAccessPage {
   private refused(error: unknown): void {
     if (saidAlready(error)) return;
     const code = error instanceof SupportAccessRefused ? error.code : 'network';
-    this.feedback.failure(`support_access.refused.${code}`);
+    const { key, params } = refusalKey('support_access.refused', code);
+    this.feedback.failure(key, params);
   }
 }

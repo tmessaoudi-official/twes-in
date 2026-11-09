@@ -40,6 +40,7 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** A planned module's settings, said in words: what a company will be able to set once it ships. */
@@ -71,6 +72,7 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
   selector: 'app-settings-page',
   imports: [
     ReadFailed,
+    RefusalPipe,
     StickyHeaderSize,
     MatButtonModule,
     MatCardModule,

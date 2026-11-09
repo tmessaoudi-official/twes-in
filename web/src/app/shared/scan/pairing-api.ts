@@ -13,6 +13,7 @@ import type {
 import { CSRF_HEADER, csrfToken } from '../session/csrf-token';
 import { SILENT } from '../feedback/activity-interceptor';
 import { refusedFor } from '../errors/said-already';
+import { isUnreachable } from '../errors/unknown-refusal-api';
 
 export type PairingEcho = ScanPairingEcho;
 
@@ -139,14 +140,10 @@ function phone(key: string) {
   return { headers: new HttpHeaders({ [KEY_HEADER]: key }), context: BACKGROUND() };
 }
 
-/**
- * No answer at all, or a gateway answering for an API that is restarting: a lost network, which the phone keeps its
- * send through, never a refusal, which would end the pairing.
- */
-const UNREACHABLE = new Set([0, 502, 503, 504]);
-
 function refusalOf(error: unknown): PairingRefusal {
-  if (!(error instanceof HttpErrorResponse) || UNREACHABLE.has(error.status)) return 'network';
+  // A lost network (no answer, or a gateway answering for an API restarting), which the phone keeps its send through,
+  // never a refusal, which would end the pairing.
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   if (error.status === 429) return 'too_fast';
   const reason = (error.error as Partial<ScanPairingRefusal> | null)?.error;
   if (reason !== undefined) return reason;

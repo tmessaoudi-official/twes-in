@@ -209,7 +209,8 @@ describe('SettingsApi', () => {
     http
       .expectOne('/api/companies/c1/settings')
       .flush({ type: '/errors/409' }, { status: 409, statusText: 'Conflict' });
-    await expect(other).rejects.toEqual(new SettingsRefused('network'));
+    // An answer it has no words for keeps its status, never said as the network.
+    await expect(other).rejects.toEqual(new SettingsRefused({ unknown: '409' }));
   });
 
   it('stores a role default for the role it names', async () => {

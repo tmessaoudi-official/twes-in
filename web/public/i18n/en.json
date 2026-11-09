@@ -2712,6 +2712,7 @@
     "submission_in_progress": "This is still being saved: wait a moment, then read the page again.",
     "submission_unanswered": "This was already saved, but its answer was lost: reload the page to see it.",
     "busy": "Another change was being saved at the same moment: nothing was saved. Send it again.",
+    "unknown_refusal": "The server refused this request (code: {{code}}). Reload the page, then try again.",
     "numbering": {
       "before_last_day": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: the document would be dated before the previous one. Correct its date and time, or tell the person who looks after that computer, then try again.",
       "before_last_period": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: nothing is numbered before the last month numbered. Correct its date and time, or tell the person who looks after that computer, then try again.",

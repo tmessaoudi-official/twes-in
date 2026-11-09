@@ -22,6 +22,7 @@ import type { RecordMergeDialog, RecordMergeDialogData } from './record-merge-di
 import { tableCounts } from './record-tables';
 import { RECORDS_TEXTS } from './records-texts';
 import { refusedFor } from '../errors/said-already';
+import { refusalKey } from '../errors/unknown-refusal';
 
 /** The subjects the API lets a person delete, each also the kind its live changes carry. */
 export const DELETABLE_SUBJECTS = [
@@ -216,7 +217,10 @@ export class RecordDeletes {
     } catch (error) {
       // A second « Rétablir » (a double click, a retry after a lost answer) finds it undone already: that is the
       // outcome the person asked for, said as such, and the page reloads to show it.
-      const already = error instanceof RemovalRefused ? ALREADY_UNDONE[error.code] : undefined;
+      const already =
+        error instanceof RemovalRefused && typeof error.code === 'string'
+          ? ALREADY_UNDONE[error.code]
+          : undefined;
       if (already !== undefined) {
         this.feedback.success(already);
         return true;
@@ -280,9 +284,8 @@ export class RecordDeletes {
       this.feedback.failure(`records.merge_refused.${refusal.reason}`, { ...refusal.params });
     } else {
       // The time to undo, which `removal_final` names, is the operator's.
-      this.feedback.failure(`records.errors.${refusal.code}`, {
-        duration: this.durations.recordsUndoable(),
-      });
+      const { key, params } = refusalKey('records.errors', refusal.code);
+      this.feedback.failure(key, { ...params, duration: this.durations.recordsUndoable() });
     }
   }
 

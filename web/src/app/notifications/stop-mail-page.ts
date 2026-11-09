@@ -6,7 +6,9 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { type StopMailError, StopMailApi, StopMailRefused } from './stop-mail-api';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The page a notification mail's stop link opens, signed out. Opening it changes nothing, since mail clients and link
@@ -15,7 +17,7 @@ import { SpentBudget } from '../shared/errors/spent-budget';
  */
 @Component({
   selector: 'app-stop-mail-page',
-  imports: [SignedOutLayout, RouterLink, MatButtonModule, TranslatePipe],
+  imports: [SignedOutLayout, RouterLink, MatButtonModule, TranslatePipe, RefusalPipe],
   templateUrl: './stop-mail-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -29,7 +31,7 @@ export class StopMailPage {
 
   protected readonly busy = signal(false);
   protected readonly done = signal(false);
-  protected readonly error = signal<StopMailError | null>(null);
+  protected readonly error = signal<StopMailError | UnknownRefusal | null>(null);
 
   protected async stop(): Promise<void> {
     if (this.busy()) return;

@@ -4,6 +4,8 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../errors/said-already';
+import { codeText, type UnknownRefusal } from '../errors/unknown-refusal';
+import { isUnreachable, unknownRefusal } from '../errors/unknown-refusal-api';
 
 /** One record a delete took, named as it read when it went: the only thing « Récemment supprimés » shows of it. */
 export interface RemovedItem {
@@ -89,14 +91,14 @@ export type RemovalError =
  */
 export class RemovalRefused extends Error {
   constructor(
-    readonly code: RemovalError,
+    readonly code: RemovalError | UnknownRefusal,
     readonly records: readonly RecordInUse[] = [],
     readonly column: string | null = null,
     readonly uses: readonly TableCount[] = [],
     readonly reason: string | null = null,
     readonly params: Readonly<Record<string, string>> = {},
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -188,7 +190,7 @@ const CODES: readonly RemovalError[] = [
 ];
 
 function refusal(error: unknown): RemovalRefused {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new RemovalRefused('network'));
   }
   if (error.status === 404) return refusedFor(error, new RemovalRefused('not_found'));
@@ -202,7 +204,7 @@ function refusal(error: unknown): RemovalRefused {
   return refusedFor(
     error,
     new RemovalRefused(
-      known ?? 'network',
+      known ?? unknownRefusal(error),
       known === 'record_used' ? records : [],
       known === 'merge_mismatch' ? column : null,
       known === 'merge_transacted' ? uses : [],

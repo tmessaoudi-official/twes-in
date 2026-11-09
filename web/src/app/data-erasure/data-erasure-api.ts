@@ -4,6 +4,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../shared/errors/said-already';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { isUnreachable, unknownRefusal } from '../shared/errors/unknown-refusal-api';
 import { refusalsIn } from '../shared/form/field-refusals';
 
 /** The parts « Effacer des données » offers today, in the page's order. */
@@ -48,10 +50,10 @@ export type ErasureError =
 /** Thrown when the API refuses; carries the code, and for a conflict the table something new stands in. */
 export class ErasureRefused extends Error {
   constructor(
-    readonly code: ErasureError,
+    readonly code: ErasureError | UnknownRefusal,
     readonly table: string | null = null,
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -110,7 +112,7 @@ const CODES: readonly ErasureError[] = [
 ];
 
 function refusal(error: unknown): ErasureRefused {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new ErasureRefused('network'));
   }
   if (error.status === 404) return refusedFor(error, new ErasureRefused('not_found'));
@@ -125,6 +127,6 @@ function refusal(error: unknown): ErasureRefused {
   const known = CODES.find((candidate) => candidate === code);
   return refusedFor(
     error,
-    new ErasureRefused(known ?? 'network', typeof table === 'string' ? table : null),
+    new ErasureRefused(known ?? unknownRefusal(error), typeof table === 'string' ? table : null),
   );
 }

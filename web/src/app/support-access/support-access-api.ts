@@ -4,6 +4,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../shared/errors/said-already';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { isUnreachable, unknownRefusal } from '../shared/errors/unknown-refusal-api';
 import { refusalsIn } from '../shared/form/field-refusals';
 
 /** Whether the company is open to support, and the windows an owner may open it for. */
@@ -24,8 +26,8 @@ export type SupportAccessError =
   'network' | 'not_found' | 'owner_only' | 'support_window' | 'support_reason' | 'step_up_required';
 
 export class SupportAccessRefused extends Error {
-  constructor(readonly code: SupportAccessError) {
-    super(code);
+  constructor(readonly code: SupportAccessError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -70,7 +72,7 @@ const path = (companyId: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}/support-access`;
 
 function refusal(error: unknown): SupportAccessRefused {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new SupportAccessRefused('network'));
   }
   if (error.status === 404) return refusedFor(error, new SupportAccessRefused('not_found'));
@@ -88,7 +90,7 @@ function refusal(error: unknown): SupportAccessRefused {
         code === 'support_reason' ||
         code === 'step_up_required'
         ? code
-        : 'network',
+        : unknownRefusal(error),
     ),
   );
 }

@@ -32,7 +32,8 @@ describe('StopMailApi', () => {
     for (const [status, code] of [
       [404, 'link_not_usable'],
       [429, 'too_many_attempts'],
-      [500, 'network'],
+      [500, { unknown: 'whatever' }],
+      [503, 'network'],
     ] as const) {
       const stopped = api.stop('the-token');
       http

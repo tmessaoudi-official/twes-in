@@ -77,13 +77,15 @@ describe('RecordRemovalsApi', () => {
       [409, { error: 'restore_conflict', table: 'vendor' }, 'restore_conflict'],
       [409, { error: 'removal_final' }, 'removal_final'],
       [404, null, 'not_found'],
-      [500, null, 'network'],
+      [500, null, { unknown: '500' }],
+      [403, { error: 'brand_new' }, { unknown: 'brand_new' }],
+      [503, null, 'network'],
     ] as const) {
       const refused = api.restore('c1', 'r1');
       http
         .expectOne('/api/companies/c1/record-removals/r1/restore')
         .flush(body, { status, statusText: 'Refused' });
-      expect(await refused.catch((error: unknown) => (error as RemovalRefused).code)).toBe(code);
+      expect(await refused.catch((error: unknown) => (error as RemovalRefused).code)).toEqual(code);
     }
   });
 

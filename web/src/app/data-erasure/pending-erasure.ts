@@ -15,14 +15,17 @@ export class PendingErasure {
   readonly erasure = this.erasureSignal.asReadonly();
 
   /**
-   * Reads it again. A banner that could not be read keeps what it showed: the network coming back, or the next
-   * change, reads it again.
+   * Reads it again. A banner that could not be read keeps what it showed, the network lost or an answer this screen
+   * has no words for: the network coming back, or the next change, reads it again.
    */
   async load(companyId: string): Promise<void> {
     try {
       this.erasureSignal.set(await this.api.pending(companyId));
     } catch (error) {
-      if (!(error instanceof ErasureRefused) || error.code !== 'network') {
+      if (
+        !(error instanceof ErasureRefused) ||
+        (error.code !== 'network' && typeof error.code === 'string')
+      ) {
         this.erasureSignal.set(null);
       }
     }

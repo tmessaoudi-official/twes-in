@@ -52,6 +52,7 @@ import {
   type WatermarkSpread,
 } from './document-design-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** How long the choice rests before its preview is asked for: a picture per keystroke would be wasted. */
@@ -66,6 +67,7 @@ export const PREVIEW_DELAY_MS = 300;
   selector: 'app-document-design-page',
   imports: [
     ReadFailed,
+    RefusalPipe,
     StickyHeaderSize,
     ReactiveFormsModule,
     CountInput,
