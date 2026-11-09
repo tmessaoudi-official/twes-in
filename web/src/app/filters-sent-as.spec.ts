@@ -245,4 +245,37 @@ describe('the filters every paged list sends', () => {
       expect(unheld).toEqual([]);
     },
   );
+
+  it.each(LISTS)(
+    'send each interval and picker of the $name list under a name it answers to',
+    async (list) => {
+      const every = everyFilterSet(list.descriptor);
+      const sent = await namesSent(list, every);
+      const filters = [
+        ...(list.descriptor.ranges ?? []).map((range) => ({
+          id: range.id,
+          keys: Object.keys(every.filters).filter((key) => key.startsWith(`${range.id}.`)),
+        })),
+        ...(list.descriptor.picks ?? []).map((pick) => ({ id: pick.id, keys: [pick.id] })),
+      ];
+      const unheld: string[] = [];
+      for (const filter of filters) {
+        const left = Object.fromEntries(
+          Object.entries(every.filters).filter(([key]) => !filter.keys.includes(key)),
+        );
+        const without = await namesSent(list, { ...every, filters: left });
+        const added = sent.filter((name) => !without.includes(name));
+        if (added.length === 0) unheld.push(`${filter.id} sends nothing`);
+        for (const name of added) {
+          const clear = Object.keys(refusedFilterOf(list.descriptor, [name])?.clear ?? {});
+          if (!filter.keys.every((key) => clear.includes(key)))
+            unheld.push(
+              `${filter.id} sends ${name}, which names ${clear.join(', ') || 'no filter'}`,
+            );
+        }
+      }
+
+      expect(unheld).toEqual([]);
+    },
+  );
 });
