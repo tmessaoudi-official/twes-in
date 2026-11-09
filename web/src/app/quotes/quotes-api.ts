@@ -5,6 +5,7 @@ import type { PreviewBody } from '../shared/documents/document-figures';
 import { minus } from '../shared/documents/per-unit';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { restoreRefusalsIn } from '../shared/files/restore-refusals-api';
 import { inject, Injectable, Injector } from '@angular/core';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
@@ -382,16 +383,22 @@ export class QuotesApi {
 
   /** A file taken off put back where it was: 422 once the quote holds as many files as it may. */
   async restoreAttachment(companyId: string, id: string, attachmentId: string): Promise<void> {
-    await this.guard(
-      async () =>
-        firstValueFrom(
-          this.http.post(
-            `${attachmentsPath(companyId, id)}/${encodeURIComponent(attachmentId)}/restore`,
-            null,
-          ),
+    try {
+      await firstValueFrom(
+        this.http.post(
+          `${attachmentsPath(companyId, id)}/${encodeURIComponent(attachmentId)}/restore`,
+          null,
         ),
-      'files_full',
-    );
+      );
+    } catch (error) {
+      throw refusedFor(
+        error,
+        new QuotesRefused(
+          codeOf(error, 'files_full'),
+          await restoreRefusalsIn(this.injector, error),
+        ),
+      );
+    }
   }
 
   /** Where the browser opens a file: a same-origin address the session cookie reaches. */

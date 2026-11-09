@@ -83,6 +83,7 @@ import {
   type StockPlanSaved,
 } from './inventory-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { restoreRefusalsIn } from '../shared/files/restore-refusals-api';
 import type { PlanStep } from './stock-plan-draft';
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -784,17 +785,23 @@ export class InventoryApi {
 
   /** A file taken off put back where it was: 422 once the loss holds as many files as it may. */
   async restoreToLoss(companyId: string, movementId: string, fileId: string): Promise<void> {
-    await this.guard(
-      async () =>
-        firstValueFrom(
-          this.http.post(
-            `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/restore`,
-            null,
-          ),
+    try {
+      await firstValueFrom(
+        this.http.post(
+          `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/restore`,
+          null,
         ),
-      'invalid',
-      'files_full',
-    );
+      );
+    } catch (error) {
+      throw refusedFor(
+        error,
+        new InventoryRefused(
+          codeOf(error, 'invalid', 'files_full'),
+          null,
+          await restoreRefusalsIn(this.injector, error),
+        ),
+      );
+    }
   }
 
   /** Where the browser opens a loss's file: a same-origin address the session cookie reaches. */

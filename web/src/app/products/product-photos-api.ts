@@ -71,9 +71,10 @@ export class ProductPhotosApi {
   }
 
   async restore(companyId: string, productId: string, photoId: string): Promise<void> {
-    await this.guard(async () =>
-      firstValueFrom(this.http.post(`${photoPath(companyId, productId, photoId)}/restore`, null)),
-    );
+    // restore-refusals: a photo's reasons are read into its own codes (`refusalOf`); « too_many_photos » says the
+    // product's limit, words that fit a photo put back as well as one added.
+    const restore = `${photoPath(companyId, productId, photoId)}/restore`;
+    await this.guard(async () => firstValueFrom(this.http.post(restore, null)));
   }
 
   /** Where an `<img>` reads a photo's picture. */

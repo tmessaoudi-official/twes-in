@@ -499,12 +499,8 @@ describe('QuotesApi', () => {
       },
       { status: 422, statusText: 'Unprocessable' },
     );
-    // The page says the code's words; the refusal comes along as every 422's does.
-    await expect(full).rejects.toEqual(
-      new QuotesRefused('files_full', [
-        { field: '', reason: 'too_many_files', params: { max: 10 } },
-      ]),
-    );
+    // The code's words say it; the reason's are an upload's, set aside as every restore reader does.
+    await expect(full).rejects.toEqual(new QuotesRefused('files_full'));
 
     const revised = api.revise('c1', 'q1', input, 2);
     const put = http.expectOne('/api/companies/c1/quotes/q1');

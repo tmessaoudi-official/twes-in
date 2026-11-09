@@ -294,6 +294,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-trims.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-emails.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-answers.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/restore-refusals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/language-literals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/logical-direction.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/additive-migrations.test.sh
@@ -396,6 +397,7 @@ in-gate-licences:
 	bash scripts/gates/typed-trims.sh
 	bash scripts/gates/typed-emails.sh
 	bash scripts/gates/refusal-answers.sh
+	bash scripts/gates/restore-refusals.sh
 	bash scripts/gates/language-literals.sh
 	bash scripts/gates/logical-direction.sh
 	bash scripts/gates/additive-migrations.sh

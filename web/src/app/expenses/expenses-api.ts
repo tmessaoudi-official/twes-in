@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { restoreRefusalsIn } from '../shared/files/restore-refusals-api';
 import { filenameOf } from '../shared/files/save-file';
 import { isPeriodClosed } from '../shared/documents/period-closed';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -64,16 +65,12 @@ export class ExpensesRefused extends Error {
 interface Refusals {
   conflict: ExpensesError;
   invalid: ExpensesError;
-  /** A 422 said in the code's own words rather than its reason's, which belong to another act. */
-  invalidInOwnWords?: true;
 }
 
 const EXPENSE: Refusals = { conflict: 'conflict', invalid: 'invalid' };
 const CATEGORY: Refusals = { conflict: 'name_taken', invalid: 'invalid' };
 const FILE: Refusals = { conflict: 'conflict', invalid: 'file_refused' };
-// A file put back on a full expense: the reason's words are an upload's (« before adding another »), the code's say
-// that this file cannot come back.
-const RESTORE: Refusals = { conflict: 'conflict', invalid: 'files_full', invalidInOwnWords: true };
+const RESTORE: Refusals = { conflict: 'conflict', invalid: 'files_full' };
 
 /** The HTTP edge of the expenses feature: the only code here that knows endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
@@ -379,14 +376,19 @@ export class ExpensesApi {
     expenseId: string,
     attachmentId: string,
   ): Promise<void> {
-    await this.guard(RESTORE, async () =>
-      firstValueFrom(
+    try {
+      await firstValueFrom(
         this.http.post(
           `${attachmentsPath(companyId, expenseId)}/${encodeURIComponent(attachmentId)}/restore`,
           null,
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      throw refusedFor(
+        error,
+        new ExpensesRefused(codeOf(error, RESTORE), await restoreRefusalsIn(this.injector, error)),
+      );
+    }
   }
 
   /** Where the browser opens a file: a same-origin address the session cookie reaches. */
@@ -399,12 +401,7 @@ export class ExpensesApi {
       return await call();
     } catch (error) {
       // A category's refusals are about the row as a whole, which its page says in the code's words.
-      const ownWords =
-        refusals === CATEGORY ||
-        (refusals.invalidInOwnWords === true &&
-          error instanceof HttpErrorResponse &&
-          error.status === 422);
-      const said = ownWords ? [] : await formRefusalsIn(this.injector, error);
+      const said = refusals === CATEGORY ? [] : await formRefusalsIn(this.injector, error);
       throw refusedFor(error, new ExpensesRefused(codeOf(error, refusals), said));
     }
   }

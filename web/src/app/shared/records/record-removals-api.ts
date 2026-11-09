@@ -152,6 +152,7 @@ export class RecordRemovalsApi {
   async restore(companyId: string, removalId: string): Promise<RecordRemoval> {
     return this.call(() =>
       this.http.post<RecordRemoval>(
+        // restore-refusals: a whole record put back from the bin, whose refusals are the bin's own codes, not a file's.
         `${base(companyId)}/record-removals/${encodeURIComponent(removalId)}/restore`,
         null,
       ),
