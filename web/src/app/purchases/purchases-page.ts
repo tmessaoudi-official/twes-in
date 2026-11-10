@@ -36,11 +36,13 @@ import {
   type PurchaseOrderSearch,
   type PurchaseOrderStatus,
 } from './purchases-types';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The orders the company being worked in sent, or is drafting, to its vendors. */
 @Component({
   selector: 'app-purchases-page',
   imports: [
+    RefusalPipe,
     MatButtonModule,
     RouterLink,
     TranslatePipe,

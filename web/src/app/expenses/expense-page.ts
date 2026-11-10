@@ -79,6 +79,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 import { RefusalLine } from '../shared/documents/refusal-line';
 import { sayRefusal } from '../shared/form/refusal-words';
 import { saidAlready } from '../shared/errors/said-already';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -696,7 +697,8 @@ export class ExpensePage {
     } else if (reason !== undefined) {
       sayRefusal(this.feedback, this.translate, reason);
     } else {
-      this.feedback.failure(`expenses.errors.${refused.code}`);
+      const said = refusalKey('expenses.errors', refused.code);
+      this.feedback.failure(said.key, said.params);
     }
   }
 

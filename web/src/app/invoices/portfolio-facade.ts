@@ -7,6 +7,7 @@ import type { InvoicesError } from './invoices-types';
 import { PortfolioApi } from './portfolio-api';
 import type { PortfolioRow, PortfolioSearch } from './portfolio-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The page of the company's cheques and traites the portfolio screen shows. */
 @Injectable({ providedIn: 'root' })
@@ -15,7 +16,7 @@ export class PortfolioFacade {
 
   private readonly rowsSignal = sessionSignal<readonly PortfolioRow[]>([]);
   private readonly totalSignal = sessionSignal(0);
-  private readonly state = requestState<InvoicesError>((error) =>
+  private readonly state = requestState<InvoicesError | UnknownRefusal>((error) =>
     error instanceof InvoicesRefused ? error.code : 'network',
   );
   private readonly pages = new LatestRequest();

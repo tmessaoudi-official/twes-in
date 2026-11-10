@@ -23,6 +23,8 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
 import { lengthSaid } from '../shared/form/length-said';
 import { RefusedField } from '../shared/form/refused-field';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { refusedError, worded } from '../shared/form/refusal-words';
 import { revealInvalid } from '../shared/form/reveal-invalid';
@@ -69,7 +71,7 @@ export interface ReceiveDialogData {
   };
   /** Records the receipt: nothing when it was kept, otherwise why not, the field the API named and its refusal. */
   readonly receive: (input: ReceiptInput) => Promise<{
-    code: PurchasesError;
+    code: PurchasesError | UnknownRefusal;
     field: string | null;
     refusal: FieldRefusal | null;
   } | null>;
@@ -105,6 +107,7 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
     MatSelectModule,
     ReceiverField,
     RefusedField,
+    RefusalPipe,
     TranslatePipe,
     AmountPipe,
   ],
@@ -136,7 +139,7 @@ export class ReceiveDialog {
   protected readonly busy = signal(false);
   /** Why the last attempt was refused: the API's code, the row it named, the field there and its reason's words. */
   protected readonly refused = signal<{
-    code: PurchasesError;
+    code: PurchasesError | UnknownRefusal;
     row: number | null;
     field: string | null;
     words: FieldError | null;

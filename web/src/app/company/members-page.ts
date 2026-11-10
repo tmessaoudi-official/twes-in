@@ -36,6 +36,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
 import { type Actor, mayGrant, mayRemove } from './role-bounds';
 import { onTypedText, typedText } from '../shared/form/typed-text';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
@@ -106,6 +107,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
 @Component({
   selector: 'app-members-page',
   imports: [
+    RefusalPipe,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,

@@ -32,6 +32,7 @@ import {
   type PaymentMethod,
 } from './invoices-types';
 import { typedText } from '../shared/form/typed-text';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 export interface BulkPayData {
   companyId: string;
@@ -271,7 +272,10 @@ export class InvoiceBulkPayDialog {
         // Something was paid, credited or changed since the preview: show what is true now, and pay nothing yet.
         this.feedback.failure('invoices.bulk.pay_changed');
         await this.preview();
-      } else this.feedback.failure(`invoices.errors.${code}`);
+      } else {
+        const said = refusalKey('invoices.errors', code);
+        this.feedback.failure(said.key, said.params);
+      }
     } finally {
       this.paying.set(false);
     }

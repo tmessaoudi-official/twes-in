@@ -49,16 +49,17 @@ import type {
 } from './expenses-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ExpensesRefused extends Error {
   constructor(
-    readonly code: ExpensesError,
+    readonly code: ExpensesError | UnknownRefusal,
     /** Each field an expense's save or recording was refused on, a line's as `lines[i].amountNet`. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -420,7 +421,7 @@ export class ExpensesApi {
   }
 }
 
-function codeOf(error: unknown, refusals: Refusals): ExpensesError {
+function codeOf(error: unknown, refusals: Refusals): ExpensesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -432,7 +433,7 @@ function codeOf(error: unknown, refusals: Refusals): ExpensesError {
     case 413:
       return 'file_too_large';
     default:
-      return isPeriodClosed(error) ? 'period_closed' : refusals.invalid;
+      return isPeriodClosed(error) ? 'period_closed' : unnamedRefusal(error, refusals.invalid);
   }
 }
 

@@ -30,11 +30,13 @@ import { seriesChanges, seriesForm, seriesFormValues, seriesList } from './estab
 import { EstablishmentsFacade } from './establishments-facade';
 import { renderNumber } from './number-format';
 import { Feedback } from '../shared/feedback/feedback';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** How each establishment numbers each kind of document, with the next number shown while a format is typed. */
 @Component({
   selector: 'app-numbering-page',
   imports: [
+    RefusalPipe,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,

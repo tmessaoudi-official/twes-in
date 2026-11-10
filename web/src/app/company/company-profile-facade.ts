@@ -7,6 +7,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyProfile, CompanyProfileChanges } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The profile of the company being worked in, and its revision. */
 @Injectable({ providedIn: 'root' })
@@ -102,7 +103,7 @@ export class CompanyProfileFacade {
   }
 }
 
-function codeOf(error: unknown): CompanyError {
+function codeOf(error: unknown): CompanyError | UnknownRefusal {
   return error instanceof CompanyRefused ? error.code : 'network';
 }
 

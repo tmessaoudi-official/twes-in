@@ -239,7 +239,7 @@
         } @else if (refused.label; as label) {
           {{ 'purchases.receive.refused' | translate: { field: (label | translate) } }}
         } @else {
-          {{ 'purchases.errors.' + refused.code | translate }}
+          {{ refused.code | refusal: 'purchases.errors' }}
         }
       </p>
     }

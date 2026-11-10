@@ -8,6 +8,7 @@ import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyOption } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** How long after a support grant's end the list is read again, so the API has surely let it go. */
 const AFTER_GRANT_ENDS_MS = 5_000;
@@ -27,7 +28,7 @@ export class CompanyFacade {
   // The companies the person belongs to: kept across a switch, forgotten at sign-out.
   private readonly companiesSignal = sessionSignal<readonly CompanyOption[]>([], 'person');
   private readonly switchingSignal = sessionSignal(false);
-  private readonly errorSignal = sessionSignal<CompanyError | null>(null);
+  private readonly errorSignal = sessionSignal<CompanyError | UnknownRefusal | null>(null);
   private grantEnds: ReturnType<typeof setTimeout> | null = null;
 
   readonly companies = this.companiesSignal.asReadonly();

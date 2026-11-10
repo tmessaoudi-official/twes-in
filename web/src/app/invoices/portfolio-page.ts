@@ -22,6 +22,7 @@ import { InvoicesFacade } from './invoices-facade';
 import { PORTFOLIO_LIST, portfolioSearch } from './portfolio-forms';
 import { PortfolioFacade } from './portfolio-facade';
 import type { PortfolioRow, PortfolioSearch } from './portfolio-types';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The company's cheques and traites in one place (docs/SPEC.md § 7, 2026-09-21 18:40): what is held or at the bank, the
@@ -29,7 +30,7 @@ import type { PortfolioRow, PortfolioSearch } from './portfolio-types';
  */
 @Component({
   selector: 'app-portfolio-page',
-  imports: [AmountPipe, DataList, DataListCell, DayPipe, StatusBadge, TranslatePipe],
+  imports: [RefusalPipe, AmountPipe, DataList, DataListCell, DayPipe, StatusBadge, TranslatePipe],
   templateUrl: './portfolio-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

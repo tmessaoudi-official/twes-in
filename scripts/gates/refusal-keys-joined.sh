@@ -12,9 +12,9 @@
 set -uo pipefail
 export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-ceiling=21
+ceiling=11
 floor=100
-ts_ceiling=12
+ts_ceiling=8
 ts_floor=600
 while (($#)); do
   case $1 in

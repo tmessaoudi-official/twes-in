@@ -167,7 +167,13 @@ const NETWORK_READERS: readonly NetworkReader[] = [
     word: 'refused',
   },
   { name: 'the closing', call: () => TestBed.inject(ClosingApi).read('c1') },
-  { name: "the company's members", call: () => TestBed.inject(CompanyApi).members('c1') },
+  {
+    name: "the company's members",
+    call: () => TestBed.inject(CompanyApi).members('c1'),
+    // A 403 is the step-up asked or a role refused; a 422 an address no account answers to.
+    names403: true,
+    word: 'unknown_user',
+  },
   { name: "the company's profile", call: () => TestBed.inject(CompanyApi).profile('c1') },
   {
     name: "the company's establishments",
@@ -289,17 +295,7 @@ describe('a feature reader deciding the network', () => {
  * The readers still saying a status they do not name in a word of their own (`invalid`, `refused`), taken wave by wave
  * as ruled: this list only shrinks, and is gone once every reader says such a status through `unnamedRefusal`.
  */
-const NOT_YET: ReadonlySet<string> = new Set([
-  'the sign-in',
-  "the company's members",
-  "the company's profile",
-  "the company's establishments",
-  'the delivery notes',
-  'the expenses',
-  'the invoices',
-  'the purchases',
-  'the quotes',
-]);
+const NOT_YET: ReadonlySet<string> = new Set(['the sign-in']);
 
 const UNNAMED_READERS = NETWORK_READERS.filter((reader) => !NOT_YET.has(reader.name));
 

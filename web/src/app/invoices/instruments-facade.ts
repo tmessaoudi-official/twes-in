@@ -7,6 +7,7 @@ import { InstrumentsApi } from './instruments-api';
 import type { InstrumentInput, InstrumentRow, InstrumentStep } from './instruments-types';
 import { InvoicesRefused } from './invoices-api';
 import type { InvoicesError } from './invoices-types';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The cheques and traites of the one invoice a panel shows, so each panel has its own (provided by the component, not
@@ -18,7 +19,7 @@ export class InstrumentsFacade {
 
   private readonly itemsSignal = signal<readonly InstrumentRow[]>([]);
   private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
-  private readonly state = requestState<InvoicesError>((error) =>
+  private readonly state = requestState<InvoicesError | UnknownRefusal>((error) =>
     error instanceof InvoicesRefused ? error.code : 'network',
   );
 

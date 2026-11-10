@@ -42,11 +42,13 @@ import { fillAddress, holdsAddress } from '../shared/form/address-fill';
 import { Feedback } from '../shared/feedback/feedback';
 import { ArticleDefaults } from '../products/article-defaults';
 import type { ArticleSubject } from '../shared/settings/settings-types';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The places the company issues documents from, one of them its default. */
 @Component({
   selector: 'app-establishments-page',
   imports: [
+    RefusalPipe,
     ArticleDefaults,
     CheckPanel,
     MatButtonModule,

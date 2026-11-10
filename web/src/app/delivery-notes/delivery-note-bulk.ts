@@ -19,6 +19,7 @@ import {
   type InvoiceTarget,
   NOTE_INVOICE_TARGET,
 } from '../shared/documents/invoice-target';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 /**
  * What the delivery notes list offers on the rows a person selected: « Facturer »
@@ -90,7 +91,7 @@ export class DeliveryNoteBulk {
       await this.router.navigate(['/invoices', invoiceId]);
     } catch (error) {
       const code = error instanceof DeliveryNotesRefused ? error.code : 'network';
-      this.failed(error, `delivery_notes.errors.${code}`);
+      this.failed(error, refusalKey('delivery_notes.errors', code));
     }
   }
 
@@ -98,14 +99,19 @@ export class DeliveryNoteBulk {
    * A refusal the API words (a selection past its size, a target that is no invoice) is said in its words, which tell
    * what to change; any other failure by `fallback`; one an interceptor already said, not again.
    */
-  private failed(error: unknown, fallback: string): void {
+  private failed(
+    error: unknown,
+    fallback: string | { key: string; params: Record<string, string> },
+  ): void {
     if (saidAlready(error)) return;
     const refusal =
       error instanceof DeliveryNotesRefused
         ? error.refusals.find((one) => one.reason !== null)
         : undefined;
-    if (refusal === undefined) this.feedback.failure(fallback);
-    else sayRefusal(this.feedback, this.translate, refusal);
+    if (refusal === undefined) {
+      const said = typeof fallback === 'string' ? { key: fallback, params: {} } : fallback;
+      this.feedback.failure(said.key, said.params);
+    } else sayRefusal(this.feedback, this.translate, refusal);
   }
 
   private async goOn(check: InvoicingCheck): Promise<boolean> {

@@ -27,6 +27,7 @@ import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import type { ProductSelector } from '../shared/unoffered/unoffered-products-api';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -318,7 +319,7 @@ export class QuotesFacade implements LineCatalogue {
     companyId: string,
     id: string,
     attachmentId: string,
-  ): Promise<QuotesError | null> {
+  ): Promise<QuotesError | UnknownRefusal | null> {
     try {
       await this.api.restoreAttachment(companyId, id, attachmentId);
     } catch (error) {
@@ -402,6 +403,6 @@ export class QuotesFacade implements LineCatalogue {
   }
 }
 
-function codeOf(error: unknown): QuotesError {
+function codeOf(error: unknown): QuotesError | UnknownRefusal {
   return error instanceof QuotesRefused ? error.code : 'network';
 }

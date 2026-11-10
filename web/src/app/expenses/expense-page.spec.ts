@@ -808,7 +808,11 @@ describe('ExpensePage', () => {
     facade.restoreAttachment.mockResolvedValue(new ExpensesRefused('files_full'));
     removed?.action?.run();
     await settle();
-    expect(feedback.said.at(-1)).toEqual({ kind: 'failure', key: 'expenses.errors.files_full' });
+    expect(feedback.said.at(-1)).toEqual({
+      kind: 'failure',
+      key: 'expenses.errors.files_full',
+      params: {},
+    });
 
     // Refused for the expense's state, the toast says the reason the API named, not the code's words.
     facade.restoreAttachment.mockResolvedValue(

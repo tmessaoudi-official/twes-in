@@ -97,6 +97,7 @@ import {
 } from '../shared/documents/invoice-target';
 import { RecordColumns } from '../shared/ui/record-columns';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 /** What a quote will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
 export const QUOTE_PLANNED: readonly PlannedAction[] = [
@@ -1093,7 +1094,8 @@ export class QuotePage {
     if (refused === null) {
       this.feedback.success('quotes.attachments.restored', { name: attachment.name });
     } else {
-      this.feedback.failure(`quotes.errors.${refused}`);
+      const said = refusalKey('quotes.errors', refused);
+      this.feedback.failure(said.key, said.params);
     }
   }
 

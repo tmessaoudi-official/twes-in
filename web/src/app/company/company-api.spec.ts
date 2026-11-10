@@ -100,7 +100,7 @@ describe('CompanyApi, the profile', () => {
     await expect(revising).rejects.toEqual(new CompanyRefused('invalid'));
   });
 
-  it('names a revision of a version saved since as changed, and another conflict as invalid', async () => {
+  it('names a revision of a version saved since as changed, and keeps the status of another conflict', async () => {
     const changed = api.reviseProfile('c1', changes, 1);
     http
       .expectOne({ method: 'PUT', url: '/api/companies/c1/profile' })
@@ -114,7 +114,7 @@ describe('CompanyApi, the profile', () => {
     http
       .expectOne({ method: 'PUT', url: '/api/companies/c1/profile' })
       .flush(null, { status: 409, statusText: 'Conflict' });
-    await expect(other).rejects.toEqual(new CompanyRefused('invalid'));
+    await expect(other).rejects.toEqual(new CompanyRefused({ unknown: '409' }));
   });
 
   it('names each field a revision was refused on, a registration number on its own field', async () => {

@@ -32,6 +32,7 @@ import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import type { ProductSelector } from '../shared/unoffered/unoffered-products-api';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -436,6 +437,6 @@ export class InvoicesFacade {
   }
 }
 
-function codeOf(error: unknown): InvoicesError {
+function codeOf(error: unknown): InvoicesError | UnknownRefusal {
   return error instanceof InvoicesRefused ? error.code : 'network';
 }

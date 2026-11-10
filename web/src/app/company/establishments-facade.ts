@@ -12,6 +12,7 @@ import type {
 } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The establishments of the company being worked in, and how each of them numbers its documents. */
 @Injectable({ providedIn: 'root' })
@@ -94,6 +95,6 @@ export class EstablishmentsFacade {
   }
 }
 
-function codeOf(error: unknown): CompanyError {
+function codeOf(error: unknown): CompanyError | UnknownRefusal {
   return error instanceof CompanyRefused ? error.code : 'network';
 }

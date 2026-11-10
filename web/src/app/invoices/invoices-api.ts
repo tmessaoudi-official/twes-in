@@ -74,16 +74,17 @@ import {
 import { refusedFor } from '../shared/errors/said-already';
 import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InvoicesRefused extends Error {
   /** `refusals`: each field a 422 named, with why, which the form says under it. */
   constructor(
-    readonly code: InvoicesError,
+    readonly code: InvoicesError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -581,7 +582,7 @@ export class InvoicesApi {
   }
 }
 
-export function codeOf(error: unknown): InvoicesError {
+export function codeOf(error: unknown): InvoicesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -594,12 +595,12 @@ export function codeOf(error: unknown): InvoicesError {
       // A credit note that gives back money already paid is refused until it says where that money goes.
       if (isExcessRefusal(error)) return 'excess_to';
       if (isPeriodClosed(error)) return 'period_closed';
-      return fieldCode(refusedField(error));
+      return fieldCodeOf(error);
   }
 }
 
 /** « Livrer » refused: any 422 is a quantity more than is left of its line. */
-function deliveryCodeOf(error: unknown): InvoicesError {
+function deliveryCodeOf(error: unknown): InvoicesError | UnknownRefusal {
   return error instanceof HttpErrorResponse && error.status === 422
     ? 'delivery_refused'
     : codeOf(error);
@@ -630,6 +631,12 @@ function toFacturXRefusal(raw: RawFacturXRefusal): FacturXAnswer {
     params: { ...(raw.params ?? {}) },
     gaps: (raw.gaps ?? []).map((gap) => ({ code: gap.code, params: { ...(gap.params ?? {}) } })),
   };
+}
+
+/** A value refused names its field's words, or `invalid` for 400 and 422; any other status it names no case for keeps its own. */
+function fieldCodeOf(error: HttpErrorResponse): InvoicesError | UnknownRefusal {
+  const code = fieldCode(refusedField(error));
+  return code === 'invalid' ? unnamedRefusal(error) : code;
 }
 
 function fieldCode(field: string | null): InvoicesError {

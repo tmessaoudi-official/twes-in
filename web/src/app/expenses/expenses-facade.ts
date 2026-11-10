@@ -23,6 +23,7 @@ import type {
   TejFileAnswer,
 } from './expenses-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The expenses of the company being worked in, their categories, and the expense open with its files. */
 @Injectable({ providedIn: 'root' })
@@ -306,6 +307,6 @@ export class ExpensesFacade {
   }
 }
 
-function codeOf(error: unknown): ExpensesError {
+function codeOf(error: unknown): ExpensesError | UnknownRefusal {
   return error instanceof ExpensesRefused ? error.code : 'network';
 }

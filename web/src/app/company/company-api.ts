@@ -35,16 +35,17 @@ import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
   constructor(
-    readonly code: CompanyError,
+    readonly code: CompanyError | UnknownRefusal,
     /** Each field a revision was refused on, when the API named them. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -343,7 +344,7 @@ export class CompanyApi {
 
   private async guard<T>(
     call: () => Promise<T>,
-    refusal: (error: unknown) => CompanyError = codeOf,
+    refusal: (error: unknown) => CompanyError | UnknownRefusal = codeOf,
   ): Promise<T> {
     try {
       return await call();
@@ -409,7 +410,7 @@ export function companyLogoUrl(companyId: string, version: string): string {
 }
 
 /** A picture the API does not keep (422, or 413 from the proxy) is said as such; the rest as everywhere. */
-function logoCodeOf(error: unknown): CompanyError {
+function logoCodeOf(error: unknown): CompanyError | UnknownRefusal {
   if (error instanceof HttpErrorResponse && (error.status === 422 || error.status === 413)) {
     return 'logo_refused';
   }
@@ -417,20 +418,20 @@ function logoCodeOf(error: unknown): CompanyError {
 }
 
 /** A profile the API refuses is a value its preset does not accept; nothing to do with members. */
-function profileCodeOf(error: unknown): CompanyError {
+function profileCodeOf(error: unknown): CompanyError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   if (stepUpAsked(error)) return 'step_up_required';
   if (error.status === 409 && isRecordChanged(error.error)) return 'record_changed';
-  return error.status === 404 ? 'not_found' : 'invalid';
+  return error.status === 404 ? 'not_found' : unnamedRefusal(error);
 }
 
 const companyPath = (companyId: string, collection: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}/${collection}`;
 
 /** A row refused for what it says (422), for a code another row already has (409), or missing (404). */
-function rowCodeOf(error: unknown): CompanyError {
+function rowCodeOf(error: unknown): CompanyError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -440,7 +441,7 @@ function rowCodeOf(error: unknown): CompanyError {
   if (error.status === 409) {
     return isRecordChanged(error.error) ? 'record_changed' : 'code_taken';
   }
-  return 'invalid';
+  return unnamedRefusal(error);
 }
 
 function toEstablishment(row: EstablishmentEstablishmentRead): EstablishmentRow {
@@ -507,7 +508,7 @@ function toRow(row: MemberMemberRead): MemberRow {
   };
 }
 
-function codeOf(error: unknown): CompanyError {
+function codeOf(error: unknown): CompanyError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -529,7 +530,7 @@ function codeOf(error: unknown): CompanyError {
     case 422:
       return 'unknown_user';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }
 

@@ -36,11 +36,13 @@ import {
   type QuoteSearch,
   type QuoteShownStatus,
 } from './quotes-types';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The quotes of the company being worked in. */
 @Component({
   selector: 'app-quotes-page',
   imports: [
+    RefusalPipe,
     MatButtonModule,
     RouterLink,
     TranslatePipe,

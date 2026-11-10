@@ -53,16 +53,17 @@ import {
 import { refusedFor } from '../shared/errors/said-already';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class QuotesRefused extends Error {
   /** `refusals`: each field a 422 named, with why, which the form says under it. */
   constructor(
-    readonly code: QuotesError,
+    readonly code: QuotesError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -435,7 +436,7 @@ export class QuotesApi {
   }
 }
 
-function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError {
+function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   switch (error.status) {
     case 404:
@@ -447,14 +448,14 @@ function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError {
     default:
       // « Facturer » while a deposit drawn from the quote is still a draft.
       if (refusedField(error) === 'deposits') return 'deposit_pending';
-      if (invalid !== undefined) return invalid;
+      if (invalid !== undefined) return unnamedRefusal(error, invalid);
       // A customer deactivated since the quote was started, named by the field the API refused.
-      return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
+      return refusedField(error) === 'customerId' ? 'customer_unavailable' : unnamedRefusal(error);
   }
 }
 
 /** A quote kept whole is named by the field the API refused; any other 422 is a quantity refused. */
-function deliveryCodeOf(error: unknown): QuotesError {
+function deliveryCodeOf(error: unknown): QuotesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || error.status !== 422)
     return codeOf(error, undefined);
   const field = refusedField(error);

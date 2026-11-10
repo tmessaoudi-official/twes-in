@@ -18,6 +18,7 @@ import type {
 } from './purchases-types';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The orders to vendors of the company being worked in, and the order open on screen. */
 @Injectable({ providedIn: 'root' })
@@ -219,6 +220,6 @@ export class PurchasesFacade {
   }
 }
 
-function codeOf(error: unknown): PurchasesError {
+function codeOf(error: unknown): PurchasesError | UnknownRefusal {
   return error instanceof PurchasesRefused ? error.code : 'network';
 }

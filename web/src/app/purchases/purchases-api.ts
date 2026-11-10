@@ -42,18 +42,19 @@ import {
 } from './purchases-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates and, for a 422, the field it named. */
 export class PurchasesRefused extends Error {
   constructor(
-    readonly code: PurchasesError,
+    readonly code: PurchasesError | UnknownRefusal,
     /** `vendorId`, `lines`, `lines[2].lotCode`…: what the API refused, when it named it. */
     readonly field: string | null = null,
     /** Each field a 422 named, with why, which the form says under it. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -311,7 +312,7 @@ export class PurchasesApi {
   }
 }
 
-function codeOf(error: unknown): PurchasesError {
+function codeOf(error: unknown): PurchasesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -322,7 +323,7 @@ function codeOf(error: unknown): PurchasesError {
       return isRecordChanged(error.error) ? 'record_changed' : 'conflict';
     default:
       // A vendor retired since the order was started, named by the field the API refused.
-      return refusedField(error) === 'vendorId' ? 'vendor_unavailable' : 'invalid';
+      return refusedField(error) === 'vendorId' ? 'vendor_unavailable' : unnamedRefusal(error);
   }
 }
 

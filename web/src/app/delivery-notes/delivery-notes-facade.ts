@@ -25,6 +25,7 @@ import type {
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -401,6 +402,6 @@ export class DeliveryNotesFacade {
   }
 }
 
-function codeOf(error: unknown): DeliveryNotesError {
+function codeOf(error: unknown): DeliveryNotesError | UnknownRefusal {
   return error instanceof DeliveryNotesRefused ? error.code : 'network';
 }

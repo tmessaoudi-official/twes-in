@@ -37,11 +37,13 @@ import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
   selector: 'app-company-profile-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     StickyHeaderSize,
     CheckPanel,

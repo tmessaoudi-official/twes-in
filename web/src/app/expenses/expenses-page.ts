@@ -47,11 +47,13 @@ import {
   type ExpenseStatus,
 } from './expenses-types';
 import { typedText } from '../shared/form/typed-text';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The expenses of the company being worked in, the latest first. */
 @Component({
   selector: 'app-expenses-page',
   imports: [
+    RefusalPipe,
     PageTabs,
     MatButtonModule,
     RouterLink,

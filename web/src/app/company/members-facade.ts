@@ -7,6 +7,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The member list of one company, and what an administrator does to it: invite, withdraw an invitation, change a
@@ -82,6 +83,6 @@ export class MembersFacade {
   }
 }
 
-function codeOf(error: unknown): CompanyError {
+function codeOf(error: unknown): CompanyError | UnknownRefusal {
   return error instanceof CompanyRefused ? error.code : 'network';
 }

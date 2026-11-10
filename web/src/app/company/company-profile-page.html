@@ -25,7 +25,7 @@
         [retryable]="readFailed()"
         (retry)="readAgain()"
       >
-        {{ 'company.profile.errors.' + code | translate }}
+        {{ code | refusal: 'company.profile.errors' }}
       </app-read-failed>
     }
 

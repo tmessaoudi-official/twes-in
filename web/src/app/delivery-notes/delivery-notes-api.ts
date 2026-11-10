@@ -55,16 +55,17 @@ import { trackingOf } from '../products/products-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
   /** `refusals`: each field a 422 named, with why, which the form says under it. */
   constructor(
-    readonly code: DeliveryNotesError,
+    readonly code: DeliveryNotesError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -439,7 +440,7 @@ export class DeliveryNotesApi {
   }
 }
 
-function codeOf(error: unknown): DeliveryNotesError {
+function codeOf(error: unknown): DeliveryNotesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -450,7 +451,7 @@ function codeOf(error: unknown): DeliveryNotesError {
       return isRecordChanged(error.error) ? 'record_changed' : 'conflict';
     default:
       // A customer deactivated since the note was started, named by the field the API refused.
-      return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
+      return refusedField(error) === 'customerId' ? 'customer_unavailable' : unnamedRefusal(error);
   }
 }
 

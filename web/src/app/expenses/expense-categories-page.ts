@@ -44,6 +44,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { RecordDeletes } from '../shared/records/record-deletes';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The tree expenses are filed in: a category sits under another or at the top. One still in use is deactivated; one
@@ -52,6 +53,7 @@ import { RecordDeletes } from '../shared/records/record-deletes';
 @Component({
   selector: 'app-expense-categories-page',
   imports: [
+    RefusalPipe,
     PageTabs,
     RecordChanged,
     MatButtonModule,

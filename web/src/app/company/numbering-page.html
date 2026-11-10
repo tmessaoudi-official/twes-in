@@ -10,7 +10,7 @@
 
   @if (error(); as code) {
     <p role="alert" data-testid="numbering-error" class="text-error">
-      {{ 'company.numbering.errors.' + code | translate }}
+      {{ code | refusal: 'company.numbering.errors' }}
     </p>
   }
 

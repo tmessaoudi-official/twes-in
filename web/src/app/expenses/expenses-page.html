@@ -35,7 +35,7 @@
     }
     @if (error(); as code) {
       <p role="alert" data-testid="expenses-error" class="text-error">
-        {{ 'expenses.errors.' + code | translate }}
+        {{ code | refusal: 'expenses.errors' }}
       </p>
     }
 
