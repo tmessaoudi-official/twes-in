@@ -23,6 +23,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       app: { name: 'twes-in' },
+      feedback: { unknown_refusal: 'Refusé (code : {{code}}).' },
       health: { api: 'API', ok: 'opérationnelle', checking: 'vérification…' },
       auth: {
         login: {
@@ -440,6 +441,22 @@ describe('LoginPage', () => {
     // The password is typed again where it was emptied, without a click first.
     expect(document.activeElement).toBe(query('password'));
     expect(query('login-address')?.textContent).toContain('owner@example.test');
+  });
+
+  // A server failing is never said as a wrong password: its status, in the sentence for an answer it has no words for.
+  it('says a sign-in a server failed by its status, never as a wrong password', async () => {
+    const { fixture, http, query } = await render();
+    type(query<HTMLInputElement>('email')!, 'owner@example.test');
+    await next(fixture, query);
+    type(query<HTMLInputElement>('password')!, 'le-bon');
+    query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    http.expectOne('/api/auth/login').flush(null, { status: 500, statusText: 'Server Error' });
+    await settle(fixture);
+
+    expect(query('login-error')?.textContent).toContain('Refusé (code : 500).');
+    expect(query('login-error')?.textContent).not.toContain('Identifiants incorrects');
   });
 
   async function passThePassword(rendered: Awaited<ReturnType<typeof render>>) {

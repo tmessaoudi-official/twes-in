@@ -14,6 +14,7 @@ import { type StepUpOutcome, StepUpProof } from './step-up-proof';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      feedback: { unknown_refusal: 'Refusé (code : {{code}}).' },
       step_up: {
         title: 'Confirmez',
         intro: 'Pour quitter cette vue.',
@@ -113,6 +114,18 @@ describe('StepUpDialog', () => {
     q('step-up-confirm')!.click();
     await settle();
     expect(proof.withPassword).toHaveBeenCalledTimes(1);
+  });
+
+  // A server failing during the proof is never said as a wrong password.
+  it('says a proof a server failed by its status, staying open', async () => {
+    proof.withPassword.mockResolvedValueOnce({ unknown: '500' });
+    type('le-bon');
+    q('step-up-confirm')!.click();
+    await settle();
+
+    expect(q('step-up-error')?.textContent).toContain('Refusé (code : 500).');
+    expect(q('step-up-error')?.textContent).not.toContain('Mauvais mot de passe.');
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('offers a passkey only where the browser has them, and closes confirmed on one', async () => {

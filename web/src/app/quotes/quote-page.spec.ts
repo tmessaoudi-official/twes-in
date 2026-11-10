@@ -384,6 +384,16 @@ describe('QuotePage', () => {
       key: 'quotes.attachments.restored',
       params: { name: 'plan.pdf' },
     });
+
+    // Refused by an answer it has no words for, the toast says its code, never « quotes.errors.[object Object] ».
+    facade.restoreAttachment.mockResolvedValueOnce({ unknown: '500' });
+    removed?.action?.run();
+    await settle();
+    expect(feedback.said.at(-1)).toEqual({
+      kind: 'failure',
+      key: 'feedback.unknown_refusal',
+      params: { code: '500' },
+    });
   });
 
   it('says under a line what is on hand where the quote is made, for whoever may read stock', async () => {

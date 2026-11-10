@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
 import type {
+  AuthError,
   DemoAvailability as ApiDemoAvailability,
   DemoEntry,
   LoginRequest,
@@ -47,6 +48,13 @@ const STAGES: readonly CompanySubscription['stage'][] = [
   'held',
   'unpaid',
 ];
+
+/**
+ * Every code the API's `AuthError` names is in `LOGIN_ERRORS`: one added to the API and not there fails the type-check,
+ * so it is worded before it ships rather than said by its code. A type alone, it costs the first page nothing.
+ */
+type NoneUnworded<Unworded extends never> = Unworded;
+export type AuthCodesWorded = NoneUnworded<Exclude<AuthError['error'], LoginError>>;
 
 /** Thrown by the adapter when the API refuses; carries the stable error code the API answered with. */
 export class AuthRefused extends Error {
