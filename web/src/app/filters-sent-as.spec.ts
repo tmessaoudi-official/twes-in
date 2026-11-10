@@ -380,14 +380,21 @@ describe('the filters every paged list sends', () => {
           if (sent.length === 0) unheld.push(`${filter.id}=${value} sends nothing`);
           alone.set(value, sent);
         }
-        // Every option chosen reads as no filter on some lists (a yes or no sent as one boolean): all but one is then
-        // what several values look like, and a facet of two has none.
+        // Every option chosen may read as no filter: all but one is then what several values look like. A facet of two
+        // has no such middle, and is let go only when each value goes out as one value (a yes or no sent as a boolean),
+        // never a list (`kind[]`), which must carry both.
         let values = filter.values;
         let all = await added(values);
         if (all.length === 0 && filter.options) {
-          if (values.length < 3) continue;
-          values = values.slice(0, -1);
-          all = await added(values);
+          if (values.length > 2) {
+            values = values.slice(0, -1);
+            all = await added(values);
+          } else if (
+            values.every((value) =>
+              (alone.get(value) ?? []).every((pair) => !pair.split('=')[0].endsWith('[]')),
+            )
+          )
+            continue;
         }
         const where = `${filter.id}=${values.join(',')}`;
         const asked = new Set(values.flatMap((value) => alone.get(value) ?? []));
