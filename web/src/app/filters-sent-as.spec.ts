@@ -29,8 +29,9 @@ import {
   companiesListOf,
   companySearch,
 } from './platform/platform-forms';
-import { PRODUCTS_LIST, productSearch } from './products/product-forms';
+import { productSearch, productsList } from './products/product-forms';
 import { ProductsApi } from './products/products-api';
+import { PRODUCT_CHECK_REASONS } from './products/products-types';
 import { PURCHASES_LIST, purchaseOrderSearch } from './purchases/purchase-order-forms';
 import { PurchasesApi } from './purchases/purchases-api';
 import { QUOTES_LIST, quoteSearch } from './quotes/quote-forms';
@@ -39,7 +40,7 @@ import { TextCatalogueApi } from './texts/text-catalogue-api';
 import { textSearch, textsListOf } from './texts/texts-list';
 import { VENDORS_LIST, vendorSearch } from './vendors/vendor-forms';
 import { VendorsApi } from './vendors/vendors-api';
-import { rangeKey, refusedFilterOf } from './shared/list/list-filters';
+import { joinValues, rangeKey, refusedFilterOf } from './shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from './shared/list/list-types';
 
 /**
@@ -52,6 +53,7 @@ import type { ListDescriptor, ListQuery } from './shared/list/list-types';
  */
 
 const AN_ID = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+const ANOTHER_ID = '1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e';
 const BESIDES = ['page', 'itemsPerPage', 'q', 'order'];
 
 interface Paged {
@@ -103,7 +105,7 @@ const LISTS: readonly Paged[] = [
   },
   {
     name: 'platform companies',
-    descriptor: companiesListOf(['TN'], 'fr') as ListDescriptor<never>,
+    descriptor: companiesListOf(['TN', 'FR'], 'fr') as ListDescriptor<never>,
     read: (query) => TestBed.inject(PlatformApi).companies(companySearch(query)),
   },
   {
@@ -113,8 +115,10 @@ const LISTS: readonly Paged[] = [
   },
   {
     name: 'products',
-    descriptor: PRODUCTS_LIST as ListDescriptor<never>,
-    read: (query) => TestBed.inject(ProductsApi).products('c1', productSearch(query)),
+    // As the page builds it: « À vérifier »'s two filters, every reason offered.
+    descriptor: productsList([], PRODUCT_CHECK_REASONS) as ListDescriptor<never>,
+    read: (query) =>
+      TestBed.inject(ProductsApi).products('c1', productSearch(query, PRODUCT_CHECK_REASONS)),
   },
   {
     name: 'purchases',
@@ -210,6 +214,19 @@ describe('the filters every paged list sends', () => {
     const pending = list.read(query).catch(() => undefined);
     const [request] = http.match(() => true);
     const sent = request.request.params.keys();
+    request.flush({ member: [], totalItems: 0 });
+    await pending;
+    return sent;
+  }
+
+  /** What one read of the list sends for the query, each value of each parameter as `name=value`. */
+  async function pairsSent(list: Paged, query: ListQuery): Promise<string[]> {
+    const pending = list.read(query).catch(() => undefined);
+    const [request] = http.match(() => true);
+    const params = request.request.params;
+    const sent = params
+      .keys()
+      .flatMap((key) => (params.getAll(key) ?? []).map((value) => `${key}=${value}`));
     request.flush({ member: [], totalItems: 0 });
     await pending;
     return sent;
@@ -313,6 +330,74 @@ describe('the filters every paged list sends', () => {
             if (!expected.includes(param))
               unheld.push(`${key} sends ${param}, where the API reads ${expected.join(' or ')}`);
         }
+      }
+
+      expect(unheld).toEqual([]);
+    },
+  );
+
+  /**
+   * The table sets one value per facet and one id per picker, while a reader sends one parameter per value: a read
+   * sending only the first, or the last, of several passes the cases above. Every option of a facet taking several is
+   * set at once here (two ids where the page fills the options in, and for every picker), and the read must send what
+   * each value sends alone, each once.
+   */
+  it.each(LISTS)(
+    'send every one of several values a $name facet or picker holds, each once',
+    async (list) => {
+      const every = everyFilterSet(list.descriptor);
+      const several = [
+        ...(list.descriptor.filters ?? [])
+          .filter((facet) => facet.multiple === true)
+          .map((facet) => ({
+            id: facet.id,
+            options: facet.options.length > 0,
+            values:
+              facet.options.length > 0
+                ? facet.options.map((option) => option.value)
+                : [AN_ID, ANOTHER_ID],
+          })),
+        ...(list.descriptor.picks ?? []).map((pick) => ({
+          id: pick.id,
+          options: false,
+          values: [AN_ID, ANOTHER_ID],
+        })),
+      ].filter((filter) => filter.values.length > 1);
+      const unheld: string[] = [];
+      for (const filter of several) {
+        const set = (values: readonly string[] | null): ListQuery => {
+          const filters = { ...every.filters };
+          if (values === null) delete filters[filter.id];
+          else filters[filter.id] = joinValues(values);
+          return { ...every, filters };
+        };
+        const without = await pairsSent(list, set(null));
+        const added = async (values: readonly string[]): Promise<string[]> =>
+          (await pairsSent(list, set(values))).filter((pair) => !without.includes(pair));
+        const alone = new Map<string, string[]>();
+        for (const value of filter.values) {
+          const sent = await added([value]);
+          if (sent.length === 0) unheld.push(`${filter.id}=${value} sends nothing`);
+          alone.set(value, sent);
+        }
+        // Every option chosen reads as no filter on some lists (a yes or no sent as one boolean): all but one is then
+        // what several values look like, and a facet of two has none.
+        let values = filter.values;
+        let all = await added(values);
+        if (all.length === 0 && filter.options) {
+          if (values.length < 3) continue;
+          values = values.slice(0, -1);
+          all = await added(values);
+        }
+        const where = `${filter.id}=${values.join(',')}`;
+        const asked = new Set(values.flatMap((value) => alone.get(value) ?? []));
+        const missing = [...asked].filter((pair) => !all.includes(pair));
+        if (missing.length > 0) unheld.push(`${where} leaves out ${missing.join(', ')}`);
+        const twice = all.filter((pair, index) => all.indexOf(pair) !== index);
+        if (twice.length > 0) unheld.push(`${where} sends ${twice.join(', ')} twice`);
+        const unasked = all.filter((pair) => !asked.has(pair));
+        if (unasked.length > 0)
+          unheld.push(`${where} sends ${unasked.join(', ')}, which no value alone sends`);
       }
 
       expect(unheld).toEqual([]);
