@@ -34,7 +34,7 @@
 
       @if (error(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="login-error">
-          {{ 'auth.errors.' + code | translate: { retry: budget.retry() } }}
+          {{ code | refusal: 'auth.errors' : { retry: budget.retry() } }}
         </p>
       }
 
@@ -108,7 +108,7 @@
 
       @if (error(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="login-error">
-          {{ 'auth.errors.' + code | translate: { retry: budget.retry() } }}
+          {{ code | refusal: 'auth.errors' : { retry: budget.retry() } }}
         </p>
       }
 
@@ -148,7 +148,7 @@
 
       @if (error(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="login-error">
-          {{ 'auth.errors.' + code | translate: { retry: budget.retry() } }}
+          {{ code | refusal: 'auth.errors' : { retry: budget.retry() } }}
         </p>
       }
 
@@ -214,7 +214,7 @@
       }
       @if (demoError(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="login-demo-error">
-          {{ 'auth.errors.' + code | translate: { retry: budget.retry() } }}
+          {{ code | refusal: 'auth.errors' : { retry: budget.retry() } }}
         </p>
       }
     </section>

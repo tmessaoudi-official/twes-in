@@ -22,6 +22,7 @@ import { signInAddress } from '../session/return-to';
 import { typedCode } from '../form/typed-code';
 import { SpentBudget } from '../errors/spent-budget';
 import { typeAgain } from '../step-up/type-again';
+import { RefusalPipe } from '../errors/refusal-pipe';
 
 /**
  * The step-up's question for entering a company: the password, the authenticator code beside it where the company
@@ -31,6 +32,7 @@ import { typeAgain } from '../step-up/type-again';
 @Component({
   selector: 'app-company-proof-dialog',
   imports: [
+    RefusalPipe,
     PasswordToggle,
     MatButtonModule,
     MatDialogModule,
@@ -91,9 +93,12 @@ import { typeAgain } from '../step-up/type-again';
           @if (problem(); as key) {
             <p role="alert" class="text-error" data-testid="company-proof-error">
               {{
-                (key === 'code_refused' || key === 'passkey_required'
-                  ? 'company_proof.errors.'
-                  : 'step_up.errors.') + key | translate: { retry: budget.retry() }
+                key
+                  | refusal
+                    : (key === 'code_refused' || key === 'passkey_required'
+                        ? 'company_proof.errors'
+                        : 'step_up.errors')
+                    : { retry: budget.retry() }
               }}
             </p>
           }

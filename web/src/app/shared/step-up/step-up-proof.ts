@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { UnknownRefusal } from '../errors/unknown-refusal';
 
 /** How a proof of who is at the screen came out. */
 export type StepUpOutcome =
@@ -10,6 +11,8 @@ export type StepUpOutcome =
   | 'no_passkey'
   /** That wrong answer was the session's last: it is signed out, and the account stays open for a new sign-in. */
   | 'signed_out'
+  /** An answer the proof has no words for (a 500, a code added later), said by its code, never as a wrong password. */
+  | UnknownRefusal
   | 'network';
 
 /**

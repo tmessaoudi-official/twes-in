@@ -160,7 +160,7 @@ const NETWORK_READERS: readonly NetworkReader[] = [
         direction: 'desc',
       }),
   },
-  { name: 'the sign-in', call: () => TestBed.inject(AuthApi).me() },
+  { name: 'the sign-in', call: () => TestBed.inject(AuthApi).me(), word: 'invalid_credentials' },
   {
     name: 'the password reset',
     call: () => TestBed.inject(PasswordResetApi).forgot('a@b.tn', 'fr'),
@@ -291,14 +291,6 @@ describe('a feature reader deciding the network', () => {
   });
 });
 
-/**
- * The readers still saying a status they do not name in a word of their own (`invalid`, `refused`), taken wave by wave
- * as ruled: this list only shrinks, and is gone once every reader says such a status through `unnamedRefusal`.
- */
-const NOT_YET: ReadonlySet<string> = new Set(['the sign-in']);
-
-const UNNAMED_READERS = NETWORK_READERS.filter((reader) => !NOT_YET.has(reader.name));
-
 describe('a feature reader given a status it does not name', () => {
   let http: HttpTestingController;
 
@@ -315,18 +307,13 @@ describe('a feature reader given a status it does not name', () => {
 
   afterEach(() => http.verify());
 
-  it('waits only on readers of the table', () => {
-    const names = new Set(NETWORK_READERS.map((reader) => reader.name));
-    expect([...NOT_YET].filter((name) => !names.has(name))).toEqual([]);
-  });
-
-  it.each(UNNAMED_READERS)('from $name answering 500 keeps its status', async (reader) => {
+  it.each(NETWORK_READERS)('from $name answering 500 keeps its status', async (reader) => {
     const asked = reader.call();
     http.expectOne(() => true).flush(null, { status: 500, statusText: 'Server Error' });
     await expect(asked).rejects.toMatchObject(said(reader, { unknown: '500' }));
   });
 
-  it.each(UNNAMED_READERS.filter((reader) => reader.names403 === undefined))(
+  it.each(NETWORK_READERS.filter((reader) => reader.names403 === undefined))(
     'from $name refusing with a code it has no words for keeps that code',
     async (reader) => {
       const asked = reader.call();
@@ -337,7 +324,7 @@ describe('a feature reader given a status it does not name', () => {
     },
   );
 
-  it.each(UNNAMED_READERS)(
+  it.each(NETWORK_READERS)(
     'from $name refusing what was sent keeps its own word',
     async (reader) => {
       const asked = reader.call();

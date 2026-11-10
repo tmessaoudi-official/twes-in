@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { PhonesOutsideRanges } from '../shared/session/session';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The auth feature seen from its components: who is signed in, where they work, what they may do. Built by the
@@ -8,59 +9,63 @@ import type { PhonesOutsideRanges } from '../shared/session/session';
  */
 export type AuthStatus = 'unknown' | 'anonymous' | 'authenticated';
 
-export type LoginError =
-  | 'invalid_credentials'
+/** Every refusal the auth screens have words for: a code the API answers outside this list is said by its code. */
+export const LOGIN_ERRORS = [
+  'invalid_credentials',
   // Only once the password was right (the second factor's steps): the password step answers a locked account as it
   // answers a wrong password, so the lock never says which guess was right.
-  | 'account_locked'
-  | 'account_disabled'
-  | 'too_many_attempts'
-  | 'authentication_required'
-  | 'csrf_token_missing'
-  | 'csrf_token_invalid'
+  'account_locked',
+  'account_disabled',
+  'too_many_attempts',
+  'authentication_required',
+  'csrf_token_missing',
+  'csrf_token_invalid',
   // The second factor's own refusals: no password step to finish, a wrong code, an account that must
   // enrol before it may do anything, or an enrolment started over an authenticator already in force (G1c).
-  | 'mfa_not_pending'
-  | 'invalid_code'
-  | 'mfa_enrolment_required'
-  | 'mfa_already_enrolled'
+  'mfa_not_pending',
+  'invalid_code',
+  'mfa_enrolment_required',
+  'mfa_already_enrolled',
   // Passkeys (G1c): one that does not verify, the last factor a company requires, and one already gone.
-  | 'invalid_passkey'
-  | 'mfa_last_factor'
-  | 'passkey_not_found'
+  'invalid_passkey',
+  'mfa_last_factor',
+  'passkey_not_found',
   // An authenticator removal with none in force, from another tab that removed it first.
-  | 'totp_not_enrolled'
+  'totp_not_enrolled',
   // An authenticator removal refused: the account must carry a second factor, so it is replaced, never removed.
-  | 'mfa_authenticator_required'
+  'mfa_authenticator_required',
   // A password change that did not go through (the API's own reasons).
-  | 'current_password'
-  | 'too_short'
-  | 'unchanged'
-  | 'breached'
+  'current_password',
+  'too_short',
+  'unchanged',
+  'breached',
   // Leaving the customer screen without a fresh proof of who is at it.
-  | 'step_up_required'
+  'step_up_required',
   // The wrong answer to a proof that spent the session's budget: the API signed it out.
-  | 'step_up_exhausted'
+  'step_up_exhausted',
   // The sign-in with a passkey alone refused: the installation does not allow it, or the account lacks the
   // authenticator or a passkey the browser can offer on its own.
-  | 'passkey_sign_in_off'
-  | 'passkey_sign_in_needs_authenticator'
-  | 'passkey_sign_in_needs_passkey'
+  'passkey_sign_in_off',
+  'passkey_sign_in_needs_authenticator',
+  'passkey_sign_in_needs_passkey',
   // A company requiring a second factor of an account whose only one is a passkey: the password alone does not enter it.
-  | 'passkey_required'
+  'passkey_required',
   // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
-  | 'passkey_cancelled'
+  'passkey_cancelled',
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
-  | 'passkey_already_registered'
+  'passkey_already_registered',
   // The browser refused because the installation's passkeys are bound to another host. Never sent by the API.
-  | 'passkey_not_here'
+  'passkey_not_here',
   // « Essayer la démo »: switched off since the page loaded, no sandbox ready yet, and a country it does not offer.
-  | 'demo_off'
-  | 'demo_busy'
-  | 'unknown_country'
+  'demo_off',
+  'demo_busy',
+  'unknown_country',
   // Something a demo account may not do: the API's AuthError names it, and the interceptor says it (`saidAlready`).
-  | 'demo_refused'
-  | 'network';
+  'demo_refused',
+  'network',
+] as const;
+
+export type LoginError = (typeof LOGIN_ERRORS)[number];
 
 export interface Credentials {
   email: string;
@@ -204,7 +209,7 @@ export interface TotpEnrolment {
 export type LoginOutcome =
   | { status: 'signed_in'; state: SignedInState }
   | { status: 'second_factor' }
-  | { status: 'refused'; error: LoginError };
+  | { status: 'refused'; error: LoginError | UnknownRefusal };
 
 /**
  * How a password change came out: made, or the one reason it was not; null when an interceptor said why already
@@ -218,13 +223,14 @@ export type PasswordChangeOutcome =
   | 'breached'
   | 'too_many'
   | 'network'
-  | 'refused';
+  | 'refused'
+  | UnknownRefusal;
 
 export type EnrolmentOutcome =
-  { ok: true; enrolment: TotpEnrolment } | { ok: false; error: LoginError | null };
+  { ok: true; enrolment: TotpEnrolment } | { ok: false; error: LoginError | UnknownRefusal | null };
 
 export type ConfirmationOutcome =
-  { ok: true; recoveryCodes: string[] } | { ok: false; error: LoginError | null };
+  { ok: true; recoveryCodes: string[] } | { ok: false; error: LoginError | UnknownRefusal | null };
 
 /** The options of a passkey ceremony as the API sends them: WebAuthn's own JSON, which the browser parses. */
 export interface PasskeyOptions {
@@ -245,15 +251,19 @@ export interface PasskeySummary {
 }
 
 export type PasskeysOutcome =
-  { ok: true; passkeys: PasskeySummary[] } | { ok: false; error: LoginError | null };
+  | { ok: true; passkeys: PasskeySummary[] }
+  | { ok: false; error: LoginError | UnknownRefusal | null };
 
 /** A registered passkey, with the recovery codes it issued when it was the account's first factor. */
 export type PasskeyAdded =
   | { ok: true; passkey: PasskeySummary; recoveryCodes: string[] }
-  | { ok: false; error: LoginError | null };
+  | { ok: false; error: LoginError | UnknownRefusal | null };
 
-export type PasskeyRemoved = { ok: true } | { ok: false; error: LoginError | null };
+export type PasskeyRemoved =
+  { ok: true } | { ok: false; error: LoginError | UnknownRefusal | null };
 
-export type AuthenticatorRemoved = { ok: true } | { ok: false; error: LoginError | null };
+export type AuthenticatorRemoved =
+  { ok: true } | { ok: false; error: LoginError | UnknownRefusal | null };
 
-export type PasskeySignInSwitched = { ok: true } | { ok: false; error: LoginError | null };
+export type PasskeySignInSwitched =
+  { ok: true } | { ok: false; error: LoginError | UnknownRefusal | null };

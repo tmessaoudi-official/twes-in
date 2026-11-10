@@ -4,7 +4,6 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
 import type {
-  AuthError,
   DemoAvailability as ApiDemoAvailability,
   DemoEntry,
   LoginRequest,
@@ -34,9 +33,11 @@ import type {
   SignedInState,
   TotpEnrolment,
 } from './auth-types';
+import { LOGIN_ERRORS } from './auth-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 const ACCESSES: readonly CompanyAccess[] = ['full', 'read_only', 'locked'];
 const STAGES: readonly CompanySubscription['stage'][] = [
@@ -49,8 +50,8 @@ const STAGES: readonly CompanySubscription['stage'][] = [
 
 /** Thrown by the adapter when the API refuses; carries the stable error code the API answered with. */
 export class AuthRefused extends Error {
-  constructor(readonly code: LoginError) {
-    super(code);
+  constructor(readonly code: LoginError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -381,12 +382,15 @@ function toPasskey(passkey: Passkey): PasskeySummary {
  * Why the API refused, as the auth screens name it: the code of a refused act or session state, or the reason of a
  * value sent refused on its field (a code typed to confirm an authenticator, a new password).
  */
-function codeOf(error: unknown): LoginError {
+function codeOf(error: unknown): LoginError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse)) return 'network';
   // The API's own 503 names its refusal (`demo_busy`); a gateway answering for a restarting API names nothing.
-  const body = error.error as Partial<AuthError> | null;
-  const reason = refusalsIn(body)[0]?.reason as LoginError | null | undefined;
-  return body?.error ?? reason ?? (isUnreachable(error) ? 'network' : 'invalid_credentials');
+  const body = error.error as { error?: unknown } | null;
+  const named = body?.error ?? refusalsIn(body)[0]?.reason ?? null;
+  if (typeof named === 'string') {
+    return LOGIN_ERRORS.find((known) => known === named) ?? { unknown: named };
+  }
+  return isUnreachable(error) ? 'network' : unnamedRefusal(error, 'invalid_credentials');
 }
 
 /** An access the API does not name is read as full: the API enforces it whatever the SPA believes. */

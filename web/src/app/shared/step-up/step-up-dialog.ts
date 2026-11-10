@@ -21,6 +21,7 @@ import { PasswordToggle } from '../form/password-toggle';
 import { signInAddress } from '../session/return-to';
 import { SpentBudget } from '../errors/spent-budget';
 import { typeAgain } from './type-again';
+import { RefusalPipe } from '../errors/refusal-pipe';
 
 /** What the dialog is opened with: the translation key of the sentence saying why it asks. */
 export interface StepUpReason {
@@ -35,6 +36,7 @@ export interface StepUpReason {
 @Component({
   selector: 'app-step-up-dialog',
   imports: [
+    RefusalPipe,
     PasswordToggle,
     MatButtonModule,
     MatDialogModule,
@@ -67,7 +69,7 @@ export interface StepUpReason {
           </mat-form-field>
           @if (problem(); as key) {
             <p role="alert" class="text-error" data-testid="step-up-error">
-              {{ 'step_up.errors.' + key | translate: { retry: budget.retry() } }}
+              {{ key | refusal: 'step_up.errors' : { retry: budget.retry() } }}
             </p>
           }
         </div>

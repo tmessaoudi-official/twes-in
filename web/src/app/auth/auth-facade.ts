@@ -37,6 +37,7 @@ import type {
 import { PasskeyClient, type PasskeyRequest } from './passkey-client';
 import { refusedFor, saidAlready } from '../shared/errors/said-already';
 import { unchangedKept } from '../shared/session/unchanged-kept';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The signed-in state, as signals. The session itself is a cookie the browser keeps; this facade only knows
@@ -324,7 +325,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
         case 'too_many_attempts':
           return 'too_many';
         default:
-          return 'refused';
+          return typeof code === 'string' ? 'refused' : code;
       }
     }
   }
@@ -602,7 +603,8 @@ function browserRefusal(error: unknown): LoginError {
 
 /** What the dialog says about a proof that did not hold; a passkey the account lacks and one the browser did not give read alike. */
 function stepUpOutcome(error: unknown): StepUpOutcome {
-  switch (codeOf(error)) {
+  const code = codeOf(error);
+  switch (code) {
     case 'too_many_attempts':
       return 'too_many';
     case 'step_up_exhausted':
@@ -615,16 +617,16 @@ function stepUpOutcome(error: unknown): StepUpOutcome {
     case 'passkey_not_here':
       return 'no_passkey';
     default:
-      return 'refused';
+      return typeof code === 'string' ? 'refused' : code;
   }
 }
 
-function codeOf(error: unknown): LoginError {
+function codeOf(error: unknown): LoginError | UnknownRefusal {
   return error instanceof AuthRefused ? error.code : 'network';
 }
 
 /** What a refused step says on its screen: nothing when an interceptor said it already (`saidAlready`). */
-function shownOf(error: unknown): LoginError | null {
+function shownOf(error: unknown): LoginError | UnknownRefusal | null {
   return saidAlready(error) ? null : codeOf(error);
 }
 

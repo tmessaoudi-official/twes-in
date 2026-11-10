@@ -32,6 +32,8 @@ import { typedCode } from '../shared/form/typed-code';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { typedText } from '../shared/form/typed-text';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import { refusalKey, type UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -43,6 +45,7 @@ import { TypedFirst } from '../shared/a11y/typed-first';
 @Component({
   selector: 'app-two-factor-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     SignedOutLayout,
     ReactiveFormsModule,
@@ -87,18 +90,18 @@ export class TwoFactorPage {
   protected readonly mfa = computed(() => this.auth.me()?.mfa ?? null);
   protected readonly enrolment = signal<TotpEnrolment | null>(null);
   protected readonly recoveryCodes = signal<string[] | null>(null);
-  protected readonly error = signal<LoginError | null>(null);
+  protected readonly error = signal<LoginError | UnknownRefusal | null>(null);
   protected readonly passkeys = signal<PasskeySummary[]>([]);
-  protected readonly passkeyError = signal<LoginError | null>(null);
+  protected readonly passkeyError = signal<LoginError | UnknownRefusal | null>(null);
   /** Said under its own button, so a refused removal never reads as the recovery codes' form failing. */
-  protected readonly removeError = signal<LoginError | null>(null);
+  protected readonly removeError = signal<LoginError | UnknownRefusal | null>(null);
   /**
    * A new app's secret waiting beside the authenticator in force, which keeps signing in until a code from the new app
    * confirms it: the way to change phones without ever holding no factor, the only one for an account whose last
    * factor it is.
    */
   protected readonly replacement = signal<TotpEnrolment | null>(null);
-  protected readonly replaceError = signal<LoginError | null>(null);
+  protected readonly replaceError = signal<LoginError | UnknownRefusal | null>(null);
   protected readonly replaceForm = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -114,7 +117,7 @@ export class TwoFactorPage {
 
     return { on: status.passkeySignIn, ready, works: ready && status.passkeySignInAllowed };
   });
-  protected readonly signInError = signal<LoginError | null>(null);
+  protected readonly signInError = signal<LoginError | UnknownRefusal | null>(null);
   protected readonly form = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -243,10 +246,13 @@ export class TwoFactorPage {
   }
 
   /** The switch's own refusals are worded beside it; any other is the sign-in's. */
-  protected signInErrorKey(code: LoginError): string {
-    return code.startsWith('passkey_sign_in_')
-      ? `auth.two_factor.passkey_sign_in.refused.${code}`
-      : `auth.errors.${code}`;
+  protected signInErrorSaid(code: LoginError | UnknownRefusal): {
+    key: string;
+    params: Record<string, string>;
+  } {
+    return typeof code === 'string' && code.startsWith('passkey_sign_in_')
+      ? { key: `auth.two_factor.passkey_sign_in.refused.${code}`, params: {} }
+      : refusalKey('auth.errors', code);
   }
 
   /** A phone lost or replaced: its authenticator goes, and another is set up as the first was. */
@@ -423,9 +429,9 @@ export class TwoFactorPage {
    * Adding or removing a factor waits for a fresh proof of who is at the screen, which the API asks for: the proof is
    * requested once and the change tried again; declined, the API's refusal comes back and nothing changed.
    */
-  private async proven<T extends { ok: true } | { ok: false; error: LoginError | null }>(
-    attempt: () => Promise<T>,
-  ): Promise<T> {
+  private async proven<
+    T extends { ok: true } | { ok: false; error: LoginError | UnknownRefusal | null },
+  >(attempt: () => Promise<T>): Promise<T> {
     const first = await attempt();
     if (first.ok || first.error !== 'step_up_required') return first;
     return (await this.stepUp.request('step_up.intro_factors')) ? attempt() : first;

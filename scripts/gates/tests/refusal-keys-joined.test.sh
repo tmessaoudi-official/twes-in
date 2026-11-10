@@ -30,6 +30,9 @@ out=$(run "$d"); check "a key moved to the pipe asks the ceiling to come down" $
 
 d=$(tree); out=$(run "$d" 0 1); check "at a ceiling of 0, a joined key is refused" $? 1 "$out" "others-page.html:3"
 
+d=$(tree); printf "<p>{{\n  (asked === 'code'\n    ? 'proof.errors.'\n    : 'step_up.errors.') + key | translate\n}}</p>\n" >> "$d/web/src/app/things/things-page.html"
+out=$(run "$d"); check "a key chosen between two prefixes, then joined, is counted too" $? 1 "$out" "web/src/app/things/things-page.html:9"
+
 d=$(tree); printf "<p>{{ 'things.labels.' + name | translate }}</p>\n" >> "$d/web/src/app/things/things-page.html"
 out=$(run "$d"); check "a key joined for anything but a refusal is not counted" $? 0 "$out" "1 refusal keys"
 

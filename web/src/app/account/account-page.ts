@@ -68,6 +68,7 @@ import { PasswordToggle } from '../shared/form/password-toggle';
 import { RefusedField } from '../shared/form/refused-field';
 import { PasswordRule, shorterThanRule } from '../shared/password/password-rule';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** Why a key typed in Préférences was not kept: the shell's own reasons, or another action has it already. */
 type KeyRefusal = ShellKeyRefusal | 'taken';
@@ -81,7 +82,7 @@ export type AccountTab = (typeof ACCOUNT_TABS)[number];
  * passwords that differ are the screen's own refusal, said under the second before anything is sent.
  */
 const PASSWORD_PROBLEM_FIELDS: Readonly<
-  Partial<Record<PasswordChangeOutcome, 'current' | 'new' | 'again'>>
+  Partial<Record<Extract<PasswordChangeOutcome, string>, 'current' | 'new' | 'again'>>
 > = {
   current_password: 'current',
   too_short: 'new',
@@ -98,6 +99,7 @@ const PASSWORD_PROBLEM_FIELDS: Readonly<
 @Component({
   selector: 'app-account-page',
   imports: [
+    RefusalPipe,
     PasswordToggle,
     MfaLockout,
     AccountDeletion,
@@ -171,7 +173,7 @@ export class AccountPage implements OnInit {
   /** The field the API's last refusal concerns, said under it and outlined; null for one no field is at fault for. */
   protected readonly passwordProblemAt = computed(() => {
     const problem = this.passwordProblem();
-    return problem === null ? null : (PASSWORD_PROBLEM_FIELDS[problem] ?? null);
+    return typeof problem === 'string' ? (PASSWORD_PROBLEM_FIELDS[problem] ?? null) : null;
   });
   /** A refusal no field is at fault for (too many tries, no answer), said under the form. */
   protected readonly passwordProblemUnplaced = computed(() =>

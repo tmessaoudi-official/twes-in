@@ -12,9 +12,9 @@
 set -uo pipefail
 export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-ceiling=11
+ceiling=0
 floor=100
-ts_ceiling=8
+ts_ceiling=6
 ts_floor=600
 while (($#)); do
   case $1 in
@@ -41,12 +41,15 @@ if ((${#sources[@]} < ts_floor)); then
   exit 1
 fi
 
-# Each place a refusal's key is joined by hand: a quoted key ending in `errors.` followed by `+`, or, in TypeScript, a
-# template literal whose key ends in `errors.` before a placeholder, its prefix written out or computed.
+# Each place a refusal's key is joined by hand: a quoted key ending in `errors.` followed by `+`, the same closing a
+# choice between two prefixes (`(… ? 'a.errors.' : 'b.errors.') + key`, the paren on the last key's line as prettier
+# lays it out), or, in TypeScript, a template literal whose key ends in `errors.` before a placeholder, its prefix
+# written out or computed.
 quoted="'[a-z0-9_.]*errors\.'[[:space:]]*\+"
+chosen="'[a-z0-9_.]*errors\.'\)[[:space:]]*\+"
 literal='`[^`]*errors\.\$\{'
-mapfile -t joined < <(grep -nE "$quoted" "${templates[@]}" | cut -d: -f1,2 | sed "s#^$root/##")
-mapfile -t ts_joined < <(grep -nE -e "$quoted" -e "$literal" "${sources[@]}" | cut -d: -f1,2 | sed "s#^$root/##")
+mapfile -t joined < <(grep -nE -e "$quoted" -e "$chosen" "${templates[@]}" | cut -d: -f1,2 | sed "s#^$root/##")
+mapfile -t ts_joined < <(grep -nE -e "$quoted" -e "$chosen" -e "$literal" "${sources[@]}" | cut -d: -f1,2 | sed "s#^$root/##")
 count=${#joined[@]}
 ts_count=${#ts_joined[@]}
 if ((count > ceiling)); then

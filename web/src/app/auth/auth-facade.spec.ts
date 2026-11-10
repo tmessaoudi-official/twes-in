@@ -483,6 +483,14 @@ describe('AuthFacade', () => {
     expect(await facade.changePassword('a', 'b')).toBe('network');
   });
 
+  // An answer the screen has no words for (a 500, a code added later) is said by its code, never as « refusé ».
+  it('keeps the code of a password change answered by something it has no words for', async () => {
+    api.changePassword.mockRejectedValueOnce(new AuthRefused({ unknown: '500' }));
+    expect(await facade.changePassword('a', 'b')).toEqual({ unknown: '500' });
+    api.changePassword.mockRejectedValueOnce(new AuthRefused('invalid_credentials'));
+    expect(await facade.changePassword('a', 'b')).toBe('refused');
+  });
+
   it('leaves a refusal the demo interceptor has already said unworded, so no screen says it again', async () => {
     api.changePassword.mockRejectedValueOnce(refusedByTheDemo(new AuthRefused('network')));
     expect(await facade.changePassword('a', 'b')).toBeNull();
@@ -524,6 +532,14 @@ describe('AuthFacade', () => {
 
     expect(await facade.withPassword('cinquième')).toBe('signed_out');
     expect(facade.me()).toBeNull();
+  });
+
+  // A server failing during the proof is never said as « Ce n'est pas le bon mot de passe ».
+  it('keeps the code of a proof answered by something it has no words for', async () => {
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused({ unknown: '500' }));
+    expect(await facade.withPassword('le-bon')).toEqual({ unknown: '500' });
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused({ unknown: 'brand_new' }));
+    expect(await facade.withPassword('le-bon')).toEqual({ unknown: 'brand_new' });
   });
 
   it('says how a proof of who is at the screen came out', async () => {

@@ -34,6 +34,8 @@ import { onTypedText, typedText } from '../shared/form/typed-text';
 import { typedCode } from '../shared/form/typed-code';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** What the browser answers on its own, before the API hears anything. */
 const BROWSER_REFUSALS: readonly LoginError[] = [
@@ -45,6 +47,7 @@ const BROWSER_REFUSALS: readonly LoginError[] = [
 @Component({
   selector: 'app-login-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     PasswordToggle,
     ReactiveFormsModule,
@@ -86,7 +89,7 @@ export class LoginPage {
    */
   protected readonly step = signal<'email' | 'password' | 'code'>('email');
   protected readonly submitting = signal(false);
-  protected readonly error = signal<LoginError | null>(null);
+  protected readonly error = signal<LoginError | UnknownRefusal | null>(null);
   protected readonly apiStatus = inject(HealthFacade).status;
   /** Offered only where the browser can answer with a passkey at all. */
   private readonly passkeyClient = inject(PasskeyClient);
@@ -100,7 +103,7 @@ export class LoginPage {
   private readonly language = inject(LanguageFacade);
   /** The countries « Essayer la démo » offers, none while the platform's operators keep it closed. */
   protected readonly demoCountries = signal<readonly DemoCountry[]>([]);
-  protected readonly demoError = signal<LoginError | null>(null);
+  protected readonly demoError = signal<LoginError | UnknownRefusal | null>(null);
   /** Offered once the API gave options for it: never while the installation keeps it off. */
   protected readonly passkeyAlone = signal(false);
   /** The browser's offer under the address field, withdrawn once the person moves on or leaves. */
@@ -190,7 +193,8 @@ export class LoginPage {
     if (outcome.status !== 'refused') return;
     // The browser withdrawing its own offer under the field is nothing the person did, and offering again at once
     // would only be withdrawn again.
-    if (offered && BROWSER_REFUSALS.includes(outcome.error)) return;
+    if (offered && typeof outcome.error === 'string' && BROWSER_REFUSALS.includes(outcome.error))
+      return;
     this.error.set(outcome.error);
     // A request answered is spent: the field offers the passkeys again on new options, after the browser's own dialog
     // whatever came of it, after a pick from the field only when the API refused that passkey.
