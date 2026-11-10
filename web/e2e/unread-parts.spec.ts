@@ -31,6 +31,34 @@ test('the products list names the custom fields it could not read, with their co
   );
 });
 
+test('the customers list names the custom fields it could not read, with their code', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await refuse(page, /\/api\/companies\/[^/]+\/custom-fields\?/);
+
+  await page.goto('/customers');
+
+  await expect(page.getByTestId('customers-error')).toHaveText(
+    'Les champs personnalisés n’ont pas pu être lus (code : not_found). Rechargez la page ; si cela continue, signalez ce code.',
+  );
+});
+
+test('the price lists name the customer groups they could not read, with their code', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await refuse(page, /\/api\/companies\/[^/]+\/customer-groups(\?|$)/);
+
+  await page.goto('/price-lists');
+
+  await expect(page.getByTestId('price-lists-error')).toHaveText(
+    'Les groupes de clients n’ont pas pu être lus (code : not_found). Rechargez la page ; si cela continue, signalez ce code.',
+  );
+});
+
 test("a product's homes name the stock locations they could not read, with their code", async ({
   page,
 }) => {

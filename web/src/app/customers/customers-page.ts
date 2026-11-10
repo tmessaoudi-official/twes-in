@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
 import { RecordDeletes } from '../shared/records/record-deletes';
@@ -42,6 +43,7 @@ import { CUSTOMERS_TABS } from './customers-nav';
     ListExport,
     RouterLink,
     TranslatePipe,
+    RefusalPipe,
     DataList,
     DataListCell,
     DataListSelection,

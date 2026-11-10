@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { AuthFacade } from '../auth/auth-facade';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -64,6 +65,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
     MatCardModule,
     RouterLink,
     TranslatePipe,
+    RefusalPipe,
     DataList,
     DataListCell,
     DescriptorForm,

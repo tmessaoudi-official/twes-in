@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
-import { CustomersApi } from '../customers/customers-api';
+import { CustomersApi, CustomersRefused } from '../customers/customers-api';
 import { ProductsApi } from '../products/products-api';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
 import { PriceListsFacade } from './price-lists-facade';
@@ -63,6 +63,16 @@ describe('PriceListsFacade', () => {
     expect(facade.groups().map((group) => group.name)).toEqual(['Revendeurs']);
     expect(facade.error()).toBeNull();
     expect(facade.busy()).toBe(false);
+  });
+
+  it('names the customer groups when they could not be read, and the network only when it was', async () => {
+    customers.groups.mockRejectedValueOnce(new CustomersRefused('invalid'));
+    await facade.load('c1');
+    expect(facade.error()).toEqual({ unread: 'customer_groups', code: 'invalid' });
+
+    customers.groups.mockRejectedValueOnce(new CustomersRefused('network'));
+    await facade.load('c1');
+    expect(facade.error()).toBe('network');
   });
 
   it('reads the lists again after a save or a revision', async () => {

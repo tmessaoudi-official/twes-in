@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable } from '@angular/core';
-import { CustomersApi } from '../customers/customers-api';
+import { CustomersApi, CustomersRefused } from '../customers/customers-api';
+import { unreadPart, type UnreadPart } from '../shared/errors/unknown-refusal';
 import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
 import { requestState } from '../shared/feedback/request-state';
@@ -28,9 +29,10 @@ export class PriceListsFacade {
   private readonly groupsSignal = sessionSignal<readonly CustomerGroupRow[]>([]);
   private readonly figuresSignal = sessionSignal<ReadonlyMap<string, ProductFigures>>(new Map());
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
-  private readonly state = requestState<PriceListsError>((error) =>
-    error instanceof PriceListsRefused ? error.code : 'network',
-  );
+  private readonly state = requestState<PriceListsError | UnreadPart>((error) => {
+    if (error instanceof CustomersRefused) return unreadPart('customer_groups', error.code);
+    return error instanceof PriceListsRefused ? error.code : 'network';
+  });
 
   readonly lists = this.listsSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();

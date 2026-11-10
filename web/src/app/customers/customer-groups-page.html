@@ -24,7 +24,7 @@
     }
     @if (error(); as code) {
       <p role="alert" data-testid="customer-groups-error" class="text-error">
-        {{ 'customers.groups.errors.' + code | translate }}
+        {{ code | refusal: 'customers.groups.errors' }}
       </p>
     }
 

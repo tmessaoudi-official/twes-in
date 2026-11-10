@@ -301,6 +301,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-emails.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-answers.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/restore-refusals.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-keys-joined.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/product-pickers-explain.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/language-literals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/logical-direction.test.sh
@@ -406,6 +407,7 @@ in-gate-licences:
 	bash scripts/gates/typed-emails.sh
 	bash scripts/gates/refusal-answers.sh
 	bash scripts/gates/restore-refusals.sh
+	bash scripts/gates/refusal-keys-joined.sh
 	bash scripts/gates/product-pickers-explain.sh
 	bash scripts/gates/language-literals.sh
 	bash scripts/gates/logical-direction.sh

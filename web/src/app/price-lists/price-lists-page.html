@@ -16,7 +16,7 @@
   }
   @if (error(); as code) {
     <p role="alert" data-testid="price-lists-error" class="text-error">
-      {{ 'price_lists.errors.' + code | translate }}
+      {{ code | refusal: 'price_lists.errors' }}
     </p>
   }
 

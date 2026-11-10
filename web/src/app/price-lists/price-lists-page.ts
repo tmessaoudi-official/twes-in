@@ -26,6 +26,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { merge, type Subscription, take } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { DescriptorFormGroup, FieldError } from '../shared/form/form-builder';
@@ -135,6 +136,7 @@ function pricesKey(
     MatInputModule,
     MatSlideToggleModule,
     TranslatePipe,
+    RefusalPipe,
     DataList,
     DataListCell,
     DecimalInput,

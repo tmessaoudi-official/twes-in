@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
-import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
+import { CustomFieldsApi, CustomFieldsRefused } from '../shared/custom-fields/custom-fields-api';
 import { QuietReads } from '../shared/feedback/quiet-reads';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { CustomersApi, CustomersRefused } from './customers-api';
@@ -135,6 +135,18 @@ describe('CustomersFacade', () => {
     expect(fieldsApi.list).toHaveBeenCalledWith('c1', 'customer');
     expect(api.customers).not.toHaveBeenCalled();
     expect(facade.error()).toBeNull();
+  });
+
+  it('names the custom fields when they could not be read for the customers, and the network only when it was', async () => {
+    api.groups.mockResolvedValue([wholesalers]);
+    api.options.mockResolvedValue(options);
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('not_found'));
+    await facade.loadListContext('c1');
+    expect(facade.error()).toEqual({ unread: 'custom_fields', code: 'not_found' });
+
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('network'));
+    await facade.loadCustomer('c1', null);
+    expect(facade.error()).toBe('network');
   });
 
   it('keeps a failed page read on record when the list context it was read with answers after it', async () => {

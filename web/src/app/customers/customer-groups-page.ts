@@ -14,6 +14,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { editorActions } from '../shared/form/editor-actions';
@@ -41,6 +42,7 @@ import { RecordChanged } from '../shared/form/record-changed';
     MatButtonModule,
     MatCardModule,
     TranslatePipe,
+    RefusalPipe,
     DataList,
     DescriptorForm,
     RecordBar,
