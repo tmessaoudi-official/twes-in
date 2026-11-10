@@ -20,7 +20,7 @@
       [retryable]="readFailed()"
       (retry)="readAgain()"
     >
-      {{ 'import.errors.' + code | translate: { duration: undoWindow() } }}
+      {{ code | refusal: 'import.errors' : { duration: undoWindow() } }}
     </app-read-failed>
   }
 

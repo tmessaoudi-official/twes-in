@@ -5,6 +5,7 @@ import type { TranslateService } from '@ngx-translate/core';
 import { describe, expect, it } from 'vitest';
 import type { FieldRefusal } from '../form/field-refusals';
 import type { RefusalFigures } from '../form/refusal-figures';
+import { UNKNOWN_REFUSAL } from '../errors/unknown-refusal';
 import { RefusalLine } from './refusal-line';
 
 describe('RefusalLine', () => {
@@ -30,6 +31,13 @@ describe('RefusalLine', () => {
     expect(line([lines]).line.for('not_found')).toEqual({
       key: 'invoices.errors.not_found',
       params: {},
+    });
+  });
+
+  it('says an answer it has no words for in the one sentence naming its code, refusals or not', () => {
+    expect(line([lines]).line.for({ unknown: '500' })).toEqual({
+      key: UNKNOWN_REFUSAL,
+      params: { code: '500' },
     });
   });
 

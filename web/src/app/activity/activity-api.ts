@@ -13,12 +13,13 @@ import type { ListPage } from '../shared/list/list-types';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ActivityRefused extends Error {
-  constructor(readonly code: ActivityError) {
-    super(code);
+  constructor(readonly code: ActivityError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -50,9 +51,9 @@ export class ActivityApi {
   }
 }
 
-function codeOf(error: unknown): ActivityError {
+function codeOf(error: unknown): ActivityError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
-  return error.status === 404 ? 'not_found' : 'invalid';
+  return error.status === 404 ? 'not_found' : unnamedRefusal(error);
 }
 
 export function toSearchParams(search: ActivitySearch): HttpParams {

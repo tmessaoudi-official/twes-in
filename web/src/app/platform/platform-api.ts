@@ -47,15 +47,16 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 export class PlatformRefused extends Error {
   /** The fields a 422 named, each with its reason and params: a save refused says each on its own field. */
   constructor(
-    readonly code: PlatformError,
+    readonly code: PlatformError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -515,7 +516,7 @@ function toAccount(read: PlatformAccountPlatformAccountRead): PlatformAccountRow
   };
 }
 
-function codeOf(error: unknown, conflict: PlatformError): PlatformError {
+function codeOf(error: unknown, conflict: PlatformError): PlatformError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -524,7 +525,7 @@ function codeOf(error: unknown, conflict: PlatformError): PlatformError {
   if (error.status === 409) {
     return isRecordChanged(error.error) ? 'record_changed' : conflict;
   }
-  return error.status === 404 ? 'not_found' : 'refused';
+  return error.status === 404 ? 'not_found' : unnamedRefusal(error, 'refused');
 }
 
 /** Each platform key's row version, 0 where none is stored: what a save names it by. */

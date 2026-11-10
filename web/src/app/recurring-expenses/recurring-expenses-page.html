@@ -12,7 +12,7 @@
     }
     @if (error(); as code) {
       <p role="alert" data-testid="recurring-expenses-error" class="text-error">
-        {{ 'expenses.recurring.errors.' + code | translate }}
+        {{ code | refusal: 'expenses.recurring.errors' }}
       </p>
     }
 

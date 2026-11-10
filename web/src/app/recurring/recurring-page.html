@@ -10,7 +10,7 @@
     }
     @if (error(); as code) {
       <p role="alert" data-testid="recurring-error" class="text-error">
-        {{ 'recurring.errors.' + code | translate }}
+        {{ code | refusal: 'recurring.errors' }}
       </p>
     }
 

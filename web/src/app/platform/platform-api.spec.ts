@@ -667,7 +667,7 @@ describe('PlatformApi', () => {
     await expect(since).rejects.toEqual(new PlatformRefused('record_changed'));
   });
 
-  it('names a refusal: gone, forbidden or unreachable', async () => {
+  it('names a refusal: gone, forbidden by its status, or unreachable', async () => {
     const gone = api.approve('c1');
     http
       .expectOne('/api/platform/companies/c1/approve')
@@ -678,7 +678,7 @@ describe('PlatformApi', () => {
     http
       .expectOne((candidate) => candidate.url === '/api/platform/companies')
       .flush({}, { status: 403, statusText: 'Forbidden' });
-    await expect(forbidden).rejects.toEqual(new PlatformRefused('refused'));
+    await expect(forbidden).rejects.toEqual(new PlatformRefused({ unknown: '403' }));
 
     const offline = api.settings();
     http.expectOne('/api/platform/settings').error(new ProgressEvent('error'), { status: 0 });

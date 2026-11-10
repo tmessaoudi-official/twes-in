@@ -17,6 +17,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The first step of signup: an address, and a mailed link. What the page says afterwards is the same whether or not the
@@ -26,6 +27,7 @@ import { TypedFirst } from '../shared/a11y/typed-first';
 @Component({
   selector: 'app-signup-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     SignedOutLayout,
     ReactiveFormsModule,

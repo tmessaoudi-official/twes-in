@@ -10,7 +10,7 @@
       [retryable]="readFailed()"
       (retry)="readAgain()"
     >
-      {{ 'licensing.errors.' + code | translate }}
+      {{ code | refusal: 'licensing.errors' }}
     </app-read-failed>
   }
 

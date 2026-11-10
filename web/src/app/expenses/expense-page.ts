@@ -49,10 +49,7 @@ import {
   recurringExpenseFailure,
   recurringExpenseForm,
 } from '../recurring-expenses/recurring-expense-form';
-import {
-  RecurringExpenseRefused,
-  RecurringExpensesApi,
-} from '../recurring-expenses/recurring-expenses-api';
+import { RecurringExpensesApi } from '../recurring-expenses/recurring-expenses-api';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import type { FieldError } from '../shared/form/form-builder';
@@ -500,9 +497,8 @@ export class ExpensePage {
         },
       );
     } catch (error) {
-      this.feedback.failure(
-        recurringExpenseFailure(error instanceof RecurringExpenseRefused ? error.field : null),
-      );
+      const said = recurringExpenseFailure(error);
+      this.feedback.failure(said.key, said.params);
     }
   }
 

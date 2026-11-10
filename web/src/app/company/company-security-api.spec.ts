@@ -61,6 +61,6 @@ describe('CompanySecurityApi', () => {
     http
       .expectOne('/api/companies/c1/security')
       .flush({ detail: 'Access denied.' }, { status: 403, statusText: 'Forbidden' });
-    await expect(refused).rejects.toEqual(new CompanySecurityRefused('invalid'));
+    await expect(refused).rejects.toEqual(new CompanySecurityRefused({ unknown: '403' }));
   });
 });

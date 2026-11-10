@@ -15,7 +15,7 @@
       [retryable]="readFailed()"
       (retry)="readAgain()"
     >
-      <p>{{ 'company.modules.errors.' + code | translate }}</p>
+      <p>{{ code | refusal: 'company.modules.errors' }}</p>
       @if (blockers().length > 0) {
         <ul class="list-disc ps-6">
           @for (blocker of blockers(); track blocker.key) {

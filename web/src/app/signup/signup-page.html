@@ -46,7 +46,7 @@
 
         @if (error(); as code) {
           <p role="alert" class="twes-auth-error" data-testid="signup-error">
-            {{ 'signup.request.errors.' + code | translate: { retry: budget.retry() } }}
+            {{ code | refusal: 'signup.request.errors' : { retry: budget.retry() } }}
           </p>
         }
 

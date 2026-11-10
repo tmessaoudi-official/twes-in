@@ -173,6 +173,7 @@ import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { CompanyFacade } from '../company/company-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { PLATFORM_KINDS } from './platform-kinds';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 /**
  * The operators' page: whether anyone may sign up, whether a company that signs up waits for approval, the
@@ -578,8 +579,7 @@ export class PlatformPage implements OnInit {
    */
   protected readonly errorSaid = computed((): FieldError | null => {
     const code = this.error();
-    if (code !== 'conflict')
-      return code === null ? null : { key: `platform.errors.${code}`, params: {} };
+    if (code !== 'conflict') return code === null ? null : refusalKey('platform.errors', code);
     const [refusal] = this.platform.refused().refusals;
     return refusal === undefined
       ? { key: 'platform.errors.refused', params: {} }
@@ -798,7 +798,8 @@ export class PlatformPage implements OnInit {
     if (code !== null && code !== 'step_up_required') {
       const refusal = this.payments.refusals().find((one) => one.reason !== null);
       if (refusal === undefined) {
-        this.feedback.failure(`licensing.errors.${code}`);
+        const said = refusalKey('licensing.errors', code);
+        this.feedback.failure(said.key, said.params);
       } else {
         sayRefusal(this.feedback, this.translate, refusal);
       }

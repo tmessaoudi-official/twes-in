@@ -50,11 +50,12 @@ describe('DocumentDesignApi', () => {
     expect(await pending).toBe(`data:image/png;base64,${btoa('PNG')}`);
   });
 
-  it('names why there is no picture: no invoice yet, invoices not readable, a failure, no server', async () => {
+  it('names why there is no picture: no invoice yet, invoices not readable, an answer by its code, no server', async () => {
     for (const [status, state] of [
       [404, 'nothing'],
       [403, 'forbidden'],
-      [500, 'failed'],
+      [422, 'failed'],
+      [500, { unknown: '500' }],
       // A 503 names nothing the preview can say apart from a gateway's for an API restarting: the network's rule.
       [503, 'network'],
       [0, 'network'],

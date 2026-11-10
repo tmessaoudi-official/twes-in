@@ -32,6 +32,7 @@ import {
 } from './activity-list';
 import { unnamedActorKey, type ActivitySearch } from './activity-types';
 import { typedText } from '../shared/form/typed-text';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * « Journal d'activité » (docs/SPEC.md § 7, 2026-09-26 23:04): what was done in the company, by whom and to which
@@ -40,6 +41,7 @@ import { typedText } from '../shared/form/typed-text';
 @Component({
   selector: 'app-activity-page',
   imports: [
+    RefusalPipe,
     ActivityFieldsPipe,
     MatButtonModule,
     RouterLink,

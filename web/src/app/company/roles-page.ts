@@ -44,6 +44,7 @@ import type { ArticleSubject } from '../shared/settings/settings-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** What a role's name keeps, as the API holds it. */
 const ROLE_NAME_MAX = 64;
@@ -59,6 +60,7 @@ const ROLE_NAME_MAX = 64;
 @Component({
   selector: 'app-roles-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     StickyHeaderSize,
     ArticleDefaults,

@@ -26,6 +26,8 @@ import { RecurringApi, RecurringRefused } from './recurring-api';
 import { RECURRING_TABS } from './recurring-nav';
 import { recurringState, type RecurringError, type RecurringInvoiceRow } from './recurring-types';
 import { requestState } from '../shared/feedback/request-state';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 const STATE_TONES: Record<ReturnType<typeof recurringState>, StatusTone> = {
   active: 'success',
@@ -40,7 +42,7 @@ const STATE_TONES: Record<ReturnType<typeof recurringState>, StatusTone> = {
  */
 @Component({
   selector: 'app-recurring-page',
-  imports: [PageTabs, TranslatePipe, DayPipe, DataList, DataListCell, StatusBadge],
+  imports: [RefusalPipe, PageTabs, TranslatePipe, DayPipe, DataList, DataListCell, StatusBadge],
   templateUrl: './recurring-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -58,7 +60,7 @@ export class RecurringPage implements OnInit {
   protected readonly rows = signal<readonly RecurringInvoiceRow[]>([]);
   protected readonly loading = signal(true);
   /** What was refused; a reload after another person's change leaves a refused write on the screen. */
-  private readonly requests = requestState<RecurringError>((error) =>
+  private readonly requests = requestState<RecurringError | UnknownRefusal>((error) =>
     error instanceof RecurringRefused ? error.code : 'network',
   );
   protected readonly error = this.requests.error;

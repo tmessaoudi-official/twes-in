@@ -14,7 +14,7 @@ import {
   recurringFailure,
   type MakeRecurringData,
 } from '../recurring/make-recurring';
-import { RecurringApi, RecurringRefused } from '../recurring/recurring-api';
+import { RecurringApi } from '../recurring/recurring-api';
 import { RECURRING_MODULE } from '../recurring/recurring-nav';
 import type { RecordAction } from '../shared/actions/record-action';
 import { Feedback } from '../shared/feedback/feedback';
@@ -549,9 +549,8 @@ export class InvoiceActions {
         { key: 'recurring.open', run: () => void this.router.navigate(['/invoices/recurring']) },
       );
     } catch (error) {
-      this.feedback.failure(
-        recurringFailure(error instanceof RecurringRefused ? error.field : null),
-      );
+      const said = recurringFailure(error);
+      this.feedback.failure(said.key, said.params);
     }
   }
 

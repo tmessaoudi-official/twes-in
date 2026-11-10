@@ -10,11 +10,12 @@ import type {
 import type { InvitationError, InvitationOffer } from './invitation-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 export class InvitationRefused extends Error {
-  constructor(readonly code: InvitationError) {
-    super(code);
+  constructor(readonly code: InvitationError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -70,7 +71,7 @@ export class InvitationApi {
   }
 }
 
-function codeOf(error: unknown): InvitationError {
+function codeOf(error: unknown): InvitationError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -90,6 +91,6 @@ function codeOf(error: unknown): InvitationError {
     case 429:
       return 'too_many';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }

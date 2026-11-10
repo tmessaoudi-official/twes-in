@@ -9,6 +9,9 @@ import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { scheduleFailure, scheduleFields, scheduleOf } from '../shared/schedule/schedule';
 import type { RecurringInvoiceDraft } from './recurring-types';
+import { RecurringRefused } from './recurring-api';
+import { refusalKey } from '../shared/errors/unknown-refusal';
+import type { FieldError } from '../shared/form/form-builder';
 
 /**
  * When, from which day and up to which: what making an invoice recurring asks. When is the shared schedule (docs/SPEC.md
@@ -58,14 +61,20 @@ export function recurringDraft(modelInvoiceId: string, values: FormValues): Recu
 /** The fields a refusal can name with words of the recurring invoices' own; the schedule's have theirs. */
 const REFUSED_FIELDS = new Set(['modelInvoiceId', 'startsOn', 'endsOn']);
 
-/** What a refusal says: the field's own words where it has some, the schedule's for its own, else the general line. */
-export function recurringFailure(field: string | null): string {
-  return (
+/**
+ * What a refusal says: a value refused in the field's own words where it has some, the schedule's for its own, else the
+ * general line; any other refusal in its code's words, an answer it has no words for by its code.
+ */
+export function recurringFailure(error: unknown): FieldError {
+  const code = error instanceof RecurringRefused ? error.code : 'network';
+  if (code !== 'invalid') return refusalKey('recurring.errors', code);
+  const field = error instanceof RecurringRefused ? error.field : null;
+  const key =
     scheduleFailure(field) ??
     (field !== null && REFUSED_FIELDS.has(field)
       ? `recurring.errors.${field}`
-      : 'recurring.errors.invalid')
-  );
+      : 'recurring.errors.invalid');
+  return { key, params: {} };
 }
 
 export interface MakeRecurringData {

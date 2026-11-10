@@ -18,6 +18,7 @@ import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { AccountDeletion } from './account-deletion';
+import { UNKNOWN_REFUSAL } from '../shared/errors/unknown-refusal';
 import { AccountDeletionApi, AccountDeletionRefused } from './account-deletion-api';
 
 class StaticLoader implements TranslateLoader {
@@ -210,6 +211,16 @@ describe('AccountDeletion', () => {
 
     expect(said()).toEqual([
       { kind: 'failure', key: 'account.deletion.failed', params: undefined },
+    ]);
+    expect(auth.sessionEnded).not.toHaveBeenCalled();
+  });
+
+  it('says an answer it has no words for by its code, keeping the session', async () => {
+    api.delete.mockRejectedValue(new AccountDeletionRefused({ unknown: 'brand_new' }));
+    await press(render(), 'account-delete');
+
+    expect(said()).toEqual([
+      { kind: 'failure', key: UNKNOWN_REFUSAL, params: { code: 'brand_new' } },
     ]);
     expect(auth.sessionEnded).not.toHaveBeenCalled();
   });

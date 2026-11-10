@@ -13,6 +13,7 @@ import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The page a reset link opens, logged out: the new password, twice. Two entries that differ never reach the API, since a
@@ -21,6 +22,7 @@ import { TypedFirst } from '../shared/a11y/typed-first';
 @Component({
   selector: 'app-reset-password-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     PasswordToggle,
     SignedOutLayout,

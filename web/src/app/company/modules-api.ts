@@ -10,7 +10,8 @@ import type {
 } from '../api/types.gen';
 import type { ModuleRow } from './modules-types';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * Why the API refused, as the screen translates it: a module switched on before what it needs, or switched off while
@@ -21,8 +22,8 @@ export type ModulesError =
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ModulesRefused extends Error {
-  constructor(readonly code: ModulesError) {
-    super(code);
+  constructor(readonly code: ModulesError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -74,7 +75,7 @@ export class ModulesApi {
 /** What was being done, which tells a 409 apart: switching on, switching off, or asking to be told. */
 type Attempt = 'on' | 'off' | 'interest';
 
-function codeOf(error: unknown, attempt: Attempt): ModulesError {
+function codeOf(error: unknown, attempt: Attempt): ModulesError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -88,7 +89,7 @@ function codeOf(error: unknown, attempt: Attempt): ModulesError {
           ? 'needs_modules'
           : 'still_needed';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }
 

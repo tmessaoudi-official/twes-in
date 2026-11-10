@@ -9,7 +9,8 @@ import type {
 } from '../api/types.gen';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Whether the company requires a second factor of its members, and whether the caller may change that. */
 export interface CompanySecurity {
@@ -28,8 +29,8 @@ export type CompanySecurityError =
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class CompanySecurityRefused extends Error {
-  constructor(readonly code: CompanySecurityError) {
-    super(code);
+  constructor(readonly code: CompanySecurityError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -69,10 +70,10 @@ function toSecurity(raw: CompanySecurityCompanySecurityRead): CompanySecurity {
   return { mfaRequired: raw.mfaRequired === true, writable: raw.writable === true };
 }
 
-function codeOf(error: unknown): CompanySecurityError {
+function codeOf(error: unknown): CompanySecurityError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   if (stepUpAsked(error)) return 'step_up_required';
-  return error.status === 404 ? 'not_found' : 'invalid';
+  return error.status === 404 ? 'not_found' : unnamedRefusal(error);
 }

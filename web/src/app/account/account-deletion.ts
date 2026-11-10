@@ -10,6 +10,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { CompanyFacade } from '../company/company-facade';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { saidAlready } from '../shared/errors/said-already';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { StepUp } from '../shared/step-up/step-up';
@@ -85,8 +86,11 @@ export class AccountDeletion {
         this.ownedAlone.set(error.companies);
       } else if (code === 'platform_operator') {
         this.operator.set(true);
-      } else {
+      } else if (typeof code === 'string') {
         this.feedback.failure('account.deletion.failed');
+      } else {
+        const said = refusalKey('account.deletion', code);
+        this.feedback.failure(said.key, said.params);
       }
     }
   }

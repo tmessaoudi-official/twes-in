@@ -247,7 +247,7 @@
         }
         @if (previewState() !== 'loading' && previewState() !== 'ready') {
           <p role="status" data-testid="documents-preview-message">
-            {{ 'documents.preview_states.' + previewState() | translate }}
+            {{ previewState() | refusal: 'documents.preview_states' }}
           </p>
         }
       </figure>

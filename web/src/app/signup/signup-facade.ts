@@ -10,6 +10,7 @@ import type {
   SignupError,
 } from './signup-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 const CLOSED: SignupAvailability = { enabled: false, countries: [] };
 
@@ -21,7 +22,7 @@ export class SignupFacade {
   private readonly linkEmailSignal = sessionSignal<string | null>(null);
   private readonly requestedSignal = sessionSignal(false);
   private readonly completedSignal = sessionSignal<SignupCompleted | null>(null);
-  private readonly state = requestState<SignupError>((error) =>
+  private readonly state = requestState<SignupError | UnknownRefusal>((error) =>
     error instanceof SignupRefused ? error.code : 'network',
   );
 

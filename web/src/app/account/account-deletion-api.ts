@@ -4,7 +4,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** A company the account is the only owner of, which keeps the account from going. */
 export interface OwnedAlone {
@@ -24,10 +25,10 @@ const KNOWN: readonly AccountDeletionError[] = [
 /** Why the account was kept, and for a sole owner which companies. */
 export class AccountDeletionRefused extends Error {
   constructor(
-    readonly code: AccountDeletionError,
+    readonly code: AccountDeletionError | UnknownRefusal,
     readonly companies: readonly OwnedAlone[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -55,7 +56,8 @@ function refusalOf(error: unknown): AccountDeletionRefused {
   const code =
     typeof body === 'object' && body !== null && 'error' in body ? String(body.error) : '';
   const known = KNOWN.find((candidate) => candidate === code);
-  if (known === undefined) return refusedFor(error, new AccountDeletionRefused('refused'));
+  if (known === undefined)
+    return refusedFor(error, new AccountDeletionRefused(unnamedRefusal(error, 'refused')));
   const companies =
     known === 'sole_owner' && typeof body === 'object' && body !== null && 'companies' in body
       ? ownedAlone(body.companies)

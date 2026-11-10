@@ -166,7 +166,7 @@
         </p>
       } @else if (error(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="signup-finish-error">
-          {{ 'signup.finish.errors.' + code | translate: { retry: budget.retry() } }}
+          {{ code | refusal: 'signup.finish.errors' : { retry: budget.retry() } }}
         </p>
       }
 
@@ -187,9 +187,7 @@
       [retryable]="error() === 'network'"
       (retry)="readAgain()"
     >
-      {{
-        'signup.finish.errors.' + (error() ?? 'not_usable') | translate: { retry: budget.retry() }
-      }}
+      {{ error() ?? 'not_usable' | refusal: 'signup.finish.errors' : { retry: budget.retry() } }}
     </app-read-failed>
   }
   <!-- Done, the card's own button leads to the sign-in; until then this does. -->

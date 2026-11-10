@@ -195,7 +195,7 @@ describe('RecurringApi', () => {
     http
       .expectOne({ method: 'PUT', url: `${url}/r1` })
       .flush({ detail: 'no.' }, { status: 409, statusText: 'Conflict' });
-    await expect(conflicting).rejects.toMatchObject({ code: 'invalid' });
+    await expect(conflicting).rejects.toMatchObject({ code: { unknown: '409' } });
   });
 
   it('names the field a refusal was about as the form names it, and none it has no field for', async () => {

@@ -34,6 +34,8 @@ import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ClosingApi, type ClosingError, ClosingRefused, type CompanyClosing } from './closing-api';
 import { requestState } from '../shared/feedback/request-state';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * « Clôture des comptes »: the last day of the closed period, and closing through a later one. Once closed, no
@@ -43,6 +45,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-closing-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     DayCalendarButton,
     DayInput,
@@ -71,7 +74,7 @@ export class ClosingPage implements OnInit {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly closing = signal<CompanyClosing | null>(null);
   /** What was refused; a reload after another person's change leaves a refused closing on the screen. */
-  private readonly requests = requestState<ClosingError>((error) =>
+  private readonly requests = requestState<ClosingError | UnknownRefusal>((error) =>
     error instanceof ClosingRefused ? error.code : 'network',
   );
   protected readonly error = this.requests.error;

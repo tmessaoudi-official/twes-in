@@ -16,6 +16,7 @@ import { heldToPasswordRule } from '../shared/password/password-rule';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { ReadFailed } from '../shared/feedback/read-failed';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The page an invitation link opens. It is reached logged out: the link comes from a mail client and, under
@@ -24,6 +25,7 @@ import { TypedFirst } from '../shared/a11y/typed-first';
 @Component({
   selector: 'app-accept-invitation-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     ReadFailed,
     PasswordToggle,

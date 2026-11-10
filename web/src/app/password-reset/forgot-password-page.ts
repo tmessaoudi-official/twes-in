@@ -15,6 +15,7 @@ import { PasswordResetFacade } from './password-reset-facade';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The first step of getting back into an account: an address, and a mailed link. What the page says afterwards is the
@@ -24,6 +25,7 @@ import { TypedFirst } from '../shared/a11y/typed-first';
 @Component({
   selector: 'app-forgot-password-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     SignedOutLayout,
     ReactiveFormsModule,

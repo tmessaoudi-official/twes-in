@@ -13,6 +13,7 @@ import type {
 } from './fiscal-types';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The fiscal setup of one company: its taxes, its units and the regimes its customers may be under. */
 @Injectable({ providedIn: 'root' })
@@ -111,6 +112,6 @@ export class FiscalFacade {
   }
 }
 
-function codeOf(error: unknown): FiscalError {
+function codeOf(error: unknown): FiscalError | UnknownRefusal {
   return error instanceof FiscalRefused ? error.code : 'network';
 }

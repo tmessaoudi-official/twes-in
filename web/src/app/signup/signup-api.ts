@@ -17,15 +17,16 @@ import type {
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Why a call was refused, and the fields a finish was refused on, for the form to say under each. */
 export class SignupRefused extends Error {
   constructor(
-    readonly code: SignupError,
+    readonly code: SignupError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -81,7 +82,7 @@ export class SignupApi {
   }
 }
 
-function codeOf(error: unknown): SignupError {
+function codeOf(error: unknown): SignupError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -91,6 +92,6 @@ function codeOf(error: unknown): SignupError {
     case 429:
       return 'too_many';
     default:
-      return 'refused';
+      return unnamedRefusal(error, 'refused');
   }
 }

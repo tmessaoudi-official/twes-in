@@ -23,12 +23,13 @@ import {
 } from './import-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses the request itself; carries the code the screen translates. */
 export class ImportRefused extends Error {
-  constructor(readonly code: ImportError) {
-    super(code);
+  constructor(readonly code: ImportError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -186,7 +187,7 @@ function refusalOf(error: unknown): Error {
     case 422:
       return notKept(error);
     default:
-      return refusedFor(error, new ImportRefused('invalid'));
+      return refusedFor(error, new ImportRefused(unnamedRefusal(error)));
   }
 }
 
@@ -195,7 +196,9 @@ function conflictOf(error: HttpErrorResponse): ImportRefused {
   const reason = (error.error as Record<string, unknown> | null)?.['error'];
   return refusedFor(
     error,
-    new ImportRefused(reason === 'import_undone' || reason === 'import_final' ? reason : 'invalid'),
+    new ImportRefused(
+      reason === 'import_undone' || reason === 'import_final' ? reason : unnamedRefusal(error),
+    ),
   );
 }
 

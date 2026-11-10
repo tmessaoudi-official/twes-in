@@ -122,13 +122,13 @@
       [retryable]="error() === 'network'"
       (retry)="readAgain()"
     >
-      {{ 'invitation.errors.' + (error() ?? 'not_usable') | translate: { retry: budget.retry() } }}
+      {{ error() ?? 'not_usable' | refusal: 'invitation.errors' : { retry: budget.retry() } }}
     </app-read-failed>
   }
 
   @if (offer() && error()) {
     <p role="alert" data-testid="invitation-form-error" class="twes-auth-error">
-      {{ 'invitation.errors.' + error() | translate: { retry: budget.retry() } }}
+      {{ error() | refusal: 'invitation.errors' : { retry: budget.retry() } }}
     </p>
   }
   <!-- Its own block, so it is projected under the card as the other signed-out screens' way back is. -->

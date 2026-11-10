@@ -6,6 +6,7 @@ import { requestState } from '../shared/feedback/request-state';
 import { ModulesApi, ModulesRefused, type ModulesError } from './modules-api';
 import type { ModuleRow } from './modules-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The modules of the company being worked in, and switching them. */
 @Injectable({ providedIn: 'root' })
@@ -55,6 +56,6 @@ export class ModulesFacade {
   }
 }
 
-function codeOf(error: unknown): ModulesError {
+function codeOf(error: unknown): ModulesError | UnknownRefusal {
   return error instanceof ModulesRefused ? error.code : 'network';
 }

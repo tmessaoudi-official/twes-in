@@ -20,6 +20,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { ModulesFacade } from './modules-facade';
 import type { ModuleRow } from './modules-types';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The modules the company has on, one switch each. A module switched off leaves the navigation and its pages, and
@@ -27,7 +28,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
  */
 @Component({
   selector: 'app-modules-page',
-  imports: [ReadFailed, MatButtonModule, MatSlideToggleModule, TranslatePipe],
+  imports: [RefusalPipe, ReadFailed, MatButtonModule, MatSlideToggleModule, TranslatePipe],
   templateUrl: './modules-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -54,6 +54,7 @@ import { tableCounts } from '../shared/records/record-tables';
 import { refusalParams } from '../shared/form/refusal-words';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** How many of a preview's changes the table lists; the count by column says them all. */
 export const CHANGES_SHOWN = 200;
@@ -96,6 +97,7 @@ interface PairingRow {
 @Component({
   selector: 'app-import-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     FileDrop,
     FormsModule,

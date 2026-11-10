@@ -13,7 +13,8 @@ import { isRecordChanged } from '../shared/errors/record-changed';
 import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
 import { refusalsIn } from '../shared/form/field-refusals';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * Why the API refused, as the screen translates it.
@@ -37,11 +38,11 @@ export type RolesError =
 /** Thrown when the API refuses; carries the code the UI translates and, for a role in use, who holds it. */
 export class RolesRefused extends Error {
   constructor(
-    readonly code: RolesError,
+    readonly code: RolesError | UnknownRefusal,
     readonly detail = '',
     readonly held: RoleHolders | null = null,
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -137,7 +138,7 @@ function refusalOf(error: unknown): RolesRefused {
       return refusedFor(
         error,
         new RolesRefused(
-          detail.startsWith('role_permission_not_held:') ? 'not_held' : 'invalid',
+          detail.startsWith('role_permission_not_held:') ? 'not_held' : unnamedRefusal(error),
           detail,
         ),
       );
@@ -170,7 +171,7 @@ function refusalOf(error: unknown): RolesRefused {
       }
       return refusedFor(error, new RolesRefused('unknown_permission', detail));
     default:
-      return refusedFor(error, new RolesRefused('invalid', detail));
+      return refusedFor(error, new RolesRefused(unnamedRefusal(error), detail));
   }
 }
 

@@ -41,8 +41,8 @@ describe('RolesApi refusals', () => {
     expect(refused.code).toBe('not_held');
   });
 
-  it('reads any other 403 as a plain refusal', async () => {
-    expect((await refusedBy(403, 'Forbidden')).code).toBe('invalid');
+  it('keeps any other 403 by its status, never as a value refused', async () => {
+    expect((await refusedBy(403, 'Forbidden')).code).toEqual({ unknown: '403' });
   });
 
   it('tells a change that waits for the step-up proof, by its token', async () => {

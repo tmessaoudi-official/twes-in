@@ -45,6 +45,8 @@ import {
   type RecurringExpenseRow,
 } from './recurring-expenses-types';
 import { requestState } from '../shared/feedback/request-state';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 const TEXTS = 'expenses.recurring';
 
@@ -61,7 +63,16 @@ const STATE_TONES: Record<ReturnType<typeof recurringExpenseState>, StatusTone> 
  */
 @Component({
   selector: 'app-recurring-expenses-page',
-  imports: [PageTabs, TranslatePipe, AmountPipe, DayPipe, DataList, DataListCell, StatusBadge],
+  imports: [
+    RefusalPipe,
+    PageTabs,
+    TranslatePipe,
+    AmountPipe,
+    DayPipe,
+    DataList,
+    DataListCell,
+    StatusBadge,
+  ],
   templateUrl: './recurring-expenses-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -82,7 +93,7 @@ export class RecurringExpensesPage implements OnInit {
   protected readonly rows = signal<readonly RecurringExpenseRow[]>([]);
   protected readonly loading = signal(true);
   /** What was refused; a reload after another person's change leaves a refused write on the screen. */
-  private readonly requests = requestState<RecurringExpenseError>((error) =>
+  private readonly requests = requestState<RecurringExpenseError | UnknownRefusal>((error) =>
     error instanceof RecurringExpenseRefused ? error.code : 'network',
   );
   protected readonly error = this.requests.error;
@@ -314,8 +325,8 @@ export class RecurringExpensesPage implements OnInit {
       if (error instanceof RecurringExpenseRefused && error.code === 'record_changed') {
         saved = await this.readAgain(company.id, row.id);
       } else {
-        const field = error instanceof RecurringExpenseRefused ? error.field : null;
-        this.feedback.failure(recurringExpenseFailure(field));
+        const said = recurringExpenseFailure(error);
+        this.feedback.failure(said.key, said.params);
       }
     } finally {
       this.busy.set(false);

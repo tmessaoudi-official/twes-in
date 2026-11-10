@@ -10,7 +10,8 @@ import type {
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The company's closed period: the last day no document is dated on or before, and whether the caller may close more. */
 export interface CompanyClosing {
@@ -25,10 +26,10 @@ export type ClosingError = 'network' | 'not_found' | 'invalid';
 /** Thrown when the API refuses; carries the code the page translates, and the rule the day broke with its day. */
 export class ClosingRefused extends Error {
   constructor(
-    readonly code: ClosingError,
+    readonly code: ClosingError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -73,9 +74,9 @@ function toClosing(raw: CompanyClosingCompanyClosingRead): CompanyClosing {
   return { closedThrough: raw.closedThrough ?? null, writable: raw.writable === true };
 }
 
-function codeOf(error: unknown): ClosingError {
+function codeOf(error: unknown): ClosingError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
-  return error.status === 404 ? 'not_found' : 'invalid';
+  return error.status === 404 ? 'not_found' : unnamedRefusal(error);
 }

@@ -19,7 +19,7 @@ const KNOWN: readonly PasswordResetError[] = [
   'network',
 ];
 
-/** The API's error code as one the pages know; anything else is a plain refusal. */
-export function resetErrorOf(code: string | undefined): PasswordResetError {
-  return KNOWN.find((known) => known === code) ?? 'refused';
+/** The API's error code as one the pages know; anything else is the reader's to say (`unnamedRefusal`). */
+export function resetErrorOf(code: string | undefined): PasswordResetError | undefined {
+  return KNOWN.find((known) => known === code);
 }

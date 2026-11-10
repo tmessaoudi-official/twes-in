@@ -20,6 +20,7 @@ import { typedText } from '../shared/form/typed-text';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { ReadFailed } from '../shared/feedback/read-failed';
 import { TypedFirst } from '../shared/a11y/typed-first';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -28,6 +29,7 @@ import { TypedFirst } from '../shared/a11y/typed-first';
 @Component({
   selector: 'app-finish-signup-page',
   imports: [
+    RefusalPipe,
     TypedFirst,
     ReadFailed,
     PasswordToggle,

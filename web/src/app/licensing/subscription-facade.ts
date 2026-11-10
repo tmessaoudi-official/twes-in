@@ -13,6 +13,7 @@ import type {
 } from './subscription-types';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The working company's subscription, and the payments it declares. A declaration changes what the company may do —
@@ -106,6 +107,6 @@ function refusalsOf(error: unknown): readonly FieldRefusal[] {
   return error instanceof SubscriptionRefused ? error.refusals : [];
 }
 
-function codeOf(error: unknown): SubscriptionError {
+function codeOf(error: unknown): SubscriptionError | UnknownRefusal {
   return error instanceof SubscriptionRefused ? error.code : 'network';
 }

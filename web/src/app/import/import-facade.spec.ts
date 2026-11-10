@@ -14,6 +14,7 @@ import {
   type RecordedFeedback,
 } from '../shared/testing/feedback';
 import { ImportApi, ImportNotKept, ImportRefused } from './import-api';
+import { UNKNOWN_REFUSAL } from '../shared/errors/unknown-refusal';
 import { ImportFacade } from './import-facade';
 import type { ImportReport, ImportUndone } from './import-types';
 
@@ -375,6 +376,21 @@ describe('ImportFacade', () => {
       expect(said?.params).toEqual({ duration: '2 heures' });
       expect(facade.undone()).toBeNull();
       expect(api.recent).toHaveBeenCalledWith('c1');
+    });
+
+    it('says an undo refused with an answer it has no words for by its code', async () => {
+      api.undo.mockRejectedValue(new ImportRefused({ unknown: '500' }));
+
+      expect(await facade.undo('c1', 'r1')).toBe(false);
+
+      const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+      expect(said).toEqual([
+        expect.objectContaining({
+          kind: 'failure',
+          key: UNKNOWN_REFUSAL,
+          params: expect.objectContaining({ code: '500' }),
+        }),
+      ]);
     });
   });
 });

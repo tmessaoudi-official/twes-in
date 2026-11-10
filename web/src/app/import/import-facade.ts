@@ -19,6 +19,7 @@ import type {
   TextEncoding,
 } from './import-types';
 import { sessionSignal } from '../shared/session/session-data';
+import { refusalKey, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * What the import screen knows: the guide for the subject it is on, and the answer to the last run.
@@ -174,8 +175,10 @@ export class ImportFacade {
         return true;
       } catch (error) {
         // `import_final` names the time to undo, the operator's.
-        this.feedback.failure(`import.errors.${codeOf(error)}`, {
+        const said = refusalKey('import.errors', codeOf(error));
+        this.feedback.failure(said.key, {
           duration: this.durations.recordsUndoable(),
+          ...said.params,
         });
         await this.loadRecent(companyId);
         return false;
@@ -197,6 +200,6 @@ export class ImportFacade {
   }
 }
 
-function codeOf(error: unknown): ImportError {
+function codeOf(error: unknown): ImportError | UnknownRefusal {
   return error instanceof ImportRefused ? error.code : 'network';
 }

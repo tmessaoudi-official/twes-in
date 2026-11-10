@@ -6,6 +6,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { InvitationApi, InvitationRefused } from './invitation-api';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The state of one invitation link being looked at, and then used. */
 @Injectable({ providedIn: 'root' })
@@ -50,6 +51,6 @@ export class InvitationFacade {
   }
 }
 
-function codeOf(error: unknown): InvitationError {
+function codeOf(error: unknown): InvitationError | UnknownRefusal {
   return error instanceof InvitationRefused ? error.code : 'network';
 }

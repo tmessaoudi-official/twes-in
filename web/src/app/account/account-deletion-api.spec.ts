@@ -52,14 +52,14 @@ describe('AccountDeletionApi', () => {
     expect(refusal.companies).toEqual([]);
   });
 
-  it('says « refused » for an answer it does not know, and « network » when nothing came back', async () => {
+  it('keeps the code of an answer it does not know, and says « network » when nothing came back', async () => {
     const strange = api.delete();
     http
       .expectOne('/api/auth/account')
       .flush({ error: 'whatever' }, { status: 500, statusText: 'No' });
-    expect(((await strange.catch((e: unknown) => e)) as AccountDeletionRefused).code).toBe(
-      'refused',
-    );
+    expect(((await strange.catch((e: unknown) => e)) as AccountDeletionRefused).code).toEqual({
+      unknown: 'whatever',
+    });
 
     const silent = api.delete();
     http.expectOne('/api/auth/account').error(new ProgressEvent('error'), { status: 0 });

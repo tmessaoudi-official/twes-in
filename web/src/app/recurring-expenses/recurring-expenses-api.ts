@@ -24,15 +24,16 @@ import type {
   RecurringExpenseRow,
 } from './recurring-expenses-types';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the screen translates and, for a 422, the field it was about. */
 export class RecurringExpenseRefused extends Error {
   constructor(
-    readonly code: RecurringExpenseError,
+    readonly code: RecurringExpenseError | UnknownRefusal,
     readonly field: string | null = null,
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -161,5 +162,8 @@ function refused(error: unknown): RecurringExpenseRefused {
     return refusedFor(error, new RecurringExpenseRefused('record_changed'));
   }
   const [first] = refusalsIn(error.error);
-  return refusedFor(error, new RecurringExpenseRefused('invalid', first?.field ?? null));
+  return refusedFor(
+    error,
+    new RecurringExpenseRefused(unnamedRefusal(error), first?.field ?? null),
+  );
 }

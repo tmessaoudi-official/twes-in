@@ -6,6 +6,7 @@ import type { FieldRefusal } from '../form/field-refusals';
 import type { FieldError } from '../form/form-builder';
 import type { RefusalFigures } from '../form/refusal-figures';
 import { refusedError } from '../form/refusal-words';
+import { refusalKey, type UnknownRefusal } from '../errors/unknown-refusal';
 
 /**
  * The line a document's page says above its form when a step is refused. A refusal said under its field is not said
@@ -33,8 +34,12 @@ export class RefusalLine {
     this.placedOf.set({ of, unplaced });
   }
 
-  /** What the line says for the page's error code, null when the fields already say it all. */
-  for(code: string): FieldError | null {
+  /**
+   * What the line says for the page's error code, null when the fields already say it all; an answer the page has no
+   * words for is said in the one sentence naming its code, whatever the fields hold.
+   */
+  for(code: string | UnknownRefusal): FieldError | null {
+    if (typeof code !== 'string') return refusalKey(this.prefix, code);
     const refusals = this.refusals();
     if ((code !== 'invalid' && code !== 'conflict') || refusals.length === 0)
       return { key: this.prefix + code, params: {} };

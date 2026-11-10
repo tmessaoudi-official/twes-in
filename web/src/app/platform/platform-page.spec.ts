@@ -20,6 +20,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { PlatformFacade, type PlatformRefusals } from './platform-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
+import { UNKNOWN_REFUSAL, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import { PlatformPage } from './platform-page';
 import type {
   PlatformAccountRow,
@@ -52,6 +53,7 @@ import { announceSaved } from '../shared/testing/live';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      feedback: { unknown_refusal: 'Refusé par le serveur (code : {{code}})' },
       modules: { quotes: 'Devis et commandes', zakat: 'Zakat' },
       roles: { owner: 'propriétaire', member: 'membre', clerk: 'caissier / vendeur' },
       settings: {
@@ -365,7 +367,7 @@ describe('PlatformPage', () => {
   const phones = signal<PlatformPhones | null>(phonesState);
   const showComing = signal<boolean | null>(false);
   const busy = signal(false);
-  const error = signal<PlatformError | null>(null);
+  const error = signal<PlatformError | UnknownRefusal | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
   const endOthers = { run: vi.fn(() => Promise.resolve(1)) };
   const companies = signal<readonly PlatformCompanyRow[]>([row]);
@@ -443,7 +445,7 @@ describe('PlatformPage', () => {
     load: vi.fn(async () => offered()),
     switchTo: vi.fn(async () => true),
   };
-  const paymentsError = signal<SubscriptionError | null>(null);
+  const paymentsError = signal<SubscriptionError | UnknownRefusal | null>(null);
   const paymentRefusals = signal<readonly FieldRefusal[]>([]);
   const payments = {
     waiting: waitingPayments.asReadonly(),
@@ -2046,6 +2048,12 @@ describe('PlatformPage', () => {
       refusals: [],
       said: 'licensing.errors.network',
     },
+    {
+      why: 'an answer it has no words for',
+      code: { unknown: '500' },
+      refusals: [],
+      said: UNKNOWN_REFUSAL,
+    },
   ])(
     'says a decision it could not make, $why, and reads the queue again',
     async ({ code, refusals, said }) => {
@@ -2206,6 +2214,14 @@ describe('PlatformPage', () => {
     const { query } = await render();
 
     expect(query('platform-error')?.textContent).toContain('Introuvable');
+  });
+
+  it('names an answer it has no words for by its code', async () => {
+    error.set({ unknown: 'brand_new' });
+
+    const { query } = await render();
+
+    expect(query('platform-error')?.textContent).toContain('(code : brand_new)');
   });
 
   // Approving a company its owner closed meanwhile said « you cannot deactivate your own account ».

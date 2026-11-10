@@ -127,14 +127,25 @@ describe('an answer a reader does not know', () => {
 interface NetworkReader {
   readonly name: string;
   readonly call: () => Promise<unknown>;
-  /** How the reader says the network; most carry it as their `code`. */
-  readonly network?: object;
+  /** Where the reader carries what it says; most carry it as their `code`. */
+  readonly at?: (said: unknown) => object;
+  /** The reader's own word for a value it sent refused (400, 422) that the answer does not name. */
+  readonly word?: string;
+  /** The reader names a 403 in its own words (the preview's « forbidden »). */
+  readonly names403?: true;
 }
 
-const NETWORK = { code: 'network' };
+const said = (reader: NetworkReader, what: unknown): object =>
+  (reader.at ?? ((code: unknown) => ({ code })))(what);
+const inState = (said: unknown) => ({ state: said });
+const inRefusal = (said: unknown) => ({ refusal: { code: said } });
 
 const NETWORK_READERS: readonly NetworkReader[] = [
-  { name: 'the account deletion', call: () => TestBed.inject(AccountDeletionApi).delete() },
+  {
+    name: 'the account deletion',
+    call: () => TestBed.inject(AccountDeletionApi).delete(),
+    word: 'refused',
+  },
   {
     name: 'the activity journal',
     call: () =>
@@ -153,6 +164,7 @@ const NETWORK_READERS: readonly NetworkReader[] = [
   {
     name: 'the password reset',
     call: () => TestBed.inject(PasswordResetApi).forgot('a@b.tn', 'fr'),
+    word: 'refused',
   },
   { name: 'the closing', call: () => TestBed.inject(ClosingApi).read('c1') },
   { name: "the company's members", call: () => TestBed.inject(CompanyApi).members('c1') },
@@ -165,10 +177,16 @@ const NETWORK_READERS: readonly NetworkReader[] = [
   {
     name: 'the document design preview',
     call: () => TestBed.inject(DocumentDesignApi).preview('c1', DEFAULT_DESIGN),
-    network: { state: 'network' },
+    at: inState,
+    word: 'failed',
+    names403: true,
   },
   { name: 'the modules', call: () => TestBed.inject(ModulesApi).list('c1') },
-  { name: 'the roles', call: () => TestBed.inject(RolesApi).list('c1') },
+  {
+    name: 'the roles',
+    call: () => TestBed.inject(RolesApi).list('c1'),
+    word: 'unknown_permission',
+  },
   { name: 'the customers', call: () => TestBed.inject(CustomersApi).customer('c1', 'x1') },
   { name: 'the delivery notes', call: () => TestBed.inject(DeliveryNotesApi).options('c1') },
   { name: 'the expenses', call: () => TestBed.inject(ExpensesApi).options('c1') },
@@ -181,18 +199,19 @@ const NETWORK_READERS: readonly NetworkReader[] = [
   {
     name: 'the platform',
     call: () => TestBed.inject(PlatformApi).withdrawOwnerInvitation('c1', 'i1'),
+    word: 'refused',
   },
   { name: 'the price lists', call: () => TestBed.inject(PriceListsApi).get('c1', 'p1') },
   {
     name: "a product's photos",
     call: () => TestBed.inject(ProductPhotosApi).list('c1', 'p1'),
-    network: { refusal: NETWORK },
+    at: inRefusal,
   },
   { name: 'the products', call: () => TestBed.inject(ProductsApi).options('c1') },
   {
     name: "a product's barcodes",
     call: () => TestBed.inject(ProductsApi).replaceBarcodes('c1', 'p1', [], 1),
-    network: { refusal: NETWORK },
+    at: inRefusal,
   },
   { name: 'the purchases', call: () => TestBed.inject(PurchasesApi).order('c1', 'o1') },
   { name: 'the quotes', call: () => TestBed.inject(QuotesApi).quote('c1', 'q1') },
@@ -205,7 +224,11 @@ const NETWORK_READERS: readonly NetworkReader[] = [
     name: 'the custom fields',
     call: () => TestBed.inject(CustomFieldsApi).list('c1', 'customer'),
   },
-  { name: 'the signup', call: () => TestBed.inject(SignupApi).availability() },
+  {
+    name: 'the signup',
+    call: () => TestBed.inject(SignupApi).availability(),
+    word: 'refused',
+  },
   { name: 'the vendors', call: () => TestBed.inject(VendorsApi).vendor('c1', 'v1') },
 ];
 
@@ -232,7 +255,7 @@ describe('a feature reader deciding the network', () => {
   it.each(NETWORK_READERS)('from $name with no answer at all is the network', async (reader) => {
     const asked = reader.call();
     http.expectOne(() => true).error(new ProgressEvent('error'));
-    await expect(asked).rejects.toMatchObject(reader.network ?? NETWORK);
+    await expect(asked).rejects.toMatchObject(said(reader, 'network'));
   });
 
   it.each(GATEWAYS)(
@@ -240,14 +263,14 @@ describe('a feature reader deciding the network', () => {
     async (reader) => {
       const asked = reader.call();
       http.expectOne(() => true).flush(null, { status: reader.status, statusText: 'Gateway' });
-      await expect(asked).rejects.toMatchObject(reader.network ?? NETWORK);
+      await expect(asked).rejects.toMatchObject(said(reader, 'network'));
     },
   );
 
   it.each(NETWORK_READERS)('from $name answering 500 is not the network', async (reader) => {
     const asked = reader.call().catch((error: unknown) => error);
     http.expectOne(() => true).flush(null, { status: 500, statusText: 'Server Error' });
-    expect(await asked).not.toMatchObject(reader.network ?? NETWORK);
+    expect(await asked).not.toMatchObject(said(reader, 'network'));
   });
 
   it('from the sign-in keeps a 503 that names its refusal, the demo being busy', async () => {
@@ -255,4 +278,78 @@ describe('a feature reader deciding the network', () => {
     http.expectOne(() => true).flush({ error: 'demo_busy' }, { status: 503, statusText: 'Busy' });
     await expect(asked).rejects.toMatchObject({ code: 'demo_busy' });
   });
+});
+
+/**
+ * The readers still saying a status they do not name in a word of their own (`invalid`, `refused`), taken wave by wave
+ * as ruled: this list only shrinks, and is gone once every reader says such a status through `unnamedRefusal`.
+ */
+const NOT_YET: ReadonlySet<string> = new Set([
+  'the sign-in',
+  "the company's members",
+  "the company's profile",
+  "the company's establishments",
+  'the customers',
+  'the delivery notes',
+  'the expenses',
+  'the stock',
+  'the invoices',
+  'the price lists',
+  "a product's photos",
+  'the products',
+  "a product's barcodes",
+  'the purchases',
+  'the quotes',
+  'the custom fields',
+  'the vendors',
+]);
+
+const UNNAMED_READERS = NETWORK_READERS.filter((reader) => !NOT_YET.has(reader.name));
+
+describe('a feature reader given a status it does not name', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: () => Promise.resolve() } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('waits only on readers of the table', () => {
+    const names = new Set(NETWORK_READERS.map((reader) => reader.name));
+    expect([...NOT_YET].filter((name) => !names.has(name))).toEqual([]);
+  });
+
+  it.each(UNNAMED_READERS)('from $name answering 500 keeps its status', async (reader) => {
+    const asked = reader.call();
+    http.expectOne(() => true).flush(null, { status: 500, statusText: 'Server Error' });
+    await expect(asked).rejects.toMatchObject(said(reader, { unknown: '500' }));
+  });
+
+  it.each(UNNAMED_READERS.filter((reader) => reader.names403 === undefined))(
+    'from $name refusing with a code it has no words for keeps that code',
+    async (reader) => {
+      const asked = reader.call();
+      http
+        .expectOne(() => true)
+        .flush({ error: 'brand_new' }, { status: 403, statusText: 'Forbidden' });
+      await expect(asked).rejects.toMatchObject(said(reader, { unknown: 'brand_new' }));
+    },
+  );
+
+  it.each(UNNAMED_READERS)(
+    'from $name refusing what was sent keeps its own word',
+    async (reader) => {
+      const asked = reader.call();
+      http.expectOne(() => true).flush(null, { status: 422, statusText: 'Unprocessable' });
+      await expect(asked).rejects.toMatchObject(said(reader, reader.word ?? 'invalid'));
+    },
+  );
 });

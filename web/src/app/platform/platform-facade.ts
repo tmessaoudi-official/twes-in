@@ -30,6 +30,7 @@ import {
 } from './platform-types';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { PhonesOutsideRanges } from '../shared/session/session';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** What an operator runs the platform with: who may sign up, the companies (those waiting for a decision first), and accounts. */
 @Injectable({ providedIn: 'root' })
@@ -557,6 +558,6 @@ export interface PlatformRefusals {
   readonly refusals: readonly FieldRefusal[];
 }
 
-function codeOf(error: unknown): PlatformError {
+function codeOf(error: unknown): PlatformError | UnknownRefusal {
   return error instanceof PlatformRefused ? error.code : 'network';
 }

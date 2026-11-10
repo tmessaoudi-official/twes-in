@@ -19,6 +19,9 @@ import type {
   RecurringExpenseRevision,
   RecurringExpenseRow,
 } from './recurring-expenses-types';
+import { RecurringExpenseRefused } from './recurring-expenses-api';
+import { refusalKey } from '../shared/errors/unknown-refusal';
+import type { FieldError } from '../shared/form/form-builder';
 
 const TEXTS = 'expenses.recurring';
 
@@ -120,14 +123,20 @@ export function recurringExpenseRevision(
 /** The fields a refusal can name, each with its own words; a field with none is the form's as a whole. */
 const REFUSED_FIELDS = new Set(['modelExpenseId', 'startsOn', 'endsOn']);
 
-/** What a refusal says: the field's own words where it has some, the schedule's for its own, else the general line. */
-export function recurringExpenseFailure(field: string | null): string {
-  return (
+/**
+ * What a refusal says: a value refused in the field's own words where it has some, the schedule's for its own, else the
+ * general line; any other refusal in its code's words, an answer it has no words for by its code.
+ */
+export function recurringExpenseFailure(error: unknown): FieldError {
+  const code = error instanceof RecurringExpenseRefused ? error.code : 'network';
+  if (code !== 'invalid') return refusalKey(`${TEXTS}.errors`, code);
+  const field = error instanceof RecurringExpenseRefused ? error.field : null;
+  const key =
     scheduleFailure(field) ??
     (field !== null && REFUSED_FIELDS.has(field)
       ? `${TEXTS}.errors.${field}`
-      : `${TEXTS}.errors.invalid`)
-  );
+      : `${TEXTS}.errors.invalid`);
+  return { key, params: {} };
 }
 
 export interface RecurringExpenseDialogData {

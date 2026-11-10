@@ -6,6 +6,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ActivityApi, ActivityRefused } from './activity-api';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The page of the company's journal being read. */
 @Injectable({ providedIn: 'root' })
@@ -13,7 +14,7 @@ export class ActivityFacade {
   private readonly api = inject(ActivityApi);
   private readonly rowsSignal = sessionSignal<readonly ActivityRow[]>([]);
   private readonly totalSignal = sessionSignal(0);
-  private readonly state = requestState<ActivityError>((error) =>
+  private readonly state = requestState<ActivityError | UnknownRefusal>((error) =>
     error instanceof ActivityRefused ? error.code : 'network',
   );
   private readonly pages = new LatestRequest();

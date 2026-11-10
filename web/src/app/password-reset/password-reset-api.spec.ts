@@ -68,12 +68,12 @@ describe('PasswordResetApi', () => {
     await expect(malformed).rejects.toEqual(new PasswordResetRefused('invalid_email'));
   });
 
-  it('reads an unknown code as a plain refusal and an unreachable server as the network', async () => {
+  it('keeps an unknown code by its name and reads an unreachable server as the network', async () => {
     const odd = api.forgot('a@b.c', 'fr');
     http
       .expectOne('/api/auth/password/forgot')
       .flush({ error: 'something_new' }, { status: 500, statusText: 'Server Error' });
-    await expect(odd).rejects.toEqual(new PasswordResetRefused('refused'));
+    await expect(odd).rejects.toEqual(new PasswordResetRefused({ unknown: 'something_new' }));
 
     const down = api.forgot('a@b.c', 'fr');
     http.expectOne('/api/auth/password/forgot').error(new ProgressEvent('error'));

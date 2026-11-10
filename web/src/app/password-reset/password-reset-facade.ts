@@ -5,12 +5,13 @@ import { inject, Injectable } from '@angular/core';
 import { PasswordResetApi, PasswordResetRefused } from './password-reset-api';
 import type { PasswordResetError } from './password-reset-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** What the two forgot-password pages share: whether a call is running, why the last one was refused, and whether a link was asked for. */
 @Injectable({ providedIn: 'root' })
 export class PasswordResetFacade {
   private readonly api = inject(PasswordResetApi);
-  private readonly state = requestState<PasswordResetError>((error) =>
+  private readonly state = requestState<PasswordResetError | UnknownRefusal>((error) =>
     error instanceof PasswordResetRefused ? error.code : 'refused',
   );
   private readonly requestedSignal = sessionSignal(false);

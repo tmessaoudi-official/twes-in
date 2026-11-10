@@ -16,7 +16,7 @@
       [retryable]="readFailed()"
       (retry)="readAgain()"
     >
-      <p>{{ 'company.roles.errors.' + code | translate }}</p>
+      <p>{{ code | refusal: 'company.roles.errors' }}</p>
       @if (code === 'in_use' && held(); as holders) {
         <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
         <p data-testid="roles-error-detail">

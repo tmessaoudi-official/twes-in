@@ -28,6 +28,7 @@ import {
 import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { RecurringExpenseRefused, RecurringExpensesApi } from './recurring-expenses-api';
 import { recurringExpenseFailure } from './recurring-expense-form';
+import { UNKNOWN_REFUSAL } from '../shared/errors/unknown-refusal';
 import { RecurringExpensesPage } from './recurring-expenses-page';
 import type { RecurringExpenseRow } from './recurring-expenses-types';
 import { applyFilters } from '../shared/list/list-view';
@@ -413,10 +414,22 @@ describe('RecurringExpensesPage', () => {
   });
 
   it('names a refused field in its own words, and the rest in the general line', () => {
-    expect(recurringExpenseFailure('monthDay')).toBe('schedule.errors.monthDay');
-    expect(recurringExpenseFailure('startsOn')).toBe('expenses.recurring.errors.startsOn');
-    expect(recurringExpenseFailure('unit')).toBe('expenses.recurring.errors.invalid');
-    expect(recurringExpenseFailure(null)).toBe('expenses.recurring.errors.invalid');
+    const refused = (field: string | null) =>
+      recurringExpenseFailure(new RecurringExpenseRefused('invalid', field)).key;
+    expect(refused('monthDay')).toBe('schedule.errors.monthDay');
+    expect(refused('startsOn')).toBe('expenses.recurring.errors.startsOn');
+    expect(refused('unit')).toBe('expenses.recurring.errors.invalid');
+    expect(refused(null)).toBe('expenses.recurring.errors.invalid');
+  });
+
+  it('says a lost connection as the network and an answer it has no words for by its code, never as invalid', () => {
+    expect(recurringExpenseFailure(new RecurringExpenseRefused('network')).key).toBe(
+      'expenses.recurring.errors.network',
+    );
+    expect(recurringExpenseFailure(new RecurringExpenseRefused({ unknown: '500' }))).toEqual({
+      key: UNKNOWN_REFUSAL,
+      params: { code: '500' },
+    });
   });
 
   it('offers a reader no change', async () => {

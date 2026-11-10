@@ -25,6 +25,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { declaredPayment, paymentForm, paymentFormValues } from './subscription-forms';
 import { SubscriptionFacade } from './subscription-facade';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The company's own subscription page: where it stands, what it costs, and the payments it declared. It is reachable
@@ -34,6 +35,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-subscription-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     AmountPipe,
     DayPipe,

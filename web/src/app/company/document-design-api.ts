@@ -5,12 +5,13 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { DocumentDesign, PreviewState } from './document-design-types';
 import { refusedFor } from '../shared/errors/said-already';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { codeText } from '../shared/errors/unknown-refusal';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
 
 /** Why the API gave no picture, as the preview names it. */
 export class PreviewRefused extends Error {
   constructor(readonly state: Exclude<PreviewState, 'loading' | 'ready'>) {
-    super(state);
+    super(codeText(state));
   }
 }
 
@@ -74,7 +75,7 @@ function stateOf(error: unknown): Exclude<PreviewState, 'loading' | 'ready'> {
   // The company is the one the page is open on: its 404 is that it has no invoice yet (`nothing_to_preview`).
   if (error.status === 404) return 'nothing';
   if (error.status === 403) return 'forbidden';
-  return 'failed';
+  return unnamedRefusal(error, 'failed');
 }
 
 function dataAddressOf(picture: Blob): Promise<string> {

@@ -24,15 +24,16 @@ import {
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates and each field a 422 refused, with its reason. */
 export class FiscalRefused extends Error {
   constructor(
-    readonly code: FiscalError,
+    readonly code: FiscalError | UnknownRefusal,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -226,7 +227,7 @@ function toRegime(row: CustomerTaxRegimeCustomerTaxRegimeRead): CustomerTaxRegim
   };
 }
 
-function codeOf(error: unknown): FiscalError {
+function codeOf(error: unknown): FiscalError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -236,6 +237,6 @@ function codeOf(error: unknown): FiscalError {
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : 'code_taken';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }

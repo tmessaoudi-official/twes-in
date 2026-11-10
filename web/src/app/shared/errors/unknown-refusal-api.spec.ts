@@ -2,7 +2,7 @@
 
 import { HttpErrorResponse } from '@angular/common/http';
 import { refusalKey, UNKNOWN_REFUSAL } from './unknown-refusal';
-import { isUnreachable, unknownRefusal } from './unknown-refusal-api';
+import { isUnreachable, unknownRefusal, unnamedRefusal } from './unknown-refusal-api';
 
 const answer = (status: number, body: unknown) =>
   new HttpErrorResponse({ status, statusText: String(status), error: body });
@@ -38,5 +38,21 @@ describe('an answer a reader does not know', () => {
       key: 'support_access.refused.owner_only',
       params: {},
     });
+  });
+});
+
+describe('a status a reader does not name', () => {
+  it("is the reader's own word when what was sent was refused (400, 422), whatever the answer names", () => {
+    expect(unnamedRefusal(answer(400, null))).toBe('invalid');
+    expect(unnamedRefusal(answer(422, { error: 'brand_new' }))).toBe('invalid');
+    expect(unnamedRefusal(answer(422, null), 'refused')).toBe('refused');
+  });
+
+  it('is any other answer named by its code, else its status, never the word', () => {
+    expect(unnamedRefusal(answer(403, { error: 'brand_new' }), 'refused')).toEqual({
+      unknown: 'brand_new',
+    });
+    expect(unnamedRefusal(answer(500, null))).toEqual({ unknown: '500' });
+    expect(unnamedRefusal(answer(409, null))).toEqual({ unknown: '409' });
   });
 });

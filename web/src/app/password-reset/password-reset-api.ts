@@ -6,12 +6,13 @@ import { firstValueFrom } from 'rxjs';
 import { type PasswordResetError, resetErrorOf } from './password-reset-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class PasswordResetRefused extends Error {
-  constructor(readonly code: PasswordResetError) {
-    super(code);
+  constructor(readonly code: PasswordResetError | UnknownRefusal) {
+    super(codeText(code));
   }
 }
 
@@ -38,7 +39,10 @@ export class PasswordResetApi {
         // A refused act answers its code; a value sent refused (the address, the new password), its reason.
         const body = error.error as { error?: string } | null;
         const code = body?.error ?? refusalsIn(body)[0]?.reason ?? undefined;
-        throw refusedFor(error, new PasswordResetRefused(resetErrorOf(code)));
+        throw refusedFor(
+          error,
+          new PasswordResetRefused(resetErrorOf(code) ?? unnamedRefusal(error, 'refused')),
+        );
       }
       throw refusedFor(error, new PasswordResetRefused('network'));
     }
