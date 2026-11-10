@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { provideHttpClient, type HttpParams } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivityApi } from './activity/activity-api';
@@ -182,10 +182,15 @@ function withFacet(
 }
 
 /** The parameters a read sent, as a refusal names them: without an entry's index or an interval's end. */
-function sentNames(params: HttpParams): string[] {
-  return [...new Set(params.keys().map((key) => key.split(/[[.]/)[0]))].filter(
+function sentNames(params: readonly string[]): string[] {
+  return [...new Set(params.map((key) => key.split(/[[.]/)[0]))].filter(
     (name) => !BESIDES.includes(name),
   );
+}
+
+/** An interval's two ends, as a query keeps them after its id: `from` and `to` for days, `min` and `max` for amounts. */
+function endsOf(kind: string): readonly ('from' | 'to' | 'min' | 'max')[] {
+  return kind === 'day' ? ['from', 'to'] : ['min', 'max'];
 }
 
 describe('the filters every paged list sends', () => {
@@ -200,14 +205,19 @@ describe('the filters every paged list sends', () => {
 
   afterEach(() => http.verify());
 
-  /** The names one read of the list sends for the query, its answer an empty page. */
-  async function namesSent(list: Paged, query: ListQuery): Promise<string[]> {
+  /** The parameters one read of the list sends for the query, each whole (`issueDate[to]`), its answer an empty page. */
+  async function paramsSent(list: Paged, query: ListQuery): Promise<string[]> {
     const pending = list.read(query).catch(() => undefined);
     const [request] = http.match(() => true);
-    const sent = sentNames(request.request.params);
+    const sent = request.request.params.keys();
     request.flush({ member: [], totalItems: 0 });
     await pending;
     return sent;
+  }
+
+  /** The names one read of the list sends for the query. */
+  async function namesSent(list: Paged, query: ListQuery): Promise<string[]> {
+    return sentNames(await paramsSent(list, query));
   }
 
   it.each(LISTS)(
@@ -272,6 +282,36 @@ describe('the filters every paged list sends', () => {
             unheld.push(
               `${filter.id} sends ${name}, which names ${clear.join(', ') || 'no filter'}`,
             );
+        }
+      }
+
+      expect(unheld).toEqual([]);
+    },
+  );
+
+  /**
+   * Leaving both ends of an interval out together hides a read that drops one, or sends one under the other's name:
+   * each end is left out on its own here, and the parameter that goes with it must be that end, whole.
+   */
+  it.each(LISTS)(
+    'send each end of a $name interval on its own, under the name the API reads for that end',
+    async (list) => {
+      const every = everyFilterSet(list.descriptor);
+      const sent = await paramsSent(list, every);
+      const unheld: string[] = [];
+      for (const range of list.descriptor.ranges ?? []) {
+        for (const end of endsOf(range.kind)) {
+          const key = rangeKey(range.id, end);
+          const expected = (range.asked ?? [range.id]).map((name) => `${name}[${end}]`);
+          const left = Object.fromEntries(
+            Object.entries(every.filters).filter(([filter]) => filter !== key),
+          );
+          const without = await paramsSent(list, { ...every, filters: left });
+          const dropped = sent.filter((param) => !without.includes(param));
+          if (dropped.length === 0) unheld.push(`${key} sends nothing`);
+          for (const param of dropped)
+            if (!expected.includes(param))
+              unheld.push(`${key} sends ${param}, where the API reads ${expected.join(' or ')}`);
         }
       }
 
