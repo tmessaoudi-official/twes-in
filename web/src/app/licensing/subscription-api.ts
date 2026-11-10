@@ -20,6 +20,7 @@ import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** A refusal, with what the API named: each field with why, and the request as a whole at `WHOLE_REQUEST`. */
 export class SubscriptionRefused extends Error {
@@ -175,7 +176,7 @@ function toWaiting(read: PaymentDeclarationPaymentDeclarationRead): WaitingPayme
 }
 
 function codeOf(error: unknown): SubscriptionError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) return 'network';
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   // An operator's decision is a platform write, which waits for a recent proof (docs/SPEC.md § 7).
   if (stepUpAsked(error)) return 'step_up_required';
   if (error.status === 404) return 'not_managed';

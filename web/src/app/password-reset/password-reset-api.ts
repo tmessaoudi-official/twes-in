@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { type PasswordResetError, resetErrorOf } from './password-reset-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class PasswordResetRefused extends Error {
@@ -33,7 +34,7 @@ export class PasswordResetApi {
     try {
       await firstValueFrom(request);
     } catch (error) {
-      if (error instanceof HttpErrorResponse && error.status > 0) {
+      if (error instanceof HttpErrorResponse && !isUnreachable(error)) {
         // A refused act answers its code; a value sent refused (the address, the new password), its reason.
         const body = error.error as { error?: string } | null;
         const code = body?.error ?? refusalsIn(body)[0]?.reason ?? undefined;

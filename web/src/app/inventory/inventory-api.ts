@@ -90,6 +90,7 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { typedText } from '../shared/form/typed-text';
 import { refusalsIn } from '../shared/form/field-refusals';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -863,7 +864,7 @@ function codeOf(
   conflict: InventoryError,
   invalid: InventoryError = 'invalid',
 ): InventoryError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

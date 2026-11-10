@@ -9,6 +9,7 @@ import type {
 } from '../api/types.gen';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Whether the company requires a second factor of its members, and whether the caller may change that. */
 export interface CompanySecurity {
@@ -69,7 +70,7 @@ function toSecurity(raw: CompanySecurityCompanySecurityRead): CompanySecurity {
 }
 
 function codeOf(error: unknown): CompanySecurityError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   if (stepUpAsked(error)) return 'step_up_required';

@@ -54,7 +54,9 @@ describe('DocumentDesignApi', () => {
     for (const [status, state] of [
       [404, 'nothing'],
       [403, 'forbidden'],
-      [503, 'failed'],
+      [500, 'failed'],
+      // A 503 names nothing the preview can say apart from a gateway's for an API restarting: the network's rule.
+      [503, 'network'],
       [0, 'network'],
     ] as const) {
       const pending = api.preview('c1', {

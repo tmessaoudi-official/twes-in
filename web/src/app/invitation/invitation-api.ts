@@ -10,6 +10,7 @@ import type {
 import type { InvitationError, InvitationOffer } from './invitation-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 export class InvitationRefused extends Error {
   constructor(readonly code: InvitationError) {
@@ -70,7 +71,7 @@ export class InvitationApi {
 }
 
 function codeOf(error: unknown): InvitationError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

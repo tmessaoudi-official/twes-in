@@ -45,6 +45,7 @@ import {
 } from './customers-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomersRefused extends Error {
@@ -312,7 +313,7 @@ export class CustomersApi {
 }
 
 function codeOf(error: unknown, conflict: CustomersError): CustomersError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

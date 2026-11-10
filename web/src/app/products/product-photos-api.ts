@@ -13,6 +13,7 @@ import {
 import { productPhotoUrl } from './product-photo-url';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses a photo or a change to the gallery; carries what the screen says. */
 export class ProductPhotosRefused extends Error {
@@ -103,7 +104,7 @@ const RECEIVED_FILE_REFUSALS: Readonly<Record<string, ProductPhotoRefusal['code'
 
 /** The reason the API refused with when it gave one; otherwise what its status says. */
 export function refusalOf(error: unknown): ProductPhotoRefusal {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return { code: 'network', params: {} };
   }
   for (const { reason, params: given } of refusalsIn(error.error)) {

@@ -19,6 +19,7 @@ import {
 } from './custom-fields-types';
 import { refusedFor } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
+import { isUnreachable } from '../errors/unknown-refusal-api';
 
 /** Why the API refused, as the screens translate it. */
 export type CustomFieldsError =
@@ -98,7 +99,7 @@ export class CustomFieldsApi {
 }
 
 function codeOf(error: unknown): CustomFieldsError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

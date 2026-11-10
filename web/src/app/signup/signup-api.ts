@@ -17,6 +17,7 @@ import type {
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Why a call was refused, and the fields a finish was refused on, for the form to say under each. */
 export class SignupRefused extends Error {
@@ -81,7 +82,7 @@ export class SignupApi {
 }
 
 function codeOf(error: unknown): SignupError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

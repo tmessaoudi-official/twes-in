@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { DocumentDesign, PreviewState } from './document-design-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Why the API gave no picture, as the preview names it. */
 export class PreviewRefused extends Error {
@@ -69,7 +70,7 @@ export class DocumentDesignApi {
 
 function stateOf(error: unknown): Exclude<PreviewState, 'loading' | 'ready'> {
   if (!(error instanceof HttpErrorResponse)) return 'failed';
-  if (error.status === 0) return 'network';
+  if (isUnreachable(error)) return 'network';
   // The company is the one the page is open on: its 404 is that it has no invoice yet (`nothing_to_preview`).
   if (error.status === 404) return 'nothing';
   if (error.status === 403) return 'forbidden';

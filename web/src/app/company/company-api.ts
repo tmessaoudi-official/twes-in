@@ -35,6 +35,7 @@ import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
@@ -417,7 +418,7 @@ function logoCodeOf(error: unknown): CompanyError {
 
 /** A profile the API refuses is a value its preset does not accept; nothing to do with members. */
 function profileCodeOf(error: unknown): CompanyError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   if (stepUpAsked(error)) return 'step_up_required';
@@ -430,7 +431,7 @@ const companyPath = (companyId: string, collection: string): string =>
 
 /** A row refused for what it says (422), for a code another row already has (409), or missing (404). */
 function rowCodeOf(error: unknown): CompanyError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   if (error.status === 404) {
@@ -507,7 +508,7 @@ function toRow(row: MemberMemberRead): MemberRow {
 }
 
 function codeOf(error: unknown): CompanyError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

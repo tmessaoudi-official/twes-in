@@ -24,6 +24,7 @@ import {
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates and each field a 422 refused, with its reason. */
 export class FiscalRefused extends Error {
@@ -226,7 +227,7 @@ function toRegime(row: CustomerTaxRegimeCustomerTaxRegimeRead): CustomerTaxRegim
 }
 
 function codeOf(error: unknown): FiscalError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

@@ -70,6 +70,7 @@ import {
 } from './products-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ProductsRefused extends Error {
@@ -609,7 +610,7 @@ export class ProductsApi {
 }
 
 function codeOf(error: unknown, conflict: ProductsError): ProductsError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {
@@ -753,7 +754,7 @@ export function barcodesRefusal(error: unknown): BarcodesRefusal {
     reason: null,
     params: {},
   };
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) return none;
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return none;
   const body: unknown = error.error;
   const text = JSON.stringify(body ?? '');
   const row = /barcodes(?:\.|\[)(\d+)\]?\.(code|role|quantity|supplierId)/.exec(text);

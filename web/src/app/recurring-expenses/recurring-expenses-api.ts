@@ -24,6 +24,7 @@ import type {
   RecurringExpenseRow,
 } from './recurring-expenses-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the screen translates and, for a 422, the field it was about. */
 export class RecurringExpenseRefused extends Error {
@@ -150,7 +151,7 @@ function toRow(raw: RecurringExpenseRecurringExpenseRead): RecurringExpenseRow {
 
 /** A 422 names its field as the form does (`startsOn`, `monthDay`); a refusal naming none is the form's as a whole. */
 function refused(error: unknown): RecurringExpenseRefused {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new RecurringExpenseRefused('network'));
   }
   if (error.status === 404) {

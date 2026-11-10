@@ -13,6 +13,7 @@ import { isRecordChanged } from '../shared/errors/record-changed';
 import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
 import { refusalsIn } from '../shared/form/field-refusals';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /**
  * Why the API refused, as the screen translates it.
@@ -122,7 +123,7 @@ export class RolesApi {
 }
 
 function refusalOf(error: unknown): RolesRefused {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new RolesRefused('network'));
   }
   const detail = typeof error.error?.detail === 'string' ? error.error.detail : '';

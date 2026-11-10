@@ -10,6 +10,7 @@ import type {
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** The company's closed period: the last day no document is dated on or before, and whether the caller may close more. */
 export interface CompanyClosing {
@@ -73,7 +74,7 @@ function toClosing(raw: CompanyClosingCompanyClosingRead): CompanyClosing {
 }
 
 function codeOf(error: unknown): ClosingError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   return error.status === 404 ? 'not_found' : 'invalid';

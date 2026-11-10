@@ -19,6 +19,7 @@ import type {
 } from './price-lists-types';
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class PriceListsRefused extends Error {
@@ -162,7 +163,7 @@ function toRow(read: PriceListPriceListRead): PriceListRow {
 }
 
 function codeOf(error: unknown): PriceListsError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) return 'network';
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   switch (error.status) {
     case 403:
       return 'refused';

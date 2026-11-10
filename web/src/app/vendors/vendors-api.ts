@@ -30,6 +30,7 @@ import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
@@ -160,7 +161,7 @@ export class VendorsApi {
 }
 
 function codeOf(error: unknown): VendorsError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   // A vendor's IBAN or BIC, set or changed, waits for a recent proof (docs/SPEC.md § 7).

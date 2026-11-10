@@ -13,6 +13,7 @@ import type { ListPage } from '../shared/list/list-types';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ActivityRefused extends Error {
@@ -50,7 +51,7 @@ export class ActivityApi {
 }
 
 function codeOf(error: unknown): ActivityError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) return 'network';
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   return error.status === 404 ? 'not_found' : 'invalid';
 }
 

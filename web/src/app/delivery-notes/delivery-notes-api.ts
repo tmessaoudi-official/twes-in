@@ -55,6 +55,7 @@ import { trackingOf } from '../products/products-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
@@ -439,7 +440,7 @@ export class DeliveryNotesApi {
 }
 
 function codeOf(error: unknown): DeliveryNotesError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {

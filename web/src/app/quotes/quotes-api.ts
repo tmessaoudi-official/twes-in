@@ -53,6 +53,7 @@ import {
 import { refusedFor } from '../shared/errors/said-already';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class QuotesRefused extends Error {
@@ -435,7 +436,7 @@ export class QuotesApi {
 }
 
 function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) return 'network';
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   switch (error.status) {
     case 404:
       return 'not_found';

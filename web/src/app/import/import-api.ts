@@ -23,6 +23,7 @@ import {
 } from './import-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** Thrown when the API refuses the request itself; carries the code the screen translates. */
 export class ImportRefused extends Error {
@@ -169,7 +170,7 @@ export class ImportApi {
 }
 
 function refusalOf(error: unknown): Error {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new ImportRefused('network'));
   }
   // A file setting or changing what asks who is at the screen (a vendor's bank details) waits for a recent proof, and

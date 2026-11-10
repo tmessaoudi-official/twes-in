@@ -47,6 +47,7 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { typedText } from '../shared/form/typed-text';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 export class PlatformRefused extends Error {
   /** The fields a 422 named, each with its reason and params: a save refused says each on its own field. */
@@ -515,7 +516,7 @@ function toAccount(read: PlatformAccountPlatformAccountRead): PlatformAccountRow
 }
 
 function codeOf(error: unknown, conflict: PlatformError): PlatformError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   // Every platform write waits for the operator to prove who is at the screen again (docs/SPEC.md § 7).

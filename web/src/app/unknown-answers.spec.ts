@@ -3,12 +3,43 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { AccountDeletionApi } from './account/account-deletion-api';
+import { ActivityApi } from './activity/activity-api';
+import { AuthApi } from './auth/auth-api';
+import { ClosingApi } from './company/closing-api';
+import { CompanyApi } from './company/company-api';
+import { CompanySecurityApi } from './company/company-security-api';
+import { DocumentDesignApi } from './company/document-design-api';
+import { DEFAULT_DESIGN } from './company/document-design-forms';
+import { ModulesApi } from './company/modules-api';
+import { RolesApi } from './company/roles-api';
+import { CustomersApi } from './customers/customers-api';
 import { DataErasureApi } from './data-erasure/data-erasure-api';
+import { DeliveryNotesApi } from './delivery-notes/delivery-notes-api';
+import { ExpensesApi } from './expenses/expenses-api';
+import { FiscalApi } from './fiscal/fiscal-api';
+import { ImportApi } from './import/import-api';
+import { InventoryApi } from './inventory/inventory-api';
+import { InvitationApi } from './invitation/invitation-api';
+import { InvoicesApi } from './invoices/invoices-api';
+import { SubscriptionApi } from './licensing/subscription-api';
 import { StopMailApi } from './notifications/stop-mail-api';
+import { PasswordResetApi } from './password-reset/password-reset-api';
+import { PlatformApi } from './platform/platform-api';
+import { PriceListsApi } from './price-lists/price-lists-api';
+import { ProductPhotosApi } from './products/product-photos-api';
+import { ProductsApi } from './products/products-api';
+import { PurchasesApi } from './purchases/purchases-api';
+import { QuotesApi } from './quotes/quotes-api';
+import { RecurringExpensesApi } from './recurring-expenses/recurring-expenses-api';
+import { RecurringApi } from './recurring/recurring-api';
+import { CustomFieldsApi } from './shared/custom-fields/custom-fields-api';
 import { RecordRemovalsApi } from './shared/records/record-removals-api';
 import { SettingsApi } from './shared/settings/settings-api';
 import { TextsParts } from './shared/i18n/texts-part';
+import { SignupApi } from './signup/signup-api';
 import { SupportAccessApi } from './support-access/support-access-api';
+import { VendorsApi } from './vendors/vendors-api';
 
 /**
  * An answer the API gave that a reader has no words for (a code added later, a status nobody expected) is never said
@@ -87,4 +118,141 @@ describe('an answer a reader does not know', () => {
       await expect(asked).rejects.toMatchObject({ code: 'network' });
     },
   );
+});
+
+/**
+ * Every way a feature reader decides the network, one call each: the canon's rule (`isUnreachable`), so no answer and
+ * a gateway answering for an API that is restarting are both the lost connection, and an answer the API gave is not.
+ */
+interface NetworkReader {
+  readonly name: string;
+  readonly call: () => Promise<unknown>;
+  /** How the reader says the network; most carry it as their `code`. */
+  readonly network?: object;
+}
+
+const NETWORK = { code: 'network' };
+
+const NETWORK_READERS: readonly NetworkReader[] = [
+  { name: 'the account deletion', call: () => TestBed.inject(AccountDeletionApi).delete() },
+  {
+    name: 'the activity journal',
+    call: () =>
+      TestBed.inject(ActivityApi).entries('c1', {
+        page: 1,
+        itemsPerPage: 10,
+        q: '',
+        actorIds: [],
+        entityTypes: [],
+        entityId: null,
+        intervals: {},
+        direction: 'desc',
+      }),
+  },
+  { name: 'the sign-in', call: () => TestBed.inject(AuthApi).me() },
+  {
+    name: 'the password reset',
+    call: () => TestBed.inject(PasswordResetApi).forgot('a@b.tn', 'fr'),
+  },
+  { name: 'the closing', call: () => TestBed.inject(ClosingApi).read('c1') },
+  { name: "the company's members", call: () => TestBed.inject(CompanyApi).members('c1') },
+  { name: "the company's profile", call: () => TestBed.inject(CompanyApi).profile('c1') },
+  {
+    name: "the company's establishments",
+    call: () => TestBed.inject(CompanyApi).establishments('c1'),
+  },
+  { name: "the company's security", call: () => TestBed.inject(CompanySecurityApi).read('c1') },
+  {
+    name: 'the document design preview',
+    call: () => TestBed.inject(DocumentDesignApi).preview('c1', DEFAULT_DESIGN),
+    network: { state: 'network' },
+  },
+  { name: 'the modules', call: () => TestBed.inject(ModulesApi).list('c1') },
+  { name: 'the roles', call: () => TestBed.inject(RolesApi).list('c1') },
+  { name: 'the customers', call: () => TestBed.inject(CustomersApi).customer('c1', 'x1') },
+  { name: 'the delivery notes', call: () => TestBed.inject(DeliveryNotesApi).options('c1') },
+  { name: 'the expenses', call: () => TestBed.inject(ExpensesApi).options('c1') },
+  { name: 'the fiscal settings', call: () => TestBed.inject(FiscalApi).units('c1') },
+  { name: 'the imports', call: () => TestBed.inject(ImportApi).recent('c1') },
+  { name: 'the stock', call: () => TestBed.inject(InventoryApi).options('c1') },
+  { name: 'an invitation', call: () => TestBed.inject(InvitationApi).offer('t1') },
+  { name: 'the invoices', call: () => TestBed.inject(InvoicesApi).options('c1') },
+  { name: 'the subscriptions', call: () => TestBed.inject(SubscriptionApi).waiting() },
+  {
+    name: 'the platform',
+    call: () => TestBed.inject(PlatformApi).withdrawOwnerInvitation('c1', 'i1'),
+  },
+  { name: 'the price lists', call: () => TestBed.inject(PriceListsApi).get('c1', 'p1') },
+  {
+    name: "a product's photos",
+    call: () => TestBed.inject(ProductPhotosApi).list('c1', 'p1'),
+    network: { refusal: NETWORK },
+  },
+  { name: 'the products', call: () => TestBed.inject(ProductsApi).options('c1') },
+  {
+    name: "a product's barcodes",
+    call: () => TestBed.inject(ProductsApi).replaceBarcodes('c1', 'p1', [], 1),
+    network: { refusal: NETWORK },
+  },
+  { name: 'the purchases', call: () => TestBed.inject(PurchasesApi).order('c1', 'o1') },
+  { name: 'the quotes', call: () => TestBed.inject(QuotesApi).quote('c1', 'q1') },
+  {
+    name: 'the recurring expenses',
+    call: () => TestBed.inject(RecurringExpensesApi).list('c1'),
+  },
+  { name: 'the recurring invoices', call: () => TestBed.inject(RecurringApi).list('c1') },
+  {
+    name: 'the custom fields',
+    call: () => TestBed.inject(CustomFieldsApi).list('c1', 'customer'),
+  },
+  { name: 'the signup', call: () => TestBed.inject(SignupApi).availability() },
+  { name: 'the vendors', call: () => TestBed.inject(VendorsApi).vendor('c1', 'v1') },
+];
+
+const GATEWAYS = [502, 503, 504].flatMap((status) =>
+  NETWORK_READERS.map((reader) => ({ ...reader, status })),
+);
+
+describe('a feature reader deciding the network', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: () => Promise.resolve() } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it.each(NETWORK_READERS)('from $name with no answer at all is the network', async (reader) => {
+    const asked = reader.call();
+    http.expectOne(() => true).error(new ProgressEvent('error'));
+    await expect(asked).rejects.toMatchObject(reader.network ?? NETWORK);
+  });
+
+  it.each(GATEWAYS)(
+    'from $name through a gateway answering $status is the network',
+    async (reader) => {
+      const asked = reader.call();
+      http.expectOne(() => true).flush(null, { status: reader.status, statusText: 'Gateway' });
+      await expect(asked).rejects.toMatchObject(reader.network ?? NETWORK);
+    },
+  );
+
+  it.each(NETWORK_READERS)('from $name answering 500 is not the network', async (reader) => {
+    const asked = reader.call().catch((error: unknown) => error);
+    http.expectOne(() => true).flush(null, { status: 500, statusText: 'Server Error' });
+    expect(await asked).not.toMatchObject(reader.network ?? NETWORK);
+  });
+
+  it('from the sign-in keeps a 503 that names its refusal, the demo being busy', async () => {
+    const asked = TestBed.inject(AuthApi).me();
+    http.expectOne(() => true).flush({ error: 'demo_busy' }, { status: 503, statusText: 'Busy' });
+    await expect(asked).rejects.toMatchObject({ code: 'demo_busy' });
+  });
 });

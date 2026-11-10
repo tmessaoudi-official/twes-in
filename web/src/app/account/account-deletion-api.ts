@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /** A company the account is the only owner of, which keeps the account from going. */
 export interface OwnedAlone {
@@ -47,7 +48,7 @@ export class AccountDeletionApi {
 }
 
 function refusalOf(error: unknown): AccountDeletionRefused {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return refusedFor(error, new AccountDeletionRefused('network'));
   }
   const body: unknown = error.error;

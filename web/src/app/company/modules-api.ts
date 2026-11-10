@@ -10,6 +10,7 @@ import type {
 } from '../api/types.gen';
 import type { ModuleRow } from './modules-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { isUnreachable } from '../shared/errors/unknown-refusal-api';
 
 /**
  * Why the API refused, as the screen translates it: a module switched on before what it needs, or switched off while
@@ -74,7 +75,7 @@ export class ModulesApi {
 type Attempt = 'on' | 'off' | 'interest';
 
 function codeOf(error: unknown, attempt: Attempt): ModulesError {
-  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+  if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
   switch (error.status) {
