@@ -14,6 +14,7 @@ import type {
 } from '../shared/custom-fields/custom-fields-types';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The custom fields the company being worked in adds to one kind of record, retired ones included. */
 @Injectable({ providedIn: 'root' })
@@ -76,6 +77,6 @@ export class CustomFieldsFacade {
   }
 }
 
-function codeOf(error: unknown): CustomFieldsError {
+function codeOf(error: unknown): CustomFieldsError | UnknownRefusal {
   return error instanceof CustomFieldsRefused ? error.code : 'network';
 }

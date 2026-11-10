@@ -90,7 +90,8 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { typedText } from '../shared/form/typed-text';
 import { refusalsIn } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -104,11 +105,11 @@ export class InventoryRefused extends Error {
    * save was refused on, for the form to say it under that field.
    */
   constructor(
-    readonly code: InventoryError,
+    readonly code: InventoryError | UnknownRefusal,
     readonly entry: string | null = null,
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -863,7 +864,7 @@ function codeOf(
   error: unknown,
   conflict: InventoryError,
   invalid: InventoryError = 'invalid',
-): InventoryError {
+): InventoryError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -873,12 +874,12 @@ function codeOf(
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : conflict;
     default:
-      return invalid;
+      return unnamedRefusal(error, invalid);
   }
 }
 
 /** A file sent up: refused for what it is (422), or found too large before the API saw it (413). */
-function fileCodeOf(error: unknown): InventoryError {
+function fileCodeOf(error: unknown): InventoryError | UnknownRefusal {
   if (error instanceof HttpErrorResponse && error.status === 422) return 'file_refused';
   if (error instanceof HttpErrorResponse && error.status === 413) return 'file_too_large';
   return codeOf(error, 'invalid');

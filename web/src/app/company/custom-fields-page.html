@@ -48,7 +48,7 @@
 
   @if (error(); as code) {
     <p role="alert" data-testid="custom-fields-error" class="text-error">
-      {{ 'company.custom_fields.errors.' + code | translate }}
+      {{ code | refusal: 'company.custom_fields.errors' }}
     </p>
   }
 

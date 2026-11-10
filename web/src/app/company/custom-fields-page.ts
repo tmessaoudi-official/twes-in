@@ -38,11 +38,13 @@ import {
 } from './custom-field-forms';
 import { CustomFieldsFacade } from './custom-fields-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The fields the company adds to its customers: declared here, retired here, never deleted. */
 @Component({
   selector: 'app-custom-fields-page',
   imports: [
+    RefusalPipe,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,

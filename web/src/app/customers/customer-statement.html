@@ -61,7 +61,7 @@
       [retryable]="code !== 'invalid'"
       (retry)="readAgain()"
     >
-      {{ 'customers.statement.errors.' + code | translate }}
+      {{ code | refusal: 'customers.statement.errors' }}
     </app-read-failed>
   }
 

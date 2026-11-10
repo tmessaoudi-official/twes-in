@@ -8,6 +8,7 @@ import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductRow } from './products-types';
 import type { SaidEffect } from '../shared/effects/effects';
 import { MARGIN_MOVED, PRICE_FOLLOWED } from './price-effects';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 /**
  * What a receipt did to the margins and prices of the products it moved, said to whoever made it (docs/SPEC.md § 7,
@@ -117,8 +118,11 @@ export class PriceReviewOffer {
       try {
         await this.api.settlePriceReview(companyId, product.id, 'restore', product.version);
       } catch (error) {
-        const code = error instanceof ProductsRefused ? error.code : 'network';
-        this.feedback.failure(`products.errors.${code}`);
+        const said = refusalKey(
+          'products.errors',
+          error instanceof ProductsRefused ? error.code : 'network',
+        );
+        this.feedback.failure(said.key, said.params);
         return;
       }
     }
@@ -165,8 +169,11 @@ export class PriceReviewOffer {
         'corrigeable',
       );
     } catch (error) {
-      const code = error instanceof ProductsRefused ? error.code : 'network';
-      this.feedback.failure(`products.errors.${code}`);
+      const said = refusalKey(
+        'products.errors',
+        error instanceof ProductsRefused ? error.code : 'network',
+      );
+      this.feedback.failure(said.key, said.params);
     }
   }
 }

@@ -13,7 +13,7 @@
       retryTestId="product-scan-retry"
       (retry)="readAgain()"
     >
-      {{ 'products.errors.' + error | translate }}
+      {{ error | refusal: 'products.errors' }}
     </app-read-failed>
   } @else if (scan() === undefined) {
     <p role="status" data-testid="product-scan-loading">

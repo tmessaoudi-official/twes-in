@@ -517,7 +517,8 @@ describe('ProductsApi', () => {
     http
       .expectOne((req) => req.url === '/api/companies/c1/product-scan')
       .flush(null, { status: 500, statusText: 'Error' });
-    await expect(down).rejects.toEqual(new ProductsRefused('invalid'));
+    // A failure it names no case for keeps its status, never said as a value to correct.
+    await expect(down).rejects.toEqual(new ProductsRefused({ unknown: '500' }));
   });
 
   it('names the row a refusal is about, and whose code it is when another product holds it', async () => {

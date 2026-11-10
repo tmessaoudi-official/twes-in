@@ -10,7 +10,7 @@
       retryTestId="vendor-purchases-retry"
       (retry)="readAgain()"
     >
-      {{ 'vendors.errors.' + code | translate }}
+      {{ code | refusal: 'vendors.errors' }}
     </app-read-failed>
   }
 

@@ -24,11 +24,13 @@ import { RecordDeletes } from '../shared/records/record-deletes';
 import { VENDORS_LIST, vendorSearch } from './vendor-forms';
 import { VendorsFacade } from './vendors-facade';
 import type { VendorRow, VendorSearch } from './vendors-types';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The vendors of the company being worked in. */
 @Component({
   selector: 'app-vendors-page',
   imports: [
+    RefusalPipe,
     MatButtonModule,
     MatIconModule,
     RouterLink,

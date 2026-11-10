@@ -29,6 +29,8 @@ import type { ProductOnViewRef } from './product-on-view';
 import type { IconName } from '../shared/icons/icons';
 import { ReadFailed } from '../shared/feedback/read-failed';
 import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 export interface ProductScanCardData {
   /** What the scanner read, as it came. */
@@ -64,7 +66,15 @@ interface ScanAction {
  */
 @Component({
   selector: 'app-product-scan-card',
-  imports: [ReadFailed, MatButtonModule, MatIconModule, TranslatePipe, PickField, ProductThumbnail],
+  imports: [
+    RefusalPipe,
+    ReadFailed,
+    MatButtonModule,
+    MatIconModule,
+    TranslatePipe,
+    PickField,
+    ProductThumbnail,
+  ],
   templateUrl: './product-scan-card.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
@@ -88,7 +98,7 @@ export class ProductScanCard implements OnInit {
   protected readonly labelParams = { reference: this.onView?.reference ?? '' };
   /** Undefined while the API is asked, null when no product holds the code. */
   protected readonly scan = signal<ProductScan | null | undefined>(undefined);
-  protected readonly failed = signal<ProductsError | null>(null);
+  protected readonly failed = signal<ProductsError | UnknownRefusal | null>(null);
   /** Whether the picker of the product to add the code to is open. */
   protected readonly attaching = signal(false);
 

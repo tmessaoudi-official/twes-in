@@ -19,7 +19,8 @@ import {
 } from './custom-fields-types';
 import { refusedFor } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
-import { isUnreachable } from '../errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../errors/unknown-refusal';
 
 /** Why the API refused, as the screens translate it. */
 export type CustomFieldsError =
@@ -28,11 +29,11 @@ export type CustomFieldsError =
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomFieldsRefused extends Error {
   constructor(
-    readonly code: CustomFieldsError,
+    readonly code: CustomFieldsError | UnknownRefusal,
     /** Each field a save was refused on, when the API named them. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -98,7 +99,7 @@ export class CustomFieldsApi {
   }
 }
 
-function codeOf(error: unknown): CustomFieldsError {
+function codeOf(error: unknown): CustomFieldsError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -108,7 +109,7 @@ function codeOf(error: unknown): CustomFieldsError {
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : 'key_taken';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }
 

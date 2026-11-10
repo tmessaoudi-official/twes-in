@@ -2,7 +2,7 @@
 
 import { inject, Injectable } from '@angular/core';
 import { CustomersApi, CustomersRefused } from '../customers/customers-api';
-import { unreadPart, type UnreadPart } from '../shared/errors/unknown-refusal';
+import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
 import { requestState } from '../shared/feedback/request-state';
@@ -29,7 +29,7 @@ export class PriceListsFacade {
   private readonly groupsSignal = sessionSignal<readonly CustomerGroupRow[]>([]);
   private readonly figuresSignal = sessionSignal<ReadonlyMap<string, ProductFigures>>(new Map());
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
-  private readonly state = requestState<PriceListsError | UnreadPart>((error) => {
+  private readonly state = requestState<PriceListsError | UnreadPart | UnknownRefusal>((error) => {
     if (error instanceof CustomersRefused) return unreadPart('customer_groups', error.code);
     return error instanceof PriceListsRefused ? error.code : 'network';
   });

@@ -24,6 +24,8 @@ import { ProductsApi, ProductsRefused } from './products-api';
 import type { LabelCode, LabelledProduct, ProductsError } from './products-types';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** A product selected that gets no label, and why: no longer found, or holding no code of its own to print. */
 export interface LeftOutProduct {
@@ -42,6 +44,7 @@ export interface LeftOutProduct {
 @Component({
   selector: 'app-product-labels-sheet-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     MatButtonModule,
     MatIconModule,
@@ -64,7 +67,7 @@ export class ProductLabelsSheetPage {
 
   /** What the API answered; null while it is being read. */
   protected readonly products = signal<readonly LabelledProduct[] | null>(null);
-  protected readonly error = signal<ProductsError | null>(null);
+  protected readonly error = signal<ProductsError | UnknownRefusal | null>(null);
   protected readonly copies = signal(1);
   private readonly copiesField = viewChild(LabelCopies);
 

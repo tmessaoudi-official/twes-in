@@ -10,7 +10,7 @@
       [retryable]="readFailed()"
       (retry)="readAgain()"
     >
-      {{ 'products.photos.errors.' + refused.code | translate: refusalParams() }}
+      {{ refused.code | refusal: 'products.photos.errors' : refusalParams() }}
     </app-read-failed>
   }
 

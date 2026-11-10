@@ -70,16 +70,17 @@ import {
 } from './products-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ProductsRefused extends Error {
   constructor(
-    readonly code: ProductsError,
+    readonly code: ProductsError | UnknownRefusal,
     /** Each field a product's save was refused on, when the API named them. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -609,7 +610,7 @@ export class ProductsApi {
   }
 }
 
-function codeOf(error: unknown, conflict: ProductsError): ProductsError {
+function codeOf(error: unknown, conflict: ProductsError): ProductsError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -619,7 +620,7 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : conflict;
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }
 
@@ -777,6 +778,9 @@ export function barcodesRefusal(error: unknown): BarcodesRefusal {
       };
     }
     default: {
+      const code = unnamedRefusal(error);
+      // An answer naming no value refused names no row either.
+      if (code !== 'invalid') return { ...none, code };
       // The row's own refusal, `barcodes.1.quantity` from a rule or `barcodes[1].quantity` from a constraint.
       const named = refusalsIn(body).find((refusal) =>
         /^barcodes(?:\.|\[)\d+\]?\./.test(refusal.field),

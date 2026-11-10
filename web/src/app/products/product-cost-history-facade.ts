@@ -4,6 +4,7 @@ import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductCostChangeRow, ProductsError } from './products-types';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * What a product has cost the company over time. Its own facade, as the substitutes have theirs: a section that fails
@@ -13,7 +14,7 @@ import type { ProductCostChangeRow, ProductsError } from './products-types';
 export class ProductCostHistory {
   private readonly api = inject(ProductsApi);
   private readonly rowsSignal = signal<readonly ProductCostChangeRow[]>([]);
-  private readonly state = requestState<ProductsError>((error) =>
+  private readonly state = requestState<ProductsError | UnknownRefusal>((error) =>
     error instanceof ProductsRefused ? error.code : 'network',
   );
 

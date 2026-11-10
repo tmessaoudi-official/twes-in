@@ -35,12 +35,14 @@ import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { VendorPurchasesSection } from './vendor-purchases';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 
 @Component({
   selector: 'app-vendor-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     StickyHeaderSize,
     MatButtonModule,

@@ -30,16 +30,17 @@ import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
   constructor(
-    readonly code: VendorsError,
+    readonly code: VendorsError | UnknownRefusal,
     /** Each field a save was refused on, when the API named them. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -160,7 +161,7 @@ export class VendorsApi {
   }
 }
 
-function codeOf(error: unknown): VendorsError {
+function codeOf(error: unknown): VendorsError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -172,7 +173,7 @@ function codeOf(error: unknown): VendorsError {
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : 'number_taken';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }
 

@@ -17,6 +17,7 @@ import { PURCHASE_HISTORY_TEXTS } from '../shared/i18n/purchase-history-texts';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { VendorPurchases } from './vendor-purchases-facade';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * A vendor's « Achats »: every line the company bought from it, as its past purchases were imported, the newest day
@@ -26,6 +27,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-vendor-purchases',
   imports: [
+    RefusalPipe,
     ReadFailed,
     TranslatePipe,
     RouterLink,

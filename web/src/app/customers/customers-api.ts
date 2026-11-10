@@ -45,16 +45,17 @@ import {
 } from './customers-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { typedText } from '../shared/form/typed-text';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomersRefused extends Error {
   constructor(
-    readonly code: CustomersError,
+    readonly code: CustomersError | UnknownRefusal,
     /** Each field a save was refused on, when the API named them. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -312,7 +313,7 @@ export class CustomersApi {
   }
 }
 
-function codeOf(error: unknown, conflict: CustomersError): CustomersError {
+function codeOf(error: unknown, conflict: CustomersError): CustomersError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) {
     return 'network';
   }
@@ -322,7 +323,7 @@ function codeOf(error: unknown, conflict: CustomersError): CustomersError {
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : conflict;
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }
 

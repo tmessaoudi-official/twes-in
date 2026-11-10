@@ -4,6 +4,7 @@ import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductsError, ProductSubstituteRow } from './products-types';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /**
  * The products that can stand in for one, each with what is on hand of it. Its own facade, as the homes have theirs: a
@@ -13,7 +14,7 @@ import type { ProductsError, ProductSubstituteRow } from './products-types';
 export class ProductSubstitutes {
   private readonly api = inject(ProductsApi);
   private readonly rowsSignal = signal<readonly ProductSubstituteRow[]>([]);
-  private readonly state = requestState<ProductsError>((error) =>
+  private readonly state = requestState<ProductsError | UnknownRefusal>((error) =>
     error instanceof ProductsRefused ? error.code : 'network',
   );
 

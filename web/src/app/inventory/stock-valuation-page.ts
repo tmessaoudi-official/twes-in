@@ -17,6 +17,7 @@ import { PageTabs } from '../shared/ui/page-tabs';
 import { InventoryFacade } from './inventory-facade';
 import { INVENTORY_TABS } from './inventory-nav';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * What the stock is worth: each product at the weighted average of what came in, and the total. Stock whose cost is not
@@ -25,7 +26,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
  */
 @Component({
   selector: 'app-stock-valuation-page',
-  imports: [ReadFailed, PageTabs, TranslatePipe, AmountPipe],
+  imports: [RefusalPipe, ReadFailed, PageTabs, TranslatePipe, AmountPipe],
   templateUrl: './stock-valuation-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

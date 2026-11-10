@@ -40,7 +40,7 @@
     }
     @if (error(); as code) {
       <p role="alert" data-testid="stock-movements-error" class="text-error">
-        {{ 'inventory.errors.' + code | translate }}
+        {{ code | refusal: 'inventory.errors' }}
       </p>
     }
 

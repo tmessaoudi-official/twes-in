@@ -4,6 +4,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { requestState } from '../shared/feedback/request-state';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import type { VendorPurchaseRow, VendorsError } from './vendors-types';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** How many lines « Achats » reads at a time: one vendor sold this shop 1,024 lines. */
 export const VENDOR_PURCHASES_PAGE = 50;
@@ -17,7 +18,7 @@ export class VendorPurchases {
   private readonly api = inject(VendorsApi);
   private readonly rowsSignal = signal<readonly VendorPurchaseRow[]>([]);
   private readonly totalSignal = signal<number | null>(null);
-  private readonly state = requestState<VendorsError>((error) =>
+  private readonly state = requestState<VendorsError | UnknownRefusal>((error) =>
     error instanceof VendorsRefused ? error.code : 'network',
   );
   private nextPage = 1;

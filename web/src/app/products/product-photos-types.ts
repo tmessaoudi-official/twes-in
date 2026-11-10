@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
+
 /** One photo of a product's gallery, in the gallery's order. */
 export interface ProductPhotoRow {
   id: string;
@@ -44,7 +46,7 @@ export const PHOTO_REFUSALS: readonly ProductPhotoError[] = [
 
 /** A refusal and what it says in numbers: the size, megapixels or count it went over. */
 export interface ProductPhotoRefusal {
-  code: ProductPhotoError;
+  code: ProductPhotoError | UnknownRefusal;
   params: Readonly<Record<string, number>>;
 }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { CustomFieldValue } from '../shared/custom-fields/custom-fields-types';
-import type { UnreadPart } from '../shared/errors/unknown-refusal';
+import type { UnknownRefusal, UnreadPart } from '../shared/errors/unknown-refusal';
 
 /** Why the API refused, as the products screens translate it. */
 export type ProductsError =
@@ -266,7 +266,7 @@ export interface ProductBarcode {
 
 /** Why a list of codes was refused, and which row of it: the one to put the message under. */
 export interface BarcodesRefusal {
-  code: ProductsError;
+  code: ProductsError | UnknownRefusal;
   /** The row at fault, counted from 0 in the list that was sent; null when the API named none. */
   index: number | null;
   /** The field of that row: `code`, `role`, `quantity` or `supplierId`. */
@@ -280,7 +280,7 @@ export interface BarcodesRefusal {
 
 /** What the codes' tab says: a refusal of its codes, or the vendors a supplier's code is chosen from not read. */
 export type BarcodesShown = Omit<BarcodesRefusal, 'code'> & {
-  readonly code: ProductsError | UnreadPart;
+  readonly code: ProductsError | UnreadPart | UnknownRefusal;
 };
 
 /**

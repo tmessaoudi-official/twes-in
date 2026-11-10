@@ -6,7 +6,7 @@ import { CustomFieldsApi, CustomFieldsRefused } from '../shared/custom-fields/cu
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
-import { unreadPart, type UnreadPart } from '../shared/errors/unknown-refusal';
+import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { SettingRow } from '../shared/settings/settings-types';
 import type { ExportFormat } from '../shared/list/export-address';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -297,7 +297,7 @@ function trackingOfRows(rows: readonly SettingRow[]): ProductTracking {
 }
 
 /** A part another feature reads for the products (their custom fields, a new one's defaults) refused names that part. */
-function codeOf(error: unknown): ProductsError | UnreadPart {
+function codeOf(error: unknown): ProductsError | UnreadPart | UnknownRefusal {
   if (error instanceof CustomFieldsRefused) return unreadPart('custom_fields', error.code);
   if (error instanceof SettingsRefused) return unreadPart('article_defaults', error.code);
   return error instanceof ProductsRefused ? error.code : 'network';

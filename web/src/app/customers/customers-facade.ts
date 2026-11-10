@@ -3,7 +3,7 @@
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable } from '@angular/core';
 import { CustomFieldsApi, CustomFieldsRefused } from '../shared/custom-fields/custom-fields-api';
-import { unreadPart, type UnreadPart } from '../shared/errors/unknown-refusal';
+import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -230,7 +230,7 @@ export class CustomersFacade {
   }
 }
 
-function codeOf(error: unknown): CustomersError | UnreadPart {
+function codeOf(error: unknown): CustomersError | UnreadPart | UnknownRefusal {
   if (error instanceof CustomFieldsRefused) return unreadPart('custom_fields', error.code);
   return error instanceof CustomersRefused ? error.code : 'network';
 }

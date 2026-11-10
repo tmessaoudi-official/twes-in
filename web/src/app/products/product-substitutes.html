@@ -7,7 +7,7 @@
       retryTestId="product-substitutes-retry"
       (retry)="readAgain()"
     >
-      {{ 'products.errors.' + code | translate }}
+      {{ code | refusal: 'products.errors' }}
     </app-read-failed>
   }
 

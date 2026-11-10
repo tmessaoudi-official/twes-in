@@ -4,13 +4,14 @@ import { inject, Injectable } from '@angular/core';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type { CustomerAccount, CustomersError } from './customers-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The customer's running account as it stands today, or why it is not there. */
 @Injectable({ providedIn: 'root' })
 export class CustomerAccountFacade {
   private readonly api = inject(CustomersApi);
   private readonly accountSignal = sessionSignal<CustomerAccount | null>(null);
-  private readonly errorSignal = sessionSignal<CustomersError | null>(null);
+  private readonly errorSignal = sessionSignal<CustomersError | UnknownRefusal | null>(null);
   private request = 0;
 
   readonly account = this.accountSignal.asReadonly();

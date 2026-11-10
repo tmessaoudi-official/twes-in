@@ -201,11 +201,16 @@ const NETWORK_READERS: readonly NetworkReader[] = [
     call: () => TestBed.inject(PlatformApi).withdrawOwnerInvitation('c1', 'i1'),
     word: 'refused',
   },
-  { name: 'the price lists', call: () => TestBed.inject(PriceListsApi).get('c1', 'p1') },
+  {
+    name: 'the price lists',
+    call: () => TestBed.inject(PriceListsApi).get('c1', 'p1'),
+    names403: true,
+  },
   {
     name: "a product's photos",
     call: () => TestBed.inject(ProductPhotosApi).list('c1', 'p1'),
     at: inRefusal,
+    word: 'not_a_picture',
   },
   { name: 'the products', call: () => TestBed.inject(ProductsApi).options('c1') },
   {
@@ -289,19 +294,11 @@ const NOT_YET: ReadonlySet<string> = new Set([
   "the company's members",
   "the company's profile",
   "the company's establishments",
-  'the customers',
   'the delivery notes',
   'the expenses',
-  'the stock',
   'the invoices',
-  'the price lists',
-  "a product's photos",
-  'the products',
-  "a product's barcodes",
   'the purchases',
   'the quotes',
-  'the custom fields',
-  'the vendors',
 ]);
 
 const UNNAMED_READERS = NETWORK_READERS.filter((reader) => !NOT_YET.has(reader.name));

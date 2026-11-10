@@ -19,16 +19,17 @@ import type {
 } from './price-lists-types';
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class PriceListsRefused extends Error {
   constructor(
-    readonly code: PriceListsError,
+    readonly code: PriceListsError | UnknownRefusal,
     /** Each field a save was refused on, when the API named them: a price by its row, `items.2.minQuantity`. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
-    super(code);
+    super(codeText(code));
   }
 }
 
@@ -162,7 +163,7 @@ function toRow(read: PriceListPriceListRead): PriceListRow {
   };
 }
 
-function codeOf(error: unknown): PriceListsError {
+function codeOf(error: unknown): PriceListsError | UnknownRefusal {
   if (!(error instanceof HttpErrorResponse) || isUnreachable(error)) return 'network';
   switch (error.status) {
     case 403:
@@ -172,6 +173,6 @@ function codeOf(error: unknown): PriceListsError {
     case 409:
       return isRecordChanged(error.error) ? 'record_changed' : 'name_taken';
     default:
-      return 'invalid';
+      return unnamedRefusal(error);
   }
 }

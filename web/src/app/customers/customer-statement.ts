@@ -24,6 +24,7 @@ import { DayInput } from '../shared/form/day-input';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { CustomerStatementFacade } from './customer-statement-facade';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -39,6 +40,7 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
 @Component({
   selector: 'app-customer-statement',
   imports: [
+    RefusalPipe,
     ReadFailed,
     FormsModule,
     DayInput,

@@ -15,6 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { CustomerAccountFacade } from './customer-account-facade';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** A decimal string with nothing in it: "0", "0.000", "-0.00". */
 const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
@@ -26,7 +27,7 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
  */
 @Component({
   selector: 'app-customer-account',
-  imports: [ReadFailed, TranslatePipe, AmountPipe],
+  imports: [RefusalPipe, ReadFailed, TranslatePipe, AmountPipe],
   templateUrl: './customer-account.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

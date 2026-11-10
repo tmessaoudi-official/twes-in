@@ -28,6 +28,7 @@ import { ProductReorderPoints, type ReorderPointWrite } from './product-reorder-
 import type { ProductReorderPointRow } from './products-types';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** A quantity from 0 with at most three decimals, as the API takes it; whether the unit counts that finely is its rule. */
 const QUANTITY = /^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/;
@@ -47,6 +48,7 @@ function plain(quantity: string | null): string {
 @Component({
   selector: 'app-product-reorder-points',
   imports: [
+    RefusalPipe,
     ReadFailed,
     FormsModule,
     MatButtonModule,

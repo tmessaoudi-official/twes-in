@@ -19,7 +19,7 @@
         [retryable]="readFailed()"
         (retry)="readAgain()"
       >
-        {{ 'inventory.errors.' + code | translate }}
+        {{ code | refusal: 'inventory.errors' }}
       </app-read-failed>
     }
 

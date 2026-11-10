@@ -13,12 +13,13 @@ import {
 import { productPhotoUrl } from './product-photo-url';
 import { refusedFor } from '../shared/errors/said-already';
 import { refusalsIn } from '../shared/form/field-refusals';
-import { isUnreachable } from '../shared/errors/unknown-refusal-api';
+import { isUnreachable, unnamedRefusal } from '../shared/errors/unknown-refusal-api';
+import { codeText } from '../shared/errors/unknown-refusal';
 
 /** Thrown when the API refuses a photo or a change to the gallery; carries what the screen says. */
 export class ProductPhotosRefused extends Error {
   constructor(readonly refusal: ProductPhotoRefusal) {
-    super(refusal.code);
+    super(codeText(refusal.code));
   }
 }
 
@@ -129,7 +130,7 @@ export function refusalOf(error: unknown): ProductPhotoRefusal {
     case 413:
       return { code: 'too_large', params: {} };
     default:
-      return { code: 'not_a_picture', params: {} };
+      return { code: unnamedRefusal(error, 'not_a_picture'), params: {} };
   }
 }
 

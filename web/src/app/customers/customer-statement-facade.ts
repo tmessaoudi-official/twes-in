@@ -5,13 +5,14 @@ import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type { CustomersError, CustomerStatement } from './customers-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The statement of account being read: the customer's account over the period asked for, or why it is not there. */
 @Injectable({ providedIn: 'root' })
 export class CustomerStatementFacade {
   private readonly api = inject(CustomersApi);
   private readonly statementSignal = sessionSignal<CustomerStatement | null>(null);
-  private readonly state = requestState<CustomersError>((error) =>
+  private readonly state = requestState<CustomersError | UnknownRefusal>((error) =>
     error instanceof CustomersRefused ? error.code : 'network',
   );
   private readonly requests = new LatestRequest();

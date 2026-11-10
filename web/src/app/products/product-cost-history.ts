@@ -17,6 +17,7 @@ import { PURCHASE_HISTORY_TEXTS } from '../shared/i18n/purchase-history-texts';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ProductCostHistory } from './product-cost-history-facade';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * Every change of what the product costs the company, the latest first: the cost before and after, what moved it, and
@@ -25,7 +26,16 @@ import { ReadFailed } from '../shared/feedback/read-failed';
  */
 @Component({
   selector: 'app-product-cost-history',
-  imports: [ReadFailed, TranslatePipe, RouterLink, AmountPipe, DayPipe, MeasurePipe, MomentPipe],
+  imports: [
+    RefusalPipe,
+    ReadFailed,
+    TranslatePipe,
+    RouterLink,
+    AmountPipe,
+    DayPipe,
+    MeasurePipe,
+    MomentPipe,
+  ],
   templateUrl: './product-cost-history.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -56,6 +56,7 @@ import { ReceiptCostDialog, type ReceiptCostDialogData } from './receipt-cost-di
 import { LossFilesDialog, type LossFilesDialogData } from './loss-files-dialog';
 import { typedText } from '../shared/form/typed-text';
 import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * How stock moved: one product's movements when the address names it, one lot's or serial number's when it names that
@@ -65,6 +66,7 @@ import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
 @Component({
   selector: 'app-stock-movements-page',
   imports: [
+    RefusalPipe,
     PageTabs,
     MatButtonModule,
     MatFormFieldModule,

@@ -29,6 +29,8 @@ import { ProductPhotos } from './product-photos-facade';
 import { PHOTO_TYPES, type ProductPhotoRow } from './product-photos-types';
 import { PhonePairing, type PhotoOutcome } from '../shared/scan/phone-pairing';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 /**
  * A product's photos: the gallery in its order, the main one marked, each sent from this device or taken with the
@@ -38,6 +40,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-product-photos',
   imports: [
+    RefusalPipe,
     ReadFailed,
     CdkDrag,
     CdkDragHandle,
@@ -135,11 +138,11 @@ export class ProductPhotosSection implements OnInit {
         params: { name: this.productName() },
       };
     }
-    const code = this.refusal()?.code ?? 'network';
+    const said = refusalKey('products.photos.errors', this.refusal()?.code ?? 'network');
     return {
       outcome: 'refused',
-      message: `products.photos.errors.${code}`,
-      params: this.refusalParams(),
+      message: said.key,
+      params: { ...this.refusalParams(), ...said.params },
     };
   }
 

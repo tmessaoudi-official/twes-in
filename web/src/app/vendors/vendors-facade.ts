@@ -14,6 +14,7 @@ import type {
   VendorsError,
 } from './vendors-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** The vendors of the company being worked in, and the one open in the form. */
 @Injectable({ providedIn: 'root' })
@@ -114,6 +115,6 @@ export class VendorsFacade {
   }
 }
 
-function codeOf(error: unknown): VendorsError {
+function codeOf(error: unknown): VendorsError | UnknownRefusal {
   return error instanceof VendorsRefused ? error.code : 'network';
 }

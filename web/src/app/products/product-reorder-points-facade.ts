@@ -5,6 +5,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
 import type { ProductReorderPointRow, ProductsError } from './products-types';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** What became of a write: `changed` is a product saved since, which the product page reads again and says. */
 export type ReorderPointWrite = 'saved' | 'refused' | 'changed';
@@ -18,7 +19,7 @@ export class ProductReorderPoints {
   private readonly api = inject(ProductsApi);
   private readonly products = inject(ProductsFacade);
   private readonly rowsSignal = signal<readonly ProductReorderPointRow[]>([]);
-  private readonly state = requestState<ProductsError>((error) =>
+  private readonly state = requestState<ProductsError | UnknownRefusal>((error) =>
     error instanceof ProductsRefused ? error.code : 'network',
   );
 

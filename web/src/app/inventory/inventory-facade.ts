@@ -38,6 +38,7 @@ import type {
 import type { PlanStep } from './stock-plan-draft';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -385,7 +386,7 @@ export class InventoryFacade {
     companyId: string,
     movementId: string,
     fileId: string,
-  ): Promise<InventoryError | null> {
+  ): Promise<InventoryError | UnknownRefusal | null> {
     try {
       await this.api.restoreToLoss(companyId, movementId, fileId);
     } catch (error) {
@@ -742,6 +743,6 @@ export class InventoryFacade {
 /** The most rows of stock the panel of a place reads at once: the API's own largest page. */
 const CONTENTS_PAGE = 100;
 
-function codeOf(error: unknown): InventoryError {
+function codeOf(error: unknown): InventoryError | UnknownRefusal {
   return error instanceof InventoryRefused ? error.code : 'network';
 }

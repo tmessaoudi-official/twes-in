@@ -14,6 +14,8 @@ import { MomentPipe } from '../shared/i18n/format-pipes';
 import { InventoryFacade } from './inventory-facade';
 import type { StockLossFile } from './inventory-types';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import { refusalKey } from '../shared/errors/unknown-refusal';
 
 export interface LossFilesDialogData {
   companyId: string;
@@ -31,7 +33,15 @@ export interface LossFilesDialogData {
  */
 @Component({
   selector: 'app-loss-files-dialog',
-  imports: [ReadFailed, MatButtonModule, MatDialogModule, TranslatePipe, FileDrop, MomentPipe],
+  imports: [
+    RefusalPipe,
+    ReadFailed,
+    MatButtonModule,
+    MatDialogModule,
+    TranslatePipe,
+    FileDrop,
+    MomentPipe,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="loss-files-title">
@@ -51,7 +61,7 @@ export interface LossFilesDialogData {
             [retryable]="readFailed()"
             (retry)="readAgain()"
           >
-            {{ 'inventory.errors.' + code | translate }}
+            {{ code | refusal: 'inventory.errors' }}
           </app-read-failed>
         }
         @if (files(); as list) {
@@ -175,7 +185,8 @@ export class LossFilesDialog {
       this.feedback.success('inventory.loss.files.restored', { name: file.name });
       await this.read();
     } else {
-      this.feedback.failure(`inventory.errors.${refused}`);
+      const said = refusalKey('inventory.errors', refused);
+      this.feedback.failure(said.key, said.params);
     }
   }
 

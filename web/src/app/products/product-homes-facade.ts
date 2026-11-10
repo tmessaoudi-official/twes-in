@@ -3,7 +3,7 @@
 import { requestState } from '../shared/feedback/request-state';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { InventoryApi, InventoryRefused } from '../inventory/inventory-api';
-import { unreadPart, type UnreadPart } from '../shared/errors/unknown-refusal';
+import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { StockLocationRow } from '../inventory/inventory-types';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
@@ -31,7 +31,7 @@ export class ProductHomes {
   private readonly homesSignal = signal<readonly ProductHomeRow[]>([]);
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
   // The stock locations a home is chosen from are the stock's to read: their refusal names them, never the product.
-  private readonly state = requestState<ProductsError | UnreadPart>((error) =>
+  private readonly state = requestState<ProductsError | UnreadPart | UnknownRefusal>((error) =>
     error instanceof InventoryRefused
       ? unreadPart('stock_locations', error.code)
       : error instanceof ProductsRefused
