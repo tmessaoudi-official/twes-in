@@ -61,7 +61,7 @@
     @if (refusal(); as refused) {
       @if (refused.index === null) {
         <p role="alert" class="text-error" data-testid="product-barcodes-error">
-          {{ 'products.errors.' + refused.code | translate }}
+          {{ refused.code | refusal: 'products.errors' }}
         </p>
       }
     }

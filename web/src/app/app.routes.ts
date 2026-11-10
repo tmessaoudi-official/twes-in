@@ -50,6 +50,7 @@ import { PURCHASE_HISTORY_TEXTS } from './shared/i18n/purchase-history-texts';
 import { WATCH_TEXTS } from './watch/watch-texts';
 import { STOCK_COUNT_TEXTS } from './inventory/stock-count-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
+import { UNREAD_TEXTS } from './shared/errors/unknown-refusal';
 import { DELIVERIES_TEXTS } from './shared/documents/deliveries-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
 import { SETTINGS_TEXTS } from './shared/settings/settings-texts';
@@ -312,6 +313,7 @@ export const routes: Routes = [
           permissionGuard(PRODUCTS_NAV, '/products'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
+          textsOpened(UNREAD_TEXTS),
         ],
         loadComponent: () => import('./products/products-page').then((m) => m.ProductsPage),
       },
@@ -324,6 +326,7 @@ export const routes: Routes = [
           permissionGuard(PRODUCTS_COMMANDS, '/products/new'),
           textsOpened(CHECK_TEXTS),
           textsOpened(SETTINGS_TEXTS),
+          textsOpened(UNREAD_TEXTS),
         ],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
@@ -335,6 +338,7 @@ export const routes: Routes = [
           permissionGuard(PRODUCTS_NAV, '/products'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(SETTINGS_TEXTS),
+          textsOpened(UNREAD_TEXTS),
         ],
         loadComponent: () =>
           import('./products/product-categories-page').then((m) => m.ProductCategoriesPage),
@@ -348,6 +352,7 @@ export const routes: Routes = [
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
           textsOpened(SETTINGS_TEXTS),
+          textsOpened(UNREAD_TEXTS),
         ],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },

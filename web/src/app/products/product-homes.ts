@@ -26,6 +26,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { type HomesWrite, ProductHomes } from './product-homes-facade';
 import type { ProductHomeRow } from './products-types';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * Where a product normally lives: several places per establishment, in an order, the first the main one a receipt
@@ -38,6 +39,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-product-homes',
   imports: [
+    RefusalPipe,
     ReadFailed,
     FormsModule,
     MatButtonModule,

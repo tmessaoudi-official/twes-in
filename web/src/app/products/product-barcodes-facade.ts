@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
-import { VendorsApi } from '../vendors/vendors-api';
+import { VendorsApi, VendorsRefused } from '../vendors/vendors-api';
+import { unreadPart } from '../shared/errors/unknown-refusal';
 import { BarcodesRefused, ProductsApi } from './products-api';
 import { ProductsFacade } from './products-facade';
-import type { BarcodesRefusal, ProductBarcode } from './products-types';
+import type { BarcodesRefusal, BarcodesShown, ProductBarcode } from './products-types';
 
 /** A supplier a supplier's code can name. */
 export interface SupplierChoice {
@@ -25,7 +26,7 @@ export class ProductBarcodes {
   private readonly vendors = inject(VendorsApi);
   private readonly products = inject(ProductsFacade);
   private readonly busySignal = signal(false);
-  private readonly refusalSignal = signal<BarcodesRefusal | null>(null);
+  private readonly refusalSignal = signal<BarcodesShown | null>(null);
   private readonly suppliersSignal = signal<readonly SupplierChoice[]>([]);
 
   readonly busy = this.busySignal.asReadonly();
@@ -50,9 +51,10 @@ export class ProductBarcodes {
       this.suppliersSignal.set(
         page.rows.map((vendor) => ({ id: vendor.id, label: `${vendor.number} · ${vendor.name}` })),
       );
-    } catch {
+    } catch (error) {
       this.refusalSignal.set({
-        code: 'network',
+        // The vendors are their module's to read: a refusal of theirs names them, never the codes.
+        code: error instanceof VendorsRefused ? unreadPart('vendors', error.code) : 'network',
         index: null,
         field: null,
         heldBy: null,

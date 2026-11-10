@@ -42,6 +42,7 @@ import {
 import { ProductBarcodes } from './product-barcodes-facade';
 import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products-types';
 import { typedText } from '../shared/form/typed-text';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
  * The codes a product answers to (docs/SPEC.md § 7, 2026-09-22 11:05): its unit code, the packs that enter several at
@@ -51,6 +52,7 @@ import { typedText } from '../shared/form/typed-text';
 @Component({
   selector: 'app-product-barcodes',
   imports: [
+    RefusalPipe,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

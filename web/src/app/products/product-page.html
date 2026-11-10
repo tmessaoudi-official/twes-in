@@ -64,7 +64,7 @@
       [retryable]="readFailed()"
       (retry)="readAgain()"
     >
-      {{ 'products.errors.' + code | translate }}
+      {{ code | refusal: 'products.errors' }}
     </app-read-failed>
   }
 

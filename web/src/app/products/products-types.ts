@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { CustomFieldValue } from '../shared/custom-fields/custom-fields-types';
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 
 /** Why the API refused, as the products screens translate it. */
 export type ProductsError =
@@ -276,6 +277,11 @@ export interface BarcodesRefusal {
   reason: string | null;
   params: Readonly<Record<string, number | string>>;
 }
+
+/** What the codes' tab says: a refusal of its codes, or the vendors a supplier's code is chosen from not read. */
+export type BarcodesShown = Omit<BarcodesRefusal, 'code'> & {
+  readonly code: ProductsError | UnreadPart;
+};
 
 /**
  * What one scan names (docs/SPEC.md § 7, 2026-09-23 00:40): the product, the code it holds and its role, how many

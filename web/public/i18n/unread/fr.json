@@ -1,0 +1,9 @@
+{
+  "unread": {
+    "custom_fields": "Les champs personnalisés n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
+    "article_defaults": "Les valeurs par défaut des articles n’ont pas pu être lues (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
+    "customer_groups": "Les groupes de clients n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
+    "stock_locations": "Les emplacements de stock n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
+    "vendors": "Les fournisseurs n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code."
+  }
+}

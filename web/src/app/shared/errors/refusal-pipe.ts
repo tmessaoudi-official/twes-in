@@ -2,7 +2,7 @@
 
 import { Pipe, type PipeTransform } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
-import { refusalKey, type UnknownRefusal } from './unknown-refusal';
+import { refusalKey, type UnknownRefusal, type UnreadPart } from './unknown-refusal';
 
 /**
  * A refusal's code said in a template: `{{ code | refusal: 'settings.errors' }}` reads `settings.errors.<code>`, and an
@@ -13,7 +13,7 @@ import { refusalKey, type UnknownRefusal } from './unknown-refusal';
 @Pipe({ name: 'refusal', pure: false })
 export class RefusalPipe extends TranslatePipe implements PipeTransform {
   override transform(
-    code: string | UnknownRefusal | null | undefined,
+    code: string | UnknownRefusal | UnreadPart | null | undefined,
     prefix: string,
     extra: Record<string, unknown> = {},
   ): string {

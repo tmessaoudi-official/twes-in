@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
-import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
+import { CustomFieldsApi, CustomFieldsRefused } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
-import { SettingsApi } from '../shared/settings/settings-api';
+import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
@@ -274,6 +274,20 @@ describe('ProductsFacade', () => {
 
     expect(facade.error()).toBe('network');
     expect(facade.busy()).toBe(false);
+  });
+
+  it('names the part another feature could not read for the products, and says the network only when it was', async () => {
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('invalid'));
+    await facade.loadListContext('c1');
+    expect(facade.error()).toEqual({ unread: 'custom_fields', code: 'invalid' });
+
+    settingsApi.chain.mockRejectedValueOnce(new SettingsRefused({ unknown: 'brand_new' }));
+    await facade.loadProduct('c1', null);
+    expect(facade.error()).toEqual({ unread: 'article_defaults', code: 'brand_new' });
+
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('network'));
+    await facade.loadProduct('c1', null);
+    expect(facade.error()).toBe('network');
   });
 
   it('hands the calculator a price refused in words, and nothing for a preview the API could not count', async () => {

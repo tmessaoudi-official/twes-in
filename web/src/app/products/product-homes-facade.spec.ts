@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
-import { InventoryApi } from '../inventory/inventory-api';
+import { InventoryApi, InventoryRefused } from '../inventory/inventory-api';
 import { ProductHomes } from './product-homes-facade';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
@@ -162,6 +162,16 @@ describe('ProductHomes', () => {
 
     await facade.load('c1', 'p1');
 
+    expect(facade.error()).toBe('network');
+  });
+
+  it('names the stock locations when the stock could not read them, and the network only when it was', async () => {
+    stock.locations.mockRejectedValueOnce(new InventoryRefused('not_found'));
+    await facade.load('c1', 'p1');
+    expect(facade.error()).toEqual({ unread: 'stock_locations', code: 'not_found' });
+
+    stock.locations.mockRejectedValueOnce(new InventoryRefused('network'));
+    await facade.load('c1', 'p1');
     expect(facade.error()).toBe('network');
   });
 });

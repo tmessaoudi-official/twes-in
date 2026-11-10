@@ -4,14 +4,14 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { RefusalPipe } from './refusal-pipe';
-import type { UnknownRefusal } from './unknown-refusal';
+import type { UnknownRefusal, UnreadPart } from './unknown-refusal';
 
 @Component({
   imports: [RefusalPipe],
   template: `<p>{{ code() | refusal: 'things.errors' : { retry: 'demain' } }}</p>`,
 })
 class Said {
-  readonly code = signal<string | UnknownRefusal>('locked');
+  readonly code = signal<string | UnknownRefusal | UnreadPart>('locked');
 }
 
 describe('RefusalPipe', () => {
@@ -21,6 +21,7 @@ describe('RefusalPipe', () => {
     translate.setTranslation('fr', {
       things: { errors: { locked: 'Verrouillé jusqu’à {{retry}}.' } },
       feedback: { unknown_refusal: 'Refusé (code : {{code}}).' },
+      unread: { stock_locations: 'Emplacements non lus (code : {{code}}).' },
     });
     translate.use('fr');
   });
@@ -36,5 +37,12 @@ describe('RefusalPipe', () => {
     fixture.componentInstance.code.set({ unknown: 'brand_new' });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent.trim()).toBe('Refusé (code : brand_new).');
+  });
+
+  it('says a part another feature could not read for the screen in that part’s sentence, naming its code', () => {
+    const fixture = TestBed.createComponent(Said);
+    fixture.componentInstance.code.set({ unread: 'stock_locations', code: 'invalid' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent.trim()).toBe('Emplacements non lus (code : invalid).');
   });
 });

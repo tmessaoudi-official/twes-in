@@ -46,11 +46,13 @@ import { Feedback } from '../shared/feedback/feedback';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { RecordDeletes } from '../shared/records/record-deletes';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The tree products are filed in: a category sits under another or at the top, and is deleted only once empty. */
 @Component({
   selector: 'app-product-categories-page',
   imports: [
+    RefusalPipe,
     PageTabs,
     RecordChanged,
     RouterLink,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
-import { VendorsApi } from '../vendors/vendors-api';
+import { VendorsApi, VendorsRefused } from '../vendors/vendors-api';
 import { ProductBarcodes } from './product-barcodes-facade';
 import { BarcodesRefused, ProductsApi } from './products-api';
 import { ProductsFacade } from './products-facade';
@@ -12,16 +12,18 @@ const unit: ProductBarcode = { role: 'unit', code: '3017620422003', quantity: 1,
 describe('ProductBarcodes', () => {
   const api = { replaceBarcodes: vi.fn() };
   const products = { barcodesSaved: vi.fn() };
+  const vendors = { vendors: vi.fn() };
   let facade: ProductBarcodes;
 
   beforeEach(() => {
     api.replaceBarcodes.mockReset();
     products.barcodesSaved.mockReset();
+    vendors.vendors.mockReset();
     TestBed.configureTestingModule({
       providers: [
         ProductBarcodes,
         { provide: ProductsApi, useValue: api },
-        { provide: VendorsApi, useValue: {} },
+        { provide: VendorsApi, useValue: vendors },
         { provide: ProductsFacade, useValue: products },
       ],
     });
@@ -72,5 +74,15 @@ describe('ProductBarcodes', () => {
 
     expect(facade.refusal()).toBeNull();
     expect(facade.busy()).toBe(false);
+  });
+
+  it('names the vendors when they could not be read for the supplier choice, and the network only when it was', async () => {
+    vendors.vendors.mockRejectedValueOnce(new VendorsRefused('invalid'));
+    await facade.loadSuppliers('c1');
+    expect(facade.refusal()?.code).toEqual({ unread: 'vendors', code: 'invalid' });
+
+    vendors.vendors.mockRejectedValueOnce(new VendorsRefused('network'));
+    await facade.loadSuppliers('c1');
+    expect(facade.refusal()?.code).toBe('network');
   });
 });

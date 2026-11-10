@@ -41,11 +41,13 @@ import { PRODUCTS_TABS } from './products-nav';
 import type { ProductSearch } from './products-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { typedText } from '../shared/form/typed-text';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
   selector: 'app-products-page',
   imports: [
+    RefusalPipe,
     PageTabs,
     MatButtonModule,
     MatIconModule,

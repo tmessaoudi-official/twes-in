@@ -62,11 +62,13 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
   selector: 'app-product-page',
   imports: [
+    RefusalPipe,
     ReadFailed,
     StickyHeaderSize,
     MatButtonModule,

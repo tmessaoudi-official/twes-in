@@ -116,6 +116,9 @@ import frTwoFactor from '../../public/i18n/two-factor/fr.json';
 import arUnoffered from '../../public/i18n/unoffered/ar.json';
 import enUnoffered from '../../public/i18n/unoffered/en.json';
 import frUnoffered from '../../public/i18n/unoffered/fr.json';
+import arUnread from '../../public/i18n/unread/ar.json';
+import enUnread from '../../public/i18n/unread/en.json';
+import frUnread from '../../public/i18n/unread/fr.json';
 import { directionOf, INTERFACE_LANGUAGES } from './shared/i18n/languages';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { NAMED_TABLES } from './shared/records/record-tables';
@@ -175,6 +178,7 @@ const parts: Record<string, Record<string, unknown>> = {
   texts: { fr: frTexts, en: enTexts, ar: arTexts },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },
   unoffered: { fr: frUnoffered, en: enUnoffered, ar: arUnoffered },
+  unread: { fr: frUnread, en: enUnread, ar: arUnread },
 };
 
 /** Two files' texts as one, refusing a key both hold: the part would silently win where the page reads it. */
