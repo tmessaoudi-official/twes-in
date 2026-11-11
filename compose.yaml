@@ -144,7 +144,7 @@ services:
   centrifugo:
     logging: *logging
     restart: unless-stopped
-    image: centrifugo/centrifugo:v6.10.2@sha256:34b84f823515927266ce3abfb840fd9e0acabb58805e7e896f5de731217a627d
+    image: centrifugo/centrifugo:v6.10.3@sha256:33fdbbce7d195dde316cbde17bc1d2a17b9e345de82799d1ec3c2bb8916e3803
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
@@ -183,7 +183,7 @@ services:
   # `docker compose up` leaves it off. Development only.
   lan:
     logging: *logging
-    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
+    image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
     profiles: [lan]
     restart: unless-stopped
     # The digest of the files it mounts, which `make up` hands compose: a changed Caddyfile recreates it.
@@ -240,7 +240,7 @@ services:
   mailpit:
     logging: *logging
     restart: unless-stopped
-    image: axllent/mailpit:v1.33.0
+    image: axllent/mailpit:v1.33.1
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-8093}:1025"

@@ -14,7 +14,7 @@ RUN --mount=type=secret,id=extra_ca --mount=type=tmpfs,target=/run/extra-ca \
       && export SSL_CERT_FILE=/run/extra-ca/all.pem; fi \
  && install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif mbstring
 COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
-COPY --from=composer:2.11.1 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.11.2 /usr/bin/composer /usr/bin/composer
 ENV APP_ENV=dev
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini" \
  && printf 'memory_limit=-1\n' > "$PHP_INI_DIR/conf.d/40-tools.ini"
