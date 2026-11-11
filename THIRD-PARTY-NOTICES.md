@@ -12,7 +12,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
-| api-platform/core | 5.0.5 | MIT | runtime |
+| api-platform/core | 5.0.6 | MIT | runtime |
 | async-aws/core | 1.30.0 | MIT | runtime |
 | async-aws/s3 | 3.5.0 | MIT | runtime |
 | brianium/paratest | 7.27.5 | MIT | dev |
@@ -21,11 +21,11 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | composer/pcre | 3.4.0 | MIT | dev |
 | composer/semver | 3.6.0 | MIT | runtime |
 | composer/xdebug-handler | 3.0.5 | MIT | dev |
-| dama/doctrine-test-bundle | 8.7.0 | MIT | dev |
+| dama/doctrine-test-bundle | 8.7.1 | MIT | dev |
 | doctrine/collections | 3.1.0 | MIT | runtime |
 | doctrine/data-fixtures | 2.2.1 | MIT | dev |
-| doctrine/dbal | 4.5.0 | MIT | runtime |
-| doctrine/deprecations | 1.1.6 | MIT | runtime |
+| doctrine/dbal | 4.5.1 | MIT | runtime |
+| doctrine/deprecations | 1.2.0 | MIT | runtime |
 | doctrine/doctrine-bundle | 3.3.4 | MIT | runtime |
 | doctrine/doctrine-fixtures-bundle | 4.3.1 | MIT | dev |
 | doctrine/doctrine-migrations-bundle | 4.0.1 | MIT | runtime |
@@ -41,8 +41,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | ergebnis/agent-detector | 2.0.0 | MIT | dev |
 | evenement/evenement | 3.0.2 | MIT | dev |
 | fidry/cpu-core-counter | 1.4.1 | MIT | dev |
-| friendsofphp/php-cs-fixer | 3.95.28 | MIT | dev |
-| giggsey/libphonenumber-for-php-lite | 9.0.42 | Apache-2.0 | runtime |
+| friendsofphp/php-cs-fixer | 3.95.30 | MIT | dev |
+| giggsey/libphonenumber-for-php-lite | 9.0.43 | Apache-2.0 | runtime |
 | guzzlehttp/psr7 | 3.2.0 | MIT | runtime |
 | jean85/pretty-package-versions | 2.1.1 | MIT | runtime |
 | league/flysystem | 3.36.0 | MIT | runtime |
@@ -53,7 +53,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | myclabs/deep-copy | 1.14.0 | MIT | dev |
 | nikic/php-parser | 5.9.0 | BSD-3-Clause | dev |
 | openspout/openspout | 5.13.0 | MIT | runtime |
-| paragonie/constant_time_encoding | 3.1.3 | MIT | runtime |
+| paragonie/constant_time_encoding | 3.1.4 | MIT | runtime |
 | phar-io/manifest | 2.0.4 | BSD-3-Clause | dev |
 | phar-io/version | 3.2.1 | BSD-3-Clause | dev |
 | phpdocumentor/reflection-common | 2.2.1 | MIT | runtime |
@@ -62,9 +62,9 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | phpstan/extension-installer | 1.4.3 | MIT | dev |
 | phpstan/phpdoc-parser | 2.4.1 | MIT | runtime |
 | phpstan/phpstan | 2.3.5 | MIT | dev |
-| phpstan/phpstan-doctrine | 2.1.0 | MIT | dev |
+| phpstan/phpstan-doctrine | 2.1.2 | MIT | dev |
 | phpstan/phpstan-symfony | 2.1.1 | MIT | dev |
-| phpunit/php-code-coverage | 14.5.1 | BSD-3-Clause | dev |
+| phpunit/php-code-coverage | 14.5.2 | BSD-3-Clause | dev |
 | phpunit/php-file-iterator | 7.0.2 | BSD-3-Clause | dev |
 | phpunit/php-invoker | 7.0.0 | BSD-3-Clause | dev |
 | phpunit/php-text-template | 6.0.1 | BSD-3-Clause | dev |
@@ -99,11 +99,11 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | sebastian/object-reflector | 6.1.0 | BSD-3-Clause | dev |
 | sebastian/recursion-context | 8.0.1 | BSD-3-Clause | dev |
 | sebastian/type | 7.0.2 | BSD-3-Clause | dev |
-| sebastian/version | 7.0.1 | BSD-3-Clause | dev |
-| sentry/sentry | 4.35.0 | MIT | runtime |
+| sebastian/version | 7.1.0 | BSD-3-Clause | dev |
+| sentry/sentry | 4.36.0 | MIT | runtime |
 | sentry/sentry-symfony | 5.15.0 | MIT | runtime |
 | spomky-labs/cbor-php | 3.4.2 | MIT | runtime |
-| spomky-labs/otphp | 11.5.0 | MIT | runtime |
+| spomky-labs/otphp | 11.5.1 | MIT | runtime |
 | spomky-labs/pki-framework | 1.6.3 | MIT | runtime |
 | staabm/side-effects-detector | 1.0.5 | MIT | dev |
 | symfony/asset | 8.1.0 | MIT | runtime |
