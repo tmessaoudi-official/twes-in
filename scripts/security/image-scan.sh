@@ -10,7 +10,7 @@
 #                requires one for each it starts), read from the files, so a bump moves one place
 # Trivy itself is pinned by its index digest and run as an image, never through aquasecurity/trivy-action: the March
 # 2026 compromise (GHSA-69fq-xp46-6x23) reached the binary 0.69.4, the images 0.69.5 and 0.69.6, and the action's tags.
-# 0.76.1 is past it and past what a crafted database could do to the scanner itself (GHSA-mcj4-mphf-j9ff, a path
+# 0.76.2 is past it and past what a crafted database could do to the scanner itself (GHSA-mcj4-mphf-j9ff, a path
 # traversal, fixed in 0.71.1). It reads the registries itself (--image-src remote), so it is handed no Docker socket. Its
 # vulnerability database is fetched at each run and is not pinned: the job holds no secret.
 # Usage: image-scan.sh <registry prefix, such as ghcr.io/owner>      (TRIVY_CACHE=<dir> keeps the database between runs)
