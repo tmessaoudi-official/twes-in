@@ -72,10 +72,10 @@ services:
   glitchtip:
     logging: *logging
     restart: unless-stopped
-    image: glitchtip/glitchtip:6.2.6
+    image: glitchtip/glitchtip:7.0.0
     # The web server and the worker in one process, with no Valkey: the database is the cache and the queue, which is
     # enough for one instance's errors.
-    command: ./bin/run-all-in-one.sh
+    command: ./bin/start.sh
     environment:
       DATABASE_URL: "postgres://glitchtip:${GLITCHTIP_DB_PASSWORD:?set GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip"
       SECRET_KEY: "${GLITCHTIP_SECRET_KEY:?set GLITCHTIP_SECRET_KEY}"
@@ -89,7 +89,7 @@ services:
       # Gatus watches; GlitchTip only receives errors.
       GLITCHTIP_ENABLE_UPTIME: "false"
       # An error report is kept a month: long enough to see a pattern, short enough to keep little.
-      GLITCHTIP_MAX_EVENT_LIFE_DAYS: "30"
+      GLITCHTIP_RETENTION_DAYS: "30"
       EMAIL_HOST: "${ALERT_SMTP_HOST:?set ALERT_SMTP_HOST, the alerts' mail relay}"
       EMAIL_PORT: "${ALERT_SMTP_PORT:?set ALERT_SMTP_PORT, such as 587}"
       EMAIL_HOST_USER: "${ALERT_SMTP_USERNAME:?set ALERT_SMTP_USERNAME}"

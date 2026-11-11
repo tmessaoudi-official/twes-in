@@ -31,6 +31,12 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a required value given a default is
 d=$(project); edit "$d/infra/monitor/compose.yaml" 's/ENABLE_USER_REGISTRATION: "false"/ENABLE_USER_REGISTRATION: "true"/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "open sign-up on the error tracker is refused" $? 1 "$out" "ENABLE_USER_REGISTRATION"
 
+d=$(project); edit "$d/infra/monitor/compose.yaml" 's/GLITCHTIP_RETENTION_DAYS:/GLITCHTIP_MAX_EVENT_LIFE_DAYS:/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a setting under a name GlitchTip no longer reads is refused" $? 1 "$out" "GLITCHTIP_MAX_EVENT_LIFE_DAYS is a name GlitchTip no longer reads"
+
+d=$(project); edit "$d/infra/monitor/compose.yaml" '/GLITCHTIP_RETENTION_DAYS:/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a retention left to GlitchTip's default is named" $? 1 "$out" "GLITCHTIP_RETENTION_DAYS is (unset)"
+
 d=$(project); edit "$d/infra/monitor/compose.yaml" '0,/logging: \*logging/{/logging: \*logging/d}'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a service without log rotation is named" $? 1 "$out" "edge does not rotate"
 

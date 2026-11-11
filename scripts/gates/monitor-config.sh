@@ -65,6 +65,17 @@ for key in ENABLE_USER_REGISTRATION ENABLE_ORGANIZATION_CREATION; do
   got=$(jq -r --arg k "$key" '.services.glitchtip.environment[$k] // "(unset)"' <<<"$config")
   [[ "$got" == false ]] || problem "glitchtip $key is $got: a stranger could make an account on the error tracker"
 done
+# GlitchTip ignores a name it retired, with a warning, and applies its default: the retention falls to 90 days and its
+# next maintenance run keeps that. The names are glitchtip/startup.py's RETIRED_ENV_VARS in the pinned release.
+RETIRED=(GLITCHTIP_RUST_INGEST USE_ASYNC_SERVER GLITCHTIP_EMBED_WORKER IS_WORKER SERVER_ROLE GLITCHTIP_MAX_EVENT_LIFE_DAYS
+  GLITCHTIP_MAX_TRANSACTION_EVENT_LIFE_DAYS GLITCHTIP_MAX_UPTIME_CHECK_LIFE_DAYS GLITCHTIP_MAX_FILE_LIFE_DAYS
+  GLITCHTIP_LOGS_COLD_DAYS GLITCHTIP_EVENTS_HOT_DAYS GLITCHTIP_LOGS_HOT_DAYS ENABLE_OPEN_USER_REGISTRATION DATABASE_CONN_MAX_AGE)
+for key in "${RETIRED[@]}"; do
+  jq -e --arg k "$key" '.services.glitchtip.environment // {} | has($k)' <<<"$config" >/dev/null \
+    && problem "glitchtip $key is a name GlitchTip no longer reads: it is ignored and its default applies (docs/UPDATE.md, GlitchTip)"
+done
+retention=$(jq -r '.services.glitchtip.environment.GLITCHTIP_RETENTION_DAYS // "(unset)"' <<<"$config")
+[[ "$retention" =~ ^[0-9]+$ ]] || problem "glitchtip GLITCHTIP_RETENTION_DAYS is $retention: error reports would be kept GlitchTip's default 90 days"
 
 # One record per endpoint: section, name, whether it points at the hidden set, whether it alerts.
 records=$(awk '

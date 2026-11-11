@@ -3,6 +3,7 @@
 # The monitor check (docs/START.md § 15): a deployment and its monitor booted side by side, each as a server boots it,
 # from the values scripts/deploy/new-instance.sh and scripts/monitor/new-monitor.sh write, and joined by one network on
 # which each edge answers under its names, as DNS would send them there. Then what the monitor is for:
+#   settings    GlitchTip applies the values the compose file gives it, and warns of no name it ignores
 #   watched     Gatus reads the instance's deep health (/api/health/deep, with its token) green
 #   heartbeat   a base backup's heartbeat reaches Gatus, and its line is green
 #   API errors  app:errors:test reaches GlitchTip, its address, quoted value and long number masked
@@ -103,6 +104,20 @@ mkdir -p "$CHECK_DIR/php"
 printf 'curl.cainfo=/check/monitor-root.crt\nopenssl.cafile=/check/monitor-root.crt\n' > "$CHECK_DIR/php/zz-monitor-check.ini"
 chmod -R a+rX "$CHECK_DIR"
 step "monitor up behind its edge"
+
+# What GlitchTip applies, read back against what the compose file gives it: a name it no longer reads is ignored with a
+# warning at its start, never refused, and its default applies (the retention falls to 90 days).
+ignored=$(mon logs --no-color glitchtip | awk '/no longer has any effect/')
+[[ -z "$ignored" ]] || fail "GlitchTip ignores a setting the compose file gives it: $ignored"
+given=$(mon config --format json | jq -r '.services.glitchtip.environment | [.GLITCHTIP_RETENTION_DAYS // "(unset)",
+  .ENABLE_USER_REGISTRATION, .ENABLE_ORGANIZATION_CREATION, .GLITCHTIP_ENABLE_UPTIME] | join(" ")')
+applied=$(mon exec -T glitchtip python manage.py shell -c '
+from django.conf import settings as s
+print(s.GLITCHTIP_EVENT_RETENTION_DAYS, *[str(v).lower() for v in (s.ENABLE_USER_REGISTRATION,
+  s.ENABLE_ORGANIZATION_CREATION, s.GLITCHTIP_ENABLE_UPTIME)])' | tail -n 1)
+[[ "$applied" == "$given" ]] \
+  || fail "GlitchTip applies retention, sign-up, organisations and uptime as [$applied], the compose file gives [$given]"
+step "GlitchTip applies what the compose file gives it"
 
 # The operator's account and the instance's project, as docs/START.md § 15 makes them; a read-only token for the check.
 password=$(random 24)
