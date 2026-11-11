@@ -91,6 +91,11 @@ else
   dc exec -T backup twes-backup full
   step "full base backup"
 fi
+# The first segments were pushed before the stanza existed, and their failed asynchronous pushes once made postgres, then
+# PID 1, cut every connection (scripts/gates/compose-init.sh): the server archived all of that without one reset.
+resets=$(dc logs --no-color postgres 2>&1 | grep -c 'terminating any other active server processes') || true
+[[ "$resets" == 0 ]] || fail "postgres reset every connection $resets time(s) while archiving: does it still run under an init?"
+step "archiving cut no connection"
 
 # What a pilot writes after last night's backup: it must come back from the WAL alone.
 sql "CREATE TABLE restore_drill (n int PRIMARY KEY); INSERT INTO restore_drill VALUES (1)" >/dev/null

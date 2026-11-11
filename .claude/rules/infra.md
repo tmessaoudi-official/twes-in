@@ -85,6 +85,7 @@ the end of § Lessons here.
 
   - `compose-log-rotation.sh` (every compose service rotates its output, 10 MB × 5, through the `*logging` anchor)
   - `compose-restart.sh` (every service of a server, a shop, development live and from the images, and the monitor says `restart: unless-stopped` if it runs or `"no"` if it does a job and exits: development's api once died of a PHP fault and stayed down while its workers came back)
+  - `compose-init.sh` (every service of a server and a shop that archives its WAL runs under an init, `init: true`: as PID 1 postgres took the failed exit of pgBackRest's asynchronous archive-push child for a crash and cut every connection, every 12 seconds while the bucket was unreachable; the restore drill also fails on any such reset)
   - `version-pins.sh` (every copy of a version pin agrees, `docs/UPDATE.md`)
   - `host-tools.sh` (CI names no `setup-php`, `setup-node` or bare host tool, and the Makefile runs one only inside an `in-*` target)
   - `action-pins.sh` (every action a workflow uses is pinned by its release's full commit SHA, the tag as a comment, `docs/UPDATE.md`)

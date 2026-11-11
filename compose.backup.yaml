@@ -41,6 +41,10 @@ services:
       - archive_command=pgbackrest --stanza=twes archive-push %p
     # The archiving runs inside the server, which must hold the passphrase in its own environment.
     entrypoint: [twes-secrets, docker-entrypoint.sh]
+    # An init as PID 1 reaps the child pgBackRest's asynchronous archive-push leaves behind. As PID 1 postgres adopted
+    # it, took its failed exit for a crashed server process and cut every connection, every 12 seconds while the bucket
+    # was unreachable; under the init it only logs the failed push and keeps the segment (scripts/gates/compose-init.sh).
+    init: true
     secrets:
       - *database-passphrase
     volumes:

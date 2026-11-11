@@ -241,6 +241,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcome-sentences.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-restart.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-init.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/onprem-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/secrets-overlay.test.sh
@@ -355,6 +356,7 @@ in-gate-licences:
 	bash scripts/gates/outcome-sentences.sh
 	bash scripts/gates/compose-log-rotation.sh
 	bash scripts/gates/compose-restart.sh
+	bash scripts/gates/compose-init.sh
 	bash scripts/gates/deploy-overlay.sh
 	bash scripts/gates/onprem-overlay.sh
 	bash scripts/gates/secrets-overlay.sh
