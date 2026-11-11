@@ -202,7 +202,7 @@ html {
       outlined-container-height: 2.25rem,
       text-container-height: 2.25rem,
       tonal-container-height: 2.25rem,
-      protected-container-height: 2.25rem
+      protected-container-height: 2.25rem,
     )
   );
   // Material's density emits the other components' heights in px: each one the screens use is given again in rem, at
@@ -270,7 +270,7 @@ html {
       title-text-size: var(--text-heading),
       title-text-line-height: var(--text-heading--line-height),
       title-text-weight: var(--text-heading--font-weight),
-      title-text-tracking: var(--text-heading--letter-spacing)
+      title-text-tracking: var(--text-heading--letter-spacing),
     )
   );
   // A dialog is the panel's kind: its corner, the highest elevation, and its title the heading step every card and

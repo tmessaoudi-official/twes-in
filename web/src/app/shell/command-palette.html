@@ -45,8 +45,9 @@
             (pointermove)="active.set(matches().indexOf(command))"
             [attr.data-testid]="'command-' + command.key"
           >
-            <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon
-            ><span>{{ command.labelKey | translate: command.labelParams }}</span>
+            <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon><span>{{
+              command.labelKey | translate: command.labelParams
+            }}</span>
             @if ((command.group === 'create' || command.group === 'goto') && command.coming) {
               <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
             }

@@ -180,8 +180,7 @@ function fold(text: string): string {
             }
             @if (chosen()[0].short; as short) {
               <!-- value-direction: a name in the screen's language, read and not shown -->
-              <span class="sr-only">{{ chosen()[0].shortSpoken ?? chosen()[0].label }}</span
-              >&ngsp;
+              <span class="sr-only">{{ chosen()[0].shortSpoken ?? chosen()[0].label }}</span>&ngsp;
               <span class="twes-value" dir="auto" data-short>{{ short }}</span>
             } @else {
               <span class="twes-value" dir="auto">{{ chosen()[0].label }}</span>

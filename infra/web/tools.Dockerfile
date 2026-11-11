@@ -5,7 +5,7 @@
 # scripts/gates/version-pins.sh refuses a copy that disagrees with infra/web/Dockerfile and web/package-lock.json.
 FROM node:26.13.0-trixie-slim
 
-ARG PLAYWRIGHT_VERSION=1.64.1
+ARG PLAYWRIGHT_VERSION=1.65.0
 
 # Only the system libraries Chromium and WebKit need are installed here: WebKit is Safari's engine, which the phone
 # scenarios also run on, since a shop's iPhones run no other. The browsers themselves are downloaded by `make e2e`

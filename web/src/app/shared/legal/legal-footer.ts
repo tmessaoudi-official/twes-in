@@ -36,8 +36,7 @@ import { LEGAL_PAGES } from './legal-pages';
     >
       <span class="twes-legal-links" #links>
         <span data-testid="legal-copyright"
-          >© <bdi>{{ year }}</bdi
-          >&ngsp;<bdi>{{ brand.name() }}</bdi></span
+          >© <bdi>{{ year }}</bdi>&ngsp;<bdi>{{ brand.name() }}</bdi></span
         >
         <!-- The dots are drawn, not said: a screen reader reads each link by its own name. -->
         <span class="twes-legal-item"
