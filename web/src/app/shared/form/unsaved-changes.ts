@@ -10,10 +10,11 @@ import {
   type Signal,
   signal,
 } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 import type { CanDeactivateFn, Route } from '@angular/router';
-import { from, map, type Observable, of, switchMap, tap } from 'rxjs';
+import { defer, map, type Observable, of, switchMap, tap } from 'rxjs';
 import type { ActionConfirm } from '../actions/screen-action';
+import type { ConfirmDialog } from '../ui/confirm-dialog';
+import { LazyDialog } from '../ui/lazy-dialog';
 
 /**
  * What is typed and not saved, anywhere on the page (row 45). Every record page counts its own through
@@ -22,7 +23,7 @@ import type { ActionConfirm } from '../actions/screen-action';
  */
 @Injectable({ providedIn: 'root' })
 export class UnsavedChanges {
-  private readonly dialog = inject(MatDialog);
+  private readonly dialogs = inject(LazyDialog);
   private readonly sources = signal<readonly Signal<number>[]>([]);
   /** The question the next navigation asks is already answered: consumed by that navigation alone. */
   private answered = false;
@@ -85,22 +86,24 @@ export class UnsavedChanges {
     if (this.count() === 0) return of(true);
 
     // The guard sits on the first page through the routes; the dialog is fetched the first time it is needed.
-    return from(import('../ui/confirm-dialog')).pipe(
-      switchMap(({ ConfirmDialog }) =>
-        this.dialog
-          .open<InstanceType<typeof ConfirmDialog>, ActionConfirm, boolean>(ConfirmDialog, {
-            // Typed work that was never saved cannot be got back, so leaving it is definitive.
-            data: {
-              kind: 'definitif',
-              title: ended ? 'auth.login.session_expired' : 'form.leave.title',
-              message: 'form.leave.message',
-              confirmLabel: 'form.leave.leave',
-              keepLabel: 'form.leave.stay',
-            },
-            autoFocus: 'dialog',
-          })
-          .afterClosed(),
+    // Deferred: the question is asked when the navigation subscribes, never by building the answer.
+    return defer(() =>
+      this.dialogs.open<ConfirmDialog, ActionConfirm, boolean>(
+        async () => (await import('../ui/confirm-dialog')).ConfirmDialog,
+        {
+          // Typed work that was never saved cannot be got back, so leaving it is definitive.
+          data: {
+            kind: 'definitif',
+            title: ended ? 'auth.login.session_expired' : 'form.leave.title',
+            message: 'form.leave.message',
+            confirmLabel: 'form.leave.leave',
+            keepLabel: 'form.leave.stay',
+          },
+          autoFocus: 'dialog',
+        },
       ),
+    ).pipe(
+      switchMap((ref) => ref.afterClosed()),
       map((answer) => answer === true),
     );
   }

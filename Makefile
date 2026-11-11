@@ -296,6 +296,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-shapes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/error-codes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/folder-cap.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/first-page-imports.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/domain-refusals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-limits.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-trims.test.sh
@@ -404,6 +405,7 @@ in-gate-licences:
 	bash scripts/gates/refusal-shapes.sh
 	bash scripts/gates/error-codes.sh
 	bash scripts/gates/folder-cap.sh
+	bash scripts/gates/first-page-imports.sh
 	bash scripts/gates/domain-refusals.sh
 	bash scripts/gates/list-limits.sh
 	bash scripts/gates/typed-trims.sh

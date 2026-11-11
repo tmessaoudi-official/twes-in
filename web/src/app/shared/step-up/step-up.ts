@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
+import { LazyDialog } from '../ui/lazy-dialog';
 import type { StepUpDialog, StepUpReason } from './step-up-dialog';
 
 /**
@@ -13,7 +13,7 @@ import type { StepUpDialog, StepUpReason } from './step-up-dialog';
  */
 @Injectable({ providedIn: 'root' })
 export class StepUp {
-  private readonly dialog = inject(MatDialog);
+  private readonly dialogs = inject(LazyDialog);
 
   /**
    * True once the password or a passkey was confirmed; false when the person gave up. `intro` is the translation key
@@ -21,12 +21,10 @@ export class StepUp {
    */
   async request(intro = 'step_up.intro'): Promise<boolean> {
     // Loaded when first asked: the service is reached from the first page, which has no room for the dialog itself.
-    const component = (await import('./step-up-dialog')).StepUpDialog;
-    const ref = this.dialog.open<StepUpDialog, StepUpReason, boolean>(component, {
-      data: { intro },
-      autoFocus: 'first-tabbable',
-      disableClose: false,
-    });
+    const ref = await this.dialogs.open<StepUpDialog, StepUpReason, boolean>(
+      async () => (await import('./step-up-dialog')).StepUpDialog,
+      { data: { intro }, autoFocus: 'first-tabbable', disableClose: false },
+    );
     return (await firstValueFrom(ref.afterClosed())) === true;
   }
 

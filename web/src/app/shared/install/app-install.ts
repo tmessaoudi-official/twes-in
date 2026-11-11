@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, DestroyRef, DOCUMENT, inject, Injectable, signal } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 import { Brand } from '../brand/brand';
 import { Feedback } from '../feedback/feedback';
 import { TextsParts } from '../i18n/texts-part';
+import { LazyDialog } from '../ui/lazy-dialog';
 import { INSTALL_TEXTS } from './install-texts';
 
 /** What Chrome and Edge hand the page when it may be installed; TypeScript's DOM library does not declare it. */
@@ -28,7 +28,7 @@ export class AppInstall {
   private readonly window = inject(DOCUMENT).defaultView;
   private readonly brand = inject(Brand);
   private readonly feedback = inject(Feedback);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialogs = inject(LazyDialog);
   private readonly texts = inject(TextsParts);
   /** The browser's offer, kept to open its dialog when the person asks; used once, as the browser allows. */
   private readonly deferred = signal<BeforeInstallPromptEvent | null>(null);
@@ -76,8 +76,9 @@ export class AppInstall {
 
   private async guide(): Promise<void> {
     await this.texts.open(INSTALL_TEXTS);
-    const { InstallGuide } = await import('./install-guide');
-    this.dialog.open(InstallGuide, { autoFocus: 'dialog' });
+    await this.dialogs.open(async () => (await import('./install-guide')).InstallGuide, {
+      autoFocus: 'dialog',
+    });
   }
 
   private runsInstalled(): boolean {

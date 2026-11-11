@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import type { CompanyProofDialog } from './company-proof-dialog';
+import { LazyDialog } from '../ui/lazy-dialog';
 import { CompanyEntryProof, type EntryAsked } from './company-entry-proof';
 
 /**
@@ -14,7 +14,7 @@ import { CompanyEntryProof, type EntryAsked } from './company-entry-proof';
 @Injectable({ providedIn: 'root' })
 export class CompanyEntry {
   private readonly proof = inject(CompanyEntryProof);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialogs = inject(LazyDialog);
   private pending: Promise<boolean> | null = null;
   private readonly declinedFor = signal<string | null>(null);
   /** The company whose proof lapsed under an open page, or is being read again to find out. */
@@ -76,11 +76,10 @@ export class CompanyEntry {
 
   private async open(asked: EntryAsked): Promise<boolean> {
     // Loaded when first asked: the service is reached from the first page, which has no room for the dialog itself.
-    const component = (await import('./company-proof-dialog')).CompanyProofDialog;
-    const ref = this.dialog.open<CompanyProofDialog, EntryAsked, boolean>(component, {
-      data: asked,
-      autoFocus: 'first-tabbable',
-    });
+    const ref = await this.dialogs.open<CompanyProofDialog, EntryAsked, boolean>(
+      async () => (await import('./company-proof-dialog')).CompanyProofDialog,
+      { data: asked, autoFocus: 'first-tabbable' },
+    );
     return (await firstValueFrom(ref.afterClosed())) === true;
   }
 }
