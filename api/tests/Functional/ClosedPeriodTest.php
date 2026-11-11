@@ -17,6 +17,8 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Tenancy\Domain\Model\Company;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -31,7 +33,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ClosedPeriodTest extends ApiTestCase
 {
-    private ?\DateTimeImmutable $today = null;
+    use ClockSensitiveTrait;
 
     private Company $company;
     private string $customerId;
@@ -41,6 +43,9 @@ final class ClosedPeriodTest extends ApiTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Every case here turns on which day today is: the clock stands still, so the day a case reads and the day the
+        // API is on when its request arrives are one, at midnight in Tunis too.
+        self::mockTime();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
@@ -81,6 +86,25 @@ final class ClosedPeriodTest extends ApiTestCase
         $audited = $this->em()->getConnection()->fetchAllAssociative("SELECT changes FROM audit_log WHERE company_id = :c AND action = 'company.period_closed'", ['c' => $this->company->getId()->toRfc4122()]);
         self::assertCount(1, $audited, 'one closing, on record');
         self::assertSame('{"fields": ["closedThrough"]}', $audited[0]['changes'], 'the field it changed, never the day');
+    }
+
+    public function testTheDayATestSendsIsTheOneTheApiReadsAtAnyHour(): void
+    {
+        // 23:30 UTC is already the next day in Tunis, and a day PHP's own clock is not on.
+        self::mockTime(new \DateTimeImmutable('2026-10-06 23:30:00', new \DateTimeZone('UTC')));
+
+        self::assertSame('2026-10-07', $this->day(0), 'the company\'s day, by the clock the API reads');
+        $this->sendJson('PUT', $this->closingPath(), ['closedThrough' => $this->day(0)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the test\'s today is the API\'s');
+        self::assertSame([['propertyPath' => 'closedThrough', 'reason' => 'on_or_before', 'params' => ['day' => '2026-10-06']]], $this->refusals());
+    }
+
+    public function testItsClockStandsStillSoNoMidnightPassesBetweenADayReadAndItsRequest(): void
+    {
+        $read = Clock::get()->now();
+        usleep(2000);
+
+        self::assertEquals($read, Clock::get()->now(), 'a day read and the request sending it are one instant');
     }
 
     public function testOnlyWhoeverManagesTheCompanyClosesIt(): void
@@ -174,13 +198,10 @@ final class ClosedPeriodTest extends ApiTestCase
         return $this->today()->modify(\sprintf('%+d days', $days))->format('Y-m-d');
     }
 
-    /**
-     * The test's own day, read once: a test crossing midnight between the request it sends and what it expects would
-     * otherwise compare two days, as one did at 23:00 UTC, midnight in Tunis.
-     */
+    /** The company's day by the clock setUp holds still, the one the API reads. */
     private function today(): \DateTimeImmutable
     {
-        return $this->today ??= self::dayAsDate($this->company);
+        return self::dayAsDate($this->company);
     }
 
     private function draft(string $net): string

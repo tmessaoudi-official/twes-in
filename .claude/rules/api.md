@@ -252,7 +252,10 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   company's, and five suites went red on CI only in that hour. Run the whole API suite inside that window to find the
   class's members (2026-10-21). A test's day helper reads the clock once per test (`$this->today ??= …`): read again
   for the expectation, it crossed midnight in Tunis after the request and expected the next day (2026-10-26).
-  `test-clock.sh` refuses any other read of a day in `api/tests`.
+  `test-clock.sh` refuses any other read of a day in `api/tests`. Reading once is not enough: the API reads its own
+  clock when the request arrives, and a case that read 10 November just before 23:00:00 UTC had it closed as yesterday
+  (CI only, 2026-11-10). A class whose cases turn on which day today is holds its clock still in `setUp`
+  (`ClockSensitiveTrait`, `self::mockTime()`), and `dayOf` reads that clock, as `ClosedPeriodTest` does.
 - Measure a request's memory with `memory_reset_peak_usage()` first and `memory_get_peak_usage()` (not `true`) after: a
   FrankenPHP worker thread keeps the memory earlier requests took, so the real size read 123 MB for 39 rows. In development
   the profiler's collectors (Doctrine's queries, Monolog's records) hold most of a long request; they are capped now, and

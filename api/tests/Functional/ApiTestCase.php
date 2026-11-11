@@ -31,6 +31,7 @@ use Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Profiler\Profile;
@@ -130,11 +131,13 @@ abstract class ApiTestCase extends WebTestCase
     /**
      * The day it is for the company, or that day shifted (`-100 days`), which is how the API reads a day it is sent or
      * counts days to: in UTC it is still yesterday for the hour after midnight in Tunis, and a receipt dated so is refused
-     * as before its order was sent.
+     * as before its order was sent. Read from the clock the API reads, so a test that sets its clock, or holds it still
+     * (`ClockSensitiveTrait::mockTime()`), sends the day the API is on: PHP's own clock moves on between a day read and
+     * the request sending it, and midnight in Tunis fell there once.
      */
     protected static function dayOf(Company $company, string $shift = 'today'): string
     {
-        return new \DateTimeImmutable($shift, new \DateTimeZone($company->getTimezone()))->format('Y-m-d');
+        return Clock::get()->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->modify($shift)->format('Y-m-d');
     }
 
     /** The same day as dayOf, at midnight in the company's zone, for a test that moves it on or hands it to the domain. */
