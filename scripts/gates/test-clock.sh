@@ -56,7 +56,11 @@ wall="${wall_moment}|${wall_call}|new[[:space:]]+\\\\?(Symfony\\\\Component\\\\C
 # The database's clock in SQL a case writes, matched on the line lowercased: its now() is the wall's, at the
 # transaction's start, and its CURRENT_DATE is UTC's day, not the company's. Never a clock's now() method, a method
 # declared now(), or a variable or property named current_date.
-db_clock="(^|[^a-z0-9_>\$:])now[[:space:]]*\\(\\)|(^|[^a-z0-9_>\$])(current_(date|time|timestamp)|localtime(stamp)?)([^a-z0-9_]|\$)|(^|[^a-z0-9_>\$:])(clock|statement|transaction)_timestamp[[:space:]]*\\("
+# A `>` with no `-` before it is SQL's comparison, not PHP's arrow. Postgres's own words for now (`'now'::timestamp`,
+# `date 'today'`) and a one-argument age(), which counts from today, are the same clock.
+before="(^|[^a-z0-9_>\$:]|[^-]>)"
+db_clock="${before}now[[:space:]]*\\(\\)|${before}(current_(date|time|timestamp)|localtime(stamp)?)([^a-z0-9_]|\$)|${before}(clock|statement|transaction)_timestamp[[:space:]]*\\("
+db_clock+="|'(now|today|tomorrow|yesterday)'[[:space:]]*::|(date|timestamp|timestamptz)[[:space:]]+'(now|today|tomorrow|yesterday)'|${before}age[[:space:]]*\\([^,()]*\\)"
 declared_now='function[[:space:]]+now[[:space:]]*\('
 # A reason, in PHP or, inside an SQL string, as an SQL comment.
 said='(//|--)[[:space:]]*test-clock:[[:space:]]*[^[:space:]]'

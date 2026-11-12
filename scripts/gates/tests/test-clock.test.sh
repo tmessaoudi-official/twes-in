@@ -163,6 +163,14 @@ for form in "CURRENT_TIMESTAMP" "LOCALTIMESTAMP" "statement_timestamp()" "clock_
   out=$(run "$d"); check "the database's $form is refused" $? 1 "$out" "FormTest.php:3"
 done
 
+for form in "x >now()" "issue_date >current_date" "'now'::timestamp" "'today'::date" "date 'today'" "timestamp 'now'" "age(created_at)"; do
+  d=$(tree); member "$d/api/tests/Functional/FormTest.php" "\$db->fetchOne(\"SELECT count(*) FROM quote WHERE $form IS NOT NULL\");"
+  out=$(run "$d"); check "the database's clock written as $form is refused" $? 1 "$out" "FormTest.php:3"
+done
+
+d=$(tree); member "$d/api/tests/Functional/AgeTest.php" "\$db->fetchOne('SELECT age(?, created_at) FROM quote', [self::apiNow()]);"
+out=$(run "$d"); check "age() between two moments given reads no clock" $? 0 "$out" "OK"
+
 d=$(tree); member "$d/api/tests/Functional/NamesTest.php" "\$a = \$clock->now(); \$b = Clock::get()->now(); \$current_date = self::apiNow(); \$c = \$current_dates; \$e = \$row->current_date;"
 out=$(run "$d"); check "a clock's now() method and a variable named current_date are not the database's clock" $? 0 "$out" "OK"
 
