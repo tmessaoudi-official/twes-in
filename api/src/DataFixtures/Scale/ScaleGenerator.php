@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\DataFixtures\Scale;
 
+use App\Files\Application\FileStorage;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\ManageInvoices;
@@ -126,6 +127,7 @@ final class ScaleGenerator
         private readonly EntityManagerInterface $entityManager,
         private readonly ClockInterface $clock,
         private readonly SealInvoiceChains $chains,
+        private readonly FileStorage $storage,
     ) {
     }
 
@@ -239,8 +241,31 @@ final class ScaleGenerator
         if ('numbered' !== $this->connection->fetchOne('SELECT phase FROM scale.run WHERE company_id = ?', [$company])) {
             $this->renumber($company, $say);
         }
+        $this->letGoUnnamedBytes($company, $say);
 
         return new ScaleReport($done, $wanted, $this->invoices($company), false);
+    }
+
+    /**
+     * Renumbering drops the stored PDFs' rows inside its transaction, and their bytes can only go once it has committed:
+     * every finished run takes what no file row of the company names, so a run stopped between the two is finished by
+     * the next, and the closing data check, which counts those same keys, finds none.
+     */
+    private function letGoUnnamedBytes(string $company, callable $say): void
+    {
+        $named = array_flip(Rows::texts($this->connection->fetchFirstColumn('SELECT storage_key FROM file WHERE company_id = ?', [$company])));
+        $unnamed = [];
+        foreach ($this->storage->keysUnder('companies/'.$company) as $key => $written) {
+            if (!isset($named[$key])) {
+                $unnamed[] = $key;
+            }
+        }
+        foreach ($unnamed as $key) {
+            $this->storage->delete($key);
+        }
+        if ([] !== $unnamed) {
+            $say(\sprintf('%d stored files no row names let go', \count($unnamed)));
+        }
     }
 
     private function prepareSchema(): void

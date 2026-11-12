@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\DataFixtures\Scale\ScaleGenerator;
 use App\DataHealth\Infrastructure\CompanyReferences;
+use App\Files\Application\FileStorage;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\NumberingSeries;
@@ -170,6 +171,8 @@ final class ScaleGeneratorTest extends ApiTestCase
         $ours = 'SELECT COUNT(*) FROM invoice WHERE pdf_file_id IS NOT NULL AND number IS NOT NULL AND company_id = (SELECT id FROM company WHERE name = ?)';
         self::assertGreaterThan(0, $this->number($ours, [self::COMPANY]), 'the demo stores PDFs of its issued invoices, or this proves nothing');
         $untouched = $this->number($others, [self::COMPANY]);
+        self::assertSame($this->namedKeys(), $this->storedKeys(), 'the demo leaves no bytes unnamed, or what follows proves nothing');
+        $pdfs = Rows::texts($this->connection()->fetchFirstColumn('SELECT f.storage_key FROM invoice i JOIN file f ON f.id = i.pdf_file_id WHERE i.company_id = (SELECT id FROM company WHERE name = ?) AND i.number IS NOT NULL ORDER BY 1', [self::COMPANY]));
 
         $tester = $this->generate($base + 100);
 
@@ -177,6 +180,40 @@ final class ScaleGeneratorTest extends ApiTestCase
         self::assertSame(0, $this->number($ours, [self::COMPANY]), 'a stored PDF prints the old number: it goes, and the first request renders the new one');
         self::assertSame($untouched, $this->number($others, [self::COMPANY]), 'another company\'s PDFs still print their own numbers');
         self::assertSame(0, $this->number('SELECT COUNT(*) FROM invoice WHERE pdf_file_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM file f WHERE f.id = invoice.pdf_file_id)'));
+        // The closing data check leaves bytes younger than the longest request for its next run, and a test is always
+        // younger: read the folder itself, or bytes left behind pass here and fail every real run.
+        self::assertSame([], array_values(array_intersect($pdfs, $this->storedKeys())), 'the bytes of a PDF the generator drops go with its row');
+        self::assertSame($this->namedKeys(), $this->storedKeys());
+    }
+
+    public function testARunTakesTheBytesNoRowNamesThatAnEarlierRunLeft(): void
+    {
+        $base = $this->baseThenGenerate(60);
+        $company = $this->text('SELECT id FROM company WHERE name = ?', [self::COMPANY]);
+        $left = 'companies/'.$company.'/left-by-an-earlier-run.pdf';
+        static::getContainer()->get(FileStorage::class)->write($left, '%PDF-1.7');
+
+        $tester = $this->generate($base + 60);
+
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertNotContains($left, $this->storedKeys(), 'a run stopped between dropping the rows and their bytes is finished by the next one');
+        self::assertSame($this->namedKeys(), $this->storedKeys());
+    }
+
+    /** @return list<string> */
+    private function namedKeys(): array
+    {
+        return Rows::texts($this->connection()->fetchFirstColumn('SELECT storage_key FROM file WHERE company_id = (SELECT id FROM company WHERE name = ?) ORDER BY 1', [self::COMPANY]));
+    }
+
+    /** @return list<string> */
+    private function storedKeys(): array
+    {
+        $company = $this->text('SELECT id FROM company WHERE name = ?', [self::COMPANY]);
+        $keys = array_keys(iterator_to_array(static::getContainer()->get(FileStorage::class)->keysUnder('companies/'.$company)));
+        sort($keys);
+
+        return $keys;
     }
 
     public function testItRefusesADatabaseThatIsNotAScaleOrTestOne(): void

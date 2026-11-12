@@ -283,3 +283,7 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   wall's) for a date read off the database to red. Local storage dates bytes by the machine's clock, never the held one:
   move the API's clock from the `$written` the storage lists (`DataCheckMembersTest`), not from `new MockClock()`, which
   reads the held clock through `DatePoint` (2026-11-12).
+- A `file` row deleted in SQL leaves its bytes: `make scale-data` grew 100k invoices, then its closing `files.stored` check
+  refused the 33 PDFs renumbering dropped, and the VACUUM never ran. Its test passed because that check leaves bytes younger
+  than the longest request, and a test's always are: assert a company's stored keys against its rows through
+  `FileStorage::keysUnder`, never through the check (2026-11-12, `ScaleGeneratorTest`).
