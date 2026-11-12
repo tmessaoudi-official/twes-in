@@ -39,6 +39,7 @@ final class TakeProductReference implements RaceStep
 
         return $container->get(Transactions::class)->run(static function () use ($container, $entityManager, $company, $piece, $index): string {
             $reference = $container->get(ProductReferences::class)->take($company, null);
+            // test-clock: a racer is a process of its own, on its own clock
             $entityManager->persist(Product::create($company, $reference, new ProductDetails('Article '.$index, null, ProductKind::Goods, '10'), $piece, null, [], new \DateTimeImmutable()));
             $entityManager->flush();
 

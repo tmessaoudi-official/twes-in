@@ -17,6 +17,14 @@ abstract class ApiTestCase
         return new \DateTimeImmutable('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'); // test-clock: the API's own clock
     }
 
+    protected function moveClock(string $shift): void
+    {
+    }
+
+    protected static function authenticatorCode(string $secret, string $shift = 'now'): string
+    {
+    }
+
     /** The day it is for the company: `new \DateTimeImmutable('today')` would be UTC's. */
     protected static function dayOf(Company $company, string $shift = 'today'): string
     {
@@ -32,9 +40,9 @@ final class InvoicesTest extends ApiTestCase
     {
         $due = self::dayOf($this->company, '+30 days');
         $issued = new \DateTimeImmutable('2026-10-15');
-        $token = new \DateTimeImmutable('+30 seconds');
+        $token = self::heldNow()->modify('+30 seconds');
         $summary = $this->json()['today'];
-        $at = new \DateTimeImmutable();
+        $at = self::heldNow();
     }
 }
 PHP
@@ -55,8 +63,59 @@ out=$(run "$d"); check "a day read in the company's zone by hand is refused: day
 d=$(tree); member "$d/api/tests/Unit/LateTest.php" "\$late = new DateTime('-3 days');"
 out=$(run "$d"); check "a day shift read off the clock is refused, under Unit too" $? 1 "$out" "LateTest.php:3"
 
-d=$(tree); member "$d/api/tests/Functional/EndTest.php" "self::assertEqualsWithDelta((new \\DateTimeImmutable('+7 days'))->getTimestamp(), \$at, 60); Clock::set(new MockClock(new \\DateTimeImmutable('+8 days')));"
-out=$(run "$d"); check "a shift by days read as a moment (a timestamp, a mock clock) is no day" $? 0 "$out" "OK"
+d=$(tree); member "$d/api/tests/Unit/EndTest.php" "self::assertEqualsWithDelta((new \\DateTimeImmutable('+7 days'))->getTimestamp(), \$at, 60); Clock::set(new MockClock(new \\DateTimeImmutable('+8 days')));"
+out=$(run "$d"); check "a shift by days read as a moment (a timestamp, a unit test's mock clock) is no day" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/AuthTest.php" "Clock::set(new MockClock(new \\DateTimeImmutable('+16 minutes')));"
+out=$(run "$d"); check "a functional test moving the clock from the wall's now is refused: moveClock counts from the held one" $? 1 "$out" "AuthTest.php:3"
+
+d=$(tree); mkdir -p "$d/api/tests/Concurrency"; member "$d/api/tests/Concurrency/RaceTest.php" "Clock::set(new MockClock(new \\DateTimeImmutable()));"
+out=$(run "$d"); check "a bare wall moment handed to a mock clock is refused under Concurrency too" $? 1 "$out" "RaceTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/AuthTest.php" "Clock::set(new NativeClock());"
+out=$(run "$d"); check "a functional test letting the wall clock back in is refused: clockBack returns to the held one" $? 1 "$out" "AuthTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/MfaTest.php" "\$code = (new OtphpTotpCodes())->codeAt(\$secret, new \\DateTimeImmutable('+30 seconds'));"
+out=$(run "$d"); check "an authenticator code for the wall's now is refused: the API checks it against its held clock" $? 1 "$out" "MfaTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/ProofTest.php" "Clock::set(new MockClock(new \\DateTimeImmutable('2026-10-06 23:30:00', new \\DateTimeZone('UTC')))); \$c = (new OtphpTotpCodes())->codeAt(\$s, \$at);"
+out=$(run "$d"); check "a fixed moment for a mock clock, or a code for a moment the test holds, passes" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/FactorTest.php" "\$user->confirm(\$codes->verify(\$s, \$codes->codeAt(\$s, \$earlier), \$earlier) ?? 0, self::heldNow());"
+out=$(run "$d"); check "a code for a moment the test holds passes" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/PairTest.php" "Clock::set(new MockClock(new \\DateTimeImmutable(\"+\$minute minutes\")));"
+out=$(run "$d"); check "a move from the wall's now written in double quotes is refused too" $? 1 "$out" "PairTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/NoteTest.php" "\$before = new \\DateTimeImmutable('-1 second');"
+out=$(run "$d"); check "a functional test's moment off the wall is refused: the API stamps the held one, heldNow() says it" $? 1 "$out" "NoteTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/LockTest.php" "\$until = (new \\DateTimeImmutable(\"+\$minutes minutes\"))->format('Y-m-d H:i:s');"
+out=$(run "$d"); check "a moment off the wall in double quotes is refused too" $? 1 "$out" "LockTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/LockTest.php" "\$until = self::heldNow()->modify('+15 minutes'); \$day = new \\DateTimeImmutable('@'.\$stamp);"
+out=$(run "$d"); check "a moment from the held clock, or from a timestamp, passes" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/GrantTest.php" "\$grant = new SupportGrant(\$this->company, \$this->owner, 24, new \\DateTimeImmutable());"
+out=$(run "$d"); check "a functional test's bare stamp is refused: it lands after the held now, a second after once rounded" $? 1 "$out" "GrantTest.php:3"
+
+d=$(tree); mkdir -p "$d/api/tests/Concurrency/Support"; member "$d/api/tests/Concurrency/Support/Step.php" "\$now = new \\DateTimeImmutable(); // test-clock: a racer is a process of its own, on its own clock"
+out=$(run "$d"); check "a bare stamp saying why passes" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/GrantTest.php" "\$hours = (\$until - time()) / 3600; \$t = \$this->time(); \$u = \$row['time']();"
+out=$(run "$d"); check "PHP's time() in a functional test is refused, a method or key named time is not" $? 1 "$out" "GrantTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/GrantTest.php" "\$t = \$this->time(); \$u = Clock::time(); \$v = \$row['time']();"
+out=$(run "$d"); check "a method, static call or key named time is not PHP's time()" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Unit/ClockTest.php" "\$service = new Reminders(new NativeClock()); Clock::set(new MockClock(new \\DateTimeImmutable()));"
+out=$(run "$d"); check "a unit test holds no clock, so the wall's is no refusal there" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/WallTest.php" "Clock::set(new NativeClock()); // test-clock: proves the wall clock is not the held one"
+out=$(run "$d"); check "a reason on the line lets the wall clock in" $? 0 "$out" "OK"
+
+d=$(tree); sed -i 's/function moveClock/function shiftClock/' "$d/api/tests/Functional/ApiTestCase.php"
+out=$(run "$d"); check "an ApiTestCase without moveClock is refused: the helper the gate sends a move to is gone" $? 1 "$out" "moveClock"
 
 d=$(tree); member "$d/api/tests/Functional/EndTest.php" "Clock::set(new MockClock(new \\DateTimeImmutable('tomorrow')));"
 out=$(run "$d"); check "a clock word is a day even handed to a mock clock" $? 1 "$out" "EndTest.php:3"

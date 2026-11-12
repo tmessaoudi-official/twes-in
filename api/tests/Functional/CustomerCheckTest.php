@@ -118,7 +118,7 @@ final class CustomerCheckTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $standard = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($standard);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $tunis = new PostalAddress('12, rue du Lac', null, '1053', 'Tunis', 'TN');
         $make = function (string $number, CustomerProfile $profile) use ($now, $standard): Customer {
             $customer = Customer::create($this->company, $number, $profile, null, $standard, [], $now);

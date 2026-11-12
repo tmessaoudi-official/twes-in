@@ -107,7 +107,7 @@ final class EstablishmentsTest extends ApiTestCase
      */
     public function testAPhoneOutsideTheRangesKeptByThePlatformIsSaidToCheck(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'company.settings']);
         $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '+216 80 123 456']);

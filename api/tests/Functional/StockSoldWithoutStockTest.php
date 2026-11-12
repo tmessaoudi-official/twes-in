@@ -52,7 +52,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $vis = Product::create($this->company, 'VIS', new ProductDetails('Vis 6x40', null, ProductKind::Goods, '1'), $piece, null, [], $now);
         $gant = Product::create($this->company, 'GANT', new ProductDetails('Gants', null, ProductKind::Goods, '5'), $piece, null, [], $now);
         $this->em()->persist($vis);
@@ -61,7 +61,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         $this->gantId = $gant->getId()->toRfc4122();
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $this->em()->flush();
-        $this->start = new \DateTimeImmutable('-2 hours');
+        $this->start = self::heldNow()->modify('-2 hours');
     }
 
     public function testASaleThatLeftItsPlaceBelowZeroIsListedUntilACountThereFollowsIt(): void
@@ -98,7 +98,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         self::assertSame([$gant], $this->listed('yes'));
 
         // A sale after the count that takes the place below zero again is listed again.
-        $again = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '7', Uuid::v7(), new \DateTimeImmutable('+1 minute')));
+        $again = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '7', Uuid::v7(), self::heldNow()->modify('+1 minute')));
         self::assertSame([$again, $gant], $this->listed('yes'));
     }
 
@@ -113,7 +113,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         self::assertSame([$gant, $vis], $this->listed('yes'), 'both, while stock is kept of them');
 
         $connection = $this->em()->getConnection();
-        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->visId)), 'article.stock_tracking', false, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->visId)), 'article.stock_tracking', false, self::heldNow()));
         $this->em()->flush();
         self::assertSame([$gant], $this->listed('yes'), 'off for the product');
         self::assertContains($vis, $this->listed('no'));
@@ -124,10 +124,10 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         $connection->executeStatement("UPDATE product SET kind = 'goods' WHERE id = ?", [$this->gantId]);
         self::assertSame([$gant], $this->listed('yes'), 'goods again');
 
-        $tools = ProductCategory::create($this->managed(), 'Outillage', null, new \DateTimeImmutable());
+        $tools = ProductCategory::create($this->managed(), 'Outillage', null, self::heldNow());
         $this->em()->persist($tools);
         $this->em()->flush();
-        $this->em()->persist(new Setting(SettingAddress::productCategory($this->managed(), $tools->getId()), 'article.stock_tracking', false, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::productCategory($this->managed(), $tools->getId()), 'article.stock_tracking', false, self::heldNow()));
         $this->em()->flush();
         $connection->executeStatement('UPDATE product SET category_id = ? WHERE id = ?', [$tools->getId()->toRfc4122(), $this->gantId]);
         self::assertSame([], $this->listed('yes'), 'off for its category');
@@ -136,7 +136,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         // Off for the company, on for the product: kept, so listed; the other product's own « off » still wins.
         $connection->executeStatement("UPDATE setting SET value = 'false' WHERE level = 'company' AND level_id = ? AND key = 'article.stock_tracking'", [$this->company->getId()->toRfc4122()]);
         self::assertSame([], $this->listed('yes'), 'off for the company');
-        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->gantId)), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->gantId)), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
         self::assertSame([$gant], $this->listed('yes'), 'on for the product alone');
         self::assertTrue($this->flags('')[$gant]);
@@ -237,7 +237,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         $this->places();
         $unlotted = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '3', Uuid::v7(), $this->at(2)));
         $this->tracked(true);
-        $lot = StockLot::open($this->product($this->visId), 'L-1', null, new \DateTimeImmutable());
+        $lot = StockLot::open($this->product($this->visId), 'L-1', null, self::heldNow());
         $this->em()->persist($lot);
         $this->em()->flush();
         $lotId = $lot->getId()->toRfc4122();
@@ -258,8 +258,8 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         // another lot of the product kept does not.
         $this->tracked(true);
         $short = $this->moved(StockMovement::sale($this->product($this->visId), $this->place($this->siteId), '9', Uuid::v7(), $this->at(6), $this->lot($lotId)));
-        $twin = StockLot::open($this->product($this->gantId), 'L-1', null, new \DateTimeImmutable());
-        $other = StockLot::open($this->product($this->gantId), 'L-2', null, new \DateTimeImmutable());
+        $twin = StockLot::open($this->product($this->gantId), 'L-1', null, self::heldNow());
+        $other = StockLot::open($this->product($this->gantId), 'L-2', null, self::heldNow());
         $this->em()->persist($twin);
         $this->em()->persist($other);
         $this->em()->flush();
@@ -297,7 +297,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->managed(), 'CLI-Z1', new CustomerProfile(CustomerKind::Company, 'Carthage'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->managed(), 'CLI-Z1', new CustomerProfile(CustomerKind::Company, 'Carthage'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->postJson($this->company().'/delivery-notes', ['customerId' => $customer->getId()->toRfc4122(), 'establishmentId' => null, 'deliveryDate' => null,
@@ -341,7 +341,7 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         $site = $this->em()->find(StockLocation::class, $this->stringAt($this->jsonList()[0], 'id'));
         self::assertInstanceOf(StockLocation::class, $site);
         $this->siteId = $site->getId()->toRfc4122();
-        $shelf = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Rack, 'E2', 'Étagère 2', new \DateTimeImmutable());
+        $shelf = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Rack, 'E2', 'Étagère 2', self::heldNow());
         $this->em()->persist($shelf);
         $this->em()->flush();
         $this->shelfId = $shelf->getId()->toRfc4122();

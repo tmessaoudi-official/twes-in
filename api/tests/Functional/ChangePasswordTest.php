@@ -109,7 +109,7 @@ final class ChangePasswordTest extends ApiTestCase
         $this->em()->clear();
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('someone@twes.local')]);
         self::assertInstanceOf(User::class, $user);
-        self::assertTrue($user->isLockedAt(new \DateTimeImmutable()));
+        self::assertTrue($user->isLockedAt(self::heldNow()));
     }
 
     public function testSomeoneNotSignedInCannotChangeAPassword(): void

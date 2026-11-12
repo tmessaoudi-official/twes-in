@@ -23,7 +23,6 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -49,12 +48,6 @@ final class InvoiceRemindersTest extends ApiTestCase
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
         $this->login('sales@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     public function testAStageIsRecordedOnceAtTheCompanysHourAndTheIssuersAreTold(): void
@@ -417,7 +410,7 @@ final class InvoiceRemindersTest extends ApiTestCase
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
-        $customer = Customer::create($company, $number, self::aTunisianBusiness($name), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, $number, self::aTunisianBusiness($name), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

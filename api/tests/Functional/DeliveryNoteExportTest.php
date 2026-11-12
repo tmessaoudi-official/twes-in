@@ -38,7 +38,7 @@ final class DeliveryNoteExportTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], $now);
         $this->em()->persist($customer);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());

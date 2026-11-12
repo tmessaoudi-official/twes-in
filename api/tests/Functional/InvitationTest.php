@@ -21,7 +21,6 @@ use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
 use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
@@ -42,12 +41,6 @@ final class InvitationTest extends ApiTestCase
     private const string PASSWORD = 'a-long-enough-password';
 
     private Company $company;
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
-    }
 
     protected function setUp(): void
     {
@@ -256,8 +249,8 @@ final class InvitationTest extends ApiTestCase
         $em = $this->em();
         $company = $em->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $low = new Role('low', ['customer.read'], $company, new \DateTimeImmutable());
-        $cashier = new Role('cashier', ['customer.read', 'invoice.issue'], $company, new \DateTimeImmutable());
+        $low = new Role('low', ['customer.read'], $company, self::heldNow());
+        $cashier = new Role('cashier', ['customer.read', 'invoice.issue'], $company, self::heldNow());
         $em->persist($low);
         $em->persist($cashier);
         $em->flush();
@@ -353,7 +346,7 @@ final class InvitationTest extends ApiTestCase
         $token = $this->inviteAndReadTheToken($refused, Role::OWNER);
         $company = $this->em()->find(Company::class, $refused->getId());
         self::assertNotNull($company);
-        $company->suspend(new \DateTimeImmutable(), 'Matricule fiscal introuvable');
+        $company->suspend(self::heldNow(), 'Matricule fiscal introuvable');
         $this->em()->flush();
         $this->signOut();
 
@@ -599,7 +592,7 @@ final class InvitationTest extends ApiTestCase
 
     private function createPendingCompany(): Company
     {
-        $company = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis', self::heldNow());
         $this->em()->persist($company);
         $this->em()->flush();
 

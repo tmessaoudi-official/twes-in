@@ -10,8 +10,6 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -31,12 +29,6 @@ final class PlatformWritesStepUpTest extends ApiTestCase
         parent::setUp();
         $this->createUser('operator@twes.local', self::PASSWORD, operator: true);
         $this->login('operator@twes.local', self::PASSWORD);
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     /**

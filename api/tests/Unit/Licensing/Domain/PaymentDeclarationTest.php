@@ -106,6 +106,22 @@ final class PaymentDeclarationTest extends TestCase
         self::assertSame(Access::Locked, $stale->access);
     }
 
+    public function testAHoldOfZeroDaysHoldsNothingEvenAtTheInstantThePaymentIsDeclared(): void
+    {
+        $now = new \DateTimeImmutable(self::NOW);
+        $defaults = new LicensingDefaults(3, UnpaidMode::Locked, 7);
+
+        $ownZero = $this->subscription(paidUntil: '2026-09-01T00:00:00+00:00', holdDays: 0)->standingAt($now, $defaults, $now);
+        self::assertSame(Stage::Unpaid, $ownZero->stage, 'its own hold of zero days');
+        self::assertSame(Access::Locked, $ownZero->access);
+
+        $platformZero = $this->subscription(paidUntil: '2026-09-01T00:00:00+00:00')->standingAt($now, new LicensingDefaults(3, UnpaidMode::Locked, 0), $now);
+        self::assertSame(Stage::Unpaid, $platformZero->stage, 'the platform\'s hold of zero days');
+
+        $oneDay = $this->subscription(paidUntil: '2026-09-01T00:00:00+00:00', holdDays: 1)->standingAt($now->modify('+1 day'), $defaults, $now);
+        self::assertSame(Stage::Held, $oneDay->stage, 'a hold of one day still holds its last instant');
+    }
+
     public function testADeclarationChangesNothingWhileTheSubscriptionIsStillCovered(): void
     {
         $subscription = $this->subscription(paidUntil: '2026-12-31T00:00:00+00:00');

@@ -51,8 +51,8 @@ final class DemoSandboxTest extends ApiTestCase
     public function testNoSandboxIsQueuedPastTheMostThePlatformAllows(): void
     {
         $this->platform(DemoSettings::MOST, 3);
-        $this->readySandbox('TN')->claim(new \DateTimeImmutable());
-        $this->readySandbox('FR')->claim(new \DateTimeImmutable());
+        $this->readySandbox('TN')->claim(self::heldNow());
+        $this->readySandbox('FR')->claim(self::heldNow());
         $this->em()->flush();
 
         self::assertSame(1, static::getContainer()->get(KeepSandboxPool::class)->handle(), 'the third and last place goes to the first country');
@@ -87,8 +87,8 @@ final class DemoSandboxTest extends ApiTestCase
 
     public function testABuildRunsOnceThoughItsMessageComesTwice(): void
     {
-        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', new \DateTimeImmutable());
-        $sandbox->startBuilding(new \DateTimeImmutable());
+        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', self::heldNow());
+        $sandbox->startBuilding(self::heldNow());
         static::getContainer()->get(DemoSandboxRepository::class)->save($sandbox);
 
         static::getContainer()->get(BuildSandbox::class)->handle($sandbox->getId());
@@ -121,13 +121,14 @@ final class DemoSandboxTest extends ApiTestCase
     {
         static::getContainer()->get(SeedPlatform::class)->converge();
         $before = $this->numberOf('SELECT COUNT(*) FROM "user"', []);
-        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', new \DateTimeImmutable());
+        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', self::heldNow());
         static::getContainer()->get(DemoSandboxRepository::class)->save($sandbox);
         $id = $sandbox->getId();
 
+        $held = Clock::get();
         static::getContainer()->get(BuildSandbox::class)->handle($id);
 
-        self::assertLessThan(60, abs(Clock::get()->now()->getTimestamp() - time()), 'the moved clock is put back');
+        self::assertSame($held, Clock::get(), 'the moved clock is put back');
         $row = $this->row('SELECT state, company_id, owner_id FROM demo_sandbox WHERE id = ?', [$id->toRfc4122()]);
         self::assertSame('ready', $row['state']);
         $company = $this->row('SELECT name, status, currency FROM company WHERE id = ?', [$row['company_id']]);

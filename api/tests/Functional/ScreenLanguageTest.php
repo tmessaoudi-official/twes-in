@@ -29,7 +29,7 @@ final class ScreenLanguageTest extends ApiTestCase
         $this->company = $this->createCompany('Acme');
         $user = $this->createUser('owner@twes.local', 'password-1234', $this->company);
         // The account kept the last language chosen; the screen now reads French.
-        $user->changeLocale('ar', new \DateTimeImmutable());
+        $user->changeLocale('ar', self::heldNow());
         $this->em()->flush();
         $this->login('owner@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();

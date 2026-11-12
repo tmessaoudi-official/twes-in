@@ -17,7 +17,6 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -41,7 +40,7 @@ final class RecurringExpensesTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Steg'), new \DateTimeImmutable());
+        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Steg'), self::heldNow());
         $this->em()->persist($this->vendor);
         $this->em()->flush();
         $this->userId = $this->createUser('buyer@twes.local', 'password-1234', $this->company, ['company.read', 'expense.read', 'expense.write'], 'member')->getId()->toRfc4122();
@@ -52,12 +51,6 @@ final class RecurringExpensesTest extends ApiTestCase
         $this->postJson($this->path().'/expense-categories', ['name' => 'Énergie', 'parentId' => null, 'isActive' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->categoryId = $this->stringAt($this->json(), 'id');
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     public function testAnExpenseMadeRecurringIsDraftedOnceOnEachOccurrenceAsACopyDatedOnItsDay(): void
@@ -234,7 +227,7 @@ final class RecurringExpensesTest extends ApiTestCase
         $model = $this->expense();
         $recurring = $this->recurring($model, ['unit' => 'month', 'every' => 1, 'anchor' => 'last_day', 'startsOn' => $this->lastDayOfThisMonth()]);
         $this->runOn($this->lastDayOfThisMonth());
-        Clock::set(new NativeClock());
+        $this->clockBack();
         $draft = $this->draftsOf($recurring)[0];
         $row = fn (): array => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM recurring_expense WHERE id = ?', [$recurring]);
         $before = $row();
@@ -356,7 +349,7 @@ final class RecurringExpensesTest extends ApiTestCase
         foreach (array_map($this->day(...), range(0, $days)) as $day) {
             $this->runOn($day);
         }
-        Clock::set(new NativeClock());
+        $this->clockBack();
     }
 
     private function runOn(string $day): void

@@ -40,17 +40,17 @@ final class InvoiceSectionsTest extends ApiTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'), new \DateTimeImmutable());
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'), self::heldNow());
         $this->em()->flush();
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->company), 'document.late_payment_rate', SettingLevel::Company, 'trois fois le taux d’intérêt légal', null);
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('FR', 'standard');
         self::assertNotNull($regime);
-        $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Garage Martin', identifiers: ['siren' => '542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR')), null, $regime, [], new \DateTimeImmutable());
+        $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Garage Martin', identifiers: ['siren' => '542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR')), null, $regime, [], self::heldNow());
         $this->em()->persist($this->customer);
         $this->em()->flush();
         $this->createUser('sales@twes.local', 'password-1234', $this->company, self::WRITER, 'member');

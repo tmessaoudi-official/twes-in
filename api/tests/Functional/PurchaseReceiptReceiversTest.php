@@ -47,7 +47,7 @@ final class PurchaseReceiptReceiversTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $screws = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6 mm', null, ProductKind::Goods, '0.500'), $piece, null, [], $now);
         $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Quincaillerie du Sud'), $now);
         $this->em()->persist($screws);

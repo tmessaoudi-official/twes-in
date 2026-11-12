@@ -12,7 +12,6 @@ namespace App\Tests\Functional;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Model\UserSession;
 use App\Identity\Domain\ValueObject\Email;
-use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -93,7 +92,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         // The old app no longer signs in; the new one does.
         $this->signOut();
         $this->postJson('/api/auth/login', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
-        $this->postJson('/api/auth/mfa/verify', ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable('+30 seconds'))]);
+        $this->postJson('/api/auth/mfa/verify', ['code' => self::authenticatorCode(self::AUTHENTICATOR_SECRET, '+30 seconds')]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
         $this->forgetSecondFactorAttempts(self::EMAIL);
         $this->postJson('/api/auth/mfa/verify', ['code' => $this->codeOf($secret, '+30 seconds')]);
@@ -105,7 +104,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         $this->operatorSignedIn();
         $this->begun();
 
-        $this->postJson(self::CONFIRM, ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable('+30 seconds'))]);
+        $this->postJson(self::CONFIRM, ['code' => self::authenticatorCode(self::AUTHENTICATOR_SECRET, '+30 seconds')]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(['invalid_code', []], $this->refusalOf('code'));
@@ -116,7 +115,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
     {
         $this->operatorSignedIn();
 
-        $this->postJson(self::CONFIRM, ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable('+30 seconds'))]);
+        $this->postJson(self::CONFIRM, ['code' => self::authenticatorCode(self::AUTHENTICATOR_SECRET, '+30 seconds')]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(['invalid_code', []], $this->refusalOf('code'));
@@ -140,7 +139,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
     {
         $this->operatorSignedIn();
         $user = $this->userOf(self::EMAIL);
-        $elsewhere = new UserSession($user, 'a-session-on-the-lost-phone', 'phone', '192.0.2.7', new \DateTimeImmutable());
+        $elsewhere = new UserSession($user, 'a-session-on-the-lost-phone', 'phone', '192.0.2.7', self::heldNow());
         $this->em()->persist($elsewhere);
         $this->em()->flush();
         $secret = $this->begun();
@@ -234,7 +233,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
 
     private function codeOf(string $secret, string $when = 'now'): string
     {
-        return (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable($when));
+        return self::authenticatorCode($secret, $when);
     }
 
     private function userOf(string $email): User

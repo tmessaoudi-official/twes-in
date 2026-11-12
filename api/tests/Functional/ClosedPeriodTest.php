@@ -18,7 +18,6 @@ use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -33,8 +32,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ClosedPeriodTest extends ApiTestCase
 {
-    use ClockSensitiveTrait;
-
     private Company $company;
     private string $customerId;
     private ?string $categoryId = null;
@@ -43,14 +40,11 @@ final class ClosedPeriodTest extends ApiTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Every case here turns on which day today is: the clock stands still, so the day a case reads and the day the
-        // API is on when its request arrives are one, at midnight in Tunis too.
-        self::mockTime();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer()->getId()->toRfc4122();
-        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), new \DateTimeImmutable());
+        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), self::heldNow());
         $this->em()->persist($this->vendor);
         $this->em()->flush();
         $this->createUser('owner@twes.local', 'password-1234', $this->company);
@@ -272,7 +266,7 @@ final class ClosedPeriodTest extends ApiTestCase
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
-        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

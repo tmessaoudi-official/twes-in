@@ -119,8 +119,10 @@ class Subscription implements CompanyOwned
         if ($now <= $graceEndsAt) {
             return new Standing(Stage::Grace, Access::Full, $coveredUntil, $graceEndsAt, self::daysBetween($now, $graceEndsAt));
         }
-        if (null !== $declaredAt) {
-            $heldUntil = $declaredAt->modify(\sprintf('+%d days', $terms->holdDays ?? $defaults->holdDays));
+        $holdDays = $terms->holdDays ?? $defaults->holdDays;
+        // A hold of zero days is no hold: its end would be the declaration's own instant, which a read in that second meets.
+        if (null !== $declaredAt && $holdDays > 0) {
+            $heldUntil = $declaredAt->modify(\sprintf('+%d days', $holdDays));
             if ($now <= $heldUntil) {
                 return new Standing(Stage::Held, Access::Full, $coveredUntil, $graceEndsAt, self::daysBetween($now, $heldUntil));
             }

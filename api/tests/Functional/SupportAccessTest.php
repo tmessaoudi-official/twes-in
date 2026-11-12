@@ -50,14 +50,14 @@ final class SupportAccessTest extends ApiTestCase
         // A second owner shares the first one's role: a company holds one role of each name.
         $role = $this->em()->getRepository(Membership::class)->findOneBy(['user' => $owner])?->getRole();
         self::assertNotNull($role);
-        $this->em()->persist(new Membership($this->createUser(self::CO_OWNER, self::PASSWORD), $this->company, $role, new \DateTimeImmutable()));
+        $this->em()->persist(new Membership($this->createUser(self::CO_OWNER, self::PASSWORD), $this->company, $role, self::heldNow()));
         $this->em()->flush();
         $this->createUser(self::MANAGER, self::PASSWORD, $this->company, ['company.settings', 'customer.read', 'customer.write'], 'manager');
         $this->createUser(self::OPERATOR, self::PASSWORD, operator: true);
 
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
-        $product = Product::create($this->company, 'VIS-6X40', new ProductDetails('Vis 6x40', null, ProductKind::Goods, '0.45', '0.22'), $unit, null, [], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'VIS-6X40', new ProductDetails('Vis 6x40', null, ProductKind::Goods, '0.45', '0.22'), $unit, null, [], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -84,7 +84,7 @@ final class SupportAccessTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $until = $this->json()['endsAt'] ?? null;
         self::assertIsString($until);
-        $hours = ((new \DateTimeImmutable($until))->getTimestamp() - time()) / 3600;
+        $hours = ((new \DateTimeImmutable($until))->getTimestamp() - self::heldNow()->getTimestamp()) / 3600;
         self::assertEqualsWithDelta(24, $hours, 0.1);
 
         $this->getJson($this->path('/support-access'));

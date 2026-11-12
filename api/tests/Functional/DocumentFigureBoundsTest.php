@@ -37,7 +37,7 @@ final class DocumentFigureBoundsTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
@@ -85,7 +85,7 @@ final class DocumentFigureBoundsTest extends ApiTestCase
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $vendor = Vendor::create($company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), new \DateTimeImmutable());
+        $vendor = Vendor::create($company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), self::heldNow());
         $this->em()->persist($vendor);
         $this->em()->flush();
         $tax = $this->em()->getConnection()->fetchOne('SELECT id FROM tax_component WHERE company_id = ? AND code = ?', [$this->company->getId()->toRfc4122(), 'TVA19']);

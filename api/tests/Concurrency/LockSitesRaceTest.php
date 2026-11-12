@@ -301,7 +301,7 @@ final class LockSitesRaceTest extends SaleRaceTestCase
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
         $profile = $business ? self::aTunisianBusiness($name) : new CustomerProfile(CustomerKind::Individual, $name, null, [], null, null, null, new PostalAddress(countryCode: 'TN'), null);
-        $customer = Customer::create($this->freshCompany(), $number, $profile, null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->freshCompany(), $number, $profile, null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 
@@ -318,8 +318,8 @@ final class LockSitesRaceTest extends SaleRaceTestCase
     {
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $product = Product::create($this->freshCompany(), 'ART-SN', new ProductDetails('Meuleuse', null, ProductKind::Goods, '400'), $piece, null, [], new \DateTimeImmutable());
-        $product->track(ProductTracking::Serial, new \DateTimeImmutable());
+        $product = Product::create($this->freshCompany(), 'ART-SN', new ProductDetails('Meuleuse', null, ProductKind::Goods, '400'), $piece, null, [], self::heldNow());
+        $product->track(ProductTracking::Serial, self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
 

@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -158,7 +157,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $this->secret = $this->stringAt($this->json(), 'secret');
-        $this->confirmingCode = (new OtphpTotpCodes())->codeAt($this->secret, new \DateTimeImmutable());
+        $this->confirmingCode = self::authenticatorCode($this->secret);
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => $this->confirmingCode]);
         self::assertResponseIsSuccessful();
         $this->firstCodes = $this->codesIn($this->json());
@@ -168,7 +167,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
     /** The next step's code: the confirming step is spent, and one step of leeway admits this one. */
     private function nextCode(): string
     {
-        return (new OtphpTotpCodes())->codeAt($this->secret, new \DateTimeImmutable('+30 seconds'));
+        return self::authenticatorCode($this->secret, '+30 seconds');
     }
 
     /**

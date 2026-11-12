@@ -52,7 +52,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $units = static::getContainer()->get(UnitRepository::class);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         // A quincaillerie counts screws one by one and wire by the kilo: the unit decides how fine a count may be.
         foreach ([['VIS-6X40', 'Vis 6x40', ProductKind::Goods, 'C62', '0.2000'], ['FIL-2', 'Fil de fer 2mm', ProductKind::Goods, 'KGM', null], ['MO-TOUR', 'Tournage', ProductKind::Service, 'C62', null], ['COL-01', 'Colle', ProductKind::Goods, 'C62', null]] as [$reference, $name, $kind, $unitCode, $cost]) {
             $unit = $units->ofCodeInCompany($unitCode, $this->company->getId());
@@ -285,7 +285,7 @@ final class OpeningStockImportTest extends ApiTestCase
     /** A code names one place per establishment, so a company with two sites using the same code is asked, not guessed. */
     public function testALocationCodeTwoEstablishmentsShareIsRefusedRatherThanGuessed(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $second = $this->secondEstablishment();
         $this->locations()->save(StockLocation::create($second, $this->manageLocations()->defaultOf($second), StockLocationKind::Zone, 'Z1', 'Zone froide', $now));
         $this->em()->flush();
@@ -453,7 +453,7 @@ final class OpeningStockImportTest extends ApiTestCase
 
     private function secondEstablishment(): Establishment
     {
-        $second = Establishment::create($this->company, 'LYON', 'Lyon', false, new \DateTimeImmutable());
+        $second = Establishment::create($this->company, 'LYON', 'Lyon', false, self::heldNow());
         $this->em()->persist($second);
         $this->em()->flush();
 

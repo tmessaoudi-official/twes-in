@@ -92,8 +92,8 @@ final class ClosedCompanyRemovalTest extends ApiTestCase
     private function closed(string $companyId, string $retainedUntil): void
     {
         $this->connection()->executeStatement("UPDATE company SET status = 'closed', closed_down_at = ?, retain_until = ? WHERE id = ?", [
-            (new \DateTimeImmutable('-11 years'))->format('Y-m-d H:i:s'),
-            (new \DateTimeImmutable($retainedUntil))->format('Y-m-d'),
+            self::heldNow()->modify('-11 years')->format('Y-m-d H:i:s'),
+            self::heldNow()->modify($retainedUntil)->format('Y-m-d'),
             $companyId,
         ]);
     }

@@ -39,7 +39,7 @@ final class ProductHomeTest extends ApiTestCase
         $this->establishmentId = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
         // Off by default, and the stock picker offers only what is tracked: without this the product under test is
         // not among what a receipt can name at all, and the proposal has nothing to be carried on.
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
     }
 
@@ -216,7 +216,7 @@ final class ProductHomeTest extends ApiTestCase
         // The kernel reboots between requests, so the company kept in setUp is detached by now: find it again.
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $second = Establishment::create($company, 'LYON', 'Lyon', false, new \DateTimeImmutable());
+        $second = Establishment::create($company, 'LYON', 'Lyon', false, self::heldNow());
         $this->em()->persist($second);
         $this->em()->flush();
         $this->postJson($path.'/stock-locations', [

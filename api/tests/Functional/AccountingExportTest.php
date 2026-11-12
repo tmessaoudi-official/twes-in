@@ -39,7 +39,7 @@ final class AccountingExportTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer()->getId()->toRfc4122();
-        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), new \DateTimeImmutable());
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), self::heldNow());
         $this->em()->persist($vendor);
         $this->em()->flush();
         $this->vendorId = $vendor->getId()->toRfc4122();
@@ -257,7 +257,7 @@ final class AccountingExportTest extends ApiTestCase
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
-        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

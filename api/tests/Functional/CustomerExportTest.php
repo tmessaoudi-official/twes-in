@@ -31,7 +31,7 @@ final class CustomerExportTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(CustomerGroup::create($this->company, 'Grossistes', null, $now));
         $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'employees', 'Salariés', CustomFieldType::Number, false, [], 1, $now));
         $this->em()->flush();

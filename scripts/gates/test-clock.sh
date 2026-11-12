@@ -10,6 +10,15 @@
 # clock, a stamp to the second), and a bare `new \DateTimeImmutable()`, which is a moment too. A read
 # that must be another clock (the platform's own day, no company's) says why on its line or the one above:
 # `// test-clock: <why>`.
+# A functional or race test runs on the clock ApiTestCase holds still for the case, the one the API reads, so a moment it
+# computes beside the API comes from that clock too. Refused under api/tests/Functional and api/tests/Concurrency: the
+# wall clock let back in (`new NativeClock()`; ApiTestCase::clockBack returns to the held one), a mock clock set from the
+# wall's now (`new MockClock(new \DateTimeImmutable('+16 minutes'))`; ApiTestCase::moveClock counts from the held one),
+# and an authenticator code for the wall's now (`codeAt($secret, new \DateTimeImmutable())`; ApiTestCase::authenticatorCode).
+# A moment off the wall (`new \DateTimeImmutable('-1 second')`, `'+24 hours'`) is refused there too: the API stamps the held
+# instant, so an expectation read off the wall missed it by the case's run time (ApiTestCase::heldNow()->modify('…')).
+# A bare `new \DateTimeImmutable()` too: it lands after the held instant, a second after once a timestamp(0) column rounds
+# it, so a support grant stamped so was not yet active when the case closed the company (ApiTestCase::heldNow()).
 # Usage: test-clock.sh [--root DIR] [--floor N]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -28,7 +37,7 @@ problems=()
 helpers="$root/api/tests/Functional/ApiTestCase.php"
 if [[ ! -f "$helpers" ]]; then problems+=("found no api/tests/Functional/ApiTestCase.php, which holds the day helpers")
 else
-  for helper in dayOf apiNow; do
+  for helper in dayOf apiNow moveClock authenticatorCode; do
     grep -qE "function $helper\(" "$helpers" || problems+=("api/tests/Functional/ApiTestCase.php: found no $helper(), the helper this gate sends a day to")
   done
 fi
@@ -39,6 +48,11 @@ day_shift="new[[:space:]]+\\\\?DateTime(Immutable)?[[:space:]]*\\([[:space:]]*['
 moment='getTimestamp\(|MockClock\(|H:i'
 # PHP's own clock functions, never a method, a static call, a variable or an array key named so.
 clock_call="(^|[^a-zA-Z0-9_>\$:'\"])\\\\?(date|gmdate|strtotime|mktime)[[:space:]]*\\("
+# The wall clock where a case holds its own: a moment off the wall, bare or `'now'`, `'+…'`, `'-…'` (heldNow() is the held
+# one), whatever it is handed to (a mock clock, an authenticator code, an entity), PHP's time(), or a NativeClock.
+wall_moment="new[[:space:]]+\\\\?DateTime(Immutable)?[[:space:]]*\\([[:space:]]*(\\)|['\"](now|[+-]))"
+wall_call="(^|[^a-zA-Z0-9_>\$:'\"])\\\\?time[[:space:]]*\\("
+wall="${wall_moment}|${wall_call}|new[[:space:]]+\\\\?(Symfony\\\\Component\\\\Clock\\\\)?NativeClock[[:space:]]*\\("
 said='//[[:space:]]*test-clock:[[:space:]]*[^[:space:]]'
 seen=0
 while IFS= read -r file; do
@@ -52,6 +66,7 @@ while IFS= read -r file; do
     read_off=0
     [[ "$code" =~ $day_shift ]] && ! [[ "$code" =~ $moment ]] && read_off=1
     [[ "$code" =~ $clock_word || "$code" =~ $clock_call ]] && read_off=1
+    [[ "$file" == "$root/api/tests/Functional/"* || "$file" == "$root/api/tests/Concurrency/"* ]] && [[ "$code" =~ $wall ]] && read_off=1
     if ((read_off)) && ! [[ "$line" =~ $said || "$previous" =~ $said ]]; then
       problems+=("${file#"$root/"}:$n: ${code:0:110}")
     fi
@@ -60,7 +75,7 @@ while IFS= read -r file; do
 done < <(find "$root/api/tests" -name '*.php' -type f | sort)
 
 if ((${#problems[@]})); then
-  printf 'test-clock: FAIL — %d read(s) of a day off a clock not the company'"'"'s (use self::dayOf($company, <shift>), self::dayAsDate or self::apiNow, or say why on the line with // test-clock: <why>):\n' "${#problems[@]}"
+  printf 'test-clock: FAIL — %d read(s) of a day off a clock not the company'"'"'s (use self::dayOf($company, <shift>), self::dayAsDate or self::apiNow; in a functional or race test $this->moveClock, $this->clockBack or self::authenticatorCode; or say why on the line with // test-clock: <why>):\n' "${#problems[@]}"
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi

@@ -142,7 +142,7 @@ final class ProductPriceReviewTest extends ApiTestCase
 
     public function testACompanyKeepingItsPricesIsOfferedNothing(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'keep', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'keep', self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'product.read', 'product.cost.read', 'stock.read', 'stock.write']);
         $this->receive('1000');
@@ -154,7 +154,7 @@ final class ProductPriceReviewTest extends ApiTestCase
 
     public function testACompanyFollowingTheMarginHasItsPriceMovedWithTheCost(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'product.read', 'product.cost.read', 'stock.read', 'stock.write']);
         $this->receive('1000');
@@ -171,7 +171,7 @@ final class ProductPriceReviewTest extends ApiTestCase
      */
     public function testAPriceThatFollowedItsCostIsPutBackToThePriceTheReceiptReplaced(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read', 'stock.read', 'stock.write']);
         $this->receive('1000');
@@ -196,7 +196,7 @@ final class ProductPriceReviewTest extends ApiTestCase
 
     public function testAPriceTypedSinceItFollowedItsCostIsNotPutBack(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read', 'stock.read', 'stock.write']);
         $this->receive('1000');
@@ -224,7 +224,7 @@ final class ProductPriceReviewTest extends ApiTestCase
         $this->receive('1100');
         self::assertSame([], $this->effects());
 
-        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'article.price_on_cost_change', 'follow', self::heldNow()));
         $this->em()->flush();
         $this->receive('1200');
         self::assertSame([['kind' => 'product.price_followed', 'id' => $this->productId, 'params' => ['previousPrice' => '1250.0000']]], $this->effects(), 'the price it had, for « Annuler »');
@@ -263,7 +263,7 @@ final class ProductPriceReviewTest extends ApiTestCase
 
     public function testAnImportedCostMovesThePriceOfACompanyFollowingTheMargin(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read']);
         $this->importCosts("reference,name,cost_price\nART-001,Perceuse,1000\n");
@@ -283,7 +283,7 @@ final class ProductPriceReviewTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($this->company, 'ART-001', new ProductDetails('Perceuse', null, ProductKind::Goods, '1250'), $piece, null, [], $now);
         $this->em()->persist($product);
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));

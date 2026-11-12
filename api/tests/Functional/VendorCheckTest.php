@@ -94,7 +94,7 @@ final class VendorCheckTest extends ApiTestCase
     {
         parent::setUp();
         $this->company = $this->createCompany('Acme');
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $make = function (string $number, string $name) use ($now): Vendor {
             $vendor = Vendor::create($this->company, $number, new VendorProfile($name), $now);
             $this->em()->persist($vendor);

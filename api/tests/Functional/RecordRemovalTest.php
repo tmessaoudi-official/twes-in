@@ -24,9 +24,6 @@ use App\Records\Domain\Exception\RemovalNoLongerPending;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -47,7 +44,7 @@ final class RecordRemovalTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6 mm', null, ProductKind::Goods, '0.500'), $piece, null, [], $now);
         $this->em()->persist($product);
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
@@ -199,7 +196,7 @@ final class RecordRemovalTest extends ApiTestCase
     public function testWhatTheCompanyDoesNotHaveIsNotFound(): void
     {
         $other = $this->createCompany('Ailleurs');
-        $theirs = Vendor::create($other, 'F-001', new VendorProfile('Autre'), new \DateTimeImmutable());
+        $theirs = Vendor::create($other, 'F-001', new VendorProfile('Autre'), self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->signedIn(['vendor.read', 'vendor.write']);
@@ -211,7 +208,7 @@ final class RecordRemovalTest extends ApiTestCase
         $this->postJson($this->path('record-removals'), ['subject' => 'vendor', 'ids' => []]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'vendors', false, self::heldNow()));
         $this->em()->flush();
         $this->postJson($this->path('record-removals'), ['subject' => 'vendor', 'ids' => [$this->vendorId('F-001')]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -243,7 +240,7 @@ final class RecordRemovalTest extends ApiTestCase
         $this->getJson($this->path('record-removals'));
         self::assertSame([[$removal, ['F-001 Sotumag']]], array_map(fn (array $row): array => [$row['id'], array_column($this->arrayAt($row, 'items'), 'label')], $this->jsonList()));
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+24 hours +1 minute')));
+        $this->moveClock('+24 hours +1 minute');
         try {
             // Its day is over before the worker passes: no longer offered, and refused. The session has ended by then,
             // so the use cases answer.
@@ -259,7 +256,7 @@ final class RecordRemovalTest extends ApiTestCase
             static::getContainer()->get(EndDueRemovals::class)->handle();
             static::getContainer()->get(EndDueRemovals::class)->handle();
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
 
         self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM record_removal_row'));

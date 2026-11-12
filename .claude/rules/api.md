@@ -145,7 +145,7 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   - `additive-migrations.sh` (after the newest release tag `vYYYY.MM.DD.N`, no migration's `up()` drops, renames or narrows what that release reads, unless its line says `// contract: <why>`: a shop's unhealthy update starts the release before it on the new schema; a statement is read whole over its lines, a released migration edited or deleted, a new CHECK, UNIQUE, EXCLUDE, trigger or foreign key on columns it does not add on a table the release holds, a rule whose table is not written out, and `CONCURRENTLY` are refused too; every method but `down()` is read as `up()`; judged against the newest release HEAD descends from; nothing is checked before the first tag)
   - `xml-reads.sh` (XML from outside is parsed only where a declared document type is refused first: every XMLReader, SimpleXML, DOM load, `xml_parse` or openspout XLSX/ODS reader in `api/src` sits in a file the gate allows with its reason, today `OpenSpoutReader`, which refuses a workbook any part of which declares one, and `XlsxPercentCells`, which it alone calls; an allowed file that parses nothing any more reds too)
   - `test-issue-shortcut.sh` (a test builds an issued invoice, a sent quote, a validated note or a sent order through the use case: an SQL statement in `api/tests` setting one's status, or DBAL's table API, `->update`/`->insert('<table>', ['status' => …])` read whole over its lines, is refused unless its line or the one above says `// issue-shortcut: <why>`, as a data check proving it notices a state no use case makes does; a floor of 702 test files read, 3 below today's count)
-  - `test-clock.sh` (a day a PHP test sends or counts from goes through `ApiTestCase::dayOf`, `dayAsDate` or `apiNow`: no DateTime from a clock word or a day shift, no `date()` or `strtotime()` in `api/tests`, but a moment and a line saying `// test-clock: <why>`)
+  - `test-clock.sh` (a day a PHP test sends or counts from goes through `ApiTestCase::dayOf`, `dayAsDate` or `apiNow`: no DateTime from a clock word or a day shift, no `date()` or `strtotime()` in `api/tests`, but a moment and a line saying `// test-clock: <why>`; under `Functional/` and `Concurrency/`, where the case's clock is held, no `new NativeClock()`, no mock clock or authenticator code from the wall's now: `moveClock`, `clockBack`, `authenticatorCode`)
 
 ## Lessons
 
@@ -254,8 +254,10 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   for the expectation, it crossed midnight in Tunis after the request and expected the next day (2026-10-26).
   `test-clock.sh` refuses any other read of a day in `api/tests`. Reading once is not enough: the API reads its own
   clock when the request arrives, and a case that read 10 November just before 23:00:00 UTC had it closed as yesterday
-  (CI only, 2026-11-10). A class whose cases turn on which day today is holds its clock still in `setUp`
-  (`ClockSensitiveTrait`, `self::mockTime()`), and `dayOf` reads that clock, as `ClosedPeriodTest` does.
+  (CI only, 2026-11-10). So every functional case runs on a clock `ApiTestCase::setUp` holds still on a whole second
+  (`ClockSensitiveTrait`), and what a test computes beside the API reads it: `dayOf`, `apiNow`, `heldNow`, an
+  authenticator's code (`authenticatorCode`). Move it with `$this->moveClock('+16 minutes')`, back with `clockBack()`:
+  `self::mockTime('+…')` counts from the clock as it stands, so a case's second move added to its first.
 - Measure a request's memory with `memory_reset_peak_usage()` first and `memory_get_peak_usage()` (not `true`) after: a
   FrankenPHP worker thread keeps the memory earlier requests took, so the real size read 123 MB for 39 rows. In development
   the profiler's collectors (Doctrine's queries, Monolog's records) hold most of a long request; they are capped now, and
@@ -273,3 +275,7 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   one and its session reads empty, and the browser deletes by NAME, so a read sent before a sign-in and answered after it
   signed the person out (CI-only, the trace's cookies showed it; `KeepSessionCookieListener` now drops every deletion).
   Read a lost-session e2e through the trace's Cookie and Set-Cookie headers per request, never the screenshot (2026-11-07).
+- To find a clock race, pin `ApiTestCase`'s held instant (uncommitted) at a past 23:30 UTC, already the next day in Tunis,
+  and run the whole suite: a pin in the FUTURE answers 401 everywhere, as the absolute session limit compares the held
+  clock with `MetadataBag`'s `time()`. A relative shift passed through a helper's variable (`entry(…, '-2 days')`,
+  `openedSandbox('TN', '-2 hours')`) escapes `test-clock.sh`: read every `new \DateTimeImmutable($x)` (2026-11-12).

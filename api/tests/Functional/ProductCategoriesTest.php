@@ -117,7 +117,7 @@ final class ProductCategoriesTest extends ApiTestCase
 
     public function testACategoryHoldingAProductOrASubcategoryIsKept(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $hardware = ProductCategory::create($this->company, 'Matériel', null, $now);
         $laptops = ProductCategory::create($this->company, 'Portables', $hardware, $now);
         $unit = Unit::create($this->company, 'C62', 'Unité', 0, 0, $now);
@@ -141,7 +141,7 @@ final class ProductCategoriesTest extends ApiTestCase
     public function testAReaderOnlyReadsAndAnotherCompanysCategoryIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');
-        $theirs = ProductCategory::create($globex, 'Matériel', null, new \DateTimeImmutable());
+        $theirs = ProductCategory::create($globex, 'Matériel', null, self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         // Both people exist before the first request: the client reboots the kernel, which detaches the company.

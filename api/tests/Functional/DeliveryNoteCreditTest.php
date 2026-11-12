@@ -37,7 +37,7 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
@@ -112,7 +112,7 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Globex Client'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Globex Client'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();

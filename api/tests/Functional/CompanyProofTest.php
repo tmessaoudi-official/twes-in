@@ -19,8 +19,6 @@ use App\Shared\Infrastructure\Realtime\HmacJwt;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
 use App\Tests\Support\FakeAuthenticator;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -42,12 +40,6 @@ final class CompanyProofTest extends ApiTestCase
         parent::setUp();
         $this->first = $this->createCompany('Acme');
         $this->second = $this->createCompany('Globex');
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new \Symfony\Component\Clock\NativeClock());
-        parent::tearDown();
     }
 
     public function testTheCompanyTheSignInOpensIsProvedAndAnotherAsksItsOwnProof(): void
@@ -141,9 +133,8 @@ final class CompanyProofTest extends ApiTestCase
         $this->getJson('/api/auth/me');
         self::assertNull($this->json()['companyProof']);
         // Nothing proved is held for it either: left alone longer than a proof lasts idle, it is still let in.
-        $at = new \DateTimeImmutable();
         foreach ([29, 58] as $minutes) {
-            Clock::set(new MockClock($at->modify("+$minutes minutes")));
+            $this->moveClock("+$minutes minutes");
             self::assertSame(Response::HTTP_OK, $this->act($this->first));
         }
     }
@@ -157,7 +148,7 @@ final class CompanyProofTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($this->json(), residentKey: true)]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $second = $this->fresh($this->second);
-        $second->requireMfa(true, new \DateTimeImmutable());
+        $second->requireMfa(true, self::heldNow());
         $this->em()->flush();
         // A company that takes no passkey to enter still takes it as the second factor it requires.
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($second), CompanyEntrySettings::PASSKEY, SettingLevel::Company, false, null);
@@ -179,7 +170,7 @@ final class CompanyProofTest extends ApiTestCase
 
     public function testACompanyRequiringASecondFactorAsksTheCodeBesideThePassword(): void
     {
-        $this->second->requireMfa(true, new \DateTimeImmutable());
+        $this->second->requireMfa(true, self::heldNow());
         $this->em()->flush();
         $this->memberOfBoth(authenticator: true);
         $this->enter($this->second);
@@ -192,8 +183,8 @@ final class CompanyProofTest extends ApiTestCase
         self::assertSame(Response::HTTP_FORBIDDEN, $this->act($this->second));
 
         // The sign-in spent this step's code: the next one proves.
-        Clock::set(new MockClock(new \DateTimeImmutable('+31 seconds')));
-        $this->postJson($this->proof($this->second), ['password' => self::PASSWORD, 'code' => $this->code(new \DateTimeImmutable('+31 seconds'))]);
+        $this->moveClock('+31 seconds');
+        $this->postJson($this->proof($this->second), ['password' => self::PASSWORD, 'code' => self::authenticatorCode()]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame(Response::HTTP_OK, $this->act($this->second));
     }
@@ -205,16 +196,15 @@ final class CompanyProofTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
         // Used every twenty-nine minutes, it holds.
-        $at = new \DateTimeImmutable();
         foreach ([29, 58, 87] as $minutes) {
-            Clock::set(new MockClock($at->modify("+$minutes minutes")));
+            $this->moveClock("+$minutes minutes");
             self::assertSame(Response::HTTP_OK, $this->act($this->second), "after $minutes minutes");
             self::assertSame(Response::HTTP_OK, $this->act($this->first), "after $minutes minutes");
         }
         // Working in the other company keeps the sign-in alive, not this company's proof.
-        Clock::set(new MockClock($at->modify('+107 minutes')));
+        $this->moveClock('+107 minutes');
         self::assertSame(Response::HTTP_OK, $this->act($this->first));
-        Clock::set(new MockClock($at->modify('+118 minutes')));
+        $this->moveClock('+118 minutes');
         self::assertSame(Response::HTTP_FORBIDDEN, $this->act($this->second));
     }
 
@@ -346,14 +336,9 @@ final class CompanyProofTest extends ApiTestCase
         return '/api/companies/'.$company->getId()->toRfc4122().'/proof';
     }
 
-    private function code(\DateTimeImmutable $at): string
-    {
-        return (new \App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, $at);
-    }
-
     private function bell(Company $company): string
     {
-        $item = new InboxItem($this->fresh($this->user), $this->fresh($company), 'invitation.accepted', [], new \DateTimeImmutable());
+        $item = new InboxItem($this->fresh($this->user), $this->fresh($company), 'invitation.accepted', [], self::heldNow());
         $this->em()->persist($item);
         $this->em()->flush();
 

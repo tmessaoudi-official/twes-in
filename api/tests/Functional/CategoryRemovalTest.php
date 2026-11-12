@@ -134,7 +134,7 @@ final class CategoryRemovalTest extends ApiTestCase
             'created_at' => '2026-10-20 08:00:00', 'updated_at' => '2026-10-20 08:00:00', 'fixed_amount' => '0.000',
             'amount_to_check' => 'false', 'version' => 1, 'category_id' => $category,
         ]);
-        $vendor = Vendor::create($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'F-001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $vendor = Vendor::create($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'F-001', new VendorProfile('Sotumag'), self::heldNow());
         $this->em()->persist($vendor);
         $this->em()->flush();
         $connection->update('vendor', ['default_expense_category_id' => $category], ['id' => $vendor->getId()->toRfc4122()]);

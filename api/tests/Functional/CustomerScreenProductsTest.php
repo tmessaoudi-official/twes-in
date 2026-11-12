@@ -31,7 +31,7 @@ final class CustomerScreenProductsTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), self::heldNow());
         $this->em()->persist($vendor);
         $this->em()->flush();
         $this->vendorId = $vendor->getId()->toRfc4122();

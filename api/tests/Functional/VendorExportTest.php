@@ -26,7 +26,7 @@ final class VendorExportTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(Vendor::create($this->company, 'FRN-0001', new VendorProfile(
             'Aciers du Sud',
             'Aciers du Sud SARL',

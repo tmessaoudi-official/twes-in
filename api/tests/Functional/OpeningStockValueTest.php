@@ -52,7 +52,7 @@ final class OpeningStockValueTest extends ApiTestCase
         $site = $this->em()->find(StockLocation::class, $site->getId());
         self::assertNotNull($vise);
         self::assertNotNull($site);
-        static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::sale($vise, $site, '10', Uuid::v7(), new \DateTimeImmutable()));
+        static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::sale($vise, $site, '10', Uuid::v7(), self::heldNow()));
 
         $values = [];
         foreach (static::getContainer()->get(StockMovementRepository::class)->valuation($company->getId()) as $value) {
@@ -80,7 +80,7 @@ final class OpeningStockValueTest extends ApiTestCase
     {
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($piece);
-        $product = Product::create($company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '20', $costPrice), $piece, null, [], new \DateTimeImmutable());
+        $product = Product::create($company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '20', $costPrice), $piece, null, [], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
 

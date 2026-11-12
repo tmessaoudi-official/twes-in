@@ -54,7 +54,7 @@ final class DeliveryNotesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer('CLI-0001', 'standard')->getId()->toRfc4122();
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -367,12 +367,11 @@ final class DeliveryNotesTest extends ApiTestCase
             $reason = ['before its issue day' => 'on_or_after', 'after now' => 'after_today'][$case] ?? null;
             self::assertSame($reason, $this->refusalOf('delivered')[0], $case.', said why');
         }
-        $before = new \DateTimeImmutable('-1 second');
         $this->postJson($this->path($id).'/deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         self::assertSame(['delivered', $today], [$this->json()['status'], $this->json()['deliveryDate']]);
         $at = new \DateTimeImmutable($this->stringAt($this->json(), 'deliveredAt'));
-        self::assertTrue($at >= $before && $at <= new \DateTimeImmutable(), 'left out, the delivery is stamped now');
+        self::assertEquals(self::heldNow(), $at, 'left out, the delivery is stamped now');
         self::assertSame('+00:00', $at->format('P'), 'a moment is answered in UTC');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'delivered goods are not cancelled');
@@ -497,12 +496,12 @@ final class DeliveryNotesTest extends ApiTestCase
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
         $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
-        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, new \DateTimeImmutable());
+        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, self::heldNow());
         $this->em()->persist($contact);
         $this->em()->flush();
         $ahmed = $contact->getId()->toRfc4122();
         $elsewhere = $this->customer('CLI-0002', 'standard');
-        $theirs = Contact::create($elsewhere, new ContactDetails('Someone', 'Else', null, null, null), false, new \DateTimeImmutable());
+        $theirs = Contact::create($elsewhere, new ContactDetails('Someone', 'Else', null, null, null), false, self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
 
@@ -525,7 +524,7 @@ final class DeliveryNotesTest extends ApiTestCase
 
         // The contact renamed since, the draft sent back as read keeps the name it copied rather than taking the new one.
         $renamed = $this->em()->find(Contact::class, $contact->getId()) ?? throw new \LogicException('no contact');
-        $renamed->revise(new ContactDetails('Ahmed', 'Ben Salem', null, null, null), new \DateTimeImmutable());
+        $renamed->revise(new ContactDetails('Ahmed', 'Ben Salem', null, null, null), self::heldNow());
         $this->em()->flush();
         $this->sendJson('PUT', $this->path($this->stringAt($note, 'id')), $this->note(['version' => $note['version'], 'lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['contactId' => $ahmed]]));
         self::assertResponseIsSuccessful();
@@ -593,8 +592,8 @@ final class DeliveryNotesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
         $theirEstablishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0];
         $theirCustomer = $this->customer('CLI-0009', 'standard', company: $globex);
-        $theirContact = Contact::create($theirCustomer, new ContactDetails('Someone', 'Else', null, null, null), false, new \DateTimeImmutable());
-        $theirs = DeliveryNote::create($globex, $theirEstablishment, $theirCustomer, new DeliveryNoteHeader(), [], new \DateTimeImmutable());
+        $theirContact = Contact::create($theirCustomer, new ContactDetails('Someone', 'Else', null, null, null), false, self::heldNow());
+        $theirs = DeliveryNote::create($globex, $theirEstablishment, $theirCustomer, new DeliveryNoteHeader(), [], self::heldNow());
         $this->em()->persist($theirContact);
         $this->em()->persist($theirs);
         $this->em()->flush();
@@ -715,7 +714,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'), new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'), self::heldNow());
         $this->em()->flush();
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseIsSuccessful();
@@ -763,7 +762,7 @@ final class DeliveryNotesTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
         $theirEstablishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0];
-        $theirs = DeliveryNote::create($globex, $theirEstablishment, $this->customer('CLI-0001', 'standard', company: $globex), new DeliveryNoteHeader(), [], new \DateTimeImmutable());
+        $theirs = DeliveryNote::create($globex, $theirEstablishment, $this->customer('CLI-0001', 'standard', company: $globex), new DeliveryNoteHeader(), [], self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['delivery_note.read'], 'reader');
@@ -850,7 +849,7 @@ final class DeliveryNotesTest extends ApiTestCase
         // reboots the kernel and leaves the company detached.
         $products = [];
         foreach (range(1, 6) as $n) {
-            $product = Product::create($this->company, 'ART-1'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '100'), $this->unit('C62'), null, [$this->tax('TVA19')->getId()], new \DateTimeImmutable());
+            $product = Product::create($this->company, 'ART-1'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '100'), $this->unit('C62'), null, [$this->tax('TVA19')->getId()], self::heldNow());
             $this->em()->persist($product);
             $products[$n] = $product->getId()->toRfc4122();
         }
@@ -906,7 +905,7 @@ final class DeliveryNotesTest extends ApiTestCase
     {
         $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', $regime);
         self::assertNotNull($taxRegime);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $customer = Customer::create($company ?? $this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $taxRegime, [], $now);
         if (!$active) {
             $customer->revise($number, $customer->getProfile(), null, $taxRegime, [], false, $now);

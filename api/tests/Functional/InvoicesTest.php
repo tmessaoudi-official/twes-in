@@ -66,7 +66,7 @@ final class InvoicesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer('CLI-0001', 'standard', [$this->tax('RS1')->getId()], '5')->getId()->toRfc4122();
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250', '900.5'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250', '900.5'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -204,7 +204,7 @@ final class InvoicesTest extends ApiTestCase
         $piece = ['description' => 'Pièce', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10'];
         $exempt = $this->customer('CLI-0002', 'exempt')->getId()->toRfc4122();
         $deactivated = $this->customer('CLI-0003', 'standard');
-        $deactivated->revise('CLI-0003', $deactivated->getProfile(), null, $deactivated->getTaxRegime(), [], false, new \DateTimeImmutable());
+        $deactivated->revise('CLI-0003', $deactivated->getProfile(), null, $deactivated->getTaxRegime(), [], false, self::heldNow());
         $this->em()->flush();
         $gone = $deactivated->getId()->toRfc4122();
 
@@ -455,7 +455,7 @@ final class InvoicesTest extends ApiTestCase
 
         $product = $this->em()->find(Product::class, $this->productId);
         self::assertNotNull($product);
-        $product->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $product->track(ProductTracking::Lot, self::heldNow());
         $this->em()->flush();
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1', 'lotCode' => ' L-1 ']]]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -1009,7 +1009,7 @@ final class InvoicesTest extends ApiTestCase
         $charged = $issued([$this->taxId('TVA19')]);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis', vatRegime: 'forfaitaire'), new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis', vatRegime: 'forfaitaire'), self::heldNow());
         $this->em()->flush();
 
         $creditId = $credited($charged, [$this->taxId('TVA19')]);
@@ -1345,7 +1345,7 @@ final class InvoicesTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
         $theirEstablishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0];
-        $theirs = Invoice::create($globex, $theirEstablishment, $this->customer('CLI-0001', 'standard', company: $globex), new InvoiceHeader(), [], [], new \DateTimeImmutable());
+        $theirs = Invoice::create($globex, $theirEstablishment, $this->customer('CLI-0001', 'standard', company: $globex), new InvoiceHeader(), [], [], self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
@@ -1461,7 +1461,7 @@ final class InvoicesTest extends ApiTestCase
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
-        $day = fn (string $shift): string => new \DateTimeImmutable($shift, new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $day = fn (string $shift): string => self::dayOf($this->company, $shift);
         [$today, $yesterday, $tomorrow] = [$day('today'), $day('yesterday'), $day('tomorrow')];
 
         $this->issuedInvoice();
@@ -1605,7 +1605,7 @@ final class InvoicesTest extends ApiTestCase
         // which reboots the kernel and leaves the company detached.
         $products = [];
         foreach (range(1, 6) as $n) {
-            $product = Product::create($this->company, 'ART-1'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '100'), $this->unit('C62'), null, [$this->tax('TVA19')->getId()], new \DateTimeImmutable());
+            $product = Product::create($this->company, 'ART-1'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '100'), $this->unit('C62'), null, [$this->tax('TVA19')->getId()], self::heldNow());
             $this->em()->persist($product);
             $products[$n] = $product->getId()->toRfc4122();
         }
@@ -1743,7 +1743,7 @@ final class InvoicesTest extends ApiTestCase
         $draft = $this->stringAt($this->json(), 'id');
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
-        $theirs = Invoice::create($globex, static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0], $this->customer('CLI-0001', 'standard', company: $globex), new InvoiceHeader(), [], [], new \DateTimeImmutable());
+        $theirs = Invoice::create($globex, static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0], $this->customer('CLI-0001', 'standard', company: $globex), new InvoiceHeader(), [], [], self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $their = $theirs->getId()->toRfc4122();
@@ -2094,7 +2094,7 @@ final class InvoicesTest extends ApiTestCase
 
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
         $yesterday = new \DateTimeImmutable($today)->modify('-1 day');
-        $company->closeThrough($yesterday, new \DateTimeImmutable($today), new \DateTimeImmutable());
+        $company->closeThrough($yesterday, new \DateTimeImmutable($today), self::heldNow());
         $this->em()->flush();
         $this->postJson($this->path().'/bulk-payments', [...$body, 'date' => $yesterday->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a day of a closed period');
@@ -2204,9 +2204,9 @@ final class InvoicesTest extends ApiTestCase
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
         $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
-        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, new \DateTimeImmutable());
+        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, self::heldNow());
         $elsewhere = $this->customer('CLI-0002', 'standard');
-        $theirs = Contact::create($elsewhere, new ContactDetails('Someone', 'Else', null, null, null), false, new \DateTimeImmutable());
+        $theirs = Contact::create($elsewhere, new ContactDetails('Someone', 'Else', null, null, null), false, self::heldNow());
         $this->em()->persist($contact);
         $this->em()->persist($theirs);
         $this->em()->flush();
@@ -2230,7 +2230,7 @@ final class InvoicesTest extends ApiTestCase
 
         // The contact renamed since, the draft sent back as read keeps the name it copied rather than taking the new one.
         $renamed = $this->em()->find(Contact::class, $contact->getId()) ?? throw new \LogicException('no contact');
-        $renamed->revise(new ContactDetails('Ahmed', 'Ben Salem', null, null, null), new \DateTimeImmutable());
+        $renamed->revise(new ContactDetails('Ahmed', 'Ben Salem', null, null, null), self::heldNow());
         $this->em()->flush();
         $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $invoice['version'], 'lines' => $goods, 'receivedBy' => ['contactId' => $ahmed]]));
         self::assertResponseIsSuccessful();
@@ -2312,7 +2312,7 @@ final class InvoicesTest extends ApiTestCase
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
-        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, new \DateTimeImmutable());
+        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, self::heldNow());
         $this->em()->persist($contact);
         $this->em()->flush();
         $ahmed = $contact->getId()->toRfc4122();
@@ -2701,7 +2701,7 @@ final class InvoicesTest extends ApiTestCase
         $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', $regime);
         self::assertNotNull($taxRegime);
         $profile = self::aTunisianBusiness('Carthage Conseil', $defaultDiscountRate);
-        $customer = Customer::create($company ?? $this->company, $number, $profile, null, $taxRegime, $defaultTaxes, new \DateTimeImmutable());
+        $customer = Customer::create($company ?? $this->company, $number, $profile, null, $taxRegime, $defaultTaxes, self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

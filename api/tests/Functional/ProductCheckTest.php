@@ -128,17 +128,17 @@ final class ProductCheckTest extends ApiTestCase
         $vat = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('TVA19', $this->company->getId());
         self::assertNotNull($piece);
         self::assertNotNull($vat);
-        $vendor = Vendor::create($this->company, 'F-002', new VendorProfile('Comaf'), new \DateTimeImmutable());
+        $vendor = Vendor::create($this->company, 'F-002', new VendorProfile('Comaf'), self::heldNow());
         $this->em()->persist($vendor);
         foreach (['NO-BARCODE', 'NO-CATEGORY', 'NEITHER'] as $reference) {
-            $category = 'NO-BARCODE' === $reference ? ProductCategory::create($this->company, 'Outillage', null, new \DateTimeImmutable()) : null;
+            $category = 'NO-BARCODE' === $reference ? ProductCategory::create($this->company, 'Outillage', null, self::heldNow()) : null;
             if (null !== $category) {
                 $this->em()->persist($category);
             }
-            $product = Product::create($this->company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '10', '5'), $piece, $category, [$vat->getId()], new \DateTimeImmutable());
-            $product->replaceVendors([$vendor], new \DateTimeImmutable());
+            $product = Product::create($this->company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '10', '5'), $piece, $category, [$vat->getId()], self::heldNow());
+            $product->replaceVendors([$vendor], self::heldNow());
             if ('NO-CATEGORY' === $reference) {
-                $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Internal, new Barcode('CHK-NC'), 1)], new \DateTimeImmutable());
+                $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Internal, new Barcode('CHK-NC'), 1)], self::heldNow());
             }
             $this->em()->persist($product);
             $this->ids[$reference] = $product->getId()->toRfc4122();
@@ -195,7 +195,7 @@ final class ProductCheckTest extends ApiTestCase
         self::assertNotNull($piece);
         $vat = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('TVA19', $this->company->getId());
         self::assertNotNull($vat);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $category = ProductCategory::create($this->company, 'Éclairage', null, $now);
         $vendor = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), $now);
         $this->em()->persist($category);

@@ -52,7 +52,7 @@ final class CustomerImportTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(CustomerGroup::create($this->company, 'Grossistes', null, $now));
         $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'employees', 'Salariés', CustomFieldType::Number, false, [], 1, $now));
         $this->em()->flush();
@@ -166,7 +166,7 @@ final class CustomerImportTest extends ApiTestCase
     /** The kind in the words the screen shows, and a day as people here write it. */
     public function testAKindAndADayAreReadAsPeopleWriteThem(): void
     {
-        $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'since', 'Client depuis', CustomFieldType::Date, false, [], 2, new \DateTimeImmutable()));
+        $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'since', 'Client depuis', CustomFieldType::Date, false, [], 2, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write']);
 
@@ -333,7 +333,7 @@ final class CustomerImportTest extends ApiTestCase
         self::assertTrue($this->customer('CLI-0043')->getCheckMark()->marked, 'a number set aside is « À vérifier »');
 
         // Under « Garder et marquer À vérifier », kept and the customer marked.
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
         $this->em()->flush();
         $this->import("number,name,phone\nCLI-0044,Atelier Gardé,11 111 112\n");
         self::assertResponseIsSuccessful();

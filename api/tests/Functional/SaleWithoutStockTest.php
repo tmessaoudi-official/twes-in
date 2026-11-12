@@ -53,7 +53,7 @@ final class SaleWithoutStockTest extends ApiTestCase
         $this->establishmentId = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $piece, null, [], $now);
         $support = Product::create($this->company, 'SRV-001', new ProductDetails('Assistance', null, ProductKind::Service, '50'), $piece, null, [], $now);
         $consumable = Product::create($this->company, 'ART-009', new ProductDetails('Cartouche encre', null, ProductKind::Goods, '30'), $piece, null, [], $now);
@@ -229,7 +229,7 @@ final class SaleWithoutStockTest extends ApiTestCase
         // Read afresh: the test client reboots the kernel between requests, which leaves the company set up detached.
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $this->em()->persist(new Setting($address($company), self::KEY, $answer, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting($address($company), self::KEY, $answer, self::heldNow()));
         $this->em()->flush();
     }
 
@@ -240,7 +240,7 @@ final class SaleWithoutStockTest extends ApiTestCase
         self::assertNotNull($company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $glue = Product::create($company, 'ART-020', new ProductDetails('Colle', null, ProductKind::Goods, '5'), $piece, null, [], $now);
         $glue->track(ProductTracking::Lot, $now);
         $this->em()->persist($glue);
@@ -304,7 +304,7 @@ final class SaleWithoutStockTest extends ApiTestCase
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

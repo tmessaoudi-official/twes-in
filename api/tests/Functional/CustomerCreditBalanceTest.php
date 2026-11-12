@@ -288,7 +288,7 @@ final class CustomerCreditBalanceTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, $number, self::aTunisianBusiness($name), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, $number, self::aTunisianBusiness($name), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

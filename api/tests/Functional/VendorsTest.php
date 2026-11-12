@@ -52,9 +52,9 @@ final class VendorsTest extends ApiTestCase
         $this->signedIn(['vendor.read', 'expense.read']);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $supplies = ExpenseCategory::create($company, 'Fournitures', null, new \DateTimeImmutable());
-        $rent = ExpenseCategory::create($company, 'Loyer', null, new \DateTimeImmutable());
-        $rent->revise('Loyer', null, false, new \DateTimeImmutable());
+        $supplies = ExpenseCategory::create($company, 'Fournitures', null, self::heldNow());
+        $rent = ExpenseCategory::create($company, 'Loyer', null, self::heldNow());
+        $rent->revise('Loyer', null, false, self::heldNow());
         $this->em()->persist($supplies);
         $this->em()->persist($rent);
         $this->em()->flush();
@@ -77,7 +77,7 @@ final class VendorsTest extends ApiTestCase
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $this->em()->persist(ModuleState::of($company, 'expenses', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($company, 'expenses', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->companyPath().'/vendor-options');
         self::assertResponseIsSuccessful();
@@ -160,7 +160,7 @@ final class VendorsTest extends ApiTestCase
         self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_outside_ranges', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
 
         // Kept and the vendor marked where the platform's operators chose « Garder et marquer À vérifier ».
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
         $this->em()->flush();
         $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'TN', 'iban' => null, 'bic' => null, 'phone' => '11 111 111']), 'version' => 2]);
         self::assertResponseIsSuccessful();
@@ -303,7 +303,7 @@ final class VendorsTest extends ApiTestCase
     public function testAnotherCompanysVendorIsNotFoundThroughThisCompany(): void
     {
         $globex = $this->createCompany('Globex');
-        $theirs = Vendor::create($globex, 'FRN-0001', new VendorProfile('Globex Supply'), new \DateTimeImmutable());
+        $theirs = Vendor::create($globex, 'FRN-0001', new VendorProfile('Globex Supply'), self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->signedIn(['vendor.read', 'vendor.write']);
@@ -318,7 +318,7 @@ final class VendorsTest extends ApiTestCase
 
     public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         foreach (range(1, 27) as $n) {
             $this->em()->persist(Vendor::create($this->company, \sprintf('FRN-%04d', $n), new VendorProfile('Fournisseur '.$n), $now));
         }

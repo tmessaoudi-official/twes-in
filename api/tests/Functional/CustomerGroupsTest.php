@@ -106,12 +106,12 @@ final class CustomerGroupsTest extends ApiTestCase
 
     public function testAGroupHoldingACustomerIsKept(): void
     {
-        $group = CustomerGroup::create($this->company, 'Grossistes', null, new \DateTimeImmutable());
+        $group = CustomerGroup::create($this->company, 'Grossistes', null, self::heldNow());
         $this->em()->persist($group);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], new \DateTimeImmutable()));
+        $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write', 'customer.remove']);
 
@@ -124,9 +124,9 @@ final class CustomerGroupsTest extends ApiTestCase
 
     public function testAReaderOnlyReadsAndAnotherCompanysGroupIsNotFound(): void
     {
-        $theirs = CustomerGroup::create($this->createCompany('Globex'), 'Export', null, new \DateTimeImmutable());
+        $theirs = CustomerGroup::create($this->createCompany('Globex'), 'Export', null, self::heldNow());
         $this->em()->persist($theirs);
-        $mine = CustomerGroup::create($this->company, 'Détaillants', null, new \DateTimeImmutable());
+        $mine = CustomerGroup::create($this->company, 'Détaillants', null, self::heldNow());
         $this->em()->persist($mine);
         $this->em()->flush();
         $this->signedIn(['customer.read']);

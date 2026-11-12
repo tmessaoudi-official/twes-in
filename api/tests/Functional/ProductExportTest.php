@@ -41,7 +41,7 @@ final class ProductExportTest extends ApiTestCase
         $tax = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('TVA19', $this->company->getId());
         self::assertNotNull($unit);
         self::assertNotNull($tax);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $goods = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', 'Un portable', ProductKind::Goods, '1250', self::COST, 'Portables'), $unit, null, [$tax->getId()], $now);
         $goods->track(ProductTracking::Lot, $now);
         // Two packs and two suppliers' codes: a file row names one of each, and brought back keeps them all.
@@ -202,7 +202,7 @@ final class ProductExportTest extends ApiTestCase
         $vendor = $this->em()->getRepository(Vendor::class)->findOneBy(['number' => 'F-001']);
         self::assertInstanceOf(Product::class, $service);
         self::assertInstanceOf(Vendor::class, $vendor);
-        $service->replaceVendors([$vendor], new \DateTimeImmutable());
+        $service->replaceVendors([$vendor], self::heldNow());
         $this->em()->flush();
         $this->signIn(['product.read', 'product.write', 'product.cost.read']);
 

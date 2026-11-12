@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
-use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
@@ -87,7 +86,7 @@ final class SeedCommandTest extends ApiTestCase
         $this->postJson('/api/auth/login', ['email' => 'op@example.test', 'password' => 'seeded-secret']);
         self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
 
-        $this->postJson('/api/auth/mfa/verify', ['code' => (new OtphpTotpCodes())->codeAt('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/verify', ['code' => self::authenticatorCode('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP')]);
         self::assertResponseIsSuccessful();
         self::assertSame('op@example.test', $this->stringAt($this->section($this->json(), 'user'), 'email'));
     }

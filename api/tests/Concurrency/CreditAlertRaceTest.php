@@ -107,7 +107,7 @@ final class CreditAlertRaceTest extends SaleRaceTestCase
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($piece);
-        $product = Product::create($company, 'ART-002', new ProductDetails('Visseuse', null, ProductKind::Goods, '250'), $piece, null, [], new \DateTimeImmutable());
+        $product = Product::create($company, 'ART-002', new ProductDetails('Visseuse', null, ProductKind::Goods, '250'), $piece, null, [], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
 

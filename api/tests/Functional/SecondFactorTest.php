@@ -347,7 +347,7 @@ final class SecondFactorTest extends ApiTestCase
         // recovery code as it paces any guess, and its window is not what this case is about.
         $this->em()->getConnection()->executeStatement(
             'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
-            [(new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s'), 'someone@twes.local'],
+            [self::heldNow()->modify('+15 minutes')->format('Y-m-d H:i:s'), 'someone@twes.local'],
         );
         $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
         self::assertSame('account_locked', $this->stringAt($this->json(), 'error'), 'six digits stay refused on the lock');
@@ -374,16 +374,16 @@ final class SecondFactorTest extends ApiTestCase
         // Built here rather than pulled from the container: these are ports, so nothing injects them until
         // the use cases do, and the test container prunes what nothing injects. The key is .env.test's.
         $this->secret = $codes->generateSecret();
-        $user->beginTotpEnrolment((new SodiumSecretCipher($key))->encrypt($this->secret), new \DateTimeImmutable());
+        $user->beginTotpEnrolment((new SodiumSecretCipher($key))->encrypt($this->secret), self::heldNow());
 
         // Confirmed one step in the past, so the code these tests use now is newer than the one already spent.
-        $earlier = new \DateTimeImmutable('-30 seconds');
-        $user->confirmTotpEnrolment($codes->verify($this->secret, $codes->codeAt($this->secret, $earlier), $earlier) ?? 0, new \DateTimeImmutable());
+        $earlier = self::heldNow()->modify('-30 seconds');
+        $user->confirmTotpEnrolment($codes->verify($this->secret, $codes->codeAt($this->secret, $earlier), $earlier) ?? 0, self::heldNow());
 
         $raw = [];
         foreach (RecoveryCode::generateSet(10) as $code) {
             $raw[] = $code->raw;
-            $this->em()->persist(new RecoveryCodeEntry($user, $code->hash(), new \DateTimeImmutable()));
+            $this->em()->persist(new RecoveryCodeEntry($user, $code->hash(), self::heldNow()));
         }
         $this->em()->flush();
 
@@ -392,7 +392,7 @@ final class SecondFactorTest extends ApiTestCase
 
     private function currentCode(): string
     {
-        return (new OtphpTotpCodes())->codeAt($this->secret, new \DateTimeImmutable());
+        return self::authenticatorCode($this->secret);
     }
 
     private function signOut(): void

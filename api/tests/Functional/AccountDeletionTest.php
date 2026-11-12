@@ -17,9 +17,6 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
 
@@ -45,12 +42,6 @@ final class AccountDeletionTest extends ApiTestCase
         $this->leaving = $this->createUser(self::LEAVING, self::PASSWORD, $this->company, ['customer.read'], Role::MEMBER);
     }
 
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
-    }
-
     public function testNothingHappensUntilThePersonProvesWhoTheyAreAgain(): void
     {
         $this->login(self::LEAVING, self::PASSWORD);
@@ -68,7 +59,7 @@ final class AccountDeletionTest extends ApiTestCase
         $this->addMembership($this->leaving, $alone, Role::OWNER);
         $shared = $this->createCompany('Partagée SARL');
         $this->createUser('partner@twes.local', self::PASSWORD, $shared);
-        $this->em()->persist(new Membership($this->leaving, $shared, $this->em()->getRepository(Role::class)->findOneBy(['company' => $shared]) ?? throw new \LogicException('no owner role'), new \DateTimeImmutable()));
+        $this->em()->persist(new Membership($this->leaving, $shared, $this->em()->getRepository(Role::class)->findOneBy(['company' => $shared]) ?? throw new \LogicException('no owner role'), self::heldNow()));
         $this->em()->flush();
         $this->login(self::LEAVING, self::PASSWORD);
         $this->stepUp(self::PASSWORD);
@@ -116,7 +107,7 @@ final class AccountDeletionTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $finalAt = new \DateTimeImmutable($this->stringAt($this->json(), 'finalAt'));
-        self::assertEqualsWithDelta((new \DateTimeImmutable('+7 days'))->getTimestamp(), $finalAt->getTimestamp(), 60);
+        self::assertEqualsWithDelta(self::heldNow()->modify('+7 days')->getTimestamp(), $finalAt->getTimestamp(), 60);
         self::assertTrue($this->reload($this->leaving)->isDeletionPending());
         self::assertSame(1, $this->journalCount('account.deletion_requested'));
         // The mailer's record is the last request's, so it is read before the next one.
@@ -172,11 +163,11 @@ final class AccountDeletionTest extends ApiTestCase
         $this->askToGo();
         $id = $this->leaving->getId();
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+7 days -5 minutes')));
+        $this->moveClock('+7 days -5 minutes');
         self::assertSame(0, $this->finalize());
         self::assertNotNull($this->em()->find(User::class, $id));
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+7 days +5 minutes')));
+        $this->moveClock('+7 days +5 minutes');
         self::assertSame(1, $this->finalize());
         $this->em()->clear();
         self::assertNull($this->em()->find(User::class, $id));
@@ -190,7 +181,7 @@ final class AccountDeletionTest extends ApiTestCase
         $before = $this->journalRows();
         self::assertContains(self::LEAVING, array_column($before, 'email'));
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+8 days')));
+        $this->moveClock('+8 days');
         $this->finalize();
 
         $after = $this->journalRows();
@@ -206,7 +197,7 @@ final class AccountDeletionTest extends ApiTestCase
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext(), 'account.deletion_days', SettingLevel::Platform, 3, null);
         $this->askToGo();
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+3 days +5 minutes')));
+        $this->moveClock('+3 days +5 minutes');
 
         self::assertSame(1, $this->finalize());
     }
@@ -219,7 +210,7 @@ final class AccountDeletionTest extends ApiTestCase
         $this->em()->getConnection()->executeStatement('UPDATE membership SET role_id = (SELECT role_id FROM membership WHERE user_id = ?) WHERE user_id = ?', [$owner, $this->leaving->getId()->toRfc4122()]);
         $this->em()->getConnection()->executeStatement('DELETE FROM membership WHERE user_id = ?', [$owner]);
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+8 days')));
+        $this->moveClock('+8 days');
 
         self::assertSame(0, $this->finalize());
         $this->em()->clear();

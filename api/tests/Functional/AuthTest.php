@@ -12,9 +12,6 @@ namespace App\Tests\Functional;
 use App\Audit\Domain\Model\AuditLog;
 use App\Identity\Application\Login\LoginAudit;
 use App\Identity\Domain\Model\User;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 
 final class AuthTest extends ApiTestCase
 {
@@ -249,15 +246,15 @@ final class AuthTest extends ApiTestCase
         }
 
         try {
-            Clock::set(new MockClock(new \DateTimeImmutable('+14 minutes')));
+            $this->moveClock('+14 minutes');
             $this->login('owner@example.test', 'wrong');
             self::assertResponseStatusCodeSame(401);
 
-            Clock::set(new MockClock(new \DateTimeImmutable('+16 minutes')));
+            $this->moveClock('+16 minutes');
             $this->login('owner@example.test', self::PASSWORD);
             self::assertResponseIsSuccessful();
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
     }
 
@@ -295,7 +292,7 @@ final class AuthTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
 
         $user = $this->reload($user);
-        $user->rotateSecurityStamp(new \DateTimeImmutable());
+        $user->rotateSecurityStamp(self::heldNow());
         $this->em()->flush();
 
         $this->client->request('GET', '/api/auth/me');
@@ -308,7 +305,7 @@ final class AuthTest extends ApiTestCase
         $this->login('owner@example.test', self::PASSWORD);
 
         $user = $this->reload($user);
-        $user->setActive(false, new \DateTimeImmutable());
+        $user->setActive(false, self::heldNow());
         $this->em()->flush();
 
         $this->client->request('GET', '/api/auth/me');

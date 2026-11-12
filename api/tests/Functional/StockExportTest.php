@@ -35,7 +35,7 @@ final class StockExportTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '10'), $piece, null, [], $now);
         $mouse = Product::create($this->company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '10'), $piece, null, [], $now);
         $this->em()->persist($laptop);

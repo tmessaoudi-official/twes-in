@@ -153,7 +153,7 @@ final class PasskeySignInTest extends ApiTestCase
     public function testALockedPasswordDoesNotStopAPasskey(): void
     {
         $authenticator = $this->switchedOn();
-        $this->em()->getConnection()->executeStatement('UPDATE "user" SET locked_until = ? WHERE email = ?', [new \DateTimeImmutable('+1 hour')->format('Y-m-d H:i:s'), self::EMAIL]);
+        $this->em()->getConnection()->executeStatement('UPDATE "user" SET locked_until = ? WHERE email = ?', [self::heldNow()->modify('+1 hour')->format('Y-m-d H:i:s'), self::EMAIL]);
 
         $this->postJson(self::SIGN_IN, ['credential' => $authenticator->assert($this->signInOptions(), withUserHandle: true)]);
 

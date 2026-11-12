@@ -35,8 +35,6 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tests\Unit\Files\Application\AttachmentsTest;
 use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -68,14 +66,14 @@ final class DataErasureTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->establishmentId = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, self::heldNow()));
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Perceuse', null, ProductKind::Goods, '120'), $unit, null, [], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Perceuse', null, ProductKind::Goods, '120'), $unit, null, [], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
@@ -106,13 +104,13 @@ final class DataErasureTest extends ApiTestCase
         $this->stepUp(self::PASSWORD);
         $this->getJson($this->path('data-erasure'));
         self::assertResponseIsSuccessful();
-        Clock::set(new MockClock(new \DateTimeImmutable('+6 minutes')));
+        $this->moveClock('+6 minutes');
         try {
             $this->postJson($this->path('data-erasures'), ['parts' => ['stock_map']]);
             self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
             self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
 
         // Somebody of another company meets the same 404 as for any company of others.
@@ -184,7 +182,7 @@ final class DataErasureTest extends ApiTestCase
         self::assertEqualsCanonicalizing([...$kinds, 'data_erasure'], $this->kindsNamed('data.erased'), 'the answer tells this tab every kind, and the erasure itself');
         self::assertSame(['stock_map' => ['floors' => 1, 'places' => 2, 'structures' => 1], 'drafts' => ['drafts' => 2, 'quotes' => 1]], $erasure['counts']);
         $erasureId = $this->stringAt($erasure, 'id');
-        self::assertEqualsWithDelta(new \DateTimeImmutable('+24 hours'), new \DateTimeImmutable($this->stringAt($erasure, 'effectiveAt')), 5);
+        self::assertEqualsWithDelta(self::heldNow()->modify('+24 hours'), new \DateTimeImmutable($this->stringAt($erasure, 'effectiveAt')), 5);
 
         self::assertSame(0, $this->rowsOf("SELECT COUNT(*) FROM venue_area WHERE company_id = '{$this->companyId()}'"));
         self::assertSame(0, $this->rowsOf("SELECT COUNT(*) FROM venue_structure WHERE company_id = '{$this->companyId()}'"));
@@ -288,7 +286,7 @@ final class DataErasureTest extends ApiTestCase
         self::assertSame(1, $this->rowsOf("SELECT COUNT(*) FROM file WHERE storage_key = '$key'"), 'kept while the erasure may be undone');
 
         // A sign-in does not outlive twelve hours, so the use case is asked directly once the clock has moved.
-        Clock::set(new MockClock(new \DateTimeImmutable('+24 hours')));
+        $this->moveClock('+24 hours');
         try {
             $company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company vanished');
             $owner = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('owner@twes.local')]) ?? self::fail('the owner vanished');
@@ -301,7 +299,7 @@ final class DataErasureTest extends ApiTestCase
             static::getContainer()->get(EndDueErasures::class)->handle();
             static::getContainer()->get(EndDueErasures::class)->handle();
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
 
         self::assertSame('final', $this->text("SELECT state FROM data_erasure WHERE id = '$erasureId'"));

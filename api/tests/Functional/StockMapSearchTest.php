@@ -39,7 +39,7 @@ final class StockMapSearchTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $this->establishmentId = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
         // Only goods whose stock is kept can be anywhere at all.
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
     }
 

@@ -39,7 +39,7 @@ final class CustomerSettingsTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
-        $this->group = CustomerGroup::create($this->company, 'Grossistes', null, new \DateTimeImmutable());
+        $this->group = CustomerGroup::create($this->company, 'Grossistes', null, self::heldNow());
         $this->em()->persist($this->group);
         $this->customer = $this->customerOf($this->company, $this->group);
         $this->em()->flush();
@@ -101,7 +101,7 @@ final class CustomerSettingsTest extends ApiTestCase
     public function testAnotherCompanysCustomerOrGroupIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');
-        $theirGroup = CustomerGroup::create($globex, 'Export', null, new \DateTimeImmutable());
+        $theirGroup = CustomerGroup::create($globex, 'Export', null, self::heldNow());
         $this->em()->persist($theirGroup);
         $theirs = $this->customerOf($globex, null);
         $this->em()->flush();
@@ -171,7 +171,7 @@ final class CustomerSettingsTest extends ApiTestCase
 
     public function testDeletingAGroupForgetsItsSettings(): void
     {
-        $empty = CustomerGroup::create($this->company, 'Détaillants', null, new \DateTimeImmutable());
+        $empty = CustomerGroup::create($this->company, 'Détaillants', null, self::heldNow());
         $this->em()->persist($empty);
         $this->em()->flush();
         $emptyId = $empty->getId()->toRfc4122();
@@ -189,7 +189,7 @@ final class CustomerSettingsTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], self::heldNow());
         $this->em()->persist($customer);
 
         return $customer;

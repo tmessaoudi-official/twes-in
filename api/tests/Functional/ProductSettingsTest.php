@@ -99,7 +99,7 @@ final class ProductSettingsTest extends ApiTestCase
 
     public function testAnotherCompanysCategoryOrAnUnknownProductIsNotFound(): void
     {
-        $theirs = ProductCategory::create($this->createCompany('Globex'), 'Matériel', null, new \DateTimeImmutable());
+        $theirs = ProductCategory::create($this->createCompany('Globex'), 'Matériel', null, self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $theirId = $theirs->getId()->toRfc4122();

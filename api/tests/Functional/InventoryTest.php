@@ -55,7 +55,7 @@ final class InventoryTest extends ApiTestCase
         $this->establishmentId = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $piece, null, [], $now);
         $support = Product::create($this->company, 'SRV-001', new ProductDetails('Assistance', null, ProductKind::Service, '50'), $piece, null, [], $now);
         // Goods the company keeps no stock of: the SETTING half of the rule, which no kind or column can stand in for.
@@ -205,7 +205,7 @@ final class InventoryTest extends ApiTestCase
     public function testAReceiptNamesItsVendorItsSupplierReferenceAndItsDayAndTheMovementsSayThem(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
-        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), self::heldNow());
         $this->em()->persist($vendor);
         $this->em()->flush();
         $siteId = $this->defaultLocationId();
@@ -251,9 +251,9 @@ final class InventoryTest extends ApiTestCase
     public function testNoVendorIsNamedOnAReceiptWhileVendorsIsSwitchedOff(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
-        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), self::heldNow());
         $this->em()->persist($vendor);
-        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, self::heldNow()));
         $this->em()->flush();
 
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '1', 'vendorId' => $vendor->getId()->toRfc4122()]);
@@ -265,8 +265,8 @@ final class InventoryTest extends ApiTestCase
     public function testTheReceiveFormsVendorPickerFindsTheCompanysVendorsForAWriterWhileVendorsIsOn(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
-        $sotumag = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
-        $other = Vendor::create($this->company, 'FRN-0002', new VendorProfile('Quincaillerie Ben Salah'), new \DateTimeImmutable());
+        $sotumag = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), self::heldNow());
+        $other = Vendor::create($this->company, 'FRN-0002', new VendorProfile('Quincaillerie Ben Salah'), self::heldNow());
         $this->em()->persist($sotumag);
         $this->em()->persist($other);
         $this->em()->flush();
@@ -278,7 +278,7 @@ final class InventoryTest extends ApiTestCase
         $this->getJson($this->path('stock-options/vendors').'?ids[]='.$other->getId()->toRfc4122());
         self::assertSame(['Quincaillerie Ben Salah'], array_column($this->jsonList(), 'name'), 'the vendor a receipt names is read back by id');
 
-        $this->em()->persist(ModuleState::of($this->company(), 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company(), 'vendors', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->path('stock-options/vendors'));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'no vendor book, nothing to pick from');
@@ -463,7 +463,7 @@ final class InventoryTest extends ApiTestCase
         // setUp belongs to an entity manager that is gone.
         $mineNow = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($mineNow);
-        $this->em()->persist(new Setting(SettingAddress::company($mineNow), 'venue.shape.rack.width', '2.400', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($mineNow), 'venue.shape.rack.width', '2.400', self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->path('stock-options'));
         self::assertResponseIsSuccessful();
@@ -497,7 +497,7 @@ final class InventoryTest extends ApiTestCase
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($company);
         self::assertNotNull($piece);
-        $boxed = Product::create($company, 'ART-002', new ProductDetails('Carton', null, ProductKind::Goods, '2'), $piece, null, [], new \DateTimeImmutable());
+        $boxed = Product::create($company, 'ART-002', new ProductDetails('Carton', null, ProductKind::Goods, '2'), $piece, null, [], self::heldNow());
         $this->em()->persist($boxed);
         $this->em()->flush();
         foreach ([$this->laptopId, $boxed->getId()->toRfc4122()] as $product) {
@@ -552,7 +552,7 @@ final class InventoryTest extends ApiTestCase
         // A receipt of a tracked product asks for its lot, so the picker says how the product is tracked.
         $laptop = $this->em()->find(Product::class, $this->laptopId);
         self::assertNotNull($laptop);
-        $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $laptop->track(ProductTracking::Lot, self::heldNow());
         $this->em()->flush();
         $this->getJson($this->path('stock-options/products').'?ids[]='.$this->laptopId);
         self::assertResponseIsSuccessful();
@@ -584,7 +584,7 @@ final class InventoryTest extends ApiTestCase
         $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId);
         self::assertSame([['in', 'delivery_note', $noteId], ['out', 'delivery_note', $noteId], ['in', 'receipt', null]], array_map(static fn (array $m) => [$m['kind'], $m['sourceType'], $m['sourceId']], $this->jsonList()));
 
-        $this->em()->persist(ModuleState::of($this->company(), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company(), 'inventory', false, self::heldNow()));
         $this->em()->flush();
         $this->validatedNote($customerId, '2');
         self::assertEquals(3, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM stock_movement'), 'a company with inventory off moves no stock');
@@ -649,7 +649,7 @@ final class InventoryTest extends ApiTestCase
         $receive('10', '1300', 'last');
         self::assertSame(['1300.0000', 1], [$cost(), $rows()]);
 
-        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', self::heldNow()));
         $this->em()->flush();
         $receive('20', '1400');
         self::assertSame(['1275.0000', 2], [$cost(), $rows()], '(10 x 1000 + 10 x 1300 + 20 x 1400) over 40, worked out in SQL');
@@ -671,7 +671,7 @@ final class InventoryTest extends ApiTestCase
      */
     public function testAReceiptBySomeoneWhoCannotReadCostsWaitsForACostReaderWhoCompletesIt(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
         $site = $this->defaultLocationId();
@@ -732,7 +732,7 @@ final class InventoryTest extends ApiTestCase
     public function testACostEnteredAfterSomeOfTheGoodsLeftSplitsTheDifferenceBetweenTheStockAndTheCostOfSales(): void
     {
         $this->em()->getConnection()->executeStatement('UPDATE product SET cost_price = 5 WHERE id = ?', [$this->laptopId]);
-        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', self::heldNow()));
         $this->em()->flush();
         $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
         $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
@@ -774,7 +774,7 @@ final class InventoryTest extends ApiTestCase
     public function testACostEnteredThatMovesNothingBeyondTheReceiptSaysNothingMore(): void
     {
         $this->em()->getConnection()->executeStatement('UPDATE product SET cost_price = 5 WHERE id = ?', [$this->laptopId]);
-        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'suggest', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'suggest', self::heldNow()));
         $this->em()->flush();
         $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
         $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
@@ -795,7 +795,7 @@ final class InventoryTest extends ApiTestCase
     public function testACostEnteredThatMovesOnlyTheProductCostSaysWhereItWent(): void
     {
         $this->em()->getConnection()->executeStatement('UPDATE product SET cost_price = 5 WHERE id = ?', [$this->laptopId]);
-        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', self::heldNow()));
         $this->em()->flush();
         $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
         $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
@@ -1089,7 +1089,7 @@ final class InventoryTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $this->em()->persist(ModuleState::of($this->company(), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company(), 'inventory', false, self::heldNow()));
         $this->em()->flush();
         $hour = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('HUR', $this->company->getId());
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
@@ -1115,7 +1115,7 @@ final class InventoryTest extends ApiTestCase
         self::assertNotNull($piece);
         $products = [];
         foreach (range(1, 6) as $n) {
-            $product = Product::create($this->company, 'ART-10'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '10'), $piece, null, [], new \DateTimeImmutable());
+            $product = Product::create($this->company, 'ART-10'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '10'), $piece, null, [], self::heldNow());
             $this->em()->persist($product);
             $products[] = $product->getId()->toRfc4122();
         }
@@ -1232,7 +1232,7 @@ final class InventoryTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
         $laptop = $this->em()->find(Product::class, $this->laptopId);
         self::assertNotNull($laptop);
-        $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $laptop->track(ProductTracking::Lot, self::heldNow());
         $this->em()->flush();
         $site = $this->defaultLocationId();
         $today = self::dayAsDate($this->company);
@@ -1266,7 +1266,7 @@ final class InventoryTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
         $laptop = $this->em()->find(Product::class, $this->laptopId);
         self::assertNotNull($laptop);
-        $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $laptop->track(ProductTracking::Lot, self::heldNow());
         $this->em()->flush();
         $site = $this->defaultLocationId();
         $today = self::dayAsDate($this->company);
@@ -1452,7 +1452,7 @@ final class InventoryTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $customer = Customer::create($this->company(), 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], $now);
         $this->em()->persist($customer);
         $this->em()->flush();
@@ -1675,7 +1675,7 @@ final class InventoryTest extends ApiTestCase
         self::assertInstanceOf(Company::class, $company);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($unit);
-        $mouse = Product::create($company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '25'), $unit, null, [], new \DateTimeImmutable());
+        $mouse = Product::create($company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '25'), $unit, null, [], self::heldNow());
         $this->em()->persist($mouse);
         $this->em()->flush();
 
@@ -1732,7 +1732,7 @@ final class InventoryTest extends ApiTestCase
         $company = $this->company();
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($unit);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $computing = ProductCategory::create($company, 'Informatique', null, $now);
         $accessories = ProductCategory::create($company, 'Accessoires', $computing, $now);
         $mouse = Product::create($company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '25'), $unit, $accessories, [], $now);

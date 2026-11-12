@@ -29,7 +29,7 @@ final class ProductSubstitutesTest extends ApiTestCase
     {
         parent::setUp();
         $this->company = $this->createCompany('Acme');
-        $this->unit = Unit::create($this->company, 'C62', 'Unité', 0, 0, new \DateTimeImmutable());
+        $this->unit = Unit::create($this->company, 'C62', 'Unité', 0, 0, self::heldNow());
         $this->em()->persist($this->unit);
     }
 
@@ -60,9 +60,9 @@ final class ProductSubstitutesTest extends ApiTestCase
         $this->product('KB-4', 'Clavier QWERTY', 'Clavier QWERTY');
         $this->product('MS-1', 'Souris', null);
         $globex = $this->createCompany('Globex');
-        $theirUnit = Unit::create($globex, 'C62', 'Unité', 0, 0, new \DateTimeImmutable());
+        $theirUnit = Unit::create($globex, 'C62', 'Unité', 0, 0, self::heldNow());
         $this->em()->persist($theirUnit);
-        $this->em()->persist(Product::create($globex, 'KB-9', new ProductDetails('Clavier', null, ProductKind::Goods, '1', null, 'Clavier AZERTY'), $theirUnit, null, [], new \DateTimeImmutable()));
+        $this->em()->persist(Product::create($globex, 'KB-9', new ProductDetails('Clavier', null, ProductKind::Goods, '1', null, 'Clavier AZERTY'), $theirUnit, null, [], self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['product.read']);
 
@@ -124,9 +124,9 @@ final class ProductSubstitutesTest extends ApiTestCase
 
     private function product(string $reference, string $name, ?string $group, bool $active = true): string
     {
-        $product = Product::create($this->company, $reference, new ProductDetails($name, null, ProductKind::Goods, '10', null, $group), $this->unit, null, [], new \DateTimeImmutable());
+        $product = Product::create($this->company, $reference, new ProductDetails($name, null, ProductKind::Goods, '10', null, $group), $this->unit, null, [], self::heldNow());
         if (!$active) {
-            $product->revise($reference, new ProductDetails($name, null, ProductKind::Goods, '10', null, $group), $this->unit, null, [], false, new \DateTimeImmutable());
+            $product->revise($reference, new ProductDetails($name, null, ProductKind::Goods, '10', null, $group), $this->unit, null, [], false, self::heldNow());
         }
         $this->em()->persist($product);
 

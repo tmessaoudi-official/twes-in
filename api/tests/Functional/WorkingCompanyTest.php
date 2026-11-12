@@ -261,9 +261,9 @@ final class WorkingCompanyTest extends ApiTestCase
     {
         $user = $this->createUser('user@twes.local', 'password-1234', $first, ['*']);
         $em = $this->em();
-        $role = new Role(Role::OWNER, ['*'], $second, new \DateTimeImmutable());
+        $role = new Role(Role::OWNER, ['*'], $second, self::heldNow());
         $em->persist($role);
-        $em->persist(new Membership($user, $second, $role, new \DateTimeImmutable()));
+        $em->persist(new Membership($user, $second, $role, self::heldNow()));
         $em->flush();
         $this->login('user@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();

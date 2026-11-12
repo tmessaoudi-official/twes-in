@@ -41,7 +41,7 @@ final class ProductCostTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), $now);
         $this->em()->persist($this->vendor);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());

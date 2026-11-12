@@ -127,7 +127,7 @@ final class CompanyProfileTest extends ApiTestCase
      */
     public function testAPhoneOutsideTheRangesKeptByThePlatformIsSaidToCheckUntilChanged(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'company.settings']);
 

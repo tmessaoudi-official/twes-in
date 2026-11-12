@@ -257,10 +257,10 @@ final class SubmissionReplayTest extends ApiTestCase
         $this->pay($invoice, '40', self::OTHER_KEY);
         $kept = static::getContainer()->getParameter('app.submissions.kept_hours');
 
-        self::mockTime('+'.($kept - 1).' hours');
+        $this->moveClock('+'.($kept - 1).' hours');
         static::getContainer()->get(PurgeSubmissionsEveryHour::class)();
         self::assertSame(1, $this->claims());
-        self::mockTime('+'.$kept.' hours +1 second');
+        $this->moveClock('+'.$kept.' hours +1 second');
         static::getContainer()->get(PurgeSubmissionsEveryHour::class)();
 
         self::assertSame(0, $this->claims());
@@ -345,7 +345,7 @@ final class SubmissionReplayTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

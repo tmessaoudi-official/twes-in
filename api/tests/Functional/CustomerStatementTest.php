@@ -199,7 +199,7 @@ final class CustomerStatementTest extends ApiTestCase
         // The logo takes the room the company gave it on every document, the statement included.
         self::assertStringContainsString('width: 48mm; height: 17mm; object-fit: contain;', $page);
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
-        $this->em()->persist(new Setting(SettingAddress::company($company), 'document.logo_height', 30, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($company), 'document.logo_height', 30, self::heldNow()));
         $this->em()->flush();
         $this->client->request('GET', $this->path().'/pdf');
         self::assertStringContainsString('width: 48mm; height: 30mm; object-fit: contain;', (string) $this->client->getResponse()->getContent());
@@ -454,7 +454,7 @@ final class CustomerStatementTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, $number, self::aTunisianBusiness($name), null, $regime, $defaultTaxes, new \DateTimeImmutable());
+        $customer = Customer::create($this->company, $number, self::aTunisianBusiness($name), null, $regime, $defaultTaxes, self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

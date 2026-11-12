@@ -41,7 +41,7 @@ final class StockValuationTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $piece, null, [], $now);
         $mouse = Product::create($this->company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '20', '8'), $piece, null, [], $now);
         $this->em()->persist($laptop);
@@ -135,7 +135,7 @@ final class StockValuationTest extends ApiTestCase
     {
         // The ruling's input (audit E-4): two sold at the cost price of 8 before any came in, then three received at
         // 1 under the average rule. Summed, (3 - 16) over 1 = -13 was handed to the product as its cost and refused.
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), StockCostSettings::COST_ON_RECEIVE, 'average', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), StockCostSettings::COST_ON_RECEIVE, 'average', self::heldNow()));
         $this->em()->flush();
         $site = $this->site();
         $this->sell($this->mouseId, $site, '2');
@@ -157,7 +157,7 @@ final class StockValuationTest extends ApiTestCase
         $location = $this->em()->find(StockLocation::class, Uuid::fromString($site));
         self::assertNotNull($mouse);
         self::assertNotNull($location);
-        $this->em()->persist(StockMovement::receipt($mouse, $location, '5', null, new \DateTimeImmutable()));
+        $this->em()->persist(StockMovement::receipt($mouse, $location, '5', null, self::heldNow()));
         $this->em()->flush();
         // Written as a movement no cost was known for: nothing on it.
         $this->em()->getConnection()->executeStatement('UPDATE stock_movement SET unit_cost = NULL WHERE company_id = ? AND quantity = 5', [$this->company->getId()->toRfc4122()]);
@@ -232,7 +232,7 @@ final class StockValuationTest extends ApiTestCase
         $location = $this->em()->find(StockLocation::class, Uuid::fromString($locationId));
         self::assertNotNull($product);
         self::assertNotNull($location);
-        static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::sale($product, $location, $quantity, Uuid::v7(), new \DateTimeImmutable()));
+        static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::sale($product, $location, $quantity, Uuid::v7(), self::heldNow()));
     }
 
     private function site(): string

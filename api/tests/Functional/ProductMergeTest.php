@@ -56,7 +56,7 @@ final class ProductMergeTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $this->aProduct('VIS-6', 'C62', ProductKind::Goods, ProductTracking::None, $now);
         $this->aProduct('VIS-6B', 'C62', ProductKind::Goods, ProductTracking::None, $now);
@@ -381,7 +381,7 @@ final class ProductMergeTest extends ApiTestCase
         self::assertNotNull($location);
 
         try {
-            static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::receipt($product, $location, '1.000', null, new \DateTimeImmutable(), unitCost: '2.000'));
+            static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::receipt($product, $location, '1.000', null, self::heldNow(), unitCost: '2.000'));
             self::fail('A movement of a product merged away is refused.');
         } catch (InvalidStockMovement $refused) {
             self::assertSame('product_merged', $refused->reason);
@@ -634,7 +634,7 @@ final class ProductMergeTest extends ApiTestCase
         $note = $this->aDeliveryNote($merged);
         $this->postJson($this->path("delivery-notes/$note/validate"), null);
         self::assertResponseIsSuccessful();
-        $this->em()->persist(new Setting(SettingAddress::company($this->em()->find(Company::class, $this->company->getId()) ?? $this->company), 'watch.lead_days', 40, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->em()->find(Company::class, $this->company->getId()) ?? $this->company), 'watch.lead_days', 40, self::heldNow()));
         $this->em()->flush();
         $this->merged($kept, [$merged]);
 

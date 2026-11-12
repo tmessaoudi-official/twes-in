@@ -101,7 +101,7 @@ final class StepUpTest extends ApiTestCase
         $this->client->request('GET', '/api/auth/me');
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'this browser is signed out');
 
-        self::assertFalse($this->account('someone@twes.local')->isLockedAt(new \DateTimeImmutable()), 'the account is not locked');
+        self::assertFalse($this->account('someone@twes.local')->isLockedAt(self::heldNow()), 'the account is not locked');
         $this->login('someone@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful('the clerk signs in again at once');
     }
@@ -171,7 +171,7 @@ final class StepUpTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->em()->getConnection()->executeStatement(
             'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
-            [(new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s'), 'someone@twes.local'],
+            [self::heldNow()->modify('+15 minutes')->format('Y-m-d H:i:s'), 'someone@twes.local'],
         );
 
         $this->postJson(self::STEP_UP, ['password' => self::PASSWORD]);

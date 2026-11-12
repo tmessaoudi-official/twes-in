@@ -47,7 +47,7 @@ final class PriceListsTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $globex = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $units = static::getContainer()->get(UnitRepository::class);
         $piece = $units->ofCodeInCompany('C62', $this->company->getId());
         $theirPiece = $units->ofCodeInCompany('C62', $globex->getId());
@@ -382,7 +382,7 @@ final class PriceListsTest extends ApiTestCase
         // The client rebooted the kernel, so the company is found again before a row points at it.
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $this->em()->persist(ModuleState::of($company, PriceListsModule::KEY, false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($company, PriceListsModule::KEY, false, self::heldNow()));
         $this->em()->flush();
         $invoice([['productId' => $this->screw, 'quantity' => '10']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);

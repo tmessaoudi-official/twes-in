@@ -253,7 +253,7 @@ final class ProductsTest extends ApiTestCase
     {
         $other = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($other);
-        $theirs = ProductCategory::create($other, 'Matériel', null, new \DateTimeImmutable());
+        $theirs = ProductCategory::create($other, 'Matériel', null, self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->createUser('writer@twes.local', 'password-1234', $this->company, ['product.read', 'product.write'], 'writer');
@@ -269,7 +269,7 @@ final class ProductsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('categoryId', (string) $this->client->getResponse()->getContent());
 
-        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('Acme is gone.'), 'products', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('Acme is gone.'), 'products', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->companyPath().'/product-reference-preview');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'products switched off');
@@ -442,7 +442,7 @@ final class ProductsTest extends ApiTestCase
         $this->signedIn(['product.read', 'product.write']);
         // Each its own unit, codes and vendor, so the identity map cannot hide a read per row.
         foreach (['C62', 'H87', 'HUR', 'DAY', 'KGM', 'MTR'] as $n => $unit) {
-            $vendor = Vendor::create($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'FRN-000'.$n, new VendorProfile('Fournisseur '.$n), new \DateTimeImmutable());
+            $vendor = Vendor::create($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'FRN-000'.$n, new VendorProfile('Fournisseur '.$n), self::heldNow());
             $this->em()->persist($vendor);
             $this->em()->flush();
             $id = $this->created($this->product(['reference' => 'ART-10'.$n, 'unitId' => $this->unitId($unit), 'vendorIds' => [$vendor->getId()->toRfc4122()]]));
@@ -583,7 +583,7 @@ final class ProductsTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($globex);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $globex->getId());
         self::assertNotNull($unit);
-        $theirs = Product::create($globex, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '10'), $unit, null, [], new \DateTimeImmutable());
+        $theirs = Product::create($globex, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '10'), $unit, null, [], self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['product.read'], 'reader');
@@ -610,7 +610,7 @@ final class ProductsTest extends ApiTestCase
 
     public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $units = static::getContainer()->get(UnitRepository::class);
         $piece = $units->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
@@ -660,7 +660,7 @@ final class ProductsTest extends ApiTestCase
 
     public function testEveryFilterOfTheListCombines(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
         $tools = ProductCategory::create($this->company, 'Outillage', null, $now);

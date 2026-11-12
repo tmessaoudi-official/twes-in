@@ -21,7 +21,7 @@ trait MakesSandboxes
     private function readySandbox(string $country): DemoSandbox
     {
         $sandbox = $this->openedSandbox($country, 'now');
-        $sandbox->ready(new \DateTimeImmutable());
+        $sandbox->ready(self::heldNow());
 
         return $sandbox;
     }
@@ -31,8 +31,8 @@ trait MakesSandboxes
     {
         $company = $this->createCompany("Bac à sable $country ".bin2hex(random_bytes(3)), false);
         $owner = $this->createUser(\sprintf('demo-%s@example.com', bin2hex(random_bytes(16))), 'not-used-here', $company);
-        $sandbox = new DemoSandbox(Uuid::v7(), $country, new \DateTimeImmutable($since));
-        $sandbox->startBuilding(new \DateTimeImmutable($since));
+        $sandbox = new DemoSandbox(Uuid::v7(), $country, self::heldNow()->modify($since));
+        $sandbox->startBuilding(self::heldNow()->modify($since));
         $sandbox->opened($company, $owner);
         $this->em()->persist($sandbox);
 

@@ -399,7 +399,7 @@ final class RolesTest extends ApiTestCase
             Email::fromString($email),
             $em->getRepository(Role::class)->findOneBy(['name' => $roleName, 'company' => $company]) ?? self::fail('no role '.$roleName),
             InvitationToken::generate(),
-            new \DateTimeImmutable(),
+            self::heldNow(),
             new \DateInterval('P7D'),
             null,
         ));
@@ -413,9 +413,9 @@ final class RolesTest extends ApiTestCase
         self::assertInstanceOf(Role::class, $role);
         $company = $em->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $user = new User(Email::fromString($email), 'Sami', 'fr', new \DateTimeImmutable());
+        $user = new User(Email::fromString($email), 'Sami', 'fr', self::heldNow());
         $em->persist($user);
-        $em->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
+        $em->persist(new Membership($user, $company, $role, self::heldNow()));
         $em->flush();
     }
 

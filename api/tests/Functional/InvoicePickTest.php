@@ -46,7 +46,7 @@ final class InvoicePickTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         for ($n = 1; $n <= self::MANY; ++$n) {
             $reference = \sprintf('VIS-%03d', $n);
             $this->em()->persist(Product::create($this->company, $reference, new ProductDetails('Vis '.$n, null, ProductKind::Goods, '0.450'), $piece, null, [], $now));
@@ -97,7 +97,7 @@ final class InvoicePickTest extends ApiTestCase
 
         $bolt = $this->em()->getRepository(Product::class)->findOneBy(['reference' => 'BOU-001']);
         self::assertNotNull($bolt);
-        $bolt->track(ProductTracking::Serial, new \DateTimeImmutable());
+        $bolt->track(ProductTracking::Serial, self::heldNow());
         $this->em()->flush();
         $this->getJson($this->path('products').'?q=boulon');
         self::assertSame(['serial'], array_column($this->jsonList(), 'tracking'));

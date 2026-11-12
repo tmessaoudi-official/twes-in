@@ -47,7 +47,7 @@ final class UnofferedProductsTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = fn (string $reference, string $name, ProductKind $kind, bool $active): Product => $this->persisted(
             Product::create($this->company, $reference, new ProductDetails($name, null, $kind, '10'), $piece, null, [], $now),
             $active,

@@ -167,7 +167,7 @@ final class StockLossAttachmentsTest extends ApiTestCase
         $this->sendJson('DELETE', $this->path($loss).'/'.$attachment);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'and so is removing');
 
-        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('The company is gone.'), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('The company is gone.'), 'inventory', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->path($loss));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -253,7 +253,7 @@ final class StockLossAttachmentsTest extends ApiTestCase
         $company = $this->createCompany($name);
         static::getContainer()->get(ProvisionCompany::class)->handle($company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId()) ?? self::fail('No piece unit.');
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $piece, null, [], $now);
         $this->em()->persist($product);
         $this->em()->persist(new Setting(SettingAddress::company($company), 'article.stock_tracking', true, $now));

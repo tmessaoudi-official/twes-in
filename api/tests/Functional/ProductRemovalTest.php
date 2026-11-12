@@ -21,8 +21,6 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\MakesPictures;
 use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -47,7 +45,7 @@ final class ProductRemovalTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $vendor = Vendor::create($this->company, 'F-001', new VendorProfile('Sotumag'), $now);
         $this->em()->persist($vendor);
@@ -160,12 +158,12 @@ final class ProductRemovalTest extends ApiTestCase
         $keys = $this->em()->getConnection()->fetchAllKeyValue('SELECT id, storage_key FROM file WHERE id IN (?, ?, ?)', [$original, $large, $small]);
         $this->removed('product', $product);
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+24 hours +1 minute')));
+        $this->moveClock('+24 hours +1 minute');
         try {
             static::getContainer()->get(EndDueRemovals::class)->handle();
             static::getContainer()->get(EndDueRemovals::class)->handle();
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
 
         self::assertSame([$original], $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM file WHERE id IN (?, ?, ?)', [$original, $large, $small]));

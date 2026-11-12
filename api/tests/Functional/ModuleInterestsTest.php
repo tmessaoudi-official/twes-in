@@ -152,7 +152,7 @@ final class ModuleInterestsTest extends ApiTestCase
 
     private function waits(Company $company, string $key): void
     {
-        $this->em()->persist(new ModuleInterest($company, $key, new \DateTimeImmutable()));
+        $this->em()->persist(new ModuleInterest($company, $key, self::heldNow()));
         $this->em()->flush();
     }
 

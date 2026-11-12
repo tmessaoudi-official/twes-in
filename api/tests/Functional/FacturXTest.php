@@ -50,7 +50,7 @@ final class FacturXTest extends ApiTestCase
             city: 'Lyon',
             iban: 'FR7630006000011234567890189',
             bic: 'AGRIFRPP',
-        ), new \DateTimeImmutable());
+        ), self::heldNow());
         $this->em()->flush();
         // A French invoice states its late payment penalties' rate, or it is not issued (FrenchMentionsTest).
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->company), 'document.late_payment_rate', SettingLevel::Company, 'trois fois le taux d’intérêt légal', null);
@@ -146,7 +146,7 @@ final class FacturXTest extends ApiTestCase
         // What is judged is the seller as issuing froze it, so the gaps must be there when the invoice is issued.
         $this->company = $this->reloaded();
         // Named as issuing asks, but short of what EN 16931 asks beyond it: the VAT number and the postal code.
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', city: 'Lyon'), new \DateTimeImmutable());
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', city: 'Lyon'), self::heldNow());
         $this->em()->flush();
         $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
 
@@ -226,7 +226,7 @@ final class FacturXTest extends ApiTestCase
             postalCode: '13002',
             city: 'Marseille',
             iban: 'FR7612345000019876543210987',
-        ), new \DateTimeImmutable());
+        ), self::heldNow());
         $this->em()->flush();
 
         $this->client->request('GET', $this->path($id).'/factur-x.xml');
@@ -412,7 +412,7 @@ final class FacturXTest extends ApiTestCase
 
     private function frenchCompany(string $name): Company
     {
-        $company = new Company($name, 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $company = new Company($name, 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($company);
@@ -427,7 +427,7 @@ final class FacturXTest extends ApiTestCase
         $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('FR', $regime);
         self::assertNotNull($taxRegime);
         $profile = new CustomerProfile(CustomerKind::Company, 'Garage Martin', 'Garage Martin SAS', $identifiers, billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR'));
-        $customer = Customer::create($company, 'CLI-0001', $profile, null, $taxRegime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-0001', $profile, null, $taxRegime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

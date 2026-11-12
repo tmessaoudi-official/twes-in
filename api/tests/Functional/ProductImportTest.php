@@ -63,7 +63,7 @@ final class ProductImportTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(ProductCategory::create($this->company, 'Visserie', null, $now));
         $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Product, 'shelf', 'Rayon', CustomFieldType::Text, false, [], 1, $now));
         $this->em()->flush();
@@ -210,7 +210,7 @@ final class ProductImportTest extends ApiTestCase
      */
     public function testNumbersAndChoicesAreReadAsSpreadsheetsWriteThem(): void
     {
-        $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Product, 'checked', 'Contrôlé le', CustomFieldType::Date, false, [], 2, new \DateTimeImmutable()));
+        $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Product, 'checked', 'Contrôlé le', CustomFieldType::Date, false, [], 2, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
@@ -318,7 +318,7 @@ final class ProductImportTest extends ApiTestCase
         $this->signedIn(['product.read', 'product.write', 'stock.write']);
         self::assertSame(['stock_add', 'stock_count', 'location', 'ignore_quantities', 'recount'], array_values(array_intersect($this->guide(), ['stock_add', 'stock_count', 'location', 'ignore_quantities', 'recount'])));
 
-        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('The company is gone.'), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('The company is gone.'), 'inventory', false, self::heldNow()));
         $this->em()->flush();
         self::assertSame([], array_values(array_intersect($this->guide(), ['stock_add', 'stock_count', 'location', 'ignore_quantities', 'recount'])), 'the stock switched off');
     }
@@ -577,7 +577,7 @@ Cheville 10 mm,6191234567897
         self::assertResponseIsSuccessful();
         $screw = $this->product('VIS-6X40');
         $held = $screw->getDetails();
-        $screw->revise($screw->getReference(), new ProductDetails($held->name, $held->description, $held->kind, $held->unitPriceNet, $held->costPrice, 'Vis de 6'), $screw->getUnit(), $screw->getCategory(), array_map(\Symfony\Component\Uid\Uuid::fromString(...), $screw->getDefaultTaxComponentIds()), $screw->isActive(), new \DateTimeImmutable());
+        $screw->revise($screw->getReference(), new ProductDetails($held->name, $held->description, $held->kind, $held->unitPriceNet, $held->costPrice, 'Vis de 6'), $screw->getUnit(), $screw->getCategory(), array_map(\Symfony\Component\Uid\Uuid::fromString(...), $screw->getDefaultTaxComponentIds()), $screw->isActive(), self::heldNow());
         $this->em()->flush();
         $this->em()->clear();
 
@@ -724,7 +724,7 @@ Cheville 10 mm,6191234567897
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'), new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'), self::heldNow());
         $this->em()->flush();
         $this->import("reference,name,unit_code,unit_price_net,cost_price_gross,default_tax_codes\nVIS-4,Vis 4,H87,2,1.19,TVA19\n");
 
@@ -743,7 +743,7 @@ Cheville 10 mm,6191234567897
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'), new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'), self::heldNow());
         $this->em()->flush();
 
         $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nTE-1,Té 50,H87,14.244,TVA19\n");
@@ -832,7 +832,7 @@ Cheville 10 mm,6191234567897
     /** In euros the cent is the last digit: 9.99 at 20 % is no net price's, as 8.32 makes 9.98 and 8.33 makes 10.00. */
     public function testInEurosAPriceTaxesIncludedIsCountedToTheCent(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
@@ -854,7 +854,7 @@ Cheville 10 mm,6191234567897
      */
     public function testAPriceTaxesIncludedNoNetReachesIsTakenAsTheChoiceSays(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
@@ -898,7 +898,7 @@ Cheville 10 mm,6191234567897
      */
     public function testAPriceTaxesIncludedNoNetReachesMarksTheProductUntilAPriceIsSet(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
@@ -1089,7 +1089,7 @@ Cheville 10 mm,6191234567897
         self::assertSame('0.4000', $screw->getDetails()->costPrice);
 
         $this->company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company is there');
-        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, self::heldNow()));
         $this->em()->flush();
         $this->login('shop@twes.local', 'password-1234');
         self::assertNotContains('supplier_code', $this->guide(), 'no supplier to name while the module is off');
@@ -1097,7 +1097,7 @@ Cheville 10 mm,6191234567897
 
     private function aVendor(string $number, string $name): void
     {
-        $this->em()->persist(Vendor::create($this->company, $number, new VendorProfile($name), new \DateTimeImmutable()));
+        $this->em()->persist(Vendor::create($this->company, $number, new VendorProfile($name), self::heldNow()));
         $this->em()->flush();
     }
 
@@ -1117,7 +1117,7 @@ Cheville 10 mm,6191234567897
         $this->import($this->twoProducts());
         self::assertResponseIsSuccessful();
         $screw = $this->product('VIS-6X40');
-        $screw->replaceBarcodes([new BarcodeLine(BarcodeRole::Unit, new Barcode('6191234567897'), 1), new BarcodeLine(BarcodeRole::Pack, new Barcode('16191234567894'), 100)], new \DateTimeImmutable());
+        $screw->replaceBarcodes([new BarcodeLine(BarcodeRole::Unit, new Barcode('6191234567897'), 1), new BarcodeLine(BarcodeRole::Pack, new Barcode('16191234567894'), 100)], self::heldNow());
         $this->em()->flush();
         $this->em()->clear();
 
@@ -1187,7 +1187,7 @@ Cheville 10 mm,6191234567897
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $this->em()->persist(Establishment::create($company, 'SFAX', 'Sfax', false, new \DateTimeImmutable()));
+        $this->em()->persist(Establishment::create($company, 'SFAX', 'Sfax', false, self::heldNow()));
         $this->em()->flush();
         $this->import("reference,name,reorder_point\nVIS-6X40,Vis 6x40 zinguée,5\n", mode: 'upsert');
         self::assertResponseStatusCodeSame(422);
@@ -1282,7 +1282,7 @@ Cheville 10 mm,6191234567897
      */
     public function testARefusedRowListsEveryFaultAtOnce(): void
     {
-        $second = Establishment::create($this->company, 'LYON', 'Lyon', false, new \DateTimeImmutable());
+        $second = Establishment::create($this->company, 'LYON', 'Lyon', false, self::heldNow());
         $this->em()->persist($second);
         $this->em()->flush();
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
@@ -1312,7 +1312,7 @@ Cheville 10 mm,6191234567897
     /** A code no location has, and a code two establishments share: named, never guessed at. */
     public function testAHomeThatCannotBeResolvedRejectsTheRowNamingTheCell(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->aZoneCoded('Z1');
         $second = Establishment::create($this->company, 'LYON', 'Lyon', false, $now);
         $this->em()->persist($second);
@@ -1378,7 +1378,7 @@ Cheville 10 mm,6191234567897
 
     private function aZoneCoded(string $code): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $establishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0];
         $this->locations()->save(StockLocation::create($establishment, $this->manageLocations()->defaultOf($establishment), StockLocationKind::Zone, $code, 'Zone froide', $now));
         $this->em()->flush();
@@ -1448,7 +1448,7 @@ Cheville 10 mm,6191234567897
     /** The company keeps stock of its goods. */
     private function stockKept(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
     }
 

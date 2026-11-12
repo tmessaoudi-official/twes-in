@@ -48,7 +48,7 @@ final class QuotesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customer = $this->customer('CLI-0001');
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -174,7 +174,7 @@ final class QuotesTest extends ApiTestCase
         $customer = $this->em()->find(Customer::class, $this->customer->getId());
         self::assertNotNull($export);
         self::assertNotNull($customer);
-        $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), $export, [], $customer->isActive(), new \DateTimeImmutable());
+        $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), $export, [], $customer->isActive(), self::heldNow());
         $this->em()->flush();
 
         $this->postJson($this->path($id).'/send', null);
@@ -342,7 +342,7 @@ final class QuotesTest extends ApiTestCase
     public function testAQuoteGoesOnlyOnAnOpenDraftOfItsCustomerAndEstablishmentAndNotWithADiscountOfItsOwn(): void
     {
         $other = $this->customer('CLI-0002');
-        $lyon = Establishment::create($this->company, 'LYON', 'Lyon', false, new \DateTimeImmutable());
+        $lyon = Establishment::create($this->company, 'LYON', 'Lyon', false, self::heldNow());
         $this->em()->persist($lyon);
         $this->em()->flush();
         $this->signedIn(self::WRITER);
@@ -761,7 +761,7 @@ final class QuotesTest extends ApiTestCase
     private function contact(Uuid $customerId, string $firstName, string $lastName): string
     {
         $customer = $this->em()->find(Customer::class, $customerId) ?? throw new \LogicException('no customer');
-        $contact = Contact::create($customer, new ContactDetails($firstName, $lastName, null, null, null), false, new \DateTimeImmutable());
+        $contact = Contact::create($customer, new ContactDetails($firstName, $lastName, null, null, null), false, self::heldNow());
         $this->em()->persist($contact);
         $this->em()->flush();
 
@@ -790,7 +790,7 @@ final class QuotesTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

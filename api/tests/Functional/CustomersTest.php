@@ -227,7 +227,7 @@ final class CustomersTest extends ApiTestCase
         self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_outside_ranges', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
 
         // Kept and marked « À vérifier » where the platform's operators chose « Garder et marquer ».
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
         $this->em()->flush();
         $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '+216 11 111 111', 'toCheck' => false]), 'version' => 3]);
         self::assertResponseIsSuccessful();
@@ -318,7 +318,7 @@ final class CustomersTest extends ApiTestCase
         $this->em()->getConnection()->executeStatement('UPDATE customer SET version = version + 1 WHERE id = ?', [$id->toRfc4122()]);
 
         $this->expectException(RecordChanged::class);
-        static::getContainer()->get(Transactions::class)->run(static fn (): array => $customer->revise('CLI-0002', $customer->getProfile(), null, $customer->getTaxRegime(), [], true, new \DateTimeImmutable()));
+        static::getContainer()->get(Transactions::class)->run(static fn (): array => $customer->revise('CLI-0002', $customer->getProfile(), null, $customer->getTaxRegime(), [], true, self::heldNow()));
     }
 
     public function testARevisionThatChangesNothingKeepsItsVersion(): void
@@ -376,7 +376,7 @@ final class CustomersTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $theirs = Customer::create($globex, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), null, $regime, [], new \DateTimeImmutable());
+        $theirs = Customer::create($globex, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), null, $regime, [], self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write']);
@@ -419,10 +419,10 @@ final class CustomersTest extends ApiTestCase
 
     public function testTheListIsSearchedNarrowedAndSortedByTheApi(): void
     {
-        $retail = CustomerGroup::create($this->company, 'Retail', null, new \DateTimeImmutable());
+        $retail = CustomerGroup::create($this->company, 'Retail', null, self::heldNow());
         $this->em()->persist($retail);
         $regime = $this->standardRegime();
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthagé Conseil', identifiers: ['matricule_fiscal' => self::MATRICULE], email: 'contact@carthage.tn', billingAddress: new PostalAddress('12, rue du Lac Léman', null, '1053', 'Sfax')), $retail, $regime, [], $now));
         $this->em()->persist(Customer::create($this->company, 'K9', new CustomerProfile(CustomerKind::Individual, 'Kais'), null, $regime, [], $now));
         $this->em()->persist(Customer::create($this->company, 'CLI-0002', new CustomerProfile(CustomerKind::Individual, 'Amel Ben Salah', billingAddress: new PostalAddress(city: 'Tunis')), null, $regime, [], $now));
@@ -468,8 +468,8 @@ final class CustomersTest extends ApiTestCase
 
     public function testEveryFilterOfTheListCombines(): void
     {
-        $retail = CustomerGroup::create($this->company, 'Retail', null, new \DateTimeImmutable());
-        $wholesale = CustomerGroup::create($this->company, 'Wholesale', null, new \DateTimeImmutable());
+        $retail = CustomerGroup::create($this->company, 'Retail', null, self::heldNow());
+        $wholesale = CustomerGroup::create($this->company, 'Wholesale', null, self::heldNow());
         $this->em()->persist($retail);
         $this->em()->persist($wholesale);
         $standard = $this->standardRegime();
@@ -520,7 +520,7 @@ final class CustomersTest extends ApiTestCase
     private function seedCustomers(int $count): void
     {
         $regime = $this->standardRegime();
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         foreach (range(1, $count) as $n) {
             $this->em()->persist(Customer::create($this->company, \sprintf('CLI-%04d', $n), new CustomerProfile(CustomerKind::Individual, 'Client '.$n), null, $regime, [], $now));
         }

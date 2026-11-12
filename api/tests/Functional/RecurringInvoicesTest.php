@@ -27,7 +27,6 @@ use DoctrineMigrations\Version20261015212800;
 use Psr\Log\NullLogger;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -56,7 +55,7 @@ final class RecurringInvoicesTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
@@ -65,12 +64,6 @@ final class RecurringInvoicesTest extends ApiTestCase
         $this->createUser('owner@twes.local', 'password-1234', $this->company);
         $this->login('sales@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     public function testAnInvoiceMadeRecurringIsDraftedOnceOnEachOccurrence(): void
@@ -192,7 +185,7 @@ final class RecurringInvoicesTest extends ApiTestCase
         $this->runOn('2027-01-28');
         $this->runOn('2027-01-29');
         $this->runOn('2027-03-25');
-        Clock::set(new NativeClock());
+        $this->clockBack();
 
         self::assertCount(1, $this->draftsOf($recurring), 'the last Friday of January, and nothing on the days before the next');
         $this->getJson($this->path().'/recurring-invoices/'.$recurring);
@@ -218,7 +211,7 @@ final class RecurringInvoicesTest extends ApiTestCase
         ] as $frequency => [$schedule, $startsOn]) {
             $made[$frequency] = $this->manage()->create($this->company(), $model, $schedule, new \DateTimeImmutable($startsOn), null, null)->getId()->toRfc4122();
         }
-        Clock::set(new NativeClock());
+        $this->clockBack();
         $this->onACopyOfTheTable();
 
         try {
@@ -422,7 +415,7 @@ final class RecurringInvoicesTest extends ApiTestCase
         foreach ($days as $day) {
             $this->runOn($day);
         }
-        Clock::set(new NativeClock());
+        $this->clockBack();
     }
 
     private function runOn(string $day): void

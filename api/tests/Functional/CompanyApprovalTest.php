@@ -87,9 +87,9 @@ final class CompanyApprovalTest extends ApiTestCase
 
     public function testRefusingAWaitingCompanyKeepsItClosedAndTellsItsOwnersWhyAndWhomToAsk(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.phone', '+216 71 900 868', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.phone', '+216 71 900 868', self::heldNow()));
         // Both numbers are kept as E.164 and written grouped as their country writes them.
-        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.whatsapp', '+21620123456', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.whatsapp', '+21620123456', self::heldNow()));
         $this->em()->flush();
         $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
         $this->signedInAsOperator();
@@ -123,7 +123,7 @@ final class CompanyApprovalTest extends ApiTestCase
     /** A reply to the closing mail reaches the support address the platform names, never the sender nobody reads. */
     public function testAReplyToTheClosingMailReachesTheSupportAddress(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.email', 'aide@twes.test', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.email', 'aide@twes.test', self::heldNow()));
         $this->em()->flush();
         $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
         $this->signedInAsOperator();
@@ -273,7 +273,7 @@ final class CompanyApprovalTest extends ApiTestCase
 
     private function pendingCompany(string $name, string $ownerEmail): Company
     {
-        $company = Company::pending($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company = Company::pending($name, 'TN', 'TND', 'fr', 'Africa/Tunis', self::heldNow());
         $this->em()->persist($company);
         $this->em()->flush();
         $this->createUser($ownerEmail, 'password-1234', $company);

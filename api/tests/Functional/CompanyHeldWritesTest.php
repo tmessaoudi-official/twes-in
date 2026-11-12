@@ -91,7 +91,7 @@ final class CompanyHeldWritesTest extends ApiTestCase
         $request = new Request();
         $request->setSession(new Session(new MockArraySessionStorage()));
         static::getContainer()->get(RequestStack::class)->push($request);
-        static::getContainer()->get(StepUpProofs::class)->remember($this->owner->getId(), new \DateTimeImmutable());
+        static::getContainer()->get(StepUpProofs::class)->remember($this->owner->getId(), self::heldNow());
         $closing = static::getContainer()->get(CloseDownCompany::class);
 
         $version = $this->savedSinceRead();
@@ -107,7 +107,7 @@ final class CompanyHeldWritesTest extends ApiTestCase
     {
         $role = $this->em()->getRepository(Role::class)->findOneBy(['company' => $this->company, 'name' => Role::OWNER]) ?? throw new \LogicException('no owner role');
         $token = InvitationToken::generate();
-        $this->em()->persist(new Invitation($this->company, Email::fromString('second@twes.local'), $role, $token, new \DateTimeImmutable(), new \DateInterval('P7D'), $this->owner));
+        $this->em()->persist(new Invitation($this->company, Email::fromString('second@twes.local'), $role, $token, self::heldNow(), new \DateInterval('P7D'), $this->owner));
         $this->em()->flush();
         $version = $this->savedSinceRead("status = 'pending'");
 

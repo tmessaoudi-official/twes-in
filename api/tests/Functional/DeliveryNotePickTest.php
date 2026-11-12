@@ -44,7 +44,7 @@ final class DeliveryNotePickTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $this->em()->persist(Product::create($this->company, 'BOU-001', new ProductDetails('Boulon inox', null, ProductKind::Goods, '1.200'), $piece, null, [], new \DateTimeImmutable()));
+        $this->em()->persist(Product::create($this->company, 'BOU-001', new ProductDetails('Boulon inox', null, ProductKind::Goods, '1.200'), $piece, null, [], self::heldNow()));
         $this->em()->flush();
         $manage = static::getContainer()->get(ManageCustomers::class);
         $manage->create($this->company, $this->customer('CLI-001', 'Boulangerie Mercier'), null);

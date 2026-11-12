@@ -37,10 +37,10 @@ final class PermissionGrantMigrationsTest extends ApiTestCase
     public function testACompanysRoleThatHeldTheOldPermissionKeepsTheActionAndNoOtherRoleGainsIt(string $migration, string $read, string $old, string $new): void
     {
         $company = $this->createCompany('Acme');
-        $holder = new Role('comptoir', [$read, $old], $company, new \DateTimeImmutable());
-        $reader = new Role('lecteur', [$read], $company, new \DateTimeImmutable());
-        $already = new Role('gérant', [$old, $new], $company, new \DateTimeImmutable());
-        $builtIn = new Role(Role::CLERK, [$old], null, new \DateTimeImmutable());
+        $holder = new Role('comptoir', [$read, $old], $company, self::heldNow());
+        $reader = new Role('lecteur', [$read], $company, self::heldNow());
+        $already = new Role('gérant', [$old, $new], $company, self::heldNow());
+        $builtIn = new Role(Role::CLERK, [$old], null, self::heldNow());
         foreach ([$holder, $reader, $already, $builtIn] as $role) {
             $this->em()->persist($role);
         }

@@ -52,7 +52,7 @@ final class PurchaseOrdersTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $screws = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6 mm', null, ProductKind::Goods, '0.500'), $piece, null, [], $now);
         $screws->reviseCost('0.250', $now);
         $paint = Product::create($this->company, 'PEINT-1', new ProductDetails('Peinture blanche', null, ProductKind::Goods, '30'), $piece, null, [], $now);
@@ -289,7 +289,7 @@ final class PurchaseOrdersTest extends ApiTestCase
     {
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Outillage du Nord'), new \DateTimeImmutable());
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Outillage du Nord'), self::heldNow());
         $this->em()->persist($other);
         $this->codes([
             new BarcodeLine(BarcodeRole::Unit, new Barcode('6191234567897'), 1),
@@ -527,7 +527,7 @@ final class PurchaseOrdersTest extends ApiTestCase
 
     public function testTheListSearchesTheVendorAndCountsEachStatus(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
         $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Électricité Générale'), $now);
@@ -607,7 +607,7 @@ final class PurchaseOrdersTest extends ApiTestCase
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $this->em()->persist(new Setting(SettingAddress::company($company), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($company), 'stock.cost_on_receive', 'average', self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->path($id).'/receiving');
         self::assertFalse($this->json()['asksCostBasis'] ?? null, 'the company decides, so nobody receiving is asked');
@@ -641,7 +641,7 @@ final class PurchaseOrdersTest extends ApiTestCase
     {
         $screws = $this->em()->find(Product::class, Uuid::fromString($this->screws));
         self::assertNotNull($screws);
-        $screws->replaceBarcodes($lines, new \DateTimeImmutable());
+        $screws->replaceBarcodes($lines, self::heldNow());
         $this->em()->flush();
     }
 

@@ -24,6 +24,7 @@ final class ClaimSubmissionKey implements RaceStep
 {
     public function run(TestContainer $container, int $index, array $arguments): mixed
     {
+        // test-clock: a racer is a process of its own, on its own clock
         $now = new \DateTimeImmutable();
         $held = $container->get(SubmissionClaims::class)->claim(
             new HeldClaim(Uuid::fromString(Rows::text($arguments['account'] ?? null)), Uuid::fromString(Rows::text($arguments['key'] ?? null)), Uuid::v7()),

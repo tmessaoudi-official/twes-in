@@ -242,7 +242,7 @@ final class PasskeyTest extends ApiTestCase
         $this->login('someone@twes.local', self::PASSWORD);
         self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
         $request = $this->requestOptions();
-        $lockedUntil = (new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s');
+        $lockedUntil = self::heldNow()->modify('+15 minutes')->format('Y-m-d H:i:s');
         $this->em()->getConnection()->executeStatement(
             'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
             [$lockedUntil, 'someone@twes.local'],
@@ -314,7 +314,7 @@ final class PasskeyTest extends ApiTestCase
 
         // Required from the start: registering stays open to an account held back for want of a factor.
         $company = $this->createCompany('Secure');
-        $company->requireMfa(true, new \DateTimeImmutable());
+        $company->requireMfa(true, self::heldNow());
         $this->createUser('someone@twes.local', self::PASSWORD, $company);
         $this->login('someone@twes.local', self::PASSWORD);
         $this->getJson('/api/me/companies');
@@ -342,7 +342,7 @@ final class PasskeyTest extends ApiTestCase
     public function testARequiredAuthenticatorStaysThoughAPasskeyStandsBesideIt(): void
     {
         $company = $this->createCompany('Secure');
-        $company->requireMfa(true, new \DateTimeImmutable());
+        $company->requireMfa(true, self::heldNow());
         $this->createUser('someone@twes.local', self::PASSWORD, $company, authenticator: true);
         $this->login('someone@twes.local', self::PASSWORD);
         $this->stepUp(self::PASSWORD);
@@ -377,7 +377,7 @@ final class PasskeyTest extends ApiTestCase
     {
         // The sign-in opens « Relaxed », first by name; « Strict » requiring it is enough, or switching would be the way round.
         $strict = $this->createCompany('Strict');
-        $strict->requireMfa(true, new \DateTimeImmutable());
+        $strict->requireMfa(true, self::heldNow());
         $relaxed = $this->createCompany('Relaxed');
         $this->em()->flush();
         $user = $this->createUser('someone@twes.local', self::PASSWORD, $relaxed, authenticator: true);

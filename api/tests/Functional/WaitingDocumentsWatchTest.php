@@ -26,7 +26,6 @@ use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -58,7 +57,7 @@ final class WaitingDocumentsWatchTest extends ApiTestCase
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($regime);
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], $now);
         $product = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6 mm', null, ProductKind::Goods, '0.500'), $piece, null, [], $now);
         $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Quincaillerie du Sud'), $now);
@@ -128,7 +127,7 @@ final class WaitingDocumentsWatchTest extends ApiTestCase
     {
         $this->signedIn('manager@twes.local', self::VALIDATOR);
         $this->savedHoursAgo($this->draftNote([['productId' => $this->productId, 'quantity' => '1']]), $this->threshold() + 1);
-        $this->em()->persist(ModuleState::of($this->managed(), 'delivery_notes', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->managed(), 'delivery_notes', false, self::heldNow()));
         $this->em()->flush();
 
         $this->getJson($this->watch());
@@ -212,12 +211,6 @@ final class WaitingDocumentsWatchTest extends ApiTestCase
         $this->signedIn('clerk@twes.local', self::CLERK);
         $this->getJson($this->watch());
         self::assertSame($this->secondsFrom($now, $this->nextDay()), $this->readAgainIn(), 'a draft that will never be shown to the clerk asks nothing of their screen');
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     private function readAgainIn(): mixed

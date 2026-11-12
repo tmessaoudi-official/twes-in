@@ -40,7 +40,7 @@ final class ImportColumnsTest extends ApiTestCase
     {
         parent::setUp();
         $this->company = $this->createCompany('Acme');
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'employees', 'Salariés', CustomFieldType::Number, true, [], 1, $now));
         $retired = CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'legacy', 'Ancien code', CustomFieldType::Text, false, [], 2, $now);
         $retired->revise('Ancien code', false, [], 2, false, $now);
@@ -131,7 +131,7 @@ final class ImportColumnsTest extends ApiTestCase
     /** The row cap is the platform's setting, and the guide and the import read the same one. */
     public function testThePlatformsRowCapIsWhatTheGuideSaysAndWhatTheImportHolds(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::platform(), ImportSettings::MAX_ROWS, 3, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), ImportSettings::MAX_ROWS, 3, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write']);
 

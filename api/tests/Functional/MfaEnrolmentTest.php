@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,7 +76,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     public function testAnAccountHeldForWantOfAFactorCanProveItselfAndEnrol(): void
     {
         $company = $this->createCompany('Secure');
-        $company->requireMfa(true, new \DateTimeImmutable());
+        $company->requireMfa(true, self::heldNow());
         $this->createUser('someone@twes.local', self::PASSWORD, $company);
         $this->login('someone@twes.local', self::PASSWORD);
 
@@ -124,7 +123,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/enrolment', []);
         $secret = $this->stringAt($this->json(), 'secret');
 
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($secret)]);
 
         self::assertResponseIsSuccessful();
         self::assertCount(10, $this->arrayAt($this->json(), 'recoveryCodes'));
@@ -150,7 +149,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $sealedElsewhere = (new SodiumSecretCipher('AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE='))->encrypt($secret);
         $this->em()->getConnection()->executeStatement('UPDATE "user" SET totp_secret = ? WHERE email = ?', [$sealedElsewhere, 'someone@twes.local']);
 
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($secret)]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(['invalid_code', []], $this->refusalOf('code'));
@@ -158,7 +157,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $fresh = $this->stringAt($this->json(), 'secret');
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($fresh, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($fresh)]);
         self::assertResponseIsSuccessful();
     }
 
@@ -174,7 +173,7 @@ final class MfaEnrolmentTest extends ApiTestCase
             $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => '000000']);
         }
 
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($secret)]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
         $this->assertTheWaitIsSaid(300);
@@ -221,7 +220,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->stepUp(self::PASSWORD);
         $this->postJson('/api/auth/mfa/enrolment', []);
         $secret = $this->stringAt($this->json(), 'secret');
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($secret)]);
         self::assertResponseIsSuccessful();
 
         // A session is all this endpoint asks for, so a forgotten or stolen one must not be able to turn the factor off.
@@ -258,7 +257,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     public function testACompanyThatRequiresAFactorBlocksAMemberWhoHasNoneUntilTheyEnrol(): void
     {
         $company = $this->createCompany('Strict');
-        $company->requireMfa(true, new \DateTimeImmutable());
+        $company->requireMfa(true, self::heldNow());
         $this->em()->flush();
         $this->createUser('someone@twes.local', self::PASSWORD, $company);
         $this->login('someone@twes.local', self::PASSWORD);
@@ -277,7 +276,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/enrolment', []);
         self::assertResponseIsSuccessful();
         $secret = $this->stringAt($this->json(), 'secret');
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($secret)]);
         self::assertResponseIsSuccessful();
 
         // Enrolled: the rest of the API opens up.
@@ -314,7 +313,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/enrolment', []);
         self::assertResponseIsSuccessful();
         $secret = $this->stringAt($this->json(), 'secret');
-        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => self::authenticatorCode($secret)]);
         self::assertResponseIsSuccessful();
         $this->getJson('/api/auth/me');
         self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
@@ -323,7 +322,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     public function testTheAuthenticatorACompanyRequiresIsKept(): void
     {
         $company = $this->createCompany('Secure');
-        $company->requireMfa(true, new \DateTimeImmutable());
+        $company->requireMfa(true, self::heldNow());
         $this->createUser('someone@twes.local', self::PASSWORD, $company, authenticator: true);
         $this->login('someone@twes.local', self::PASSWORD);
 
@@ -366,7 +365,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         // A member of one strict company and one relaxed one must enrol either way, or the company switcher
         // would be the way around it (ruling of 2026-09-10).
         $strict = $this->createCompany('Strict');
-        $strict->requireMfa(true, new \DateTimeImmutable());
+        $strict->requireMfa(true, self::heldNow());
         $relaxed = $this->createCompany('Relaxed');
         $this->em()->flush();
 

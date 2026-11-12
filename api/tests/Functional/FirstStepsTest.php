@@ -27,7 +27,6 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -61,7 +60,7 @@ final class FirstStepsTest extends ApiTestCase
         self::assertSame(7, $this->json()['remaining'] ?? null);
 
         $company = $this->managed();
-        $company->reviseProfile(new CompanyProfile('Quincaillerie SARL', 'SARL', ['matricule_fiscal' => '1234567A/B/M/000'], '12 rue de Rome', null, '1001', 'Tunis'), new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile('Quincaillerie SARL', 'SARL', ['matricule_fiscal' => '1234567A/B/M/000'], '12 rue de Rome', null, '1001', 'Tunis'), self::heldNow());
         $this->em()->flush();
         $this->getJson($this->path());
         self::assertSame(['company.profile'], $this->done());
@@ -73,7 +72,7 @@ final class FirstStepsTest extends ApiTestCase
         self::assertSame(['company.profile'], $this->done(), 'a tax the system wrote, with no author, is nobody looking at the taxes');
         $company = $this->managed();
         $this->em()->getConnection()->executeStatement($audit, [Uuid::v7()->toRfc4122(), $company->getId()->toRfc4122(), ManageTaxComponents::ENTITY_TYPE, Uuid::v7()->toRfc4122(), 'revised', $this->ownerId(), '{}']);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
@@ -116,7 +115,7 @@ final class FirstStepsTest extends ApiTestCase
     {
         $this->signedIn(['*']);
         // A few seconds ahead, so the database's own now() is still before it and only the application's clock tells.
-        $expires = new \DateTimeImmutable('@'.(time() + 5));
+        $expires = self::heldNow()->modify('+5 seconds');
         $this->em()->getConnection()->executeStatement(
             'INSERT INTO invitation (id, email, role_name, token_hash, created_at, expires_at, accepted_at, company_id) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)',
             [Uuid::v7()->toRfc4122(), 'edge@twes.local', 'member', str_repeat('c', 64), $expires->modify('-7 days')->format('Y-m-d H:i:s'), $expires->format('Y-m-d H:i:s'), $this->company->getId()->toRfc4122()],
@@ -131,7 +130,7 @@ final class FirstStepsTest extends ApiTestCase
             $this->getJson($this->path());
             self::assertNotContains('company.members', $this->done(), 'an invitation the application already refuses');
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
     }
 
@@ -152,7 +151,7 @@ final class FirstStepsTest extends ApiTestCase
         $this->getJson($this->path());
         self::assertContains('stock.map', $this->done());
 
-        $this->em()->persist(ModuleState::of($this->managed(), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->managed(), 'inventory', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->path());
         self::assertNotContains('stock.map', array_column($this->steps(), 'key'), 'the stock switched off');
@@ -167,7 +166,7 @@ final class FirstStepsTest extends ApiTestCase
         $this->sendJson('POST', '/api/auth/logout');
 
         $this->signedIn(['*']);
-        $this->em()->persist(ModuleState::of($this->managed(), 'customers', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->managed(), 'customers', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->path());
         self::assertNotContains('customers.first', array_column($this->steps(), 'key'), 'customers switched off');

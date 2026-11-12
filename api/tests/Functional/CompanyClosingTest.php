@@ -137,8 +137,8 @@ final class CompanyClosingTest extends ApiTestCase
 
     public function testClosingKeepsItUntilTheEndOfTheYearItClosedPlusItsCountrysYears(): void
     {
-        $invitation = new Invitation($this->company, Email::fromString('later@twes.local'), $this->role(Role::OWNER), InvitationToken::generate(), new \DateTimeImmutable(), new \DateInterval('P7D'), $this->owner);
-        $grant = new SupportGrant($this->company, $this->owner, 24, new \DateTimeImmutable());
+        $invitation = new Invitation($this->company, Email::fromString('later@twes.local'), $this->role(Role::OWNER), InvitationToken::generate(), self::heldNow(), new \DateInterval('P7D'), $this->owner);
+        $grant = new SupportGrant($this->company, $this->owner, 24, self::heldNow());
         $this->em()->persist($invitation);
         $this->em()->persist($grant);
         $this->em()->flush();
@@ -148,7 +148,7 @@ final class CompanyClosingTest extends ApiTestCase
         $body = $this->json();
         $year = (int) substr(self::dayOf($this->company), 0, 4);
         self::assertSame(($year + 10).'-12-31', $this->stringAt($body, 'retainUntil'), 'Tunisia keeps every document ten years');
-        self::assertEqualsWithDelta((new \DateTimeImmutable('+7 days'))->getTimestamp(), (new \DateTimeImmutable($this->stringAt($body, 'reopenUntil')))->getTimestamp(), 60);
+        self::assertEqualsWithDelta(self::heldNow()->modify('+7 days')->getTimestamp(), (new \DateTimeImmutable($this->stringAt($body, 'reopenUntil')))->getTimestamp(), 60);
         self::assertSame(Company::STATUS_CLOSED, $this->companyStatus());
         self::assertSame(1, $this->journalCount('company.closed_down'));
         self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM invitation WHERE company_id = ? AND accepted_at IS NULL'), 'an open invitation would let someone in');
@@ -192,8 +192,8 @@ final class CompanyClosingTest extends ApiTestCase
         $tell = static::getContainer()->get(TellClosedCompaniesNearRemoval::class);
         self::assertSame(0, $tell->handle(), 'years ahead');
 
-        // test-clock: the removal notice counts from the application clock's own day, UTC, not a company's
-        $soon = (new \DateTimeImmutable('today', new \DateTimeZone('UTC')))->modify('+10 days')->format('Y-m-d');
+        // The removal notice counts from the application clock's own day, UTC, not a company's.
+        $soon = self::heldNow()->setTimezone(new \DateTimeZone('UTC'))->modify('today')->modify('+10 days')->format('Y-m-d');
         $this->em()->getConnection()->executeStatement('UPDATE company SET retain_until = ? WHERE id = ?', [$soon, $this->company->getId()->toRfc4122()]);
         $version = $this->em()->getConnection()->fetchOne('SELECT version FROM company WHERE id = ?', [$this->company->getId()->toRfc4122()]);
 
@@ -207,8 +207,8 @@ final class CompanyClosingTest extends ApiTestCase
         self::assertSame($this->company->getId()->toRfc4122(), $told[0]['company_id']);
         self::assertSame(['company' => 'Acme', 'retain_until' => $soon], json_decode($this->stringAt($told[0], 'payload'), true, 4, \JSON_THROW_ON_ERROR));
 
-        // test-clock: the removal notice counts from the application clock's own day, UTC, not a company's
-        $yesterday = (new \DateTimeImmutable('today', new \DateTimeZone('UTC')))->modify('-1 day')->format('Y-m-d');
+        // The removal notice counts from the application clock's own day, UTC, not a company's.
+        $yesterday = self::heldNow()->setTimezone(new \DateTimeZone('UTC'))->modify('today')->modify('-1 day')->format('Y-m-d');
         $this->em()->getConnection()->executeStatement('UPDATE company SET retain_until = ?, removal_told_at = NULL WHERE id = ?', [$yesterday, $this->company->getId()->toRfc4122()]);
         self::assertSame(0, $tell->handle(), 'not on the night it goes');
     }
@@ -351,7 +351,7 @@ final class CompanyClosingTest extends ApiTestCase
     {
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext(), 'company.reopen_days', SettingLevel::Platform, 3, null);
         $this->closeDown();
-        self::assertEqualsWithDelta((new \DateTimeImmutable('+3 days'))->getTimestamp(), (new \DateTimeImmutable($this->stringAt($this->json(), 'reopenUntil')))->getTimestamp(), 60);
+        self::assertEqualsWithDelta(self::heldNow()->modify('+3 days')->getTimestamp(), (new \DateTimeImmutable($this->stringAt($this->json(), 'reopenUntil')))->getTimestamp(), 60);
 
         $this->closedDaysAgo(4);
         $this->postJson($this->path().'/reopen', []);
@@ -422,7 +422,7 @@ final class CompanyClosingTest extends ApiTestCase
 
     private function closedDaysAgo(int $days): void
     {
-        $this->em()->getConnection()->executeStatement('UPDATE company SET closed_down_at = ? WHERE id = ?', [(new \DateTimeImmutable("-$days days"))->format('Y-m-d H:i:s'), $this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement('UPDATE company SET closed_down_at = ? WHERE id = ?', [self::heldNow()->modify("-$days days")->format('Y-m-d H:i:s'), $this->company->getId()->toRfc4122()]);
     }
 
     private function path(): string

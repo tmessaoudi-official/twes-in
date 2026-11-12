@@ -148,7 +148,7 @@ final class SettingsTest extends ApiTestCase
     public function testAnotherRolesChainIsReadAsThatRoleSeesIt(): void
     {
         $this->signedIn(['company.read', 'company.settings']);
-        $clerk = new Role('clerk', ['company.read'], $this->company, new \DateTimeImmutable());
+        $clerk = new Role('clerk', ['company.read'], $this->company, self::heldNow());
         $this->em()->persist($clerk);
         $this->em()->flush();
         $this->sendJson('PUT', $this->path().'/presentation.scheme', ['level' => 'role', 'roleId' => $clerk->getId()->toRfc4122(), 'value' => 'dark']);
@@ -169,8 +169,8 @@ final class SettingsTest extends ApiTestCase
     public function testOnlyWhoSetsTheCompanysDefaultsReadsAnotherRolesChain(): void
     {
         $this->createUser('owner@twes.local', 'password-1234', $this->company, ['company.read', 'company.settings'], 'settings-owner');
-        $clerk = new Role('clerk', ['company.read'], $this->company, new \DateTimeImmutable());
-        $foreign = new Role('clerk', ['company.read'], $this->createCompany('Globex'), new \DateTimeImmutable());
+        $clerk = new Role('clerk', ['company.read'], $this->company, self::heldNow());
+        $foreign = new Role('clerk', ['company.read'], $this->createCompany('Globex'), self::heldNow());
         $this->em()->persist($clerk);
         $this->em()->persist($foreign);
         $this->em()->flush();
@@ -187,7 +187,7 @@ final class SettingsTest extends ApiTestCase
     public function testARoleOfAnotherCompanyIsNotFound(): void
     {
         $this->signedIn(['company.read', 'company.settings']);
-        $foreign = new Role('clerk', ['company.read'], $this->createCompany('Globex'), new \DateTimeImmutable());
+        $foreign = new Role('clerk', ['company.read'], $this->createCompany('Globex'), self::heldNow());
         $this->em()->persist($foreign);
         $this->em()->flush();
 

@@ -56,7 +56,7 @@ final class DemoHiddenFromOperatorsTest extends ApiTestCase
     public function testWhatADataCheckFindsInASandboxTellsNobody(): void
     {
         static::getContainer()->get(SeedPlatform::class)->converge();
-        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', new \DateTimeImmutable());
+        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', self::heldNow());
         static::getContainer()->get(DemoSandboxRepository::class)->save($sandbox);
         static::getContainer()->get(BuildSandbox::class)->handle($sandbox->getId());
         $company = $this->row('SELECT company_id FROM demo_sandbox WHERE id = ?', [$sandbox->getId()->toRfc4122()])['company_id'];

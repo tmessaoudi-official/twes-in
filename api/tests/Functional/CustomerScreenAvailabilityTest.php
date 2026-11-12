@@ -37,7 +37,7 @@ final class CustomerScreenAvailabilityTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $in = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $piece, null, [], $now);
         $out = Product::create($this->company, 'ART-002', new ProductDetails('Clavier', null, ProductKind::Goods, '30'), $piece, null, [], $now);
         $service = Product::create($this->company, 'SRV-001', new ProductDetails('Livraison', null, ProductKind::Service, '10'), $piece, null, [], $now);
@@ -71,7 +71,7 @@ final class CustomerScreenAvailabilityTest extends ApiTestCase
     {
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $this->em()->persist(new Setting(SettingAddress::company($company), 'customer_screen.show_stock', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($company), 'customer_screen.show_stock', true, self::heldNow()));
         $this->em()->flush();
         $this->login('clerk@twes.local', 'password-1234');
 

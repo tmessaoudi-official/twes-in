@@ -51,7 +51,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customer = $this->customer($this->company, 'CLI-0001');
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], $now);
         $this->em()->persist($product);
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
@@ -463,7 +463,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $company->getId());
         self::assertNotNull($company);
-        $customer = Customer::create($company, $number, self::aTunisianBusiness('Carthage Conseil '.$number), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, $number, self::aTunisianBusiness('Carthage Conseil '.$number), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

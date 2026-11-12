@@ -119,7 +119,7 @@ final class DemoSandboxRemovalTest extends ApiTestCase
     {
         $moved = $this->em()->getConnection()->executeStatement(
             'UPDATE user_session SET last_seen_at = ?, created_at = ? WHERE user_id = (SELECT owner_id FROM demo_sandbox WHERE company_id = ?)',
-            [$at = new \DateTimeImmutable()->sub(new \DateInterval($ago)), $at, $company],
+            [$at = self::heldNow()->sub(new \DateInterval($ago)), $at, $company],
             [0 => 'datetime_immutable', 1 => 'datetime_immutable'],
         );
         self::assertSame(1, $moved, 'the visitor\'s one session');

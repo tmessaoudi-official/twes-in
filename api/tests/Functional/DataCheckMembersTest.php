@@ -17,7 +17,6 @@ use Doctrine\DBAL\Exception\DriverException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Console\Tester\ApplicationTester;
 use Symfony\Component\Uid\Uuid;
 
@@ -40,12 +39,6 @@ final class DataCheckMembersTest extends ApiTestCase
         $tester->run(['command' => 'doctrine:fixtures:load', '--append' => true], ['interactive' => false]);
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         $this->company = $this->text($this->db()->fetchOne("SELECT id FROM company WHERE name = 'Carthage Conseil'"));
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     /**

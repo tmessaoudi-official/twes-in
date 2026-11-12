@@ -19,9 +19,6 @@ use App\Shared\Infrastructure\Realtime\HmacJwt;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\MakesPictures;
 use App\Tests\Support\RecordingRealtimePublisher;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -246,7 +243,7 @@ final class ScanPairingTest extends ApiTestCase
         $key = $this->claim($link);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $this->em()->persist(ModuleState::of($company, 'scanning', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($company, 'scanning', false, self::heldNow()));
         $this->em()->flush();
         $before = \count($this->publisher->pushed);
 
@@ -380,7 +377,7 @@ final class ScanPairingTest extends ApiTestCase
             // A quarter of an hour on, the tab having kept the pairing open meanwhile, as an open tab does.
             $this->login('till@twes.local', 'password-1234');
             for ($minute = 1; $minute <= 16; ++$minute) {
-                Clock::set(new MockClock(new \DateTimeImmutable("+$minute minutes")));
+                $this->moveClock("+$minute minutes");
                 $this->postJson($this->pairingPath($id).'/heartbeat', null);
                 self::assertResponseIsSuccessful();
             }
@@ -388,7 +385,7 @@ final class ScanPairingTest extends ApiTestCase
             $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
             self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
     }
 
@@ -401,7 +398,7 @@ final class ScanPairingTest extends ApiTestCase
         $photo = $this->publisher->last()['data']['photo'] ?? null;
         self::assertIsString($photo);
 
-        Clock::set(new MockClock(new \DateTimeImmutable('+16 minutes')));
+        $this->moveClock('+16 minutes');
         try {
             $this->login('till@twes.local', 'password-1234');
             $this->postJson($this->pairingPath($id)."/photos/$photo/take", null);
@@ -410,7 +407,7 @@ final class ScanPairingTest extends ApiTestCase
             static::getContainer()->get(ClearUntakenPhotos::class)();
             self::assertSame(0, $this->em()->getRepository(ScanPhoto::class)->count([]), 'and cleared');
         } finally {
-            Clock::set(new NativeClock());
+            $this->clockBack();
         }
     }
 

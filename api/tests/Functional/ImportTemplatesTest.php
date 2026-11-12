@@ -39,7 +39,7 @@ final class ImportTemplatesTest extends ApiTestCase
 
     public function testTheCsvTemplateIsOneHeaderRowOfTheCompanysOwnColumns(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $em = $this->em();
         $em->persist(CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'sector', 'Secteur', CustomFieldType::Text, false, [], 1, $now));
         $off = CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'legacy', 'Ancien code', CustomFieldType::Text, false, [], 2, $now);
@@ -132,7 +132,7 @@ final class ImportTemplatesTest extends ApiTestCase
 
     public function testASwitchedOffModuleOffersNoTemplate(): void
     {
-        $this->em()->persist(ModuleState::of($this->company, 'customers', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company, 'customers', false, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write']);
 

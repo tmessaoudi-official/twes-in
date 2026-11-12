@@ -132,8 +132,8 @@ final class ContactsTest extends ApiTestCase
      */
     public function testAContactsPhoneOutsideTheRangesMarksItsCustomerNamingTheContact(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
-        $this->customer->reviseCheck(new CheckMark(true, 'Relancer la comptabilité.'), new \DateTimeImmutable());
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
+        $this->customer->reviseCheck(new CheckMark(true, 'Relancer la comptabilité.'), self::heldNow());
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write']);
 
@@ -213,7 +213,7 @@ final class ContactsTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

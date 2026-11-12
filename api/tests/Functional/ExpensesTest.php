@@ -32,7 +32,7 @@ final class ExpensesTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), new \DateTimeImmutable());
+        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), self::heldNow());
         $this->em()->persist($this->vendor);
         $this->em()->flush();
     }
@@ -63,8 +63,8 @@ final class ExpensesTest extends ApiTestCase
      */
     public function testTheVendorPickerAnswersTheFewTheExpenseFormNeeds(): void
     {
-        $retired = Vendor::create($this->company, 'FRN-9999', new VendorProfile('Ancienne Papeterie'), new \DateTimeImmutable());
-        $retired->revise('FRN-9999', new VendorProfile('Ancienne Papeterie'), false, new \DateTimeImmutable());
+        $retired = Vendor::create($this->company, 'FRN-9999', new VendorProfile('Ancienne Papeterie'), self::heldNow());
+        $retired->revise('FRN-9999', new VendorProfile('Ancienne Papeterie'), false, self::heldNow());
         $this->em()->persist($retired);
         $this->em()->flush();
         $this->signedIn(['expense.read']);
@@ -539,7 +539,7 @@ final class ExpensesTest extends ApiTestCase
 
     public function testACompanyOutsideTunisiaIsOfferedNoTejOperation(): void
     {
-        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($durand);
         $this->em()->flush();
         $this->createUser('achats@durand.fr', 'password-1234', $durand, ['expense.read'], 'member');
@@ -563,7 +563,7 @@ final class ExpensesTest extends ApiTestCase
             $this->arrayAt($this->json(), 'withholdings'),
         ));
 
-        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($durand);
         $this->em()->flush();
         $this->createUser('retenues@durand.fr', 'password-1234', $durand, ['expense.read'], 'member');
@@ -576,7 +576,7 @@ final class ExpensesTest extends ApiTestCase
     /** A euro has two decimals: a net finer than that is told two, however much finer it is. */
     public function testANetFinerThanTheCurrencyIsToldTheCurrencysDecimals(): void
     {
-        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($durand);
         $this->em()->flush();
         $this->createUser('achats@durand.fr', 'password-1234', $durand, ['expense.read', 'expense.write'], 'member');
@@ -788,7 +788,7 @@ final class ExpensesTest extends ApiTestCase
 
         // Made before the next request: the test client reboots the kernel, and with it the entity manager.
         $globex = $this->createCompany('Globex');
-        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer'), ExpenseAmounts::one('500', 3), null, null, 3, RoundingPoint::PerRateGroup, new \DateTimeImmutable());
+        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer'), ExpenseAmounts::one('500', 3), null, null, 3, RoundingPoint::PerRateGroup, self::heldNow());
         $this->em()->persist($their);
         $this->em()->flush();
         $theirs = '/api/companies/'.$globex->getId()->toRfc4122().'/expenses';
@@ -839,7 +839,7 @@ final class ExpensesTest extends ApiTestCase
         // The kernel reboots between requests, so the company this case holds is detached by the time it is needed.
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), new \DateTimeImmutable());
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), self::heldNow());
         $this->em()->persist($other);
         $this->em()->flush();
         $otherId = $other->getId()->toRfc4122();
@@ -907,7 +907,7 @@ final class ExpensesTest extends ApiTestCase
         $rent = $this->category('Loyer');
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), new \DateTimeImmutable());
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), self::heldNow());
         $this->em()->persist($other);
         $this->em()->flush();
         $otherId = $other->getId()->toRfc4122();
@@ -967,7 +967,7 @@ final class ExpensesTest extends ApiTestCase
         $rent = $this->category('Loyer');
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), new \DateTimeImmutable());
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), self::heldNow());
         $this->em()->persist($other);
         $this->em()->flush();
         $otherId = $other->getId()->toRfc4122();

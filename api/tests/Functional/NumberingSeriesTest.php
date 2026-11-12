@@ -186,7 +186,7 @@ final class NumberingSeriesTest extends ApiTestCase
         $opened = array_find($this->jsonList(), static fn (array $row): bool => $id === $row['id']) ?? self::fail('no invoice series');
 
         $series = $this->em()->find(NumberingSeries::class, Uuid::fromString($id)) ?? self::fail('no series');
-        $series->allocate(self::dayAsDate($this->company), new \DateTimeImmutable());
+        $series->allocate(self::dayAsDate($this->company), self::heldNow());
         $this->em()->flush();
 
         $this->sendJson('PUT', $this->path().'/'.$id, ['version' => $opened['version'], 'format' => $opened['format'], 'nextNumber' => $opened['nextNumber'], 'resetPeriod' => $opened['resetPeriod']]);

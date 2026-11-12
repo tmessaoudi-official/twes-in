@@ -49,7 +49,7 @@ final class ImportUndoTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('H87', $this->company->getId());
         self::assertNotNull($unit);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($this->company, 'P-OLD', new ProductDetails('Marteau', null, ProductKind::Goods, '12.000'), $unit, null, [$this->taxId('TVA19')], $now);
         $this->em()->persist($product);
         foreach (['F-001' => 'Sotumag', 'F-002' => 'Quincaillerie Sfax'] as $number => $name) {

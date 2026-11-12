@@ -34,14 +34,14 @@ final class TejDeclarationTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Acme');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000']), new \DateTimeImmutable());
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000']), self::heldNow());
         $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile(
             'Sotumag',
             identifiers: ['matricule_fiscal' => '7654321B/A/M/000'],
             email: 'achats@sotumag.tn',
             phone: '71000000',
             address: new PostalAddress('4, rue de Marseille', null, '1000', 'Tunis'),
-        ), new \DateTimeImmutable());
+        ), self::heldNow());
         $this->em()->persist($this->vendor);
         $this->em()->flush();
         $this->today = self::dayAsDate($this->company);
@@ -99,7 +99,7 @@ final class TejDeclarationTest extends ApiTestCase
         self::assertSame(2, substr_count((string) $this->client->getResponse()->getContent(), '<Certificat>'), $coded);
 
         $this->company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company');
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL'), new \DateTimeImmutable());
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL'), self::heldNow());
         $this->em()->flush();
         $this->getJson($this->declarationPath());
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);

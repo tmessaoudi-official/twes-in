@@ -37,7 +37,7 @@ final class VendorImportTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $this->em()->persist(ExpenseCategory::create($this->company, 'Fournitures', null, new \DateTimeImmutable()));
+        $this->em()->persist(ExpenseCategory::create($this->company, 'Fournitures', null, self::heldNow()));
         $this->em()->flush();
     }
 
@@ -280,7 +280,7 @@ FRN-0020,Quincaillerie Ben Salah,TN59 1000 6035 1835 9847 8832,Rappeler le compt
         self::assertResponseIsSuccessful();
         $category = $this->em()->getRepository(ExpenseCategory::class)->findOneBy(['name' => 'Fournitures']);
         self::assertInstanceOf(ExpenseCategory::class, $category);
-        $category->revise('Fournitures', null, false, new \DateTimeImmutable());
+        $category->revise('Fournitures', null, false, self::heldNow());
         $this->em()->flush();
 
         $this->client->request('GET', $this->companyPath().'/exports/vendors.csv');
@@ -387,7 +387,7 @@ FRN-0020,Quincaillerie Ben Salah,TN59 1000 6035 1835 9847 8832,Rappeler le compt
     public function testAPhoneOutsideTheNumbersHandedOutIsKeptAndSaid(): void
     {
         $this->signedIn(['vendor.read', 'vendor.write']);
-        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, self::heldNow()));
         $this->em()->flush();
 
         $this->import("number,name,phone\nFRN-0030,Aciers du Sud,11 111 112\nFRN-0031,Aciers du Nord,71 900 868\n");

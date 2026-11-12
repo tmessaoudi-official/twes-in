@@ -90,7 +90,7 @@ final class IssueIdentityTest extends ApiTestCase
 
     private function nameTheCompany(): void
     {
-        $this->company()->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
+        $this->company()->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', city: 'Tunis'), self::heldNow());
         $this->em()->flush();
     }
 
@@ -113,7 +113,7 @@ final class IssueIdentityTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company(), $number, $profile, null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company(), $number, $profile, null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

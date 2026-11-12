@@ -51,7 +51,7 @@ abstract class SaleRaceTestCase extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($this->company, 'ART-001', new ProductDetails('Perceuse', null, ProductKind::Goods, '250'), $piece, null, [], $now);
         $this->em()->persist($product);
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
@@ -92,7 +92,7 @@ abstract class SaleRaceTestCase extends ApiTestCase
     {
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $vendor = Vendor::create($company, 'FRN-0001', new VendorProfile('Outillage du Sud'), new \DateTimeImmutable());
+        $vendor = Vendor::create($company, 'FRN-0001', new VendorProfile('Outillage du Sud'), self::heldNow());
         $this->em()->persist($vendor);
         $this->em()->flush();
 
@@ -106,7 +106,7 @@ abstract class SaleRaceTestCase extends ApiTestCase
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

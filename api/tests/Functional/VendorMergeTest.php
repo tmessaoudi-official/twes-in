@@ -45,7 +45,7 @@ final class VendorMergeTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         foreach (['VIS-6', 'BOU-8'] as $reference) {
             $product = Product::create($this->company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '0.500'), $piece, null, [], $now);
             $this->em()->persist($product);

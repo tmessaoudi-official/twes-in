@@ -119,7 +119,7 @@ final class SubscriptionsTest extends ApiTestCase
         self::assertInstanceOf(Role::class, $role);
         $acme = $this->em()->find(Company::class, $company->getId());
         self::assertInstanceOf(Company::class, $acme);
-        $this->em()->persist(new Membership($coOwner, $acme, $role, new \DateTimeImmutable()));
+        $this->em()->persist(new Membership($coOwner, $acme, $role, self::heldNow()));
         $this->em()->flush();
         $this->createUser('clerk@twes.local', 'password-1234', $company, ['sale.write'], 'clerk');
 
@@ -499,8 +499,8 @@ final class SubscriptionsTest extends ApiTestCase
     /** A day in the company's timezone, counted from today. */
     private function daysFromToday(int $days): string
     {
-        // test-clock: the company's day: createCompany makes every company of this file Tunisian, and the helper has none at hand
-        return new \DateTimeImmutable('today', new \DateTimeZone('Africa/Tunis'))->modify(\sprintf('%+d days', $days))->format('Y-m-d');
+        // The company's day: createCompany makes every company of this file Tunisian, and the helper has none at hand
+        return self::heldNow()->setTimezone(new \DateTimeZone('Africa/Tunis'))->modify('today')->modify(\sprintf('%+d days', $days))->format('Y-m-d');
     }
 
     private function subscriptionOf(Company $company): string

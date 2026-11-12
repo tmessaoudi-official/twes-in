@@ -59,7 +59,7 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertNotNull($exempt);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $product = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6', null, ProductKind::Goods, '0.500'), $piece, null, [], $now);
         $this->em()->persist($product);
         $this->productId = $product->getId()->toRfc4122();
@@ -791,7 +791,7 @@ final class CustomerMergeTest extends ApiTestCase
     {
         $owner = $this->em()->find(Customer::class, Uuid::fromString($customer));
         self::assertNotNull($owner);
-        $contact = Contact::create($owner, new ContactDetails(null, $lastName, null, null, null), $primary, new \DateTimeImmutable());
+        $contact = Contact::create($owner, new ContactDetails(null, $lastName, null, null, null), $primary, self::heldNow());
         $this->em()->persist($contact);
         $this->em()->flush();
 
@@ -833,7 +833,7 @@ final class CustomerMergeTest extends ApiTestCase
     {
         // A request in between rebooted the kernel: the company is read again from this entity manager.
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? $this->company;
-        $this->em()->persist(new Setting(SettingAddress::customer($company, Uuid::fromString($customer)), $key, $value, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::customer($company, Uuid::fromString($customer)), $key, $value, self::heldNow()));
         $this->em()->flush();
     }
 

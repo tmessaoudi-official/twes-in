@@ -45,7 +45,7 @@ final class StockCountContextTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $piece, null, [], $now);
         $drill = Product::create($this->company, 'ART-002', new ProductDetails('Perceuse', null, ProductKind::Goods, '90'), $piece, null, [], $now);
         $drill->track(ProductTracking::Lot, $now);
@@ -102,7 +102,7 @@ final class StockCountContextTest extends ApiTestCase
         self::assertNotNull($piece);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $new = Product::create($company, 'ART-003', new ProductDetails('Scie', null, ProductKind::Goods, '40'), $piece, null, [], new \DateTimeImmutable());
+        $new = Product::create($company, 'ART-003', new ProductDetails('Scie', null, ProductKind::Goods, '40'), $piece, null, [], self::heldNow());
         $this->em()->persist($new);
         $this->em()->flush();
 
@@ -130,9 +130,9 @@ final class StockCountContextTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($other);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $other->getId());
         self::assertNotNull($unit);
-        $theirs = Product::create($other, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $unit, null, [], new \DateTimeImmutable());
+        $theirs = Product::create($other, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $unit, null, [], self::heldNow());
         $this->em()->persist($theirs);
-        $this->em()->persist(new Setting(SettingAddress::company($other), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($other), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
 
         self::assertSame([$this->laptop], array_keys($this->context([$this->laptop, $theirs->getId()->toRfc4122()])));

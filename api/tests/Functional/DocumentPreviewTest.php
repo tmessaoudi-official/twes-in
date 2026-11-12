@@ -44,7 +44,7 @@ final class DocumentPreviewTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $this->customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $this->customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($this->customer);
         $this->em()->flush();
     }
@@ -273,7 +273,7 @@ final class DocumentPreviewTest extends ApiTestCase
     {
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $drill = Product::create($this->company, 'ART-001', new ProductDetails('Perceuse', null, ProductKind::Goods, '120'), $unit, null, [], $now);
         $drill->track(ProductTracking::Lot, $now);
         $this->em()->persist($drill);

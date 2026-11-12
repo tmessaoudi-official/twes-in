@@ -320,7 +320,7 @@ final class DataCheckTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($company, 'CLI-'.bin2hex(random_bytes(3)), self::aTunisianBusiness($name), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, 'CLI-'.bin2hex(random_bytes(3)), self::aTunisianBusiness($name), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

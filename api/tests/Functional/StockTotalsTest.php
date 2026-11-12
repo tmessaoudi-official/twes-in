@@ -38,7 +38,7 @@ final class StockTotalsTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $products = [];
         foreach ([['ART-001', 'Portable'], ['ART-002', 'Souris'], ['ART-003', 'Tapis']] as [$reference, $name]) {
             $product = Product::create($this->company, $reference, new ProductDetails($name, null, ProductKind::Goods, '10'), $piece, null, [], $now);
@@ -97,9 +97,9 @@ final class StockTotalsTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $theirs = Product::create($this->company, 'ART-001', new ProductDetails('Leur portable', null, ProductKind::Goods, '10'), $piece, null, [], new \DateTimeImmutable());
+        $theirs = Product::create($this->company, 'ART-001', new ProductDetails('Leur portable', null, ProductKind::Goods, '10'), $piece, null, [], self::heldNow());
         $this->em()->persist($theirs);
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
         $this->createUser('globex@twes.local', 'password-1234', $this->company, ['stock.read', 'stock.write'], 'keeper');
         $this->login('globex@twes.local', 'password-1234');

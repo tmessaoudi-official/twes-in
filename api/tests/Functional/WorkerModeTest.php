@@ -75,7 +75,7 @@ final class WorkerModeTest extends ApiTestCase
         $this->client->disableReboot();
         $company = $this->createCompany('Acme');
         $em = static::getContainer()->get(EntityManagerInterface::class);
-        $em->persist(new TextOverride($company, new TextAddress('fr', 'pdf', 'invoice.title'), 'Facture de vente', 'Facture', new \DateTimeImmutable()));
+        $em->persist(new TextOverride($company, new TextAddress('fr', 'pdf', 'invoice.title'), 'Facture de vente', 'Facture', self::heldNow()));
         $em->flush();
         // The kernel resets its services as the next request begins, once it has served one: as a worker does.
         $this->client->request('GET', '/api/health');

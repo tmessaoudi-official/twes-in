@@ -39,7 +39,7 @@ final class ProductVendorsTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->coded = Vendor::create($this->company, 'FRN-0002', new VendorProfile('Sotumag'), $now);
         $this->other = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Comptoir Sfax'), $now);
         $this->em()->persist($this->coded);
@@ -100,7 +100,7 @@ final class ProductVendorsTest extends ApiTestCase
     {
         $this->signedIn(['product.read', 'product.write']);
         $stranger = $this->createCompany('Ailleurs');
-        $theirs = Vendor::create($stranger, 'FRN-0001', new VendorProfile('Le leur'), new \DateTimeImmutable());
+        $theirs = Vendor::create($stranger, 'FRN-0001', new VendorProfile('Le leur'), self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
 
@@ -134,7 +134,7 @@ final class ProductVendorsTest extends ApiTestCase
     public function testTheProductFormsVendorPickerFindsTheCompanysVendorsForAWriterWhileVendorsIsOn(): void
     {
         $this->signedIn(['product.read', 'product.write']);
-        $theirs = Vendor::create($this->createCompany('Ailleurs'), 'FRN-0009', new VendorProfile('Sotumag Sud'), new \DateTimeImmutable());
+        $theirs = Vendor::create($this->createCompany('Ailleurs'), 'FRN-0009', new VendorProfile('Sotumag Sud'), self::heldNow());
         $this->em()->persist($theirs);
         $this->em()->flush();
 
@@ -145,7 +145,7 @@ final class ProductVendorsTest extends ApiTestCase
         $this->getJson($this->companyPath().'/product-options/vendors?ids[]='.$this->id($this->other));
         self::assertSame(['Comptoir Sfax'], array_column($this->jsonList(), 'name'), 'a vendor the product names is read back by id');
 
-        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? $this->company, 'vendors', false, self::heldNow()));
         $this->em()->flush();
         $this->getJson($this->companyPath().'/product-options/vendors');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'no vendor book, nothing to pick from');

@@ -38,7 +38,7 @@ final class PurchaseHistoryImportTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('H87', $this->company->getId());
         self::assertNotNull($unit);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         foreach (['F-001' => 'Sotumag', 'F-002' => 'Quincaillerie Sfax'] as $number => $name) {
             $this->em()->persist(Vendor::create($this->company, $number, new VendorProfile($name), $now));
         }
@@ -234,7 +234,7 @@ final class PurchaseHistoryImportTest extends ApiTestCase
     public function testAnotherCompanysVendorHasNoPurchasesHere(): void
     {
         $other = $this->createCompany('Ailleurs');
-        $this->em()->persist(Vendor::create($other, 'F-777', new VendorProfile('Autre'), new \DateTimeImmutable()));
+        $this->em()->persist(Vendor::create($other, 'F-777', new VendorProfile('Autre'), self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['company.read', 'vendor.read', 'product.read', 'product.cost.read']);
 
@@ -258,7 +258,7 @@ final class PurchaseHistoryImportTest extends ApiTestCase
 
     public function testWithTheVendorsSwitchedOffThereIsNothingToImport(): void
     {
-        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, self::heldNow()));
         $this->em()->flush();
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 

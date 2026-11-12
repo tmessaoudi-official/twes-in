@@ -39,7 +39,7 @@ final class StockOnHandTest extends ApiTestCase
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
         $this->piece = $piece->getId()->toRfc4122();
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $piece, null, [], $now);
         $keyboard = Product::create($this->company, 'ART-002', new ProductDetails('Clavier', null, ProductKind::Goods, '30'), $piece, null, [], $now);
         $delivery = Product::create($this->company, 'SRV-001', new ProductDetails('Livraison', null, ProductKind::Service, '10'), $piece, null, [], $now);
@@ -102,9 +102,9 @@ final class StockOnHandTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($other);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $other->getId());
         self::assertNotNull($unit);
-        $theirs = Product::create($other, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $unit, null, [], new \DateTimeImmutable());
+        $theirs = Product::create($other, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $unit, null, [], self::heldNow());
         $this->em()->persist($theirs);
-        $this->em()->persist(new Setting(SettingAddress::company($other), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::company($other), 'article.stock_tracking', true, self::heldNow()));
         $this->em()->flush();
 
         self::assertSame([$this->laptop => [$this->piece, '8.000']], $this->rows($this->onHand([$this->laptop, $theirs->getId()->toRfc4122()])));

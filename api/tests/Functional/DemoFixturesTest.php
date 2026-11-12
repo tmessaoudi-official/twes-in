@@ -18,7 +18,6 @@ use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Console\Tester\ApplicationTester;
 use Symfony\Component\Uid\Uuid;
 
@@ -35,6 +34,7 @@ final class DemoFixturesTest extends ApiTestCase
     {
         $this->createUser('operator@twes.local', 'operator-secret', operator: true);
 
+        $held = Clock::get();
         $tester = $this->load();
 
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
@@ -191,7 +191,7 @@ final class DemoFixturesTest extends ApiTestCase
         self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_lot WHERE expires_on > CURRENT_DATE', []), 'a lot is still good');
         self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement m JOIN product p ON p.id = m.product_id WHERE (p.tracking = 'none') <> (m.lot_id IS NULL)", []), 'a movement names a lot exactly when its product tracks one');
         self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement WHERE source_type = 'delivery_note' AND lot_id IS NOT NULL", []), 'a delivery note took goods from their lots');
-        self::assertInstanceOf(NativeClock::class, Clock::get(), 'the clock the load moved is given back');
+        self::assertSame($held, Clock::get(), 'the clock the load moved is given back');
 
         // Products that replace each other, so a product's page lists its substitutes and the form offers the groups in use.
         self::assertSame(
@@ -236,12 +236,13 @@ final class DemoFixturesTest extends ApiTestCase
 
     public function testWithoutTheSeededOperatorNothingIsLoaded(): void
     {
+        $held = Clock::get();
         $tester = $this->load();
 
         self::assertNotSame(0, $tester->getStatusCode());
         self::assertStringContainsString('make seed', $tester->getDisplay());
         self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM company WHERE name IN (?, ?)', array_keys(self::COMPANIES)));
-        self::assertInstanceOf(NativeClock::class, Clock::get());
+        self::assertSame($held, Clock::get(), 'the clock the load moved is given back');
     }
 
     /** The command as `make fixtures` runs it, through the console application: a refusal is printed, not thrown. */

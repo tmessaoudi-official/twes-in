@@ -170,7 +170,7 @@ final class PlatformCompaniesTest extends ApiTestCase
         // An invitation to another role is the company's own business, not an owner the platform waits for.
         $admin = $this->em()->getRepository(Role::class)->findOneBy(['name' => Role::ADMIN, 'company' => null]);
         self::assertNotNull($admin);
-        $this->em()->persist(new Invitation($this->em()->find(Company::class, $alphaCompany->getId()) ?? self::fail('Alpha is gone'), Email::fromString('admin@alpha.example'), $admin, InvitationToken::generate(), new \DateTimeImmutable(), new \DateInterval('P7D'), null));
+        $this->em()->persist(new Invitation($this->em()->find(Company::class, $alphaCompany->getId()) ?? self::fail('Alpha is gone'), Email::fromString('admin@alpha.example'), $admin, InvitationToken::generate(), self::heldNow(), new \DateInterval('P7D'), null));
         $this->em()->flush();
 
         $this->getJson(self::PATH);
@@ -199,9 +199,9 @@ final class PlatformCompaniesTest extends ApiTestCase
     private function company(string $name, string $country = 'TN', string $status = 'active', ?string $owner = null): Company
     {
         // A refused company is one suspended while it still waited, never opened.
-        $company = \in_array($status, ['pending', 'refused'], true) ? Company::pending($name, $country, 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()) : new Company($name, $country, 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company = \in_array($status, ['pending', 'refused'], true) ? Company::pending($name, $country, 'TND', 'fr', 'Africa/Tunis', self::heldNow()) : new Company($name, $country, 'TND', 'fr', 'Africa/Tunis', self::heldNow());
         if (\in_array($status, ['suspended', 'refused'], true)) {
-            $company->suspend(new \DateTimeImmutable());
+            $company->suspend(self::heldNow());
         }
         $this->em()->persist($company);
         $this->em()->flush();

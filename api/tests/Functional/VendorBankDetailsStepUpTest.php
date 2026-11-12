@@ -12,9 +12,6 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Tenancy\Domain\Model\Company;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -40,12 +37,6 @@ final class VendorBankDetailsStepUpTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $this->createUser('buyer@twes.local', self::PASSWORD, $this->company, ['vendor.read', 'vendor.write'], 'member');
         $this->login('buyer@twes.local', self::PASSWORD);
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     public function testAVendorCreatedWithBankDetailsWaitsForTheProof(): void
@@ -172,7 +163,7 @@ final class VendorBankDetailsStepUpTest extends ApiTestCase
     /** The few minutes a proof holds (app.step_up.valid_for) have passed. */
     private function forgetTheProof(): void
     {
-        Clock::set(new MockClock(new \DateTimeImmutable('+10 minutes')));
+        $this->moveClock('+10 minutes');
     }
 
     private function vendors(): int

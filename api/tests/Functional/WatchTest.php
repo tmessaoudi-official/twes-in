@@ -54,7 +54,7 @@ final class WatchTest extends ApiTestCase
 
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         foreach (['VIS' => 'Vis 6x40', 'COLLE' => 'Colle forte', 'GANT' => 'Gants', 'SCIE' => 'Scie égoïne'] as $reference => $name) {
             $product = Product::create($this->company, $reference, new ProductDetails($name, null, ProductKind::Goods, '10'), $piece, null, [], $now);
             $this->em()->persist($product);
@@ -160,7 +160,7 @@ final class WatchTest extends ApiTestCase
         $this->receive('GANT', '30');
         $this->deliver('GANT', '9');
         $site = $this->location();
-        $aside = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Quarantine, 'Q1', 'Retours', new \DateTimeImmutable());
+        $aside = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Quarantine, 'Q1', 'Retours', self::heldNow());
         $this->em()->persist($aside);
         $this->em()->flush();
         foreach (['VIS', 'GANT'] as $reference) {
@@ -183,7 +183,7 @@ final class WatchTest extends ApiTestCase
         // SCIE received 5 and sold 2, so it stays off the list; a second place's +5 does not hide VIS's -3.
         $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
         $site = $this->location();
-        $shelf = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Rack, 'E2', 'Étagère 2', new \DateTimeImmutable());
+        $shelf = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Rack, 'E2', 'Étagère 2', self::heldNow());
         $this->em()->persist($shelf);
         $this->em()->flush();
         $this->postJson($this->company().'/stock-movements', ['operation' => 'receive', 'productId' => $this->products['VIS'], 'locationId' => $shelf->getId()->toRfc4122(), 'quantity' => '5']);
@@ -226,7 +226,7 @@ final class WatchTest extends ApiTestCase
         }
         self::assertSame(['COLLE', 'GANT', 'SCIE', 'VIS'], $this->belowZero(), 'all four, while stock is kept of them');
 
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->products['VIS'])), 'article.stock_tracking', false, $now));
         $gloves = ProductCategory::create($this->managed(), 'Protection', null, $now);
         $this->em()->persist($gloves);
@@ -257,7 +257,7 @@ final class WatchTest extends ApiTestCase
         foreach (['VIS', 'GANT', 'SCIE'] as $reference) {
             $this->deliver($reference, '1');
         }
-        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->products['VIS'])), 'article.stock_tracking', false, new \DateTimeImmutable()));
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->products['VIS'])), 'article.stock_tracking', false, self::heldNow()));
         $this->em()->flush();
 
         self::assertSame(['GANT', 'SCIE'], $this->belowZero());
@@ -373,7 +373,7 @@ final class WatchTest extends ApiTestCase
         $this->deliver('GANT', '9');
         $this->em()->getConnection()->executeStatement('UPDATE product SET created_at = ?::date - 120 WHERE company_id = ?', [$this->today, $this->company->getId()->toRfc4122()]);
 
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         foreach (['watch.late_after_days' => 60, 'watch.unsold_after_days' => 180, 'watch.lot_expiry_days' => 90, 'watch.lead_days' => 2] as $key => $value) {
             $this->em()->persist(new Setting(SettingAddress::company($this->managed()), $key, $value, $now));
         }
@@ -419,7 +419,7 @@ final class WatchTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'and so is each subject');
         $this->sendJson('POST', '/api/auth/logout');
 
-        $this->em()->persist(ModuleState::of($this->managed(), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->managed(), 'inventory', false, self::heldNow()));
         $this->em()->flush();
         $this->login('writer@twes.local', 'password-1234');
         $this->getJson($this->watch());
@@ -526,7 +526,7 @@ final class WatchTest extends ApiTestCase
         $location = $this->location();
         $product = $this->em()->find(Product::class, $this->products[$reference]);
         self::assertNotNull($product);
-        $this->em()->persist(StockMovement::delivery($product, $location, $quantity, Uuid::v7(), new \DateTimeImmutable()));
+        $this->em()->persist(StockMovement::delivery($product, $location, $quantity, Uuid::v7(), self::heldNow()));
         $this->em()->flush();
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM stock_movement WHERE product_id = ? AND kind = 'out'", [$this->products[$reference]]), 'the delivery was recorded');
     }
@@ -535,7 +535,7 @@ final class WatchTest extends ApiTestCase
     {
         $product = $this->em()->find(Product::class, $this->products[$reference]);
         self::assertNotNull($product);
-        $product->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $product->track(ProductTracking::Lot, self::heldNow());
         $this->em()->flush();
     }
 

@@ -50,7 +50,7 @@ final class DepositInvoicesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customer = $this->customer('CLI-0001');
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -772,7 +772,7 @@ final class DepositInvoicesTest extends ApiTestCase
     /** The same setting in a French company, able to issue: its identifiers, address and late payment rate given. */
     private function inFrance(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', self::heldNow());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
@@ -783,16 +783,16 @@ final class DepositInvoicesTest extends ApiTestCase
             addressLine1: '12 rue des Forges',
             postalCode: '69007',
             city: 'Lyon',
-        ), new \DateTimeImmutable());
+        ), self::heldNow());
         $this->em()->flush();
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->company), 'document.late_payment_rate', SettingLevel::Company, 'trois fois le taux d’intérêt légal', null);
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('FR', 'standard');
         self::assertNotNull($regime);
         $profile = new CustomerProfile(CustomerKind::Company, 'Garage Martin', 'Garage Martin SAS', ['siren' => '542065479', 'vat_number' => 'FR82542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR'));
-        $this->customer = Customer::create($this->company, 'CLI-0001', $profile, null, $regime, [], new \DateTimeImmutable());
+        $this->customer = Customer::create($this->company, 'CLI-0001', $profile, null, $regime, [], self::heldNow());
         $this->em()->persist($this->customer);
         // 402.78 a unit, two less 10 %: 725.004, of which 30 % is 217.50 in cents and 217.501 in three decimals.
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '402.78'), $this->unit('C62'), null, [$this->tax('TVA20')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '402.78'), $this->unit('C62'), null, [$this->tax('TVA20')->getId()], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -803,7 +803,7 @@ final class DepositInvoicesTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, $number, self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, $number, self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

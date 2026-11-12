@@ -43,7 +43,7 @@ final class StockAlertsTest extends ApiTestCase
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
         $this->unit = $piece->getName();
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $piece, null, [], $now);
         $this->em()->persist($laptop);
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
@@ -133,7 +133,7 @@ final class StockAlertsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $floor = $this->em()->find(StockLocation::class, Uuid::fromString($site));
         self::assertNotNull($floor);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $rack = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Rack, 'R1', 'Rack 1', $now);
         $aside = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Quarantine, 'Q1', 'Retours', $now);
         $this->em()->persist($rack);
@@ -164,7 +164,7 @@ final class StockAlertsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $floor = $this->em()->find(StockLocation::class, Uuid::fromString($site));
         self::assertNotNull($floor);
-        $rack = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Rack, 'R1', 'Rack 1', new \DateTimeImmutable());
+        $rack = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Rack, 'R1', 'Rack 1', self::heldNow());
         $this->em()->persist($rack);
         $this->em()->flush();
         $rackId = $rack->getId()->toRfc4122();

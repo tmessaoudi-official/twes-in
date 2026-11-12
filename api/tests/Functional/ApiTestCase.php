@@ -32,6 +32,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Profiler\Profile;
@@ -48,6 +49,8 @@ use Symfony\Component\Uid\Uuid;
  */
 abstract class ApiTestCase extends WebTestCase
 {
+    use ClockSensitiveTrait;
+
     /** The authenticator createUser enrols; .env.test's key encrypts it. */
     protected const string AUTHENTICATOR_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
@@ -60,8 +63,17 @@ abstract class ApiTestCase extends WebTestCase
     /** @var array<string, true> the addresses createUser enrolled, whose login() goes through the code step */
     private array $enrolled = [];
 
+    /** The instant setUp held the clock at, from which moveClock() counts. */
+    private \DateTimeImmutable $heldSince;
+
     protected function setUp(): void
     {
+        // The clock the API reads stands still for the case, on a whole second: a day the test reads and the request
+        // sending it are one instant, so midnight in Tunis never falls between them, and apiNow() writes that very
+        // second. ClockSensitiveTrait puts the clock back after the case; a case moves it with self::mockTime('+…').
+        // test-clock: the wall's now, which the case's clock is held at
+        $this->heldSince = new \DateTimeImmutable('@'.new \DateTimeImmutable()->getTimestamp());
+        self::mockTime($this->heldSince);
         $this->client = static::createClient();
         // Every request from a browser tab carries the site's origin; the CSRF manager checks it.
         $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
@@ -98,20 +110,20 @@ abstract class ApiTestCase extends WebTestCase
     protected function createUser(string $email, string $password, ?Company $company = null, array $permissions = ['*'], string $roleName = Role::OWNER, bool $operator = false, bool $active = true, ?bool $authenticator = null): User
     {
         $em = $this->em();
-        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr', new \DateTimeImmutable());
-        $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash($password), new \DateTimeImmutable());
-        $user->setPlatformOperator($operator, new \DateTimeImmutable());
-        $user->setActive($active, new \DateTimeImmutable());
+        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr', self::heldNow());
+        $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash($password), self::heldNow());
+        $user->setPlatformOperator($operator, self::heldNow());
+        $user->setActive($active, self::heldNow());
         if ($authenticator ?? $operator) {
-            $user->beginTotpEnrolment((new SodiumSecretCipher(self::MFA_TEST_KEY))->encrypt(self::AUTHENTICATOR_SECRET), new \DateTimeImmutable());
-            $user->confirmTotpEnrolment(self::spentTimestep(), new \DateTimeImmutable());
+            $user->beginTotpEnrolment((new SodiumSecretCipher(self::MFA_TEST_KEY))->encrypt(self::AUTHENTICATOR_SECRET), self::heldNow());
+            $user->confirmTotpEnrolment(self::spentTimestep(), self::heldNow());
             $this->enrolled[strtolower($email)] = true;
         }
         $em->persist($user);
         if (null !== $company) {
-            $role = new Role($roleName, $permissions, $company, new \DateTimeImmutable());
+            $role = new Role($roleName, $permissions, $company, self::heldNow());
             $em->persist($role);
-            $em->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
+            $em->persist(new Membership($user, $company, $role, self::heldNow()));
         }
         $em->flush();
 
@@ -119,13 +131,40 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
-     * Now as the API stamps it, PHP's clock in UTC to the second, for a row a test writes in SQL beside the API's own
+     * Now as the API stamps it, its clock in UTC to the second, for a row a test writes in SQL beside the API's own
      * stamps: the database's `now()` is the test transaction's start, which can fall a second before a request the test
      * made since, so a row written « after » it would read as before it.
      */
     protected static function apiNow(): string
     {
-        return new \DateTimeImmutable('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'); // test-clock: the API's own clock, as it stamps
+        return self::heldNow()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    }
+
+    /** Now by the clock the API reads, which setUp holds still: what a test stamps beside the API's own stamps. */
+    protected static function heldNow(): \DateTimeImmutable
+    {
+        return \DateTimeImmutable::createFromInterface(Clock::get()->now());
+    }
+
+    /**
+     * Moves the clock the API reads to the case's start shifted (`+16 minutes`), held there: every move of a case counts
+     * from the same instant, as the wall clock's would, where `mockTime('+…')` counts from the clock as it stands.
+     */
+    protected function moveClock(string $shift): void
+    {
+        self::mockTime($this->heldSince->modify($shift));
+    }
+
+    /** Back to the instant the case started at, for what the case does after a moved clock. */
+    protected function clockBack(): void
+    {
+        self::mockTime($this->heldSince);
+    }
+
+    /** The authenticator's code for the API's now, or a step later (`+30 seconds`): a code is checked against its clock. */
+    protected static function authenticatorCode(string $secret = self::AUTHENTICATOR_SECRET, string $shift = 'now'): string
+    {
+        return new OtphpTotpCodes()->codeAt($secret, self::heldNow()->modify($shift));
     }
 
     /**
@@ -152,9 +191,9 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function createCompany(string $name = 'Demo', bool $named = true): Company
     {
-        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', self::heldNow());
         if ($named) {
-            $company->reviseProfile(new CompanyProfile(legalName: $name.' SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis'), new \DateTimeImmutable());
+            $company->reviseProfile(new CompanyProfile(legalName: $name.' SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis'), self::heldNow());
         }
         $this->em()->persist($company);
         $this->em()->flush();
@@ -182,9 +221,9 @@ abstract class ApiTestCase extends WebTestCase
     protected function addMembership(User $user, Company $company, string $roleName = Role::MEMBER, array $permissions = ['*']): void
     {
         $em = $this->em();
-        $role = new Role($roleName, $permissions, $company, new \DateTimeImmutable());
+        $role = new Role($roleName, $permissions, $company, self::heldNow());
         $em->persist($role);
-        $em->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
+        $em->persist(new Membership($user, $company, $role, self::heldNow()));
         $em->flush();
     }
 
@@ -376,11 +415,11 @@ abstract class ApiTestCase extends WebTestCase
     protected function seedBuiltInRoles(): void
     {
         $em = $this->em();
-        $em->persist(new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable()));
-        $em->persist(new Role(Role::ADMIN, ['user.read', 'user.write', 'company.read'], null, new \DateTimeImmutable()));
-        $em->persist(new Role(Role::MEMBER, ['company.read'], null, new \DateTimeImmutable()));
-        $em->persist(new Role(Role::CLERK, ['company.read'], null, new \DateTimeImmutable()));
-        $em->persist(new Role(Role::ACCOUNTANT, ['company.read'], null, new \DateTimeImmutable()));
+        $em->persist(new Role(Role::OWNER, [Permission::WILDCARD], null, self::heldNow()));
+        $em->persist(new Role(Role::ADMIN, ['user.read', 'user.write', 'company.read'], null, self::heldNow()));
+        $em->persist(new Role(Role::MEMBER, ['company.read'], null, self::heldNow()));
+        $em->persist(new Role(Role::CLERK, ['company.read'], null, self::heldNow()));
+        $em->persist(new Role(Role::ACCOUNTANT, ['company.read'], null, self::heldNow()));
         $em->flush();
     }
 
@@ -395,15 +434,15 @@ abstract class ApiTestCase extends WebTestCase
         // The last spent step goes back into the past first, so signing in twice within thirty seconds is not a replay.
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString($email)]);
         self::assertNotNull($user);
-        $user->confirmTotpEnrolment(self::spentTimestep(), new \DateTimeImmutable());
+        $user->confirmTotpEnrolment(self::spentTimestep(), self::heldNow());
         $this->em()->flush();
-        $this->postJson('/api/auth/mfa/verify', ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable())]);
+        $this->postJson('/api/auth/mfa/verify', ['code' => self::authenticatorCode()]);
     }
 
-    /** A step a minute old: any code for now is newer than it. */
+    /** A step a minute before the API's now: any code for its now is newer than it. */
     private static function spentTimestep(): int
     {
-        return intdiv((new \DateTimeImmutable('-1 minute'))->getTimestamp(), 30);
+        return intdiv(self::heldNow()->modify('-1 minute')->getTimestamp(), 30);
     }
 
     /**

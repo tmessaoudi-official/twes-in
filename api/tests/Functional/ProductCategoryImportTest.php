@@ -26,7 +26,7 @@ final class ProductCategoryImportTest extends ApiTestCase
         parent::setUp();
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
-        $this->em()->persist(ProductCategory::create($this->company, 'Outillage', null, new \DateTimeImmutable()));
+        $this->em()->persist(ProductCategory::create($this->company, 'Outillage', null, self::heldNow()));
         $this->em()->flush();
     }
 

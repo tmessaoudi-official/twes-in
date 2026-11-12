@@ -45,7 +45,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer('CLI-0001')->getId()->toRfc4122();
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], self::heldNow());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -507,7 +507,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertStringContainsString('lines[0].quantity', (string) $this->client->getResponse()->getContent());
         self::assertStringContainsString('6.000', (string) $this->client->getResponse()->getContent());
         self::assertSame(['left_to_invoice', ['quantity' => '6']], $this->refusalOf('lines[0].quantity'), 'in the decimals its unit counts in');
-        $other = Product::create($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('no company'), 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '20'), $this->unit('C62'), null, [], new \DateTimeImmutable());
+        $other = Product::create($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('no company'), 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '20'), $this->unit('C62'), null, [], self::heldNow());
         $this->em()->persist($other);
         $this->em()->flush();
         $revise([[...$line, 'productId' => $other->getId()->toRfc4122()]]);
@@ -588,7 +588,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $this->signedIn();
         $product = $this->em()->find(Product::class, $this->productId);
         self::assertNotNull($product);
-        $product->track(ProductTracking::Serial, new \DateTimeImmutable());
+        $product->track(ProductTracking::Serial, self::heldNow());
         $this->em()->flush();
         $note = $this->validatedNote(['lines' => [
             ['productId' => $this->productId, 'quantity' => '1', 'lotCode' => 'SN-7'],
@@ -712,7 +712,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $establishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($company->getId())[0];
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($unit);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $note = DeliveryNote::create($company, $establishment, $this->customer('CLI-'.substr($company->getId()->toRfc4122(), -4), $company), new DeliveryNoteHeader(), [new DeliveryNoteLineDetails(null, 'Pièce', '1', $unit, '10', [])], $now);
         $note->validate('BL-'.substr($company->getId()->toRfc4122(), -6), $now, new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($note), $now);
         $note->releaseEvents();
@@ -769,7 +769,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     {
         $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($taxRegime);
-        $customer = Customer::create($company ?? $this->company, $number, self::aTunisianBusiness('Carthage Conseil'), null, $taxRegime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company ?? $this->company, $number, self::aTunisianBusiness('Carthage Conseil'), null, $taxRegime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
 

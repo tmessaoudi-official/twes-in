@@ -178,7 +178,7 @@ final class ActivityJournalTest extends ApiTestCase
     private function entry(string $type, ?Uuid $id, string $action, ?User $actor, array $changes, string $when, Company|false|null $company = false, ?string $ip = null): void
     {
         $owner = false === $company ? $this->company : $company;
-        $this->em()->persist(new AuditLog($type, $id, $action, $actor?->getId(), $changes, new \DateTimeImmutable($when), $ip, $owner?->getId()));
+        $this->em()->persist(new AuditLog($type, $id, $action, $actor?->getId(), $changes, self::heldNow()->modify($when), $ip, $owner?->getId()));
         $this->em()->flush();
     }
 }

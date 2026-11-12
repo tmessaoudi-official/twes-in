@@ -51,7 +51,7 @@ final class DraftRemovalTest extends ApiTestCase
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($standard);
         self::assertNotNull($piece);
-        $now = new \DateTimeImmutable();
+        $now = self::heldNow();
         $customer = Customer::create($this->company, 'C-001', self::aTunisianBusiness('Carthage Conseil'), null, $standard, [], $now);
         $product = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6', null, ProductKind::Goods, '0.500'), $piece, null, [$this->taxId('FODEC'), $this->taxId('TVA19')], $now);
         $this->em()->persist($customer);

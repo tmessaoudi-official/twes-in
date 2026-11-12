@@ -11,9 +11,6 @@ namespace App\Tests\Functional;
 
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
-use Symfony\Component\Clock\Clock;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -34,12 +31,6 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
         $this->company = $this->createCompany('Acme', named: false);
         $this->createUser('owner@twes.local', self::PASSWORD, $this->company);
         $this->login('owner@twes.local', self::PASSWORD);
-    }
-
-    protected function tearDown(): void
-    {
-        Clock::set(new NativeClock());
-        parent::tearDown();
     }
 
     public function testInvitingSomebodyWaitsForTheProofAndSendsNothingBefore(): void
@@ -225,7 +216,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
      */
     private function signedInWhereASecondFactorIsRequired(): void
     {
-        $this->company->requireMfa(true, new \DateTimeImmutable());
+        $this->company->requireMfa(true, self::heldNow());
         $this->createUser('guarded@twes.local', self::PASSWORD, $this->company, ['*'], 'guardian', authenticator: true);
         $this->login('guarded@twes.local', self::PASSWORD);
     }
@@ -241,7 +232,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
     /** The few minutes a proof holds (app.step_up.valid_for) have passed. */
     private function forgetTheProof(): void
     {
-        Clock::set(new MockClock(new \DateTimeImmutable('+10 minutes')));
+        $this->moveClock('+10 minutes');
     }
 
     private function rows(string $sql): int

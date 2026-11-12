@@ -113,9 +113,9 @@ final class ModulesTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $group = CustomerGroup::create($this->company, 'Grossistes', null, new \DateTimeImmutable());
+        $group = CustomerGroup::create($this->company, 'Grossistes', null, self::heldNow());
         $this->em()->persist($group);
-        $customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), $group, $regime, [], self::heldNow());
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->signedIn(['company.read', 'company.settings', 'customer.read', 'customer.write']);
@@ -238,7 +238,7 @@ final class ModulesTest extends ApiTestCase
 
     public function testAnAnonymousCallerIsAskedToSignInWhateverTheCompanysModules(): void
     {
-        $this->em()->persist(ModuleState::of($this->company, 'customers', false, new \DateTimeImmutable()));
+        $this->em()->persist(ModuleState::of($this->company, 'customers', false, self::heldNow()));
         $this->em()->flush();
 
         $this->getJson($this->companyPath().'/customers');

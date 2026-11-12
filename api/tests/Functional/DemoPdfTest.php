@@ -76,7 +76,7 @@ final class DemoPdfTest extends ApiTestCase
     private function builtAndEntered(): string
     {
         static::getContainer()->get(SeedPlatform::class)->converge();
-        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', new \DateTimeImmutable());
+        $sandbox = new DemoSandbox(Uuid::v7(), 'TN', self::heldNow());
         static::getContainer()->get(DemoSandboxRepository::class)->save($sandbox);
         static::getContainer()->get(BuildSandbox::class)->handle($sandbox->getId());
 
