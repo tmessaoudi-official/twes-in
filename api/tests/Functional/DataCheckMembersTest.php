@@ -92,13 +92,13 @@ final class DataCheckMembersTest extends ApiTestCase
             'UPDATE stock_movement SET lot_id = (SELECT l.id FROM stock_lot l WHERE l.company_id = :c AND l.product_id <> stock_movement.product_id LIMIT 1) WHERE id = (SELECT id FROM stock_movement WHERE company_id = :c AND lot_id IS NOT NULL ORDER BY at DESC LIMIT 1)',
         ]];
         yield 'a stored file whose bytes are gone' => ['files.stored', [
-            "INSERT INTO file (id, company_id, storage_key, original_name, mime, size, sha256, created_at) SELECT gen_random_uuid(), :c, 'companies/' || :c || '/' || gen_random_uuid(), 'gone.pdf', 'application/pdf', 3, repeat('0', 64), now()",
+            "INSERT INTO file (id, company_id, storage_key, original_name, mime, size, sha256, created_at) SELECT gen_random_uuid(), :c, 'companies/' || :c || '/' || gen_random_uuid(), 'gone.pdf', 'application/pdf', 3, repeat('0', 64), CAST(:now AS timestamp)",
         ]];
         yield 'a key claimed by a request that stopped' => ['submissions.stuck', [
-            "INSERT INTO submission_claim (account_id, key, attempt, company_id, fingerprint, claimed_at) SELECT id, gen_random_uuid(), gen_random_uuid(), :c, repeat('0', 64), now() - interval '1 hour' FROM \"user\" WHERE email = 'operator@twes.local'",
+            "INSERT INTO submission_claim (account_id, key, attempt, company_id, fingerprint, claimed_at) SELECT id, gen_random_uuid(), gen_random_uuid(), :c, repeat('0', 64), CAST(:now AS timestamp) - interval '1 hour' FROM \"user\" WHERE email = 'operator@twes.local'",
         ]];
         yield 'a key the hourly purge never forgot' => ['submissions.stuck', [
-            "INSERT INTO submission_claim (account_id, key, attempt, company_id, fingerprint, claimed_at, work_done, status, body) SELECT id, gen_random_uuid(), gen_random_uuid(), :c, repeat('0', 64), now() - interval '3 days', true, 201, '{}' FROM \"user\" WHERE email = 'operator@twes.local'",
+            "INSERT INTO submission_claim (account_id, key, attempt, company_id, fingerprint, claimed_at, work_done, status, body) SELECT id, gen_random_uuid(), gen_random_uuid(), :c, repeat('0', 64), CAST(:now AS timestamp) - interval '3 days', true, 201, '{}' FROM \"user\" WHERE email = 'operator@twes.local'",
         ]];
     }
 
@@ -122,7 +122,7 @@ final class DataCheckMembersTest extends ApiTestCase
             try {
                 foreach ($statements as $statement) {
                     foreach (array_filter(array_map('trim', explode(';', $statement))) as $sql) {
-                        if (0 === $db->executeStatement($sql, ['c' => $this->company])) {
+                        if (0 === $db->executeStatement($sql, ['c' => $this->company] + (str_contains($sql, ':now') ? ['now' => self::apiNow()] : []))) {
                             $missed[] = "$break: the demo has nothing to break, $sql";
                             continue 3;
                         }
@@ -158,11 +158,13 @@ final class DataCheckMembersTest extends ApiTestCase
         $key = 'companies/'.$this->company.'/'.Uuid::v7()->toRfc4122();
         $storage->write($key, 'orphan');
         try {
+            // The storage dates the bytes by its own clock, the machine's, not the one the case holds: the API's clock is
+            // set from when the bytes say they were written.
+            $written = iterator_to_array($storage->keysUnder('companies/'.$this->company))[$key] ?? self::fail('The bytes are listed.');
+            Clock::set(new MockClock($written));
             self::assertNotContains('files.stored', array_map(static fn (DataFinding $finding): string => $finding->check, $this->findings()), 'a write still running');
 
-            $later = new MockClock();
-            $later->modify('+1 hour');
-            Clock::set($later);
+            Clock::set(new MockClock($written->modify('+1 hour')));
 
             $found = array_values(array_filter($this->findings(), static fn (DataFinding $finding): bool => 'files.stored' === $finding->check));
             self::assertCount(1, $found);

@@ -149,4 +149,37 @@ d=$(tree); out=$(bash "$GATE" --root "$d" --floor 3 2>&1); check "fewer test fil
 
 d=$(tree); rm -r "$d/api/tests"; out=$(run "$d"); check "a missing api/tests is refused, not skipped" $? 1 "$out" "found no api/tests"
 
+d=$(tree); member "$d/api/tests/Functional/LockTest.php" "\$locked = \$db->fetchOne('SELECT locked_until > now() FROM \"user\"');"
+out=$(run "$d"); check "the database's now() in a functional test is refused: it is not the clock the API reads" $? 1 "$out" "LockTest.php:3"
+
+d=$(tree); member "$d/api/tests/Functional/IssueTest.php" "\$db->executeStatement('UPDATE invoice SET issue_date = Current_Date WHERE id = ?', [\$id]);"
+out=$(run "$d"); check "CURRENT_DATE, in any case, is refused: it is UTC's day, not the company's" $? 1 "$out" "IssueTest.php:3"
+
+d=$(tree); mkdir -p "$d/api/tests/Concurrency"; member "$d/api/tests/Concurrency/StampRaceTest.php" "\$db->executeStatement('UPDATE quote SET updated_at = pg_catalog.now() - interval ''1 minute''');"
+out=$(run "$d"); check "a qualified pg_catalog.now() in a race test is refused" $? 1 "$out" "StampRaceTest.php:3"
+
+for form in "CURRENT_TIMESTAMP" "LOCALTIMESTAMP" "statement_timestamp()" "clock_timestamp()" "transaction_timestamp()" "current_time"; do
+  d=$(tree); member "$d/api/tests/Functional/FormTest.php" "\$db->executeStatement('UPDATE quote SET updated_at = $form');"
+  out=$(run "$d"); check "the database's $form is refused" $? 1 "$out" "FormTest.php:3"
+done
+
+d=$(tree); member "$d/api/tests/Functional/NamesTest.php" "\$a = \$clock->now(); \$b = Clock::get()->now(); \$current_date = self::apiNow(); \$c = \$current_dates; \$e = \$row->current_date;"
+out=$(run "$d"); check "a clock's now() method and a variable named current_date are not the database's clock" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/NowTest.php" "    public function now(): \\DateTimeImmutable"
+out=$(run "$d"); check "a method declared now() is not the database's clock" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/HealthTest.php" "            -- test-clock: the reading measures the queue on the database's clock
+            FROM (SELECT now() AS at) placed"
+out=$(run "$d"); check "an SQL comment naming the reason on the line above passes" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/HealthTest.php" "\$db->fetchOne('SELECT now()'); -- test-clock:"
+out=$(run "$d"); check "an SQL reason left empty is no reason" $? 1 "$out" "HealthTest.php:3"
+
+d=$(tree); member "$d/api/tests/Unit/ClockTest.php" "\$db->fetchOne('SELECT CURRENT_DATE');"
+out=$(run "$d"); check "a unit test is left alone: no API clock stands beside it" $? 0 "$out" "OK"
+
+d=$(tree); member "$d/api/tests/Functional/StampTest.php" "\$db->executeStatement('UPDATE quote SET updated_at = ? WHERE id = ?', [self::apiNow('-1 minute'), \$id]);"
+out=$(run "$d"); check "a stamp bound from the held clock passes" $? 0 "$out" "OK"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

@@ -400,7 +400,7 @@ final class DataErasureTest extends ApiTestCase
             static::getContainer()->get(ProvisionCompany::class)->handle($company);
             $this->otherCompanyId = $company->getId()->toRfc4122();
             $establishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($company->getId())[0]->getId()->toRfc4122();
-            $this->em()->getConnection()->executeStatement("INSERT INTO venue_area (id, company_id, establishment_id, name, level, image_opacity, created_at, updated_at, width_metres, depth_metres) VALUES (?, ?, ?, 'Dépôt voisin', 0, 100, now(), now(), 10, 10)", [Uuid::v7()->toRfc4122(), $this->otherCompanyId, $establishment]);
+            $this->em()->getConnection()->executeStatement("INSERT INTO venue_area (id, company_id, establishment_id, name, level, image_opacity, created_at, updated_at, width_metres, depth_metres) VALUES (?, ?, ?, 'Dépôt voisin', 0, 100, ?, ?, 10, 10)", [Uuid::v7()->toRfc4122(), $this->otherCompanyId, $establishment, self::apiNow(), self::apiNow()]);
         }
         $other = $this->otherCompanyId;
 

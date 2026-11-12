@@ -88,7 +88,7 @@ final class MembersTest extends ApiTestCase
         }
         $connection = $this->em()->getConnection();
         $connection->executeStatement("UPDATE invitation SET expires_at = '2020-01-01 00:00:00' WHERE email = 'expired@twes.local'");
-        $connection->executeStatement("UPDATE invitation SET accepted_at = NOW() WHERE email = 'used@twes.local'");
+        $connection->executeStatement("UPDATE invitation SET accepted_at = ? WHERE email = 'used@twes.local'", [self::apiNow()]);
 
         $this->getJson($this->path());
 

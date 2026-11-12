@@ -180,6 +180,7 @@ final class DeepHealthTest extends WebTestCase
             <<<'SQL'
                 INSERT INTO messenger_messages (body, headers, queue_name, created_at, available_at, delivered_at)
                 SELECT '{}', '[]', :queue, at, at, CASE WHEN :delivered THEN at END
+                -- test-clock: the deep health reads a queue's age on the database's clock, so the message is placed on it
                 FROM (SELECT date_trunc('second', now() AT TIME ZONE 'UTC') + CAST(:availableIn AS interval) AS at) placed
                 SQL,
             ['queue' => $queue, 'availableIn' => $availableIn, 'delivered' => $delivered],

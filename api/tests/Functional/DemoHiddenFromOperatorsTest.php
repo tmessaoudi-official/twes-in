@@ -32,7 +32,7 @@ final class DemoHiddenFromOperatorsTest extends ApiTestCase
         $this->createCompany('Bac à sable réel');
         $this->em()->flush();
         // A visitor is in it: one in use is left out as surely as one waiting in the pool.
-        $this->em()->getConnection()->executeStatement("UPDATE demo_sandbox SET state = 'claimed', claimed_at = now() WHERE id = ?", [$sandbox->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement("UPDATE demo_sandbox SET state = 'claimed', claimed_at = ? WHERE id = ?", [self::apiNow(), $sandbox->getId()->toRfc4122()]);
         $this->signedInAsOperator();
 
         $this->getJson('/api/platform/companies?q='.rawurlencode('Bac à sable'));

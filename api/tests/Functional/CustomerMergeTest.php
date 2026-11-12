@@ -230,8 +230,8 @@ final class CustomerMergeTest extends ApiTestCase
         $this->merged($kept, [$merged]);
         $refunded = function (string $customer, string $amount): void {
             $this->em()->getConnection()->executeStatement(
-                "INSERT INTO customer_credit_entry (id, company_id, customer_id, entry_date, kind, amount, created_at) VALUES (?, ?, ?, CURRENT_DATE, 'refunded', ?, now())",
-                [Uuid::v7()->toRfc4122(), $this->companyId(), $customer, $amount],
+                "INSERT INTO customer_credit_entry (id, company_id, customer_id, entry_date, kind, amount, created_at) VALUES (?, ?, ?, ?, 'refunded', ?, ?)",
+                [Uuid::v7()->toRfc4122(), $this->companyId(), $customer, self::dayOf($this->company), $amount, self::apiNow()],
             );
         };
 
@@ -342,8 +342,7 @@ final class CustomerMergeTest extends ApiTestCase
         [$kept, $merged, $other] = [$this->customerId('C-001'), $this->customerId('C-002'), $this->customerId('C-003')];
         $issued = [$this->anIssuedLateInvoice($kept), $this->anIssuedLateInvoice($merged), $this->anIssuedLateInvoice($other)];
         $this->merged($kept, [$merged]);
-        $today = $this->em()->getConnection()->fetchOne('SELECT CURRENT_DATE::text');
-        self::assertIsString($today);
+        $today = self::dayOf($this->company);
 
         $expected = [[$kept, 'Carthage Conseil', 2], [$other, 'Carthage', 1]];
         foreach (['sales-by-customer' => 'documents', 'aged-balance' => 'invoices', 'credit-notes-and-discounts' => 'discounted_invoices', 'withholding-suffered' => 'documents'] as $report => $count) {
@@ -383,8 +382,8 @@ final class CustomerMergeTest extends ApiTestCase
         // A cheque handed for an invoice of the customer merged away falls due as the customer kept's.
         $this->em()->getConnection()->executeStatement(
             "INSERT INTO payment_instrument (id, invoice_id, company_id, kind, amount, due_on, bank, number, status, created_at, updated_at)
-             VALUES (?, ?, ?, 'check', '1.000', CURRENT_DATE, '', 'CHQ-1', 'held', now(), now())",
-            [Uuid::v7()->toRfc4122(), $issued[1], $this->companyId()],
+             VALUES (?, ?, ?, 'check', '1.000', ?, '', 'CHQ-1', 'held', ?, ?)",
+            [Uuid::v7()->toRfc4122(), $issued[1], $this->companyId(), self::dayOf($this->company), self::apiNow(), self::apiNow()],
         );
         $this->getJson($this->path('watch/invoices.instruments_due'));
         self::assertResponseIsSuccessful();
@@ -413,8 +412,8 @@ final class CustomerMergeTest extends ApiTestCase
         [$otherQuote, $otherNote] = [$this->aQuote($other, sent: true), $this->aDeliveryNote($other, validated: true)];
         $this->em()->getConnection()->executeStatement(
             "INSERT INTO payment_instrument (id, invoice_id, company_id, kind, amount, due_on, bank, number, status, created_at, updated_at)
-             VALUES (?, ?, ?, 'check', '1.000', CURRENT_DATE, '', 'CHQ-1', 'held', now(), now())",
-            [Uuid::v7()->toRfc4122(), $invoices[1], $this->companyId()],
+             VALUES (?, ?, ?, 'check', '1.000', ?, '', 'CHQ-1', 'held', ?, ?)",
+            [Uuid::v7()->toRfc4122(), $invoices[1], $this->companyId(), self::dayOf($this->company), self::apiNow(), self::apiNow()],
         );
         $this->merged($kept, [$merged]);
 
@@ -754,8 +753,8 @@ final class CustomerMergeTest extends ApiTestCase
     {
         $id = $this->anInvoice($customer, issued: true);
         $this->em()->getConnection()->executeStatement(
-            'UPDATE invoice SET number = ?, issue_date = current_date, due_date = current_date - 40, total_net = 12, total_gross = 12, amount_due = 12, savings = 1.000, withholding_amount = 1.000 WHERE id = ?',
-            ['FAC-'.substr($id, -12), $id],
+            'UPDATE invoice SET number = ?, issue_date = ?, due_date = ?, total_net = 12, total_gross = 12, amount_due = 12, savings = 1.000, withholding_amount = 1.000 WHERE id = ?',
+            ['FAC-'.substr($id, -12), self::dayOf($this->company), self::dayOf($this->company, '-40 days'), $id],
         );
 
         return $id;
@@ -768,7 +767,7 @@ final class CustomerMergeTest extends ApiTestCase
         $id = $this->stringAt($this->json(), 'id');
         if ($sent) {
             // issue-shortcut: sent a minute before the merge, which a send through the API cannot backdate
-            $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'sent', updated_at = now() - interval '1 minute' WHERE id = ?", [$id]);
+            $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'sent', updated_at = ? WHERE id = ?", [self::apiNow('-1 minute'), $id]);
         }
 
         return $id;
@@ -781,7 +780,7 @@ final class CustomerMergeTest extends ApiTestCase
         $id = $this->stringAt($this->json(), 'id');
         if ($validated) {
             // issue-shortcut: validated a minute before the merge, which a validation through the API cannot backdate
-            $this->em()->getConnection()->executeStatement("UPDATE delivery_note SET status = 'validated', updated_at = now() - interval '1 minute' WHERE id = ?", [$id]);
+            $this->em()->getConnection()->executeStatement("UPDATE delivery_note SET status = 'validated', updated_at = ? WHERE id = ?", [self::apiNow('-1 minute'), $id]);
         }
 
         return $id;
@@ -811,8 +810,8 @@ final class CustomerMergeTest extends ApiTestCase
     {
         $id = Uuid::v7()->toRfc4122();
         $this->em()->getConnection()->executeStatement(
-            "INSERT INTO customer_credit_entry (id, company_id, customer_id, entry_date, kind, amount, created_at) VALUES (?, ?, ?, CURRENT_DATE, 'overpayment', '25.000', now() + CAST(? AS interval))",
-            [$id, $this->companyId(), $customer, $later ? '1 minute' : '-1 minute'],
+            "INSERT INTO customer_credit_entry (id, company_id, customer_id, entry_date, kind, amount, created_at) VALUES (?, ?, ?, ?, 'overpayment', '25.000', ?)",
+            [$id, $this->companyId(), $customer, self::dayOf($this->company), self::apiNow($later ? '+1 minute' : '-1 minute')],
         );
 
         return $id;

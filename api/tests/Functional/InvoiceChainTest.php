@@ -79,8 +79,8 @@ final class InvoiceChainTest extends ApiTestCase
         // Paying, crediting and printing move these columns; the document itself says the same.
         $this->connection()->executeStatement(
             // issue-shortcut: the columns a payment moves, written as a payment writes them, to prove the chain does not cover them
-            "UPDATE invoice SET amount_paid = '50.000', amount_due = amount_due - 50, status = 'partially_paid', updated_at = now() WHERE id = ?",
-            [$id],
+            "UPDATE invoice SET amount_paid = '50.000', amount_due = amount_due - 50, status = 'partially_paid', updated_at = ? WHERE id = ?",
+            [self::apiNow(), $id],
         );
 
         self::assertSame([], $this->breaks());

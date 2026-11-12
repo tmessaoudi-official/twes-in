@@ -357,7 +357,7 @@ final class SecondFactorTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->getJson('/api/auth/me');
         self::assertResponseIsSuccessful();
-        $locked = $this->em()->getConnection()->fetchOne('SELECT locked_until > now() FROM "user" WHERE email = ?', ['someone@twes.local']);
+        $locked = $this->em()->getConnection()->fetchOne('SELECT locked_until > ? FROM "user" WHERE email = ?', [self::apiNow(), 'someone@twes.local']);
         self::assertTrue($locked, 'the password stays locked after the way in');
     }
 

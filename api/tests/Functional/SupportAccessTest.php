@@ -273,7 +273,7 @@ final class SupportAccessTest extends ApiTestCase
         self::assertTrue(null === $company || (\is_array($company) && $this->companyId() !== $company['id']), 'the closed company is still the working one');
 
         $this->grant(1);
-        $this->connection()->executeStatement("UPDATE support_grant SET ends_at = now() - interval '1 minute' WHERE ended_at IS NULL");
+        $this->connection()->executeStatement('UPDATE support_grant SET ends_at = ? WHERE ended_at IS NULL', [self::apiNow('-1 minute')]);
         $this->as(self::OPERATOR);
         $this->getJson($this->path('/customers'));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

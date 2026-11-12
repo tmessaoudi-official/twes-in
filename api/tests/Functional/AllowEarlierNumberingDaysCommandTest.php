@@ -34,7 +34,7 @@ final class AllowEarlierNumberingDaysCommandTest extends ApiTestCase
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         self::assertStringContainsString('until', $tester->getDisplay());
         $connection = $this->em()->getConnection();
-        $allowed = Rows::int($connection->fetchOne('SELECT count(*) FROM numbering_series WHERE company_id = ? AND is_default AND earlier_day_allowed_until > now()', [$company->getId()->toRfc4122()]));
+        $allowed = Rows::int($connection->fetchOne('SELECT count(*) FROM numbering_series WHERE company_id = ? AND is_default AND earlier_day_allowed_until > ?', [$company->getId()->toRfc4122(), self::apiNow()]));
         $defaults = $this->defaults($company);
         self::assertGreaterThan(0, $defaults);
         self::assertSame($defaults, $allowed, 'every series that numbers');

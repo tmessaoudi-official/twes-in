@@ -42,6 +42,8 @@ final class DemoFixturesTest extends ApiTestCase
             $company = $this->row('SELECT c.id, c.status, c.currency FROM company c WHERE c.name = ?', [$name]);
             self::assertSame(['active', $currency], [$company['status'], $company['currency']], $name);
             $id = $company['id'];
+            // The day the company's history was written up to: the held clock in its own zone, not UTC's.
+            $today = self::dayOf($this->em()->find(Company::class, Uuid::fromString(\is_string($id) ? $id : self::fail('A company has an id.'))) ?? self::fail("$name is found by its id."));
             self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM membership m JOIN \"user\" u ON u.id = m.user_id JOIN role r ON r.id = m.role_id WHERE m.company_id = ? AND u.email = 'operator@twes.local' AND r.name = 'owner'", [$id]), "$name is owned by the operator");
 
             // One member per built-in role, so a walkthrough can say truthfully what each of them may not do, and so
@@ -57,7 +59,7 @@ final class DemoFixturesTest extends ApiTestCase
             // Issued under a moved clock, in the order the timeline runs: every chain must still hold.
             self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM invoice WHERE company_id = ? AND number IS NOT NULL AND chain_hash IS NULL', [$id]), "$name chains every document it issued");
             $this->em()->clear();
-            self::assertSame([], static::getContainer()->get(VerifyInvoiceChains::class)->of(Uuid::fromString(\is_string($id) ? $id : self::fail('A company has an id.'))), "$name's chains hold");
+            self::assertSame([], static::getContainer()->get(VerifyInvoiceChains::class)->of(Uuid::fromString($id)), "$name's chains hold");
             // Every workflow the demo runs leaves data the nightly check finds nothing in: payments, withholding, credit notes
             // and the stamp; a document discount, which the demo has none of, is DataCheckTest's.
             self::assertSame([], array_values(array_map(
@@ -83,11 +85,11 @@ final class DemoFixturesTest extends ApiTestCase
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'credit_note' AND status = 'issued'", [$id]), "$name has an issued credit note");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id WHERE i.company_id = ? AND i.status <> 'draft' AND l.discount_amount > 0", [$id]), "$name has an issued line discounted by an amount");
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM quote_line l JOIN quote q ON q.id = l.quote_id WHERE q.company_id = ? AND l.discount_amount > 0', [$id]), "$name has a quote line discounted by an amount");
-            self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND status IN ('issued', 'partially_paid') AND due_date < CURRENT_DATE", [$id]), "$name has an overdue invoice");
-            self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND status = 'issued' AND due_date >= CURRENT_DATE", [$id]), "$name has an invoice not yet due");
+            self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND status IN ('issued', 'partially_paid') AND due_date < CAST(? AS date)", [$id, $today]), "$name has an overdue invoice");
+            self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND status = 'issued' AND due_date >= CAST(? AS date)", [$id, $today]), "$name has an invoice not yet due");
             self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND status = 'paid' AND amount_due <> 0", [$id]), 'a paid invoice owes nothing');
-            self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND status IN ('issued', 'partially_paid', 'paid') AND (number IS NULL OR issue_date > CURRENT_DATE)", [$id]), 'every issued document is numbered and dated no later than today');
-            self::assertGreaterThan(90, $this->numberOf('SELECT CURRENT_DATE - MIN(issue_date) FROM invoice WHERE company_id = ?', [$id]), "$name's invoices span months");
+            self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND status IN ('issued', 'partially_paid', 'paid') AND (number IS NULL OR issue_date > CAST(? AS date))", [$id, $today]), 'every issued document is numbered and dated no later than today');
+            self::assertGreaterThan(90, $this->numberOf('SELECT CAST(? AS date) - MIN(issue_date) FROM invoice WHERE company_id = ?', [$today, $id]), "$name's invoices span months");
             $numbers = array_map(static fn (mixed $number): string => \is_string($number) ? $number : throw new \LogicException('A number is text.'), $this->column("SELECT number FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND number IS NOT NULL ORDER BY issue_date, number", [$id]));
             $sorted = $numbers;
             sort($sorted, \SORT_STRING);
@@ -129,9 +131,9 @@ final class DemoFixturesTest extends ApiTestCase
             );
             self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM purchase_order_line l JOIN purchase_order o ON o.id = l.purchase_order_id WHERE o.company_id = ? AND (l.received > l.quantity OR (o.status = \'received\' AND l.received <> l.quantity) OR (o.status IN (\'draft\', \'sent\') AND l.received <> 0))', [$id]), "$name's orders received what they say they did");
             self::assertSame(['draft', 'paid', 'recorded'], $this->column('SELECT DISTINCT status FROM expense WHERE company_id = ? ORDER BY status', [$id]));
-            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_expense WHERE company_id = ? AND variable_amount AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly bill that recurs and has drafted");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_expense WHERE company_id = ? AND variable_amount AND NOT paused AND drafted > 0 AND next_on > CAST(? AS date)', [$id, $today]), "$name has a monthly bill that recurs and has drafted");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM expense WHERE company_id = ? AND status = 'draft' AND amount_to_check", [$id]), "$name has a draft whose amount is to be checked");
-            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_invoice WHERE company_id = ? AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly invoice that recurs and has drafted");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_invoice WHERE company_id = ? AND NOT paused AND drafted > 0 AND next_on > CAST(? AS date)', [$id, $today]), "$name has a monthly invoice that recurs and has drafted");
             // Cheques and traites are how a Tunisian shop is often paid: the portfolio shows one in each state.
             self::assertSame(
                 [['check', 'cashed'], ['check', 'deposited'], ['check', 'held'], ['check', 'unpaid'], ['draft', 'held']],
@@ -139,7 +141,7 @@ final class DemoFixturesTest extends ApiTestCase
                 "$name holds a cheque in each state and a traite",
             );
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM price_list WHERE company_id = ? AND customer_group_id IS NOT NULL AND is_active', [$id]), "$name has a price list for a customer group");
-            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM price_list WHERE company_id = ? AND customer_group_id IS NULL AND customer_id IS NULL AND valid_from <= CURRENT_DATE AND valid_to > CURRENT_DATE', [$id]), "$name has a promotion running today");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM price_list WHERE company_id = ? AND customer_group_id IS NULL AND customer_id IS NULL AND valid_from <= CAST(? AS date) AND valid_to > CAST(? AS date)', [$id, $today, $today]), "$name has a promotion running today");
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM price_list_item WHERE company_id = ? AND min_quantity > 1', [$id]), "$name has a price from a quantity");
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_movement WHERE company_id = ? AND quantity < 0', [$id]), "$name's deliveries took goods out of stock");
             // An invoice issued without a delivery note takes its goods out itself; one selling what the shelves no
@@ -176,7 +178,7 @@ final class DemoFixturesTest extends ApiTestCase
             // Factur-X all have one to show.
             self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM invoice d JOIN quote q ON q.id = d.quote_id JOIN invoice f ON f.id = q.invoice_id WHERE d.company_id = ? AND d.deposit AND d.status = 'paid' AND f.status <> 'draft' AND EXISTS (SELECT 1 FROM invoice_line l WHERE l.invoice_id = f.id AND l.deducts_invoice_id = d.id)", [$id]), "$name gave a paid deposit back on its final invoice");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM customer_credit_entry WHERE company_id = ? AND kind = 'overpayment'", [$id]), "$name kept a trop-perçu to a customer's credit");
-            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM quote WHERE company_id = ? AND status = ? AND valid_until < CURRENT_DATE', [$id, 'sent']), "$name has a quote past its validity");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM quote WHERE company_id = ? AND status = ? AND valid_until < CAST(? AS date)', [$id, 'sent', $today]), "$name has a quote past its validity");
 
             // Through the use cases, not around them: every write left its audit row.
             self::assertGreaterThan(100, $this->numberOf('SELECT COUNT(*) FROM audit_log WHERE company_id = ?', [$id]), "$name was written through the audited use cases");
@@ -187,8 +189,8 @@ final class DemoFixturesTest extends ApiTestCase
             ['lot', 'serial'],
             $this->column('SELECT DISTINCT p.tracking FROM stock_movement m JOIN product p ON p.id = m.product_id WHERE m.lot_id IS NOT NULL ORDER BY p.tracking', []),
         );
-        self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_lot WHERE expires_on < CURRENT_DATE', []), 'a lot has expired by the end of the story');
-        self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_lot WHERE expires_on > CURRENT_DATE', []), 'a lot is still good');
+        self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM stock_lot l JOIN company c ON c.id = l.company_id WHERE l.expires_on < ((CAST(? AS timestamp) AT TIME ZONE 'UTC') AT TIME ZONE c.timezone)::date", [self::apiNow()]), 'a lot has expired by the end of the story');
+        self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM stock_lot l JOIN company c ON c.id = l.company_id WHERE l.expires_on > ((CAST(? AS timestamp) AT TIME ZONE 'UTC') AT TIME ZONE c.timezone)::date", [self::apiNow()]), 'a lot is still good');
         self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement m JOIN product p ON p.id = m.product_id WHERE (p.tracking = 'none') <> (m.lot_id IS NULL)", []), 'a movement names a lot exactly when its product tracks one');
         self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement WHERE source_type = 'delivery_note' AND lot_id IS NOT NULL", []), 'a delivery note took goods from their lots');
         self::assertSame($held, Clock::get(), 'the clock the load moved is given back');

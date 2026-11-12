@@ -81,7 +81,7 @@ final class CompanyClosingTest extends ApiTestCase
     #[DataProvider('unpaidModes')]
     public function testAnOwnerLockedOutByAnUnpaidSubscriptionStillClosesItDown(string $mode, string $refusal): void
     {
-        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, ?, now(), now())", [$this->company->getId()->toRfc4122(), $mode]);
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, ?, ?, ?)", [$this->company->getId()->toRfc4122(), $mode, self::apiNow(), self::apiNow()]);
         $this->login('owner@twes.local', self::PASSWORD);
         $this->postJson($this->path().'/customers', ['number' => 'CLI-0002', 'kind' => 'individual', 'name' => 'Sonia Ben Ali', 'taxRegime' => 'standard', 'defaultTaxComponentIds' => [], 'isActive' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
@@ -103,7 +103,7 @@ final class CompanyClosingTest extends ApiTestCase
 
     public function testThroughTheLockStillOnlyTheOwnerClosesIt(): void
     {
-        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', now(), now())", [$this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', ?, ?)", [$this->company->getId()->toRfc4122(), self::apiNow(), self::apiNow()]);
         $this->createUser('manager@twes.local', self::PASSWORD, $this->company, ['*'], 'manager');
         $this->login('manager@twes.local', self::PASSWORD);
         $this->stepUp(self::PASSWORD);
@@ -249,7 +249,7 @@ final class CompanyClosingTest extends ApiTestCase
     public function testTheSessionOfAClosedCompanySaysNothingOfASubscriptionThatLapsed(): void
     {
         $this->closeDown();
-        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', now(), now())", [$this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', ?, ?)", [$this->company->getId()->toRfc4122(), self::apiNow(), self::apiNow()]);
 
         $this->client->request('GET', '/api/auth/me');
 
@@ -284,7 +284,7 @@ final class CompanyClosingTest extends ApiTestCase
     public function testAClosedCompanyPaysForNothingAndIsStillRead(): void
     {
         $this->closeDown();
-        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', now(), now())", [$this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', ?, ?)", [$this->company->getId()->toRfc4122(), self::apiNow(), self::apiNow()]);
 
         $this->client->request('GET', $this->path().'/customers');
 

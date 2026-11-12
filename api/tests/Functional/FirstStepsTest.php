@@ -66,12 +66,12 @@ final class FirstStepsTest extends ApiTestCase
         self::assertSame(['company.profile'], $this->done());
         $company = $this->managed();
 
-        $audit = 'INSERT INTO audit_log (id, company_id, entity_type, entity_id, action, actor_user_id, changes, at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())';
-        $this->em()->getConnection()->executeStatement($audit, [Uuid::v7()->toRfc4122(), $company->getId()->toRfc4122(), ManageTaxComponents::ENTITY_TYPE, Uuid::v7()->toRfc4122(), 'created', null, '{}']);
+        $audit = 'INSERT INTO audit_log (id, company_id, entity_type, entity_id, action, actor_user_id, changes, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        $this->em()->getConnection()->executeStatement($audit, [Uuid::v7()->toRfc4122(), $company->getId()->toRfc4122(), ManageTaxComponents::ENTITY_TYPE, Uuid::v7()->toRfc4122(), 'created', null, '{}', self::apiNow()]);
         $this->getJson($this->path());
         self::assertSame(['company.profile'], $this->done(), 'a tax the system wrote, with no author, is nobody looking at the taxes');
         $company = $this->managed();
-        $this->em()->getConnection()->executeStatement($audit, [Uuid::v7()->toRfc4122(), $company->getId()->toRfc4122(), ManageTaxComponents::ENTITY_TYPE, Uuid::v7()->toRfc4122(), 'revised', $this->ownerId(), '{}']);
+        $this->em()->getConnection()->executeStatement($audit, [Uuid::v7()->toRfc4122(), $company->getId()->toRfc4122(), ManageTaxComponents::ENTITY_TYPE, Uuid::v7()->toRfc4122(), 'revised', $this->ownerId(), '{}', self::apiNow()]);
         $now = self::heldNow();
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
@@ -100,12 +100,12 @@ final class FirstStepsTest extends ApiTestCase
     public function testAPendingInvitationCountsAsInvitingAMemberAndAnExpiredOneDoesNot(): void
     {
         $this->signedIn(['*']);
-        $insert = 'INSERT INTO invitation (id, email, role_name, token_hash, created_at, expires_at, accepted_at, company_id) VALUES (?, ?, ?, ?, NOW(), NOW() + ?::interval, NULL, ?)';
-        $this->em()->getConnection()->executeStatement($insert, [Uuid::v7()->toRfc4122(), 'late@twes.local', 'member', str_repeat('a', 64), '-1 day', $this->company->getId()->toRfc4122()]);
+        $insert = 'INSERT INTO invitation (id, email, role_name, token_hash, created_at, expires_at, accepted_at, company_id) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)';
+        $this->em()->getConnection()->executeStatement($insert, [Uuid::v7()->toRfc4122(), 'late@twes.local', 'member', str_repeat('a', 64), self::apiNow(), self::apiNow('-1 day'), $this->company->getId()->toRfc4122()]);
         $this->getJson($this->path());
         self::assertNotContains('company.members', $this->done(), 'an invitation nobody can accept any more');
 
-        $this->em()->getConnection()->executeStatement($insert, [Uuid::v7()->toRfc4122(), 'soon@twes.local', 'member', str_repeat('b', 64), '7 days', $this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement($insert, [Uuid::v7()->toRfc4122(), 'soon@twes.local', 'member', str_repeat('b', 64), self::apiNow(), self::apiNow('+7 days'), $this->company->getId()->toRfc4122()]);
         $this->getJson($this->path());
         self::assertContains('company.members', $this->done());
     }
@@ -209,8 +209,8 @@ final class FirstStepsTest extends ApiTestCase
         $establishment = $connection->fetchOne('SELECT id FROM establishment WHERE company_id = ? ORDER BY code LIMIT 1', [$this->company->getId()->toRfc4122()]);
         self::assertIsString($establishment);
         $connection->executeStatement(
-            'INSERT INTO venue_area (id, company_id, establishment_id, name, level, image_opacity, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 35, NOW(), NOW())',
-            [Uuid::v7()->toRfc4122(), $this->company->getId()->toRfc4122(), $establishment, 'Rez-de-chaussée'],
+            'INSERT INTO venue_area (id, company_id, establishment_id, name, level, image_opacity, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 35, ?, ?)',
+            [Uuid::v7()->toRfc4122(), $this->company->getId()->toRfc4122(), $establishment, 'Rez-de-chaussée', self::apiNow(), self::apiNow()],
         );
     }
 

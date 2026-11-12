@@ -189,8 +189,8 @@ final class DataCheckTest extends ApiTestCase
     {
         $db = $this->connection();
         $db->executeStatement("UPDATE customer SET email = 'compta@carthage', phone = '+216 11 111 111' WHERE id = ?", [$this->customerId]);
-        $db->executeStatement("INSERT INTO contact (id, company_id, customer_id, email, phone, is_primary, created_at, updated_at) VALUES (gen_random_uuid(), ?, ?, NULL, '12', false, now(), now())", [$this->company->getId()->toRfc4122(), $this->customerId]);
-        $db->executeStatement("INSERT INTO vendor (id, company_id, number, name, email, phone, is_active, created_at, updated_at) VALUES (gen_random_uuid(), ?, 'FRN-1', 'Atlas', 'achats@', NULL, true, now(), now())", [$this->company->getId()->toRfc4122()]);
+        $db->executeStatement("INSERT INTO contact (id, company_id, customer_id, email, phone, is_primary, created_at, updated_at) VALUES (gen_random_uuid(), ?, ?, NULL, '12', false, ?, ?)", [$this->company->getId()->toRfc4122(), $this->customerId, self::apiNow(), self::apiNow()]);
+        $db->executeStatement("INSERT INTO vendor (id, company_id, number, name, email, phone, is_active, created_at, updated_at) VALUES (gen_random_uuid(), ?, 'FRN-1', 'Atlas', 'achats@', NULL, true, ?, ?)", [$this->company->getId()->toRfc4122(), self::apiNow(), self::apiNow()]);
         $db->executeStatement("UPDATE company SET email = 'contact@acme', phone = '+216 71 900 868' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
         $db->executeStatement("UPDATE establishment SET phone = 'joindre' WHERE company_id = ?", [$this->company->getId()->toRfc4122()]);
 
@@ -228,8 +228,8 @@ final class DataCheckTest extends ApiTestCase
         $db = $this->connection();
         $company = $this->company->getId()->toRfc4122();
         $db->executeStatement("UPDATE customer SET email = 'compta@carthage' WHERE id = ?", [$this->customerId]);
-        $db->executeStatement("INSERT INTO contact (id, company_id, customer_id, first_name, phone, is_primary, created_at, updated_at) VALUES (gen_random_uuid(), ?, ?, 'Leila', '12', false, now(), now())", [$company, $this->customerId]);
-        $vendor = $db->fetchOne("INSERT INTO vendor (id, company_id, number, name, email, is_active, created_at, updated_at) VALUES (gen_random_uuid(), ?, 'FRN-1', 'Atlas', 'achats@', true, now(), now()) RETURNING id", [$company]);
+        $db->executeStatement("INSERT INTO contact (id, company_id, customer_id, first_name, phone, is_primary, created_at, updated_at) VALUES (gen_random_uuid(), ?, ?, 'Leila', '12', false, ?, ?)", [$company, $this->customerId, self::apiNow(), self::apiNow()]);
+        $vendor = $db->fetchOne("INSERT INTO vendor (id, company_id, number, name, email, is_active, created_at, updated_at) VALUES (gen_random_uuid(), ?, 'FRN-1', 'Atlas', 'achats@', true, ?, ?) RETURNING id", [$company, self::apiNow(), self::apiNow()]);
         $seen = $this->customerOf($this->company, 'Déjà vu');
         $db->executeStatement("UPDATE customer SET email = 'x@', to_check = true, check_note = 'Vu au téléphone' WHERE id = ?", [$seen]);
         $night = function (): void {

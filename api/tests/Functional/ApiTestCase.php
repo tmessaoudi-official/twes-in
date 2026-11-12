@@ -133,11 +133,12 @@ abstract class ApiTestCase extends WebTestCase
     /**
      * Now as the API stamps it, its clock in UTC to the second, for a row a test writes in SQL beside the API's own
      * stamps: the database's `now()` is the test transaction's start, which can fall a second before a request the test
-     * made since, so a row written « after » it would read as before it.
+     * made since, so a row written « after » it would read as before it. Shifted (`-1 hour`), it is that moment from the
+     * held instant, for a row placed before or after the API's.
      */
-    protected static function apiNow(): string
+    protected static function apiNow(string $shift = 'now'): string
     {
-        return self::heldNow()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        return self::heldNow()->modify($shift)->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
     }
 
     /** Now by the clock the API reads, which setUp holds still: what a test stamps beside the API's own stamps. */

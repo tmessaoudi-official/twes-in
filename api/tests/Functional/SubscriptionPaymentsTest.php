@@ -207,7 +207,7 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $paidThrough = $this->em()->getConnection()->fetchOne('SELECT paid_until FROM subscription WHERE company_id = ?', [$company->getId()->toRfc4122()]);
 
         $this->em()->find(PaymentDeclaration::class, Uuid::fromString($declarationId)) ?? throw new \LogicException('no declaration');
-        $this->em()->getConnection()->executeStatement("UPDATE payment_declaration SET status = 'rejected', decided_at = now() WHERE id = ?", [$declarationId]);
+        $this->em()->getConnection()->executeStatement("UPDATE payment_declaration SET status = 'rejected', decided_at = ? WHERE id = ?", [self::apiNow(), $declarationId]);
 
         try {
             static::getContainer()->get(ManagePayments::class)->decide(Uuid::fromString($declarationId), true, $operator->getId());

@@ -24,6 +24,10 @@ final readonly class DbalJournalAddresses implements JournalAddresses
         return self::count($this->connection->fetchOne('SELECT public.audit_erase_address(?)', [$address]));
     }
 
+    /**
+     * Counted back from the database's own clock, not the application's: the function holds the twelve-month floor for
+     * the journal the application cannot rewrite, and a moment the application handed it could move that floor.
+     */
     public function purgeFailedSignIns(int $months): int
     {
         return self::count($this->connection->fetchOne('SELECT public.audit_purge_failed_sign_in_addresses(?)', [$months]));

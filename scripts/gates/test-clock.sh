@@ -53,7 +53,13 @@ clock_call="(^|[^a-zA-Z0-9_>\$:'\"])\\\\?(date|gmdate|strtotime|mktime)[[:space:
 wall_moment="new[[:space:]]+\\\\?DateTime(Immutable)?[[:space:]]*\\([[:space:]]*(\\)|['\"](now|[+-]))"
 wall_call="(^|[^a-zA-Z0-9_>\$:'\"])\\\\?time[[:space:]]*\\("
 wall="${wall_moment}|${wall_call}|new[[:space:]]+\\\\?(Symfony\\\\Component\\\\Clock\\\\)?NativeClock[[:space:]]*\\("
-said='//[[:space:]]*test-clock:[[:space:]]*[^[:space:]]'
+# The database's clock in SQL a case writes, matched on the line lowercased: its now() is the wall's, at the
+# transaction's start, and its CURRENT_DATE is UTC's day, not the company's. Never a clock's now() method, a method
+# declared now(), or a variable or property named current_date.
+db_clock="(^|[^a-z0-9_>\$:])now[[:space:]]*\\(\\)|(^|[^a-z0-9_>\$])(current_(date|time|timestamp)|localtime(stamp)?)([^a-z0-9_]|\$)|(^|[^a-z0-9_>\$:])(clock|statement|transaction)_timestamp[[:space:]]*\\("
+declared_now='function[[:space:]]+now[[:space:]]*\('
+# A reason, in PHP or, inside an SQL string, as an SQL comment.
+said='(//|--)[[:space:]]*test-clock:[[:space:]]*[^[:space:]]'
 seen=0
 while IFS= read -r file; do
   seen=$((seen + 1))
@@ -66,7 +72,11 @@ while IFS= read -r file; do
     read_off=0
     [[ "$code" =~ $day_shift ]] && ! [[ "$code" =~ $moment ]] && read_off=1
     [[ "$code" =~ $clock_word || "$code" =~ $clock_call ]] && read_off=1
-    [[ "$file" == "$root/api/tests/Functional/"* || "$file" == "$root/api/tests/Concurrency/"* ]] && [[ "$code" =~ $wall ]] && read_off=1
+    if [[ "$file" == "$root/api/tests/Functional/"* || "$file" == "$root/api/tests/Concurrency/"* ]]; then
+      [[ "$code" =~ $wall ]] && read_off=1
+      lower=${code,,}
+      [[ "$lower" =~ $db_clock ]] && ! [[ "$lower" =~ $declared_now ]] && read_off=1
+    fi
     if ((read_off)) && ! [[ "$line" =~ $said || "$previous" =~ $said ]]; then
       problems+=("${file#"$root/"}:$n: ${code:0:110}")
     fi

@@ -211,7 +211,7 @@ final class ProductMergeTest extends ApiTestCase
         $this->signedIn();
         [$kept, $merged] = [$this->products['VIS-6'], $this->products['VIS-6B']];
         $this->received($kept, '3', '4.000');
-        $this->em()->getConnection()->executeStatement("INSERT INTO stock_movement (id, company_id, product_id, location_id, kind, quantity, source_type, reason, at, cost_typed, cost_to_complete) VALUES (?, ?, ?, ?, 'out', -2, 'loss', 'broken', now() - interval '1 hour', false, false)", [Uuid::v7()->toRfc4122(), $this->companyId(), $merged, $this->site()]);
+        $this->em()->getConnection()->executeStatement("INSERT INTO stock_movement (id, company_id, product_id, location_id, kind, quantity, source_type, reason, at, cost_typed, cost_to_complete) VALUES (?, ?, ?, ?, 'out', -2, 'loss', 'broken', ?, false, false)", [Uuid::v7()->toRfc4122(), $this->companyId(), $merged, $this->site(), self::apiNow('-1 hour')]);
 
         $this->merged($kept, [$merged]);
 
@@ -575,12 +575,11 @@ final class ProductMergeTest extends ApiTestCase
         $invoice = $this->anInvoice($merged, issued: true);
         // The report reads what issuing writes; issuing for real is the invoices' own tests.
         $connection = $this->em()->getConnection();
-        $connection->executeStatement('UPDATE invoice SET issue_date = CURRENT_DATE, total_net = 12, amount_due = 12 WHERE id = ?', [$invoice]);
+        $connection->executeStatement('UPDATE invoice SET issue_date = ?, total_net = 12, amount_due = 12 WHERE id = ?', [self::dayOf($this->company), $invoice]);
         $connection->executeStatement('UPDATE invoice_line SET line_net = 12 WHERE invoice_id = ?', [$invoice]);
         $this->merged($kept, [$merged]);
 
-        $today = $connection->fetchOne('SELECT CURRENT_DATE::text');
-        self::assertIsString($today);
+        $today = self::dayOf($this->company);
         $this->getJson($this->path("reports/sales-by-product?from=$today&to=$today"));
 
         self::assertResponseIsSuccessful();
@@ -608,10 +607,7 @@ final class ProductMergeTest extends ApiTestCase
         $connection = $this->em()->getConnection();
         $connection->executeStatement("UPDATE stock_movement SET at = at - interval '100 days'");
         $this->merged($kept, [$merged]);
-        $from = $connection->fetchOne('SELECT (CURRENT_DATE - 1)::text');
-        $to = $connection->fetchOne('SELECT (CURRENT_DATE + 1)::text');
-        self::assertIsString($from);
-        self::assertIsString($to);
+        [$from, $to] = [self::dayOf($this->company, '-1 day'), self::dayOf($this->company, '+1 day')];
 
         $this->getJson($this->path("reports/stock-movements?from=$from&to=$to"));
         self::assertResponseIsSuccessful();
@@ -619,7 +615,7 @@ final class ProductMergeTest extends ApiTestCase
 
         $this->getJson($this->path('reports/dead-stock'));
         self::assertResponseIsSuccessful();
-        self::assertSame([['VIS-6', '4.000', $connection->fetchOne("SELECT ((now() - interval '100 days') AT TIME ZONE 'Africa/Tunis')::date::text")]], $this->reportRows(['reference', 'on_hand', 'last_sold']));
+        self::assertSame([['VIS-6', '4.000', self::dayOf($this->company, '-100 days')]], $this->reportRows(['reference', 'on_hand', 'last_sold']));
 
         $this->getJson($this->path("stock-movements?productId[]=$kept"));
         self::assertResponseIsSuccessful();
@@ -740,7 +736,7 @@ final class ProductMergeTest extends ApiTestCase
     {
         $invoice = $this->anInvoice($product, issued: true);
         $connection = $this->em()->getConnection();
-        $connection->executeStatement("UPDATE product SET created_at = now() - interval '120 days' WHERE company_id = ?", [$this->companyId()]);
+        $connection->executeStatement('UPDATE product SET created_at = ? WHERE company_id = ?', [self::apiNow('-120 days'), $this->companyId()]);
         $connection->executeStatement('UPDATE invoice SET issue_date = CAST(? AS date) WHERE id = ?', [self::dayOf($this->company, "-$days days"), $invoice]);
     }
 

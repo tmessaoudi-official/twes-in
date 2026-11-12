@@ -85,7 +85,7 @@ final class DemoSandboxRemovalTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(0, $this->removals()->doneWith(), 'no request after the claim yet, but the claim is recent');
 
-        $this->em()->getConnection()->executeStatement("UPDATE demo_sandbox SET claimed_at = now() - interval '3 hours' WHERE state = 'claimed'");
+        $this->em()->getConnection()->executeStatement("UPDATE demo_sandbox SET claimed_at = ? WHERE state = 'claimed'", [self::apiNow('-3 hours')]);
 
         self::assertSame(1, $this->removals()->doneWith());
     }

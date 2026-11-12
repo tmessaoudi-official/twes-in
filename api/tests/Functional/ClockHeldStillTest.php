@@ -57,6 +57,13 @@ final class ClockHeldStillTest extends ApiTestCase
         self::assertSame('2000-01-01 12:00:00', self::apiNow());
     }
 
+    public function testARowStampedBeforeOrAfterTheApiCountsFromTheHeldClock(): void
+    {
+        Clock::set(new MockClock(new \DateTimeImmutable('2000-01-01 00:30:00', new \DateTimeZone('Africa/Tunis'))));
+
+        self::assertSame(['1999-12-31 22:30:00', '1999-12-31 23:31:00'], [self::apiNow('-1 hour'), self::apiNow('+1 minute')], 'shifted from the held instant, written in UTC');
+    }
+
     public function testSigningInWithAnAuthenticatorReadsTheClockTheApiReads(): void
     {
         $this->createUser('owner@twes.local', self::PASSWORD, $this->createCompany(), authenticator: true);
