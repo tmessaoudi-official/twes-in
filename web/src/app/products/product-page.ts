@@ -200,11 +200,17 @@ export class ProductPage {
     const options = this.facade.options();
     return options === null
       ? null
-      : productForm(options, this.facade.categories(), this.facade.customFields(), {
-          cost: this.showsCost(),
-          newProduct: this.id() === null,
-          vendors: this.showsVendors(),
-        });
+      : productForm(
+          options,
+          this.facade.categories(),
+          this.facade.customFields(),
+          {
+            cost: this.showsCost(),
+            newProduct: this.id() === null,
+            vendors: this.showsVendors(),
+          },
+          this.facade.unreadParts(),
+        );
   });
   /** The vendor book searched while naming who it is bought from, and the vendors it names as the product says them. */
   protected readonly pickers = computed((): Record<string, PickSource> => {
@@ -572,8 +578,15 @@ export class ProductPage {
     const companyId = this.company()?.id;
     const options = this.facade.options();
     if (!companyId || options === null || this.busy()) return;
-    const typed = productInput(values, options, this.facade.customFields(), this.current() ?? null);
     const id = this.id();
+    if (id === null && this.facade.customFieldsUnread()) {
+      this.feedback.failure('unread.create_held');
+      return;
+    }
+    const read = productInput(values, options, this.facade.customFields(), this.current() ?? null);
+    // With its fields unread the form drew none: what the product holds goes back as read, as a field left out is emptied.
+    const kept = this.facade.customFieldsUnread() ? this.current()?.customFields : undefined;
+    const typed = kept === undefined ? read : { ...read, customFields: { ...kept } };
     if (id === null) {
       // The proposal left as it was is sent empty, so the API gives the next free one even if another save took it.
       const proposal = this.proposal();

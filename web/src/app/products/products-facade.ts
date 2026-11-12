@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { CustomFieldsApi, CustomFieldsRefused } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
+import { readPart, unreadOf } from '../shared/errors/read-part';
 import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { SettingRow } from '../shared/settings/settings-types';
 import type { ExportFormat } from '../shared/list/export-address';
@@ -46,6 +47,7 @@ export class ProductsFacade {
   private readonly defaultTrackingSignal = sessionSignal<ProductTracking>('none');
   private readonly state = requestState(codeOf);
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly unreadPartsSignal = sessionSignal<readonly UnreadPart[]>([]);
 
   readonly products = this.productsSignal.asReadonly();
   /** How many products the last search found in all, the page shown being one part of them. */
@@ -68,6 +70,15 @@ export class ProductsFacade {
   readonly readRefusedFilter = this.state.readRefusedFilter;
   /** The fields the last save was refused on, for the form to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
+  /** The parts another read answers that the last load could not read: the screen shows without them, naming each. */
+  readonly unreadParts = this.unreadPartsSignal.asReadonly();
+  /**
+   * Whether the custom fields were not read: the form then draws none, and a save sends back the values the product was
+   * read with, since a field left out of a save is emptied.
+   */
+  readonly customFieldsUnread = computed(() =>
+    this.unreadPartsSignal().some((part) => part.unread === 'custom_fields'),
+  );
 
   /**
    * The few vendors a person means while typing, by id the ones a product names. A search that fails answers nothing
@@ -89,11 +100,12 @@ export class ProductsFacade {
       const [categories, options, customFields] = await Promise.all([
         this.api.categories(companyId),
         this.api.options(companyId),
-        this.fields.list(companyId, 'product'),
+        this.customFieldsPart(companyId),
       ]);
       this.categoriesSignal.set(categories);
       this.optionsSignal.set(options);
-      this.customFieldsSignal.set(customFields);
+      this.customFieldsSignal.set(customFields.value);
+      this.unreadPartsSignal.set(unreadOf(customFields));
     });
   }
 
@@ -131,18 +143,19 @@ export class ProductsFacade {
       const [options, categories, customFields, product, articles] = await Promise.all([
         this.api.options(companyId),
         this.api.categories(companyId),
-        this.fields.list(companyId, 'product'),
+        this.customFieldsPart(companyId),
         id === null ? Promise.resolve(null) : this.api.product(companyId, id),
         // Only a new product starts in the company's default unit; an existing one has its own.
-        id === null ? this.settings.chain(companyId, 'articles') : Promise.resolve(null),
+        id === null ? this.articleDefaultsPart(companyId) : Promise.resolve(null),
       ]);
       if (articles !== null) {
-        this.defaultUnitCodeSignal.set(unitCodeOf(articles));
-        this.defaultTrackingSignal.set(trackingOfRows(articles));
+        this.defaultUnitCodeSignal.set(unitCodeOf(articles.value));
+        this.defaultTrackingSignal.set(trackingOfRows(articles.value));
       }
       this.optionsSignal.set(options);
       this.categoriesSignal.set(categories);
-      this.customFieldsSignal.set(customFields);
+      this.customFieldsSignal.set(customFields.value);
+      this.unreadPartsSignal.set(unreadOf(customFields, ...(articles === null ? [] : [articles])));
       this.productSignal.set(product);
     });
   }
@@ -228,6 +241,23 @@ export class ProductsFacade {
 
   private async reloadCategories(companyId: string): Promise<void> {
     this.categoriesSignal.set(await this.api.categories(companyId));
+  }
+
+  /** The custom fields another feature declares: the product shows without them, and a save sends its values back. */
+  private customFieldsPart(companyId: string) {
+    return readPart(this.fields.list(companyId, 'product'), 'custom_fields', [], (error) =>
+      error instanceof CustomFieldsRefused ? error.code : null,
+    );
+  }
+
+  /** A new product's defaults from the articles settings: without them it starts with no unit or tracking chosen. */
+  private articleDefaultsPart(companyId: string) {
+    return readPart(
+      this.settings.chain(companyId, 'articles'),
+      'article_defaults',
+      [] as SettingRow[],
+      (error) => (error instanceof SettingsRefused ? error.code : null),
+    );
   }
 
   private async read(load: () => Promise<void>): Promise<void> {

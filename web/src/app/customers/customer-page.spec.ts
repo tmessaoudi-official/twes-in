@@ -3,10 +3,11 @@ import type { CustomFieldDefinition } from '../shared/custom-fields/custom-field
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -43,6 +44,7 @@ import { LiveChanges, type LiveChange } from '../shared/realtime/live-changes';
 import {
   offeredNext,
   provideQuietFeedback,
+  failureToasts,
   type RecordedFeedback,
   successToasts,
 } from '../shared/testing/feedback';
@@ -132,6 +134,7 @@ describe('CustomerPage', () => {
   const customFields = signal<readonly CustomFieldDefinition[]>([]);
   const optionsSignal = signal<CustomerOptions | null>(options);
   const readFailed = signal(false);
+  const unreadParts = signal<readonly UnreadPart[]>([]);
   const facade = {
     options: optionsSignal.asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([]).asReadonly(),
@@ -150,6 +153,10 @@ describe('CustomerPage', () => {
     removeContact: vi.fn(),
     clearError: vi.fn(),
     customFields: customFields.asReadonly(),
+    unreadParts: unreadParts.asReadonly(),
+    customFieldsUnread: computed(() =>
+      unreadParts().some((part) => part.unread === 'custom_fields'),
+    ),
   };
   const modules = new Set<string>(['customers', 'invoices']);
   const auth = {
@@ -268,6 +275,7 @@ describe('CustomerPage', () => {
     refusals.set([]);
     customer.set(null);
     customFields.set([]);
+    unreadParts.set([]);
     optionsSignal.set(options);
     facade.loadCustomer.mockReset().mockResolvedValue(undefined);
     // As the real facade does: what it created becomes the record on screen. A stub that skipped this would
@@ -724,6 +732,57 @@ describe('CustomerPage', () => {
       1,
     );
     expect(successToasts()).toContain('customers.saved');
+  });
+
+  it('sends back the custom values the customer was read with while its fields could not be read, so none is emptied', async () => {
+    customer.set({ ...carthage, customFields: { sector: 'retail', legacy: 'A12' } });
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await open('k1');
+
+    type('field-email', 'compta@carthage.tn');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseCustomer).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({
+        email: 'compta@carthage.tn',
+        customFields: { sector: 'retail', legacy: 'A12' },
+      }),
+      1,
+    );
+  });
+
+  it('says each part it could not read where the part would be, the customer and its group kept', async () => {
+    customer.set({ ...carthage, customerGroupId: 'g1' });
+    unreadParts.set([
+      { unread: 'customer_groups', code: 'quota_spent' },
+      { unread: 'custom_fields', code: 'not_found' },
+    ]);
+    await open('k1');
+
+    expect((q('field-number') as HTMLInputElement).value).toBe('CLI-0001');
+    expect(q('section-unread-custom')?.textContent?.trim()).toBe('unread.custom_fields');
+    expect(q('field-unread-customerGroupId')?.textContent?.trim()).toBe('unread.customer_groups');
+    expect(
+      q('field-unread-customerGroupId')?.closest('[data-testid="field-wrapper-customerGroupId"]'),
+    ).not.toBeNull();
+  });
+
+  it('holds a new customer while its custom fields could not be read, saying why, and creates none', async () => {
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await open(undefined);
+
+    type('field-number', 'CLI-0009');
+    type('field-name', 'Carthage Conseil');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.createCustomer).not.toHaveBeenCalled();
+    expect(failureToasts()).toEqual(['unread.create_held']);
   });
 
   // A customer's phone, and its contacts', are read by its billing country as the API reads them (ruled 2026-10-29).

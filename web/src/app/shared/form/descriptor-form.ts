@@ -35,6 +35,7 @@ import { emailTypo } from './email-rule';
 import { PickField, type PickOption } from './pick-field';
 import type { ExplainNone } from '../unoffered/unoffered-products';
 import { Select } from './select';
+import { RefusalPipe } from '../errors/refusal-pipe';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
 import type { FieldRefusal } from './field-refusals';
 import type { FieldConflict } from './form-merge';
@@ -94,6 +95,7 @@ export interface PickSource {
     PhoneField,
     PickField,
     Select,
+    RefusalPipe,
   ],
   templateUrl: './descriptor-form.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

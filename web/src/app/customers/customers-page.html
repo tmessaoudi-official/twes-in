@@ -25,6 +25,7 @@
         {{ code | refusal: 'customers.errors' }}
       </p>
     }
+    <app-unread-parts [parts]="unreadParts()" testId="customers-unread" />
 
     <app-data-list
       [descriptor]="list()"

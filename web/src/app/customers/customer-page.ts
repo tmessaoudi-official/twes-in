@@ -167,7 +167,12 @@ export class CustomerPage {
     const options = this.facade.options();
     return options === null
       ? null
-      : customerForm(options, this.facade.groups(), this.facade.customFields());
+      : customerForm(
+          options,
+          this.facade.groups(),
+          this.facade.customFields(),
+          this.facade.unreadParts(),
+        );
   });
   /**
    * What the form is of: the customer and the fields shown. Reading the customer again yields new objects with the
@@ -422,7 +427,17 @@ export class CustomerPage {
     const companyId = this.company()?.id;
     const options = this.facade.options();
     if (!companyId || options === null || this.busy()) return;
-    const input = customerInput(values, options, this.facade.customFields());
+    // A new customer's custom fields are unknown while unread, a required one among them: nothing is created blind.
+    if (this.id() === null && this.facade.customFieldsUnread()) {
+      this.feedback.failure('unread.create_held');
+      return;
+    }
+    const typed = customerInput(values, options, this.facade.customFields());
+    // With its fields unread the form drew none: what the customer holds goes back as read, as a field left out is emptied.
+    const kept = this.facade.customFieldsUnread()
+      ? this.facade.customer()?.customFields
+      : undefined;
+    const input = kept === undefined ? typed : { ...typed, customFields: { ...kept } };
     const id = this.id();
     if (id === null) {
       const created = await this.facade.createCustomer(companyId, input);

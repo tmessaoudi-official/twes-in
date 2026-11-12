@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { DOCUMENT, signal } from '@angular/core';
+import { computed, DOCUMENT, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter, Router } from '@angular/router';
@@ -16,6 +16,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -40,7 +41,12 @@ import type {
   ProductRow,
   ProductsError,
 } from './products-types';
-import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  effectToasts,
+  failureToasts,
+  provideQuietFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { Feedback } from '../shared/feedback/feedback';
 import { AddToDocuments } from '../shared/documents/add-to-documents';
@@ -103,6 +109,7 @@ describe('ProductPage', () => {
   const optionsSignal = signal<ProductOptions | null>(options);
   const categories = signal<readonly ProductCategoryRow[]>([]);
   const readFailed = signal(false);
+  const unreadParts = signal<readonly UnreadPart[]>([]);
   const facade = {
     options: optionsSignal.asReadonly(),
     categories: categories.asReadonly(),
@@ -124,6 +131,10 @@ describe('ProductPage', () => {
     referencePreview: vi.fn(),
     settlePriceReview: vi.fn(),
     pickVendors: vi.fn(),
+    unreadParts: unreadParts.asReadonly(),
+    customFieldsUnread: computed(() =>
+      unreadParts().some((part) => part.unread === 'custom_fields'),
+    ),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -182,6 +193,7 @@ describe('ProductPage', () => {
     error.set(null);
     refusals.set([]);
     product.set(null);
+    unreadParts.set([]);
     optionsSignal.set(options);
     facade.loadProduct.mockReset().mockResolvedValue(undefined);
     facade.loadSubstitutionGroups.mockReset().mockResolvedValue(undefined);
@@ -340,6 +352,59 @@ describe('ProductPage', () => {
       expect.objectContaining({ vendorIds: null }),
       laptop.version,
     );
+  });
+
+  it('sends back the custom values the product was read with while its fields could not be read, so none is emptied', async () => {
+    product.set({ ...laptop, customFields: { warranty: '24', legacy: 'B7' } });
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await open(laptop.id);
+
+    type('field-name', 'Portable 15"');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseProduct).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({
+        name: 'Portable 15"',
+        customFields: { warranty: '24', legacy: 'B7' },
+      }),
+      laptop.version,
+    );
+  });
+
+  it('says each part it could not read where the part would be, the product kept', async () => {
+    product.set(laptop);
+    unreadParts.set([
+      { unread: 'custom_fields', code: 'not_found' },
+      { unread: 'article_defaults', code: 'quota_spent' },
+    ]);
+    await open(laptop.id);
+
+    expect((q('field-reference') as HTMLInputElement).value).toBe('ART-001');
+    expect(q('section-unread-custom')?.textContent?.trim()).toBe('unread.custom_fields');
+    expect(q('field-unread-unitId')?.textContent?.trim()).toBe('unread.article_defaults');
+    expect(
+      q('field-unread-unitId')?.closest('[data-testid="field-wrapper-unitId"]'),
+    ).not.toBeNull();
+  });
+
+  it('holds a new product while its custom fields could not be read, saying why, and creates none', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await open(undefined);
+
+    type('field-reference', 'ART-009');
+    type('field-name', 'Souris');
+    type('field-unitPriceNet', '25.5');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.createProduct).not.toHaveBeenCalled();
+    expect(failureToasts()).toEqual(['unread.create_held']);
   });
 
   it('shows no margin notice on a product no receipt moved', async () => {

@@ -2,6 +2,7 @@
 
 import { inject, Injectable } from '@angular/core';
 import { CustomersApi, CustomersRefused } from '../customers/customers-api';
+import { readPart, unreadOf } from '../shared/errors/read-part';
 import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
@@ -29,6 +30,7 @@ export class PriceListsFacade {
   private readonly groupsSignal = sessionSignal<readonly CustomerGroupRow[]>([]);
   private readonly figuresSignal = sessionSignal<ReadonlyMap<string, ProductFigures>>(new Map());
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly unreadPartsSignal = sessionSignal<readonly UnreadPart[]>([]);
   private readonly state = requestState<PriceListsError | UnreadPart | UnknownRefusal>((error) => {
     if (error instanceof CustomersRefused) return unreadPart('customer_groups', error.code);
     return error instanceof PriceListsRefused ? error.code : 'network';
@@ -44,15 +46,20 @@ export class PriceListsFacade {
   readonly readFailed = this.state.readFailed;
   /** The fields the last save was refused on, for the editor to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
+  /** The customer groups, when they could not be read: the lists still show, a group-scoped one keeping its group. */
+  readonly unreadParts = this.unreadPartsSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
     await this.run(async () => {
       const [lists, groups] = await Promise.all([
         this.api.list(companyId),
-        this.customers.groups(companyId),
+        readPart(this.customers.groups(companyId), 'customer_groups', [], (error) =>
+          error instanceof CustomersRefused ? error.code : null,
+        ),
       ]);
       this.listsSignal.set(lists);
-      this.groupsSignal.set(groups);
+      this.groupsSignal.set(groups.value);
+      this.unreadPartsSignal.set(unreadOf(groups));
       return true;
     }, true);
   }

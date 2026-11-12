@@ -276,18 +276,55 @@ describe('ProductsFacade', () => {
     expect(facade.busy()).toBe(false);
   });
 
-  it('names the part another feature could not read for the products, and says the network only when it was', async () => {
+  it('keeps the list when the custom fields could not be read, naming them, and says the network only when it was', async () => {
     fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('invalid'));
     await facade.loadListContext('c1');
-    expect(facade.error()).toEqual({ unread: 'custom_fields', code: 'invalid' });
-
-    settingsApi.chain.mockRejectedValueOnce(new SettingsRefused({ unknown: 'brand_new' }));
-    await facade.loadProduct('c1', null);
-    expect(facade.error()).toEqual({ unread: 'article_defaults', code: 'brand_new' });
+    expect(facade.error()).toBeNull();
+    expect(facade.readFailed()).toBe(false);
+    expect(facade.categories()).toEqual([hardware]);
+    expect(facade.customFields()).toEqual([]);
+    expect(facade.unreadParts()).toEqual([{ unread: 'custom_fields', code: 'invalid' }]);
 
     fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('network'));
-    await facade.loadProduct('c1', null);
+    await facade.loadListContext('c1');
     expect(facade.error()).toBe('network');
+  });
+
+  it('shows the product when its custom fields could not be read, and a new one without the defaults it could not read', async () => {
+    api.product.mockResolvedValue(laptop);
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('invalid'));
+    await facade.loadProduct('c1', 'p1');
+    expect(facade.error()).toBeNull();
+    expect(facade.product()).toEqual(laptop);
+    expect(facade.unreadParts()).toEqual([{ unread: 'custom_fields', code: 'invalid' }]);
+    expect(facade.customFieldsUnread()).toBe(true);
+
+    settingsApi.chain.mockResolvedValueOnce([
+      { key: 'article.default_unit', value: 'HUR' } as SettingRow,
+    ]);
+    await facade.loadProduct('c1', null);
+    expect(facade.defaultUnitCode()).toBe('HUR');
+    settingsApi.chain.mockRejectedValueOnce(new SettingsRefused({ unknown: 'brand_new' }));
+    await facade.loadProduct('c1', null);
+    expect(facade.error()).toBeNull();
+    expect(facade.unreadParts()).toEqual([{ unread: 'article_defaults', code: 'brand_new' }]);
+    expect(facade.customFieldsUnread()).toBe(false);
+    expect(facade.defaultUnitCode()).toBeNull();
+  });
+
+  it('still fails the page when the product itself is refused, and forgets the parts once they read again', async () => {
+    api.product.mockRejectedValueOnce(new ProductsRefused('not_found'));
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('invalid'));
+    await facade.loadProduct('c1', 'p1');
+    expect(facade.error()).toBe('not_found');
+    expect(facade.readFailed()).toBe(true);
+
+    api.product.mockResolvedValue(laptop);
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('invalid'));
+    await facade.loadProduct('c1', 'p1');
+    expect(facade.unreadParts()).toHaveLength(1);
+    await facade.loadProduct('c1', 'p1');
+    expect(facade.unreadParts()).toEqual([]);
   });
 
   it('hands the calculator a price refused in words, and nothing for a preview the API could not count', async () => {

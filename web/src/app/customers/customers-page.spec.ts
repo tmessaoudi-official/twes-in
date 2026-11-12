@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -77,6 +78,7 @@ const wholesalers: CustomerGroupRow = {
 };
 
 describe('CustomersPage', () => {
+  const unreadParts = signal<readonly UnreadPart[]>([]);
   const facade = {
     customers: signal<readonly CustomerRow[]>([amel, amelSousse]).asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([wholesalers]).asReadonly(),
@@ -85,6 +87,7 @@ describe('CustomersPage', () => {
     readFailed: signal(false).asReadonly(),
     readRefusedFilter: signal(false).asReadonly(),
     customFields: signal([]).asReadonly(),
+    unreadParts: unreadParts.asReadonly(),
     options: signal(null).asReadonly(),
     total: signal(2).asReadonly(),
     loadListContext: vi.fn(),
@@ -111,6 +114,7 @@ describe('CustomersPage', () => {
   }
 
   beforeEach(async () => {
+    unreadParts.set([]);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -152,6 +156,15 @@ describe('CustomersPage', () => {
     ).toBe('neutral');
     // The row's own name is the link now (design review finding 1).
     expect(q('list-link-k1')?.getAttribute('href')).toBe('/customers/k1');
+  });
+
+  it('keeps its rows when a part it reads beside them could not be read, naming the part under the title', async () => {
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await settle();
+
+    expect(q('customer-CLI-0001')?.textContent).toContain('Amel Trabelsi');
+    expect(q('customers-unread-custom_fields')?.textContent?.trim()).toBe('unread.custom_fields');
+    expect(q('customers-error')).toBeNull();
   });
 
   it('asks the API for the first page of customers, by number', () => {

@@ -26,6 +26,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { type HomesWrite, ProductHomes } from './product-homes-facade';
 import type { ProductHomeRow } from './products-types';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { UnreadParts } from '../shared/feedback/unread-parts';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
 /**
@@ -41,6 +42,7 @@ import { RefusalPipe } from '../shared/errors/refusal-pipe';
   imports: [
     RefusalPipe,
     ReadFailed,
+    UnreadParts,
     FormsModule,
     MatButtonModule,
     MatIconModule,
@@ -71,6 +73,7 @@ export class ProductHomesSection implements OnInit {
   protected readonly busy = this.homes.busy;
   protected readonly error = this.homes.error;
   protected readonly readFailed = this.homes.readFailed;
+  protected readonly unreadParts = this.homes.unreadParts;
   protected readonly chosen = signal('');
   /** A place chosen and not added yet. */
   private readonly unsaved = computed(() => (this.chosen() === '' ? 0 : 1));

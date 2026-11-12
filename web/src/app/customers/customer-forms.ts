@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import type { FormGroup } from '@angular/forms';
 import type { Subscription } from 'rxjs';
 import { CHECK_NOTE_MAX } from '../shared/check/check-note';
@@ -341,7 +342,10 @@ export function customerForm(
   options: CustomerOptions,
   groups: readonly CustomerGroupRow[],
   fields: readonly CustomFieldDefinition[] = [],
+  unread: readonly UnreadPart[] = [],
 ): FormDescriptor {
+  const unreadGroups = unread.find((part) => part.unread === 'customer_groups');
+  const unreadFields = unread.find((part) => part.unread === 'custom_fields');
   const identifiers: FormField[] = options.identifiers.map((identifier) => ({
     id: IDENTIFIER_PREFIX + identifier.key,
     label: identifier.label,
@@ -397,6 +401,7 @@ export function customerForm(
             { value: '', label: 'customers.form.no_group' },
             ...groups.map((group) => ({ value: group.id, label: group.name })),
           ],
+          ...(unreadGroups ? { unread: unreadGroups } : {}),
         },
         {
           id: 'isActive',
@@ -488,6 +493,12 @@ export function customerForm(
       ]),
     ],
   };
+  if (unreadFields) {
+    return {
+      ...descriptor,
+      sections: [...descriptor.sections, { ...section('custom', []), unread: unreadFields }],
+    };
+  }
   const custom = customFormFields(fields);
   return custom.length === 0
     ? descriptor

@@ -8,6 +8,7 @@ import {
   customListColumns,
 } from '../shared/custom-fields/custom-fields';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import { withCustomFields } from '../shared/form/form-builder';
 import type {
   FieldValue,
@@ -334,6 +335,8 @@ const section = (id: string, fields: FormField[]): FormSection => ({
  * The product form, from what the company offers: its active units, one box per active tax charged on a line, its
  * categories by path, then its custom fields for products. The API checks everything again. The cost is asked only
  * where it may be shown: to someone who may read costs, outside customer view (docs/SPEC.md § 7, 2026-09-23 slice 5).
+ * A part another feature could not read is said where it would be: the custom fields in their section, a new
+ * product's defaults under its unit.
  */
 export function productForm(
   options: ProductOptions,
@@ -342,8 +345,11 @@ export function productForm(
   shown: { readonly cost: boolean; readonly newProduct?: boolean; readonly vendors?: boolean } = {
     cost: true,
   },
+  unread: readonly UnreadPart[] = [],
 ): FormDescriptor {
   const labels = categoryLabels(categories);
+  const unreadFields = unread.find((part) => part.unread === 'custom_fields');
+  const unreadDefaults = unread.find((part) => part.unread === 'article_defaults');
   const taxes: FormField[] = [
     {
       id: 'defaultTaxComponentIds',
@@ -423,6 +429,7 @@ export function productForm(
             value: unit.id,
             label: unit.name,
           })),
+          ...(unreadDefaults ? { unread: unreadDefaults } : {}),
         },
         {
           id: 'unitPriceNet',
@@ -507,6 +514,12 @@ export function productForm(
       ]),
     ],
   };
+  if (unreadFields) {
+    return {
+      ...descriptor,
+      sections: [...descriptor.sections, { ...section('custom', []), unread: unreadFields }],
+    };
+  }
   const custom = customFormFields(fields);
   return custom.length === 0
     ? descriptor

@@ -28,6 +28,7 @@ import { PriceListsPage } from './price-lists-page';
 import type { ProductFigures } from './price-lists-figures';
 import type { PriceListRow } from './price-lists-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -92,6 +93,7 @@ describe('PriceListsPage', () => {
   const busy = signal(false);
   const error = signal<string | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
+  const unreadParts = signal<readonly UnreadPart[]>([]);
   const permissions = signal(true);
   const figures = signal<ReadonlyMap<string, ProductFigures>>(new Map());
   const facade = {
@@ -103,6 +105,7 @@ describe('PriceListsPage', () => {
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
     refusals: refusals.asReadonly(),
+    unreadParts: unreadParts.asReadonly(),
     figures: figures.asReadonly(),
     loadFigures: vi.fn(),
     load: vi.fn(),
@@ -126,6 +129,7 @@ describe('PriceListsPage', () => {
     facade.pickProducts.mockResolvedValue([{ id: 'p1', code: 'REF-1', name: 'Stylo' }]);
     facade.pickCustomerIds.mockResolvedValue([]);
     lists.set([everyone, wholesale]);
+    unreadParts.set([]);
     figures.set(new Map());
     permissions.set(true);
     await TestBed.configureTestingModule({
@@ -179,6 +183,17 @@ describe('PriceListsPage', () => {
     const line = query('price-list-Gros')!.textContent!.replace(/\s+/g, ' ');
     expect(line).toContain('Un groupe de clients · Revendeurs');
     expect(line).toContain('2026-01-01 → 2026-12-31');
+  });
+
+  it('keeps the lists when the customer groups could not be read, naming them under the title', async () => {
+    unreadParts.set([{ unread: 'customer_groups', code: 'not_found' }]);
+    const { query } = await render();
+
+    expect(query('price-list-Public')!.textContent).toContain('Tous les clients');
+    expect(query('price-lists-unread-customer_groups')?.textContent?.trim()).toBe(
+      'unread.customer_groups',
+    );
+    expect(query('price-lists-error')).toBeNull();
   });
 
   // Audit 2026-10-06, C-7: a list a teammate changes elsewhere is read again here.

@@ -4,6 +4,7 @@
     "article_defaults": "The articles' defaults could not be read (code: {{code}}). Reload the page; if it keeps happening, report this code.",
     "customer_groups": "The customer groups could not be read (code: {{code}}). Reload the page; if it keeps happening, report this code.",
     "stock_locations": "The stock locations could not be read (code: {{code}}). Reload the page; if it keeps happening, report this code.",
-    "vendors": "The vendors could not be read (code: {{code}}). Reload the page; if it keeps happening, report this code."
+    "vendors": "The vendors could not be read (code: {{code}}). Reload the page; if it keeps happening, report this code.",
+    "create_held": "Nothing is created until the custom fields have been read: reload the page."
   }
 }

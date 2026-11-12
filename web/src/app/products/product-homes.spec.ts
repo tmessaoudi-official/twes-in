@@ -12,6 +12,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { StockLocationRow } from '../inventory/inventory-types';
+import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
 import { Feedback } from '../shared/feedback/feedback';
@@ -67,6 +68,7 @@ describe('ProductHomesSection', () => {
   const locations = signal<readonly StockLocationRow[]>([location('l1', 'A-12')]);
   const readFailed = signal(false);
   const shownError = signal<string | null>(null);
+  const unreadParts = signal<readonly UnreadPart[]>([]);
   const facade = {
     homes: homes.asReadonly(),
     groups: computed(() => groupByEstablishment(homes())),
@@ -74,6 +76,7 @@ describe('ProductHomesSection', () => {
     busy: signal(false).asReadonly(),
     error: shownError.asReadonly(),
     readFailed: readFailed.asReadonly(),
+    unreadParts: unreadParts.asReadonly(),
     load: vi.fn(),
     add: vi.fn(),
     move: vi.fn(),
@@ -103,6 +106,7 @@ describe('ProductHomesSection', () => {
   beforeEach(() => {
     readFailed.set(false);
     shownError.set(null);
+    unreadParts.set([]);
     homes.set([]);
     locations.set([location('l1', 'A-12')]);
     facade.load.mockReset().mockResolvedValue(undefined);
@@ -271,6 +275,19 @@ describe('ProductHomesSection', () => {
     expect(q('product-home-add')).toBeNull();
     expect(q('product-home-remove-l1')).toBeNull();
     expect(q('product-home-up-l2')).toBeNull();
+  });
+
+  it('keeps the homes when the stock could not read its locations, naming them under the intro', async () => {
+    homes.set([home]);
+    locations.set([]);
+    unreadParts.set([{ unread: 'stock_locations', code: 'not_found' }]);
+    await open();
+
+    expect(q('product-home-main-l1')).not.toBeNull();
+    expect(q('product-homes-unread-stock_locations')?.textContent?.trim()).toBe(
+      'unread.stock_locations',
+    );
+    expect(q('product-homes-error')).toBeNull();
   });
 
   it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {

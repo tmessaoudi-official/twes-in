@@ -20,6 +20,12 @@
           {{ section.description | translate }}
         </p>
       }
+      @if (section.unread; as unread) {
+        <!-- read-retry: none, the part's sentence says to reload, which the unsaved count holds while anything is typed -->
+        <p role="alert" class="text-error" [attr.data-testid]="'section-unread-' + section.id">
+          {{ unread | refusal: 'form.errors' }}
+        </p>
+      }
       <div class="twes-form-fields grid items-start gap-x-5 gap-y-4 @min-[30rem]:grid-cols-2">
         @if (section.id === leadIn()) {
           <div class="flex min-w-0 flex-col @min-[30rem]:col-span-2">
@@ -405,6 +411,16 @@
                       </button>
                     </span>
                   </div>
+                }
+                @if (field.unread; as unread) {
+                  <!-- read-retry: none, the part's sentence says to reload, which the unsaved count holds while anything is typed -->
+                  <p
+                    role="alert"
+                    class="text-error"
+                    [attr.data-testid]="'field-unread-' + field.id"
+                  >
+                    {{ unread | refusal: 'form.errors' }}
+                  </p>
                 }
               </div>
             }

@@ -165,10 +165,17 @@ describe('ProductHomes', () => {
     expect(facade.error()).toBe('network');
   });
 
-  it('names the stock locations when the stock could not read them, and the network only when it was', async () => {
+  it('keeps the homes when the stock could not read its locations, naming them, and the network only when it was', async () => {
     stock.locations.mockRejectedValueOnce(new InventoryRefused('not_found'));
     await facade.load('c1', 'p1');
-    expect(facade.error()).toEqual({ unread: 'stock_locations', code: 'not_found' });
+    expect(facade.error()).toBeNull();
+    expect(facade.readFailed()).toBe(false);
+    expect(facade.homes()).toEqual([home('l1')]);
+    expect(facade.locations()).toEqual([]);
+    expect(facade.unreadParts()).toEqual([{ unread: 'stock_locations', code: 'not_found' }]);
+
+    await facade.load('c1', 'p1');
+    expect(facade.unreadParts()).toEqual([]);
 
     stock.locations.mockRejectedValueOnce(new InventoryRefused('network'));
     await facade.load('c1', 'p1');

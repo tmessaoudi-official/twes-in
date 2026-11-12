@@ -19,6 +19,7 @@
       {{ code | refusal: 'price_lists.errors' }}
     </p>
   }
+  <app-unread-parts [parts]="unreadParts()" testId="price-lists-unread" />
 
   @if (editing() !== null) {
     @if (sync.changedBy(); as changedBy) {

@@ -65,10 +65,17 @@ describe('PriceListsFacade', () => {
     expect(facade.busy()).toBe(false);
   });
 
-  it('names the customer groups when they could not be read, and the network only when it was', async () => {
+  it('keeps the lists when the customer groups could not be read, naming them, and the network only when it was', async () => {
     customers.groups.mockRejectedValueOnce(new CustomersRefused('invalid'));
     await facade.load('c1');
-    expect(facade.error()).toEqual({ unread: 'customer_groups', code: 'invalid' });
+    expect(facade.error()).toBeNull();
+    expect(facade.readFailed()).toBe(false);
+    expect(facade.lists()).toEqual([row]);
+    expect(facade.groups()).toEqual([]);
+    expect(facade.unreadParts()).toEqual([{ unread: 'customer_groups', code: 'invalid' }]);
+
+    await facade.load('c1');
+    expect(facade.unreadParts()).toEqual([]);
 
     customers.groups.mockRejectedValueOnce(new CustomersRefused('network'));
     await facade.load('c1');

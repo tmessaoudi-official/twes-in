@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { UnreadPart } from '../errors/unknown-refusal';
+
 export type FieldKind =
   | 'text'
   | 'email'
@@ -99,6 +101,8 @@ export interface FormField {
   visibleWhen?: FieldCondition;
   /** Shown and submitted as it stands, never changed here: a code numbered documents already carry. */
   readOnly?: boolean;
+  /** The part its choices come from, which another read could not answer: said under the field, the value kept. */
+  unread?: UnreadPart;
 }
 
 export interface FormSection {
@@ -108,6 +112,8 @@ export interface FormSection {
   /** A translation key: what the section is for, shown beside its title. */
   description?: string;
   fields: FormField[];
+  /** The part its fields come from, which another read could not answer: said in place of the fields. */
+  unread?: UnreadPart;
 }
 
 export interface FormDescriptor {

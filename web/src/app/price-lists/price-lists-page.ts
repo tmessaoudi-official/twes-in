@@ -27,6 +27,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { NgTemplateOutlet } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import { UnreadParts } from '../shared/feedback/unread-parts';
 import { merge, type Subscription, take } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { DescriptorFormGroup, FieldError } from '../shared/form/form-builder';
@@ -137,6 +138,7 @@ function pricesKey(
     MatSlideToggleModule,
     TranslatePipe,
     RefusalPipe,
+    UnreadParts,
     DataList,
     DataListCell,
     DecimalInput,
@@ -182,6 +184,7 @@ export class PriceListsPage implements OnInit {
   ]);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly unreadParts = this.facade.unreadParts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
 
   /** « Réessayer » on the list that could not be read: read as on opening, the activity bar showing it. */

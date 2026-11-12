@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ExportFormat } from '../shared/list/export-address';
-import { inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { CustomFieldsApi, CustomFieldsRefused } from '../shared/custom-fields/custom-fields-api';
+import { readPart, unreadOf } from '../shared/errors/read-part';
 import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
@@ -36,6 +37,7 @@ export class CustomersFacade {
   private readonly contactsSignal = sessionSignal<readonly ContactRow[]>([]);
   private readonly state = requestState(codeOf);
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly unreadPartsSignal = sessionSignal<readonly UnreadPart[]>([]);
 
   readonly customers = this.customersSignal.asReadonly();
   /** How many customers the last search found in all, the page shown being one part of them. */
@@ -53,6 +55,15 @@ export class CustomersFacade {
   readonly readRefusedFilter = this.state.readRefusedFilter;
   /** The fields the last save was refused on, each with the reason the screens translate. */
   readonly refusals = this.refusalsSignal.asReadonly();
+  /** The parts another read answers that the last load could not read: the screen shows without them, naming each. */
+  readonly unreadParts = this.unreadPartsSignal.asReadonly();
+  /**
+   * Whether the custom fields were not read: the form then draws none, and a save sends back the values the customer was
+   * read with, since a field left out of a save is emptied.
+   */
+  readonly customFieldsUnread = computed(() =>
+    this.unreadPartsSignal().some((part) => part.unread === 'custom_fields'),
+  );
 
   /**
    * What the list screen needs besides its page: the groups its rows name and it filters by, the custom fields it adds
@@ -61,13 +72,14 @@ export class CustomersFacade {
   async loadListContext(companyId: string): Promise<void> {
     await this.read(async () => {
       const [groups, customFields, options] = await Promise.all([
-        this.api.groups(companyId),
-        this.fields.list(companyId, 'customer'),
+        this.groupsPart(companyId),
+        this.customFieldsPart(companyId),
         this.api.options(companyId),
       ]);
-      this.groupsSignal.set(groups);
+      this.groupsSignal.set(groups.value);
       this.optionsSignal.set(options);
-      this.customFieldsSignal.set(customFields);
+      this.customFieldsSignal.set(customFields.value);
+      this.unreadPartsSignal.set(unreadOf(groups, customFields));
     });
   }
 
@@ -98,14 +110,15 @@ export class CustomersFacade {
     await this.read(async () => {
       const [options, groups, customFields, customer, contacts] = await Promise.all([
         this.api.options(companyId),
-        this.api.groups(companyId),
-        this.fields.list(companyId, 'customer'),
+        this.groupsPart(companyId),
+        this.customFieldsPart(companyId),
         id === null ? Promise.resolve(null) : this.api.customer(companyId, id),
         id === null ? Promise.resolve([]) : this.api.contacts(companyId, id),
       ]);
       this.optionsSignal.set(options);
-      this.groupsSignal.set(groups);
-      this.customFieldsSignal.set(customFields);
+      this.groupsSignal.set(groups.value);
+      this.customFieldsSignal.set(customFields.value);
+      this.unreadPartsSignal.set(unreadOf(groups, customFields));
       this.customerSignal.set(customer);
       this.contactsSignal.set(contacts);
     });
@@ -194,6 +207,20 @@ export class CustomersFacade {
 
   private async reloadContacts(companyId: string, customerId: string): Promise<void> {
     this.contactsSignal.set(await this.api.contacts(companyId, customerId));
+  }
+
+  /** The groups beside a customer or the list: a customer shows and saves without them, its own group kept. */
+  private groupsPart(companyId: string) {
+    return readPart(this.api.groups(companyId), 'customer_groups', [], (error) =>
+      error instanceof CustomersRefused ? error.code : null,
+    );
+  }
+
+  /** The custom fields another feature declares: the customer shows without them, and a save sends its values back. */
+  private customFieldsPart(companyId: string) {
+    return readPart(this.fields.list(companyId, 'customer'), 'custom_fields', [], (error) =>
+      error instanceof CustomFieldsRefused ? error.code : null,
+    );
   }
 
   private async read(load: () => Promise<void>): Promise<void> {

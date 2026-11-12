@@ -132,6 +132,33 @@ final class CustomFieldsTest extends ApiTestCase
         self::assertSame(['sector' => 'retail'], $this->json()['customFields'], 'a retired field keeps what the customer holds');
     }
 
+    /**
+     * A screen that could not read the company's fields saves a customer by sending back what it read of the customer
+     * itself: every value a record holds must be taken back as it is, a retired field's included, since a field left
+     * out of a save is emptied.
+     */
+    public function testTheValuesACustomerWasReadWithAreTakenBackAsTheyAre(): void
+    {
+        $this->signedIn(['company.read', 'company.settings', 'customer.read', 'customer.write']);
+        $this->sendJson('POST', $this->path(), self::sector());
+        $this->sendJson('POST', $this->path(), ['entity' => 'customer', 'key' => 'region', 'label' => 'Région', 'type' => 'text', 'required' => false, 'choices' => [], 'sortOrder' => 1, 'isActive' => true]);
+        $this->sendJson('POST', $this->path(), ['entity' => 'customer', 'key' => 'legacy', 'label' => 'Ancien', 'type' => 'text', 'required' => false, 'choices' => [], 'sortOrder' => 2, 'isActive' => true]);
+        $legacy = self::id($this->json());
+        $customers = '/api/companies/'.$this->company->getId()->toRfc4122().'/customers';
+        $this->sendJson('POST', $customers, self::customer(['sector' => 'retail', 'region' => 'Sfax', 'legacy' => 'A12']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = self::id($this->json());
+        $this->sendJson('PUT', $this->path($legacy), ['entity' => 'customer', 'key' => 'legacy', 'label' => 'Ancien', 'type' => 'text', 'required' => false, 'choices' => [], 'sortOrder' => 2, 'isActive' => false, 'version' => 1]);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($customers.'/'.$id);
+        $read = $this->json();
+        $this->sendJson('PUT', $customers.'/'.$id, [...self::customer([]), 'customFields' => (object) $read['customFields'], 'version' => $read['version'], 'notes' => 'Rappeler en janvier']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['legacy' => 'A12', 'region' => 'Sfax', 'sector' => 'retail'], $this->sorted($this->json()['customFields']));
+    }
+
     public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void
     {
         $this->signedIn(['company.read', 'company.settings']);
@@ -195,6 +222,19 @@ final class CustomFieldsTest extends ApiTestCase
         $this->createUser('admin@twes.local', 'password-1234', $this->company, $permissions, 'member');
         $this->login('admin@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+    }
+
+    /** @return array<string, mixed> */
+    private function sorted(mixed $values): array
+    {
+        self::assertIsArray($values);
+        $sorted = [];
+        foreach ($values as $key => $value) {
+            $sorted[(string) $key] = $value;
+        }
+        ksort($sorted);
+
+        return $sorted;
     }
 
     private function path(?string $id = null): string

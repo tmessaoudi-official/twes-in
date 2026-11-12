@@ -3,6 +3,7 @@
 import { requestState } from '../shared/feedback/request-state';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { InventoryApi, InventoryRefused } from '../inventory/inventory-api';
+import { readPart, unreadOf } from '../shared/errors/read-part';
 import { unreadPart, type UnreadPart, type UnknownRefusal } from '../shared/errors/unknown-refusal';
 import type { StockLocationRow } from '../inventory/inventory-types';
 import { ProductsApi, ProductsRefused } from './products-api';
@@ -30,6 +31,7 @@ export class ProductHomes {
   private readonly products = inject(ProductsFacade);
   private readonly homesSignal = signal<readonly ProductHomeRow[]>([]);
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
+  private readonly unreadPartsSignal = signal<readonly UnreadPart[]>([]);
   // The stock locations a home is chosen from are the stock's to read: their refusal names them, never the product.
   private readonly state = requestState<ProductsError | UnreadPart | UnknownRefusal>((error) =>
     error instanceof InventoryRefused
@@ -45,6 +47,8 @@ export class ProductHomes {
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
   readonly readFailed = this.state.readFailed;
+  /** The locations, when the stock could not read them: the homes still show, and none can be added until a reload. */
+  readonly unreadParts = this.unreadPartsSignal.asReadonly();
 
   /** The establishments this product is already at home in, so a second home there is offered as a move, not a duplicate. */
   readonly establishmentsAtHome = computed(
@@ -55,10 +59,13 @@ export class ProductHomes {
     await this.run(async () => {
       const [homes, locations] = await Promise.all([
         this.api.homes(companyId, productId),
-        this.stock.locations(companyId),
+        readPart(this.stock.locations(companyId), 'stock_locations', [], (error) =>
+          error instanceof InventoryRefused ? error.code : null,
+        ),
       ]);
       this.homesSignal.set(homes);
-      this.locationsSignal.set(locations);
+      this.locationsSignal.set(locations.value);
+      this.unreadPartsSignal.set(unreadOf(locations));
     }, true);
   }
 

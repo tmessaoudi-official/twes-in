@@ -137,16 +137,56 @@ describe('CustomersFacade', () => {
     expect(facade.error()).toBeNull();
   });
 
-  it('names the custom fields when they could not be read for the customers, and the network only when it was', async () => {
+  it('keeps the list when the custom fields could not be read, naming them, and fails it only on the network', async () => {
     api.groups.mockResolvedValue([wholesalers]);
     api.options.mockResolvedValue(options);
     fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('not_found'));
     await facade.loadListContext('c1');
-    expect(facade.error()).toEqual({ unread: 'custom_fields', code: 'not_found' });
+    expect(facade.error()).toBeNull();
+    expect(facade.readFailed()).toBe(false);
+    expect(facade.groups()).toEqual([wholesalers]);
+    expect(facade.customFields()).toEqual([]);
+    expect(facade.unreadParts()).toEqual([{ unread: 'custom_fields', code: 'not_found' }]);
 
     fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('network'));
     await facade.loadCustomer('c1', null);
     expect(facade.error()).toBe('network');
+  });
+
+  it('shows the customer when a part another read answers is refused, naming each part not read', async () => {
+    api.options.mockResolvedValue(options);
+    api.customer.mockResolvedValue(amel);
+    api.contacts.mockResolvedValue([]);
+    api.groups.mockRejectedValueOnce(new CustomersRefused({ unknown: 'quota_spent' }));
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('not_found'));
+
+    await facade.loadCustomer('c1', 'k1');
+
+    expect(facade.customer()).toEqual(amel);
+    expect(facade.options()).toEqual(options);
+    expect(facade.error()).toBeNull();
+    expect(facade.readFailed()).toBe(false);
+    expect(facade.customFieldsUnread()).toBe(true);
+    expect(facade.unreadParts()).toEqual([
+      { unread: 'customer_groups', code: 'quota_spent' },
+      { unread: 'custom_fields', code: 'not_found' },
+    ]);
+  });
+
+  it('still fails the page when the customer itself is refused, and forgets the parts once they read again', async () => {
+    api.options.mockResolvedValue(options);
+    api.groups.mockResolvedValue([wholesalers]);
+    api.contacts.mockResolvedValue([]);
+    api.customer.mockRejectedValueOnce(new CustomersRefused('not_found'));
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('not_found'));
+    await facade.loadCustomer('c1', 'k1');
+    expect(facade.error()).toBe('not_found');
+
+    api.customer.mockResolvedValue(amel);
+    await facade.loadCustomer('c1', 'k1');
+    expect(facade.error()).toBeNull();
+    expect(facade.unreadParts()).toEqual([]);
+    expect(facade.customFieldsUnread()).toBe(false);
   });
 
   it('keeps a failed page read on record when the list context it was read with answers after it', async () => {

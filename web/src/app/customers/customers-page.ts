@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { UnreadParts } from '../shared/feedback/unread-parts';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -37,6 +38,7 @@ import { CUSTOMERS_TABS } from './customers-nav';
 @Component({
   selector: 'app-customers-page',
   imports: [
+    UnreadParts,
     PageTabs,
     MatButtonModule,
     MatIconModule,
@@ -78,6 +80,7 @@ export class CustomersPage implements OnInit {
   );
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
+  protected readonly unreadParts = this.facade.unreadParts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   /** What the list says before it holds anything, offering the page's own create action where it is offered. */
   protected readonly emptyState = computed<EmptyState>(() => ({

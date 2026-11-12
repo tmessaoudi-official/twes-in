@@ -42,12 +42,14 @@ import type { ProductSearch } from './products-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { typedText } from '../shared/form/typed-text';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import { UnreadParts } from '../shared/feedback/unread-parts';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
   selector: 'app-products-page',
   imports: [
     RefusalPipe,
+    UnreadParts,
     PageTabs,
     MatButtonModule,
     MatIconModule,
@@ -95,6 +97,7 @@ export class ProductsPage implements OnInit {
   /** A margin's share of the price as the screen writes decimals, its sign kept. */
   protected readonly decimal = (value: string): string => this.format.decimal(value);
   protected readonly error = this.facade.error;
+  protected readonly unreadParts = this.facade.unreadParts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   /** What the list says before it holds anything, offering the page's own create action where it is offered. */
   protected readonly emptyState = computed<EmptyState>(() => ({
