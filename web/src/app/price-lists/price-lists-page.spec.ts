@@ -29,6 +29,7 @@ import type { ProductFigures } from './price-lists-figures';
 import type { PriceListRow } from './price-lists-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { UnreadPart } from '../shared/errors/unknown-refusal';
+import type { CustomerGroupRow } from '../customers/customers-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -72,6 +73,14 @@ const everyone: PriceListRow = {
   version: 1,
   items: null,
 };
+const revendeurs: CustomerGroupRow = {
+  id: 'g1',
+  name: 'Revendeurs',
+  description: null,
+  customerCount: 3,
+  version: 1,
+};
+
 const wholesale: PriceListRow = {
   ...everyone,
   id: 'l2',
@@ -94,13 +103,12 @@ describe('PriceListsPage', () => {
   const error = signal<string | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
   const unreadParts = signal<readonly UnreadPart[]>([]);
+  const groups = signal<readonly CustomerGroupRow[]>([revendeurs]);
   const permissions = signal(true);
   const figures = signal<ReadonlyMap<string, ProductFigures>>(new Map());
   const facade = {
     lists: lists.asReadonly(),
-    groups: signal([
-      { id: 'g1', name: 'Revendeurs', description: null, customerCount: 3 },
-    ]).asReadonly(),
+    groups: groups.asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
     readFailed: computed(() => error() !== null),
@@ -130,6 +138,7 @@ describe('PriceListsPage', () => {
     facade.pickCustomerIds.mockResolvedValue([]);
     lists.set([everyone, wholesale]);
     unreadParts.set([]);
+    groups.set([revendeurs]);
     figures.set(new Map());
     permissions.set(true);
     await TestBed.configureTestingModule({
@@ -352,6 +361,27 @@ describe('PriceListsPage', () => {
     expect(facade.revise).not.toHaveBeenCalled();
     expect(query('price-list-name-error')?.textContent).toContain('form.errors.required');
     expect(document.activeElement).toBe(name);
+  });
+
+  it('sends a list back with its group while the customer groups could not be read', async () => {
+    groups.set([]);
+    unreadParts.set([{ unread: 'customer_groups', code: 'not_found' }]);
+    facade.open.mockResolvedValue({ ...wholesale, items: [] });
+    const { query, settle } = await render();
+
+    query<HTMLButtonElement>('row-action-edit-l2')!.click();
+    await settle();
+    switchActive(query);
+    await settle();
+    query<HTMLButtonElement>('price-list-save')!.click();
+    await settle();
+
+    expect(facade.revise).toHaveBeenCalledWith(
+      'c1',
+      'l2',
+      expect.objectContaining({ customerGroupId: 'g1' }),
+      4,
+    );
   });
 
   it('opens a list with the prices it holds and sends the whole list back, its group kept', async () => {

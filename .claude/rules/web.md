@@ -278,3 +278,8 @@ the end of § Lessons here.
   its dialog's component is `await import()`ed: step-up, company entry, unsaved changes and the install offer did, until
   Angular 22.2.5's 1.24 kB found the 986 kB ceiling. Open a dialog there through `LazyDialog`, which fetches both when
   asked; `first-page-imports.sh` walks `main.ts`'s value imports and refuses the dialog packages (S5.55, 2026-11-11).
+- A part another feature answers for a record or a list (custom fields, groups, locations, a new record's defaults) is
+  read through `readPart` (`shared/errors/read-part.ts`), so its refusal empties the part and names it, never the page.
+  A form says it in place through `FormField.unread` / `FormSection.unread`, a list through `<app-unread-parts>`. A select whose
+  choices are unread keeps the value it holds (the builder skips `oneOf`), and a save sends back what it could not draw,
+  as a field left out is emptied by the API. A line with no retry is a `<p role="alert">` with `<!-- read-retry: -->` (S5.46, 2026-11-13).

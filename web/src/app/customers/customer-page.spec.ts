@@ -771,6 +771,24 @@ describe('CustomerPage', () => {
     ).not.toBeNull();
   });
 
+  it('sends a customer back in its group while the customer groups could not be read', async () => {
+    customer.set({ ...carthage, customerGroupId: 'g1' });
+    unreadParts.set([{ unread: 'customer_groups', code: 'quota_spent' }]);
+    await open('k1');
+
+    type('field-email', 'compta@carthage.tn');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseCustomer).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ email: 'compta@carthage.tn', customerGroupId: 'g1' }),
+      1,
+    );
+  });
+
   it('holds a new customer while its custom fields could not be read, saying why, and creates none', async () => {
     unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
     await open(undefined);

@@ -81,6 +81,24 @@ describe('buildFormGroup', () => {
 
     expect(() => buildFormGroup(broken)).toThrow(InvalidFormField);
   });
+
+  it('keeps the value a select holds while its choices could not be read, leaving it to the API', () => {
+    const group: FormField = {
+      id: 'group',
+      label: 'c.group',
+      kind: 'select',
+      options: [{ value: '', label: 'c.none' }],
+      unread: { unread: 'customer_groups', code: 'not_found' },
+    };
+    const built = buildFormGroup(
+      { id: 'customer', sections: [{ id: 's', title: 's', fields: [group] }] },
+      { group: 'g1' },
+    );
+
+    expect(built.controls['group'].value).toBe('g1');
+    expect(built.controls['group'].errors).toBeNull();
+    expect(built.valid).toBe(true);
+  });
 });
 
 const taxes: FormField = {

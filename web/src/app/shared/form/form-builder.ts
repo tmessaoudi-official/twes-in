@@ -138,7 +138,9 @@ function validatorsFor(field: FormField, start: FieldValue): ValidatorFn[] {
     : typed;
   if (field.kind === 'email') validators.push(shaped(emailRule));
   if (field.kind === 'tel') validators.push(shaped(phoneRule));
-  if (field.kind === 'select' || field.kind === 'multiselect') validators.push(oneOf(field));
+  // Choices that could not be read are not the record's: the value it holds stays and the API judges it.
+  if ((field.kind === 'select' || field.kind === 'multiselect') && field.unread === undefined)
+    validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
   if (field.pattern !== undefined) validators.push(shaped(Validators.pattern(field.pattern)));
   if (field.minLength !== undefined) validators.push(typed(Validators.minLength(field.minLength)));
