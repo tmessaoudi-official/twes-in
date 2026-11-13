@@ -23,7 +23,7 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RecordChanged } from '../shared/form/record-changed';
 import { liveRecord } from '../shared/form/live-record';
 import { listRecord } from '../shared/form/list-record';
-import { buildFormGroup } from '../shared/form/form-builder';
+import { buildFormGroup, formShape } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -182,7 +182,7 @@ export class CustomerPage {
     const descriptor = this.descriptor();
     const current = this.current();
     if (descriptor === null || current === undefined) return null;
-    return `${current?.id ?? 'new'}|${JSON.stringify(descriptor)}`;
+    return `${current?.id ?? 'new'}|${formShape(descriptor)}`;
   });
   protected readonly form = computed(() => {
     if (this.formKey() === null) return null;

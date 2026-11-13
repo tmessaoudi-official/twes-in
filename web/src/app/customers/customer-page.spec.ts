@@ -154,8 +154,10 @@ describe('CustomerPage', () => {
     clearError: vi.fn(),
     customFields: customFields.asReadonly(),
     unreadParts: unreadParts.asReadonly(),
-    customFieldsUnread: computed(() =>
-      unreadParts().some((part) => part.unread === 'custom_fields'),
+    customFieldsUnread: computed(
+      () =>
+        unreadParts().some((part) => part.unread === 'custom_fields') &&
+        customFields().length === 0,
     ),
   };
   const modules = new Set<string>(['customers', 'invoices']);
@@ -751,6 +753,44 @@ describe('CustomerPage', () => {
         email: 'compta@carthage.tn',
         customFields: { sector: 'retail', legacy: 'A12' },
       }),
+      1,
+    );
+  });
+
+  it('keeps what is typed when a quiet re-read could not read the fields it already holds, saying so in their section', async () => {
+    customFields.set([
+      {
+        id: 'f1',
+        entity: 'customer',
+        key: 'sector',
+        label: 'Secteur',
+        type: 'text',
+        required: false,
+        choices: [],
+        sortOrder: 0,
+        isActive: true,
+        version: 1,
+      },
+    ]);
+    customer.set({ ...carthage, customFields: { sector: 'Retail' } });
+    await open('k1');
+    type('field-email', 'compta@carthage.tn');
+    type('field-custom__sector', 'Gros');
+    await settle();
+
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await settle();
+
+    expect((q('field-email') as HTMLInputElement).value).toBe('compta@carthage.tn');
+    expect((q('field-custom__sector') as HTMLInputElement).value).toBe('Gros');
+    expect(q('section-unread-custom')?.textContent?.trim()).toBe('unread.custom_fields');
+    expect(q('record-changes')?.getAttribute('data-count')).toBe('2');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseCustomer).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ customFields: { sector: 'Gros' } }),
       1,
     );
   });

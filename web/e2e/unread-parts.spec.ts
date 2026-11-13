@@ -2,6 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { aCustomer, aProduct, forget, removed } from './catalogue';
 import { inACompany, signIn } from './session';
+import { toast } from './toast';
 
 // A part another feature reads for a screen, refused, is said as that part not read with the code the API answered,
 // never as a lost connection nor in the screen's own words about its record. The API is made to refuse the part here:
@@ -65,6 +66,52 @@ test('a customer shows with its custom fields said unread in their place', async
   } finally {
     await page.unrouteAll({ behavior: 'ignoreErrors' });
     await removed(page, 'customer', id);
+  }
+});
+
+test('a new customer is not created while its custom fields could not be read, and the toast says to reload', async ({
+  page,
+}) => {
+  const run = String(Date.now());
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await refuse(page, /\/api\/companies\/[^/]+\/custom-fields\?/);
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/customers$/.test(request.url()))
+      posts.push(request.url());
+  });
+  await page.goto('/customers/new');
+  await expect(page.getByTestId('section-unread-custom')).toBeVisible();
+
+  await page.getByTestId('field-number').fill(`UNR-${run}`);
+  await page.getByTestId('field-name').fill(`Client UNR-${run}`);
+  await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
+  await page.getByTestId('record-save').click();
+
+  await expect(toast(page)).toContainText(
+    'Rien n’est créé tant que les champs personnalisés n’ont pas été lus\u00a0: rechargez la page.',
+  );
+  await expect(page).toHaveURL(/\/customers\/new$/);
+  expect(posts).toEqual([]);
+});
+
+test('a product shows with its custom fields said unread in their place', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const productId = await aProduct(page, `UNR-${run}`);
+  try {
+    await refuse(page, /\/api\/companies\/[^/]+\/custom-fields\?/);
+    await page.goto(`/products/${productId}`);
+
+    await expect(page.getByTestId('product-title')).toContainText(`Vis UNR-${run}`);
+    await expect(page.getByTestId('section-unread-custom')).toHaveText(
+      'Les champs personnalisés n’ont pas pu être lus (code : not_found). Rechargez la page ; si cela continue, signalez ce code.',
+    );
+  } finally {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await forget(page, [productId]);
   }
 });
 

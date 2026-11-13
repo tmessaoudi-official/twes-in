@@ -59,8 +59,11 @@ export class ProductHomes {
     await this.run(async () => {
       const [homes, locations] = await Promise.all([
         this.api.homes(companyId, productId),
-        readPart(this.stock.locations(companyId), 'stock_locations', [], (error) =>
-          error instanceof InventoryRefused ? error.code : null,
+        readPart(
+          this.stock.locations(companyId),
+          'stock_locations',
+          this.locationsSignal(),
+          (error) => (error instanceof InventoryRefused ? error.code : null),
         ),
       ]);
       this.homesSignal.set(homes);

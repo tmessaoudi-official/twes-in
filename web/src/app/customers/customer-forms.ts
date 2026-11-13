@@ -493,20 +493,18 @@ export function customerForm(
       ]),
     ],
   };
-  if (unreadFields) {
-    return {
-      ...descriptor,
-      sections: [...descriptor.sections, { ...section('custom', []), unread: unreadFields }],
-    };
-  }
+  // Fields read before stay drawn when a re-read could not read them, the section saying so beside them.
   const custom = customFormFields(fields);
-  return custom.length === 0
-    ? descriptor
-    : withCustomFields(
-        { ...descriptor, sections: [...descriptor.sections, section('custom', [])] },
-        'custom',
-        custom,
-      );
+  if (custom.length === 0 && !unreadFields) return descriptor;
+  const customSection = {
+    ...section('custom', []),
+    ...(unreadFields ? { unread: unreadFields } : {}),
+  };
+  return withCustomFields(
+    { ...descriptor, sections: [...descriptor.sections, customSection] },
+    'custom',
+    custom,
+  );
 }
 
 /** Each field at the customer's value; a new customer is a business in the company's country under the first regime. */

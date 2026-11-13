@@ -15,13 +15,15 @@ export interface PartRead<T> {
 
 /**
  * Reads a part beside a screen's record so that its refusal takes only the part away: the record still shows, the
- * part is empty and named with its code. The network, and anything that is not the part refused, fails the whole
- * read, as the record's own read would. `refusedCode` answers the part's code when the error is its refusal, or null.
+ * part is named with its code and keeps what the screen `held` of it (empty until it was first read, so a re-read
+ * refused under someone typing leaves the form as it stands). The network, and anything that is not the part refused,
+ * fails the whole read, as the record's own read would. `refusedCode` answers the part's code when the error is its
+ * refusal, or null.
  */
 export async function readPart<T>(
   read: Promise<T>,
   part: UnreadPartName,
-  empty: T,
+  held: T,
   refusedCode: (error: unknown) => string | UnknownRefusal | null,
 ): Promise<PartRead<T>> {
   try {
@@ -30,7 +32,7 @@ export async function readPart<T>(
     const code = refusedCode(error);
     const said = code === null ? 'network' : unreadPart(part, code);
     if (said === 'network') throw error;
-    return { value: empty, unread: said };
+    return { value: held, unread: said };
   }
 }
 

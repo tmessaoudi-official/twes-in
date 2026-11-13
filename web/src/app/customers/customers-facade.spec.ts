@@ -189,6 +189,26 @@ describe('CustomersFacade', () => {
     expect(facade.customFieldsUnread()).toBe(false);
   });
 
+  it('keeps the parts it already read when a re-read could not read them, still naming them', async () => {
+    api.options.mockResolvedValue(options);
+    api.groups.mockResolvedValue([wholesalers]);
+    api.contacts.mockResolvedValue([]);
+    api.customer.mockResolvedValue(amel);
+    await facade.loadCustomer('c1', 'k1');
+
+    api.groups.mockRejectedValueOnce(new CustomersRefused({ unknown: 'quota_spent' }));
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('not_found'));
+    await facade.loadCustomer('c1', 'k1');
+
+    expect(facade.groups()).toEqual([wholesalers]);
+    expect(facade.customFields()).toEqual([sector]);
+    expect(facade.unreadParts()).toEqual([
+      { unread: 'customer_groups', code: 'quota_spent' },
+      { unread: 'custom_fields', code: 'not_found' },
+    ]);
+    expect(facade.customFieldsUnread()).toBe(false);
+  });
+
   it('keeps a failed page read on record when the list context it was read with answers after it', async () => {
     let answerGroups: (groups: CustomerGroupRow[]) => void = () => undefined;
     api.groups.mockReturnValue(new Promise((resolve) => (answerGroups = resolve)));

@@ -53,8 +53,11 @@ export class PriceListsFacade {
     await this.run(async () => {
       const [lists, groups] = await Promise.all([
         this.api.list(companyId),
-        readPart(this.customers.groups(companyId), 'customer_groups', [], (error) =>
-          error instanceof CustomersRefused ? error.code : null,
+        readPart(
+          this.customers.groups(companyId),
+          'customer_groups',
+          this.groupsSignal(),
+          (error) => (error instanceof CustomersRefused ? error.code : null),
         ),
       ]);
       this.listsSignal.set(lists);

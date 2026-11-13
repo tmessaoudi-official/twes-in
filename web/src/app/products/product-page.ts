@@ -23,7 +23,7 @@ import { DescriptorForm, type PickSource } from '../shared/form/descriptor-form'
 import type { PickOption } from '../shared/form/pick-field';
 import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
-import { buildFormGroup } from '../shared/form/form-builder';
+import { buildFormGroup, formShape } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import type { FormGroup } from '@angular/forms';
 import { AddToDocuments } from '../shared/documents/add-to-documents';
@@ -237,7 +237,7 @@ export class ProductPage {
     const descriptor = this.descriptor();
     const current = this.current();
     if (descriptor === null || current === undefined) return null;
-    return `${current?.id ?? 'new'}|${JSON.stringify(descriptor)}`;
+    return `${current?.id ?? 'new'}|${formShape(descriptor)}`;
   });
   protected readonly form = computed(() => {
     if (this.formKey() === null) return null;

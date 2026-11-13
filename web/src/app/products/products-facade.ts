@@ -73,11 +73,14 @@ export class ProductsFacade {
   /** The parts another read answers that the last load could not read: the screen shows without them, naming each. */
   readonly unreadParts = this.unreadPartsSignal.asReadonly();
   /**
-   * Whether the custom fields were not read: the form then draws none, and a save sends back the values the product was
-   * read with, since a field left out of a save is emptied.
+   * Whether the custom fields are unknown: refused and never read for the company, so the form draws none, and a save
+   * sends back the values the product was read with, since a field left out of a save is emptied. Fields read before
+   * stay drawn, said unread beside them.
    */
-  readonly customFieldsUnread = computed(() =>
-    this.unreadPartsSignal().some((part) => part.unread === 'custom_fields'),
+  readonly customFieldsUnread = computed(
+    () =>
+      this.unreadPartsSignal().some((part) => part.unread === 'custom_fields') &&
+      this.customFieldsSignal().length === 0,
   );
 
   /**
@@ -245,8 +248,11 @@ export class ProductsFacade {
 
   /** The custom fields another feature declares: the product shows without them, and a save sends its values back. */
   private customFieldsPart(companyId: string) {
-    return readPart(this.fields.list(companyId, 'product'), 'custom_fields', [], (error) =>
-      error instanceof CustomFieldsRefused ? error.code : null,
+    return readPart(
+      this.fields.list(companyId, 'product'),
+      'custom_fields',
+      this.customFieldsSignal(),
+      (error) => (error instanceof CustomFieldsRefused ? error.code : null),
     );
   }
 

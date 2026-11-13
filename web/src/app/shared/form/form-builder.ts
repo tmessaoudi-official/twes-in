@@ -230,6 +230,16 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
   return null;
 }
 
+/**
+ * A form's shape, what a page keys its form on so that a change rebuilds it: what the form only says (a part another
+ * feature could not read) leaves it as it stands, with what is typed.
+ */
+export function formShape(descriptor: FormDescriptor): string {
+  return JSON.stringify(descriptor, (key, value: unknown) =>
+    key === 'unread' ? undefined : value,
+  );
+}
+
 /** The one place configured fields join a form's declared ones. */
 export function withCustomFields(
   descriptor: FormDescriptor,

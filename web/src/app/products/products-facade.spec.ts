@@ -312,6 +312,18 @@ describe('ProductsFacade', () => {
     expect(facade.defaultUnitCode()).toBeNull();
   });
 
+  it('keeps the fields it already read when a re-read could not read them, still naming them', async () => {
+    api.product.mockResolvedValue(laptop);
+    await facade.loadProduct('c1', 'p1');
+
+    fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('not_found'));
+    await facade.loadProduct('c1', 'p1');
+
+    expect(facade.customFields()).toEqual([warranty]);
+    expect(facade.unreadParts()).toEqual([{ unread: 'custom_fields', code: 'not_found' }]);
+    expect(facade.customFieldsUnread()).toBe(false);
+  });
+
   it('still fails the page when the product itself is refused, and forgets the parts once they read again', async () => {
     api.product.mockRejectedValueOnce(new ProductsRefused('not_found'));
     fieldsApi.list.mockRejectedValueOnce(new CustomFieldsRefused('invalid'));
