@@ -96,6 +96,32 @@ test('a new customer is not created while its custom fields could not be read, a
   expect(posts).toEqual([]);
 });
 
+test('a new product is not created while its article defaults could not be read, and the toast says to reload', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await refuse(page, /\/api\/companies\/[^/]+\/settings\?(.*&)?chain=articles(&|$)/);
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/products$/.test(request.url())) posts.push(request.url());
+  });
+  await page.goto('/products/new');
+  await expect(page.getByTestId('field-unread-unitId')).toBeVisible();
+
+  await page.getByTestId('field-reference').fill(`UNR-${run}`);
+  await page.getByTestId('field-name').fill(`Vis UNR-${run}`);
+  await page.getByTestId('field-unitPriceNet').fill('12,5');
+  await page.getByTestId('record-save').click();
+
+  await expect(toast(page)).toContainText(
+    'Rien n’est créé tant que les valeurs par défaut des articles n’ont pas été lues\u00a0: rechargez la page.',
+  );
+  await expect(page).toHaveURL(/\/products\/new$/);
+  expect(posts).toEqual([]);
+});
+
 test('a product shows with its custom fields said unread in their place', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   await signIn(page);

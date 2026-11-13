@@ -138,6 +138,9 @@ describe('ProductPage', () => {
         unreadParts().some((part) => part.unread === 'custom_fields') &&
         customFields().length === 0,
     ),
+    articleDefaultsUnread: computed(() =>
+      unreadParts().some((part) => part.unread === 'article_defaults'),
+    ),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -450,6 +453,22 @@ describe('ProductPage', () => {
     expect(
       q('field-unread-unitId')?.closest('[data-testid="field-wrapper-unitId"]'),
     ).not.toBeNull();
+  });
+
+  it('holds a new product while its article defaults could not be read, saying why, and creates none', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    unreadParts.set([{ unread: 'article_defaults', code: 'not_found' }]);
+    await open(undefined);
+
+    type('field-reference', 'ART-010');
+    type('field-name', 'Clavier');
+    type('field-unitPriceNet', '40');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.createProduct).not.toHaveBeenCalled();
+    expect(failureToasts()).toEqual(['unread.create_held_defaults']);
   });
 
   it('holds a new product while its custom fields could not be read, saying why, and creates none', async () => {

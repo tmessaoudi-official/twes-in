@@ -304,11 +304,13 @@ describe('ProductsFacade', () => {
     ]);
     await facade.loadProduct('c1', null);
     expect(facade.defaultUnitCode()).toBe('HUR');
+    expect(facade.articleDefaultsUnread()).toBe(false);
     settingsApi.chain.mockRejectedValueOnce(new SettingsRefused({ unknown: 'brand_new' }));
     await facade.loadProduct('c1', null);
     expect(facade.error()).toBeNull();
     expect(facade.unreadParts()).toEqual([{ unread: 'article_defaults', code: 'brand_new' }]);
     expect(facade.customFieldsUnread()).toBe(false);
+    expect(facade.articleDefaultsUnread()).toBe(true);
     expect(facade.defaultUnitCode()).toBeNull();
   });
 

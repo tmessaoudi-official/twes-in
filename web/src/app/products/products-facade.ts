@@ -84,6 +84,14 @@ export class ProductsFacade {
   );
 
   /**
+   * Whether a new product's defaults (its unit, its tracking) could not be read: the form then offers a guess, so a new
+   * product is not created until they are, never on a unit or a tracking nobody chose.
+   */
+  readonly articleDefaultsUnread = computed(() =>
+    this.unreadPartsSignal().some((part) => part.unread === 'article_defaults'),
+  );
+
+  /**
    * The few vendors a person means while typing, by id the ones a product names. A search that fails answers nothing
    * and says so in `error`, rather than reading as "no such vendor".
    */

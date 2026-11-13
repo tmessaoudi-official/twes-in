@@ -583,6 +583,10 @@ export class ProductPage {
       this.feedback.failure('unread.create_held');
       return;
     }
+    if (id === null && this.facade.articleDefaultsUnread()) {
+      this.feedback.failure('unread.create_held_defaults');
+      return;
+    }
     const read = productInput(values, options, this.facade.customFields(), this.current() ?? null);
     // With its fields unread the form drew none: what the product holds goes back as read, as a field left out is emptied.
     const kept = this.facade.customFieldsUnread() ? this.current()?.customFields : undefined;

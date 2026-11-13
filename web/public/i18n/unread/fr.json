@@ -5,6 +5,7 @@
     "customer_groups": "Les groupes de clients n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
     "stock_locations": "Les emplacements de stock n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
     "vendors": "Les fournisseurs n’ont pas pu être lus (code : {{code}}). Rechargez la page ; si cela continue, signalez ce code.",
-    "create_held": "Rien n’est créé tant que les champs personnalisés n’ont pas été lus : rechargez la page."
+    "create_held": "Rien n’est créé tant que les champs personnalisés n’ont pas été lus : rechargez la page.",
+    "create_held_defaults": "Rien n’est créé tant que les valeurs par défaut des articles n’ont pas été lues : rechargez la page."
   }
 }
