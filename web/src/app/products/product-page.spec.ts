@@ -110,10 +110,11 @@ describe('ProductPage', () => {
   const categories = signal<readonly ProductCategoryRow[]>([]);
   const readFailed = signal(false);
   const unreadParts = signal<readonly UnreadPart[]>([]);
+  const customFields = signal<readonly CustomFieldDefinition[]>([]);
   const facade = {
     options: optionsSignal.asReadonly(),
     categories: categories.asReadonly(),
-    customFields: signal<readonly CustomFieldDefinition[]>([]).asReadonly(),
+    customFields: customFields.asReadonly(),
     product: product.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
@@ -132,8 +133,10 @@ describe('ProductPage', () => {
     settlePriceReview: vi.fn(),
     pickVendors: vi.fn(),
     unreadParts: unreadParts.asReadonly(),
-    customFieldsUnread: computed(() =>
-      unreadParts().some((part) => part.unread === 'custom_fields'),
+    customFieldsUnread: computed(
+      () =>
+        unreadParts().some((part) => part.unread === 'custom_fields') &&
+        customFields().length === 0,
     ),
   };
   const auth = {
@@ -194,6 +197,7 @@ describe('ProductPage', () => {
     refusals.set([]);
     product.set(null);
     unreadParts.set([]);
+    customFields.set([]);
     optionsSignal.set(options);
     facade.loadProduct.mockReset().mockResolvedValue(undefined);
     facade.loadSubstitutionGroups.mockReset().mockResolvedValue(undefined);
@@ -371,6 +375,41 @@ describe('ProductPage', () => {
         name: 'Portable 15"',
         customFields: { warranty: '24', legacy: 'B7' },
       }),
+      laptop.version,
+    );
+  });
+
+  it('keeps what is typed when a quiet re-read could not read the fields it already holds, and sends what is typed', async () => {
+    customFields.set([
+      {
+        id: 'f1',
+        entity: 'product',
+        key: 'warranty',
+        label: 'Garantie',
+        type: 'text',
+        required: false,
+        choices: [],
+        sortOrder: 0,
+        isActive: true,
+        version: 1,
+      },
+    ]);
+    product.set({ ...laptop, customFields: { warranty: '12' } });
+    await open(laptop.id);
+    type('field-custom__warranty', '24');
+    await settle();
+
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await settle();
+
+    expect((q('field-custom__warranty') as HTMLInputElement).value).toBe('24');
+    expect(q('section-unread-custom')?.textContent?.trim()).toBe('unread.custom_fields');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseProduct).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ customFields: { warranty: '24' } }),
       laptop.version,
     );
   });
