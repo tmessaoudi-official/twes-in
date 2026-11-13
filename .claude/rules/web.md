@@ -283,4 +283,5 @@ the end of § Lessons here.
   first read) and names the part, never the page; a page keys its form on `formShape`, so a mark never rebuilds it (S5.59).
   A form says it in place through `FormField.unread` / `FormSection.unread`, a list through `<app-unread-parts>`. A select whose
   choices are unread keeps the value it holds (the builder skips `oneOf`), and a save sends back what it could not draw,
-  as a field left out is emptied by the API. A line with no retry is a `<p role="alert">` with `<!-- read-retry: -->` (S5.46, 2026-11-13).
+  as a field left out is emptied by the API; a NEW record is held while a part it prefills from is unread
+  (custom fields, a product's article defaults: S5.60). A line with no retry is a `<p role="alert">` with `<!-- read-retry: -->` (S5.46, 2026-11-13).
