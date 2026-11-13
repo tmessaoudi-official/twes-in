@@ -62,6 +62,31 @@ export async function aCustomer(page: Page, number: string): Promise<string> {
   );
 }
 
+/**
+ * A draft invoice for the customer, with no line yet, through the API; its id. A list's search finds a draft by its
+ * customer's reference, never by the customer's name, which the document takes only when issued: search the reference.
+ * `removed(page, 'invoice', id)` deletes it.
+ */
+export async function aDraftInvoice(
+  page: Page,
+  customerId: string,
+  customerReference: string,
+): Promise<string> {
+  return page.evaluate(
+    async ([csrf, customer, reference]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/invoices`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ customerId: customer, customerReference: reference, lines: [] }),
+      });
+      if (!created.ok) throw new Error(`drafting the invoice answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, customerId, customerReference] as const,
+  );
+}
+
 /** Deletes a record the run made, through the API, once nothing names it; it is gone for good a day later. */
 export async function removed(page: Page, subject: string, id: string): Promise<void> {
   await page.evaluate(

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { aCustomer, aDraftInvoice, removed } from './catalogue';
 import { sidewaysOverflow } from './overflow';
+import { runDigits } from './run';
 import { inACompany, signIn } from './session';
 
 // A phone's list card leads with the name the record is known by, the code and its day under it, the amount at the
@@ -68,24 +70,36 @@ test(
   { tag: '@phone' },
   async ({ page }) => {
     await onPhone(page);
-    await page.goto('/invoices?status=draft');
-    await firstCard(page);
-    await expect(page.getByTestId('list-facet-status')).toHaveCount(0);
-    const button = page.getByTestId('list-filters');
-    await expect(button).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.getByTestId('list-filters-count')).toContainText('1');
-    await button.click();
-    await expect(button).toHaveAttribute('aria-expanded', 'true');
-    await expect(
-      page.getByTestId('list-filter-fold').getByTestId('list-facet-status'),
-    ).toBeVisible();
-
-    const remove = page.getByTestId('list-chips').locator('.twes-chip-remove').first();
-    await expect(remove).toHaveAccessibleName(/Retirer le filtre/);
-    const size = (await remove.boundingBox())!;
-    expect(size.width).toBeGreaterThanOrEqual(24);
-    expect(size.height).toBeGreaterThanOrEqual(24);
-    await remove.click();
-    await expect(page.getByTestId('list-chips')).toHaveCount(0);
+    // The case reads only the draft it makes: one another scenario leaves behind is there or not by the shard's order.
+    const number = `PHL-${runDigits()}`;
+    const customerId = await aCustomer(page, number);
+    const invoiceId = await aDraftInvoice(page, customerId, number);
+    try {
+      await chipTakenOff(page, number);
+    } finally {
+      await removed(page, 'invoice', invoiceId);
+      await removed(page, 'customer', customerId);
+    }
   },
 );
+
+/** The drafts searched by their reference: « Filtres (1) » folds the status facet, and its chip goes by its button. */
+async function chipTakenOff(page: Page, reference: string): Promise<void> {
+  await page.goto(`/invoices?status=draft&q=${encodeURIComponent(reference)}`);
+  await firstCard(page);
+  await expect(page.getByTestId('list-facet-status')).toHaveCount(0);
+  const button = page.getByTestId('list-filters');
+  await expect(button).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByTestId('list-filters-count')).toContainText('1');
+  await button.click();
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('list-filter-fold').getByTestId('list-facet-status')).toBeVisible();
+
+  const remove = page.getByTestId('list-chips').locator('.twes-chip-remove').first();
+  await expect(remove).toHaveAccessibleName(/Retirer le filtre/);
+  const size = (await remove.boundingBox())!;
+  expect(size.width).toBeGreaterThanOrEqual(24);
+  expect(size.height).toBeGreaterThanOrEqual(24);
+  await remove.click();
+  await expect(page.getByTestId('list-chips')).toHaveCount(0);
+}
