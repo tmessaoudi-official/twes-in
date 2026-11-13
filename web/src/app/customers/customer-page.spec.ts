@@ -795,6 +795,28 @@ describe('CustomerPage', () => {
     );
   });
 
+  it('keeps what is typed when a quiet re-read could not read a company with no custom fields, the section saying so', async () => {
+    customer.set({ ...carthage, customFields: { legacy: 'kept' } });
+    await open('k1');
+    type('field-email', 'compta@carthage.tn');
+    await settle();
+    expect(q('section-unread-custom')).toBeNull();
+
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await settle();
+
+    expect((q('field-email') as HTMLInputElement).value).toBe('compta@carthage.tn');
+    expect(q('section-unread-custom')?.textContent?.trim()).toBe('unread.custom_fields');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseCustomer).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ email: 'compta@carthage.tn', customFields: { legacy: 'kept' } }),
+      1,
+    );
+  });
+
   it('says each part it could not read where the part would be, the customer and its group kept', async () => {
     customer.set({ ...carthage, customerGroupId: 'g1' });
     unreadParts.set([

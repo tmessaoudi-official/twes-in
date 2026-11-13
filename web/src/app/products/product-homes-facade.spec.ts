@@ -181,4 +181,12 @@ describe('ProductHomes', () => {
     await facade.load('c1', 'p1');
     expect(facade.error()).toBe('network');
   });
+  it('keeps the locations it already read when a re-read could not read them, still naming them', async () => {
+    await facade.load('c1', 'p1');
+    stock.locations.mockRejectedValueOnce(new InventoryRefused('not_found'));
+    await facade.load('c1', 'p1');
+
+    expect(facade.locations()).toEqual([place('l1', 'e1'), place('l2', 'e1'), place('l3', 'e2')]);
+    expect(facade.unreadParts()).toEqual([{ unread: 'stock_locations', code: 'not_found' }]);
+  });
 });

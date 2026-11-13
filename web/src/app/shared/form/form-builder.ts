@@ -232,12 +232,14 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
 
 /**
  * A form's shape, what a page keys its form on so that a change rebuilds it: what the form only says (a part another
- * feature could not read) leaves it as it stands, with what is typed.
+ * feature could not read, or a section with no field, which holds no control) leaves it as it stands, with what is typed.
  */
 export function formShape(descriptor: FormDescriptor): string {
-  return JSON.stringify(descriptor, (key, value: unknown) =>
-    key === 'unread' ? undefined : value,
-  );
+  const holding = {
+    ...descriptor,
+    sections: descriptor.sections.filter((section) => section.fields.length > 0),
+  };
+  return JSON.stringify(holding, (key, value: unknown) => (key === 'unread' ? undefined : value));
 }
 
 /** The one place configured fields join a form's declared ones. */

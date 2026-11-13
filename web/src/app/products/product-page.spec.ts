@@ -375,6 +375,28 @@ describe('ProductPage', () => {
     );
   });
 
+  it('keeps what is typed when a quiet re-read could not read a company with no custom fields, the section saying so', async () => {
+    product.set({ ...laptop, customFields: { legacy: 'B7' } });
+    await open(laptop.id);
+    type('field-name', 'Portable 15"');
+    await settle();
+    expect(q('section-unread-custom')).toBeNull();
+
+    unreadParts.set([{ unread: 'custom_fields', code: 'not_found' }]);
+    await settle();
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Portable 15"');
+    expect(q('section-unread-custom')?.textContent?.trim()).toBe('unread.custom_fields');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseProduct).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ name: 'Portable 15"', customFields: { legacy: 'B7' } }),
+      laptop.version,
+    );
+  });
+
   it('says each part it could not read where the part would be, the product kept', async () => {
     product.set(laptop);
     unreadParts.set([

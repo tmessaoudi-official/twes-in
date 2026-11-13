@@ -82,6 +82,15 @@ describe('PriceListsFacade', () => {
     expect(facade.error()).toBe('network');
   });
 
+  it('keeps the customer groups it already read when a re-read could not read them, still naming them', async () => {
+    await facade.load('c1');
+    customers.groups.mockRejectedValueOnce(new CustomersRefused('invalid'));
+    await facade.load('c1');
+
+    expect(facade.groups().map((group) => group.name)).toEqual(['Revendeurs']);
+    expect(facade.unreadParts()).toEqual([{ unread: 'customer_groups', code: 'invalid' }]);
+  });
+
   it('reads the lists again after a save or a revision', async () => {
     api.create.mockResolvedValue(row);
     api.revise.mockResolvedValue(row);
