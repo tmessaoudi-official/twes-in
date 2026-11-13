@@ -285,3 +285,6 @@ the end of § Lessons here.
   choices are unread keeps the value it holds (the builder skips `oneOf`), and a save sends back what it could not draw,
   as a field left out is emptied by the API; a NEW record is held while a part it prefills from is unread
   (custom fields, a product's article defaults: S5.60). A line with no retry is a `<p role="alert">` with `<!-- read-retry: -->` (S5.46, 2026-11-13).
+- An e2e case reading a record it did not make passes or fails by CI's shard order: four cases added elsewhere moved
+  `quotes.spec.ts`, whose leftover draft WebKit's chip case read, out of its shard. Make the record and search it (a draft by
+  its customer reference, `aDraftInvoice`); `--list --shard=3/3` on a clean `git archive` names the shard's files (S5.61, 2026-11-13).

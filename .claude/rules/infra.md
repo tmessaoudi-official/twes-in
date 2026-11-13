@@ -119,3 +119,7 @@ the end of § Lessons here.
 - A file another process reads is written whole: `>` empties it before it writes, and a reader in between finds nothing
   (CI red 2026-11-05: the schedule's `due` read empty; a tight loop saw 145 empty reads of 145,076). In `twes-backup` every
   outcome goes through `put` (a file beside it, then `mv`); `backup-heartbeat.test.sh` reds on a direct redirect there.
+- When this machine's address changes, `lan`, `api`, `worker`, `demo-worker` and `centrifugo` keep the `LAN_HOST` they started with while
+  the Makefile hands Playwright the new one: Caddy answers an empty 200, read by WebKit as « The string did not match the
+  expected pattern » in `inACompany`. Compare `docker compose exec -T lan printenv LAN_HOST` with `ip -4 route get 1.1.1.1`,
+  and recreate the five with `--no-build` (not `make up-images`, which builds the dirty tree) (2026-11-13).
