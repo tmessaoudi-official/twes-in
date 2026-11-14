@@ -166,6 +166,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
@@ -184,6 +185,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     facade.confirmTotpEnrolment.mockResolvedValue({
@@ -212,6 +214,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.confirmTotpEnrolment.mockResolvedValue({ ok: false, error: 'invalid_code' });
     // Pressed with the mouse: the cursor is on the button, which the wait disables.
@@ -237,6 +240,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [],
       (begin) => begin.mockResolvedValue({ ok: false, error: null }),
@@ -255,6 +259,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(query('two-factor-enabled')).not.toBeNull();
@@ -283,6 +288,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       });
       facade.confirmTotpEnrolment.mockResolvedValue({ ok: false, error: 'invalid_code' });
 
@@ -300,6 +306,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       });
       facade.regenerateRecoveryCodes.mockResolvedValue({ ok: false, error: 'invalid_code' });
 
@@ -318,6 +325,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.regenerateRecoveryCodes.mockResolvedValue({
       ok: true,
@@ -341,6 +349,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.regenerateRecoveryCodes.mockResolvedValue({ ok: false, error: 'invalid_code' });
     rendered.query<HTMLButtonElement>('two-factor-regenerate-submit')!.focus();
@@ -359,6 +368,7 @@ describe('TwoFactorPage', () => {
     createdAt: '2026-09-15T10:00:00+00:00',
     lastUsedAt: null,
     discoverable: true,
+    elsewhere: false,
   };
 
   async function addPasskey(rendered: Awaited<ReturnType<typeof render>>, name: string) {
@@ -384,6 +394,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.addPasskey.mockResolvedValue({
       ok: true,
@@ -407,6 +418,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.addPasskey.mockResolvedValue({ ok: true, passkey: laptop, recoveryCodes: [] });
 
@@ -426,6 +438,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.addPasskey.mockResolvedValue({ ok: false, error: 'passkey_cancelled' });
 
@@ -448,6 +461,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -474,6 +488,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -508,6 +523,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(query('two-factor-passkey-recovery')).toBeNull();
@@ -523,6 +539,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -536,6 +553,7 @@ describe('TwoFactorPage', () => {
           recoveryCodes: 0,
           passkeySignIn: false,
           passkeySignInAllowed: false,
+          passkeysElsewhere: 0,
         }),
       );
       return { ok: true };
@@ -559,6 +577,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
 
@@ -579,6 +598,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(rendered.query('two-factor-later')).toBeNull();
@@ -595,6 +615,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     };
 
     async function replaceWith(rendered: Awaited<ReturnType<typeof render>>, code: string) {
@@ -701,6 +722,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -726,6 +748,7 @@ describe('TwoFactorPage', () => {
           recoveryCodes: 10,
           passkeySignIn: false,
           passkeySignInAllowed: false,
+          passkeysElsewhere: 0,
         }),
       );
       return { ok: true };
@@ -751,6 +774,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -771,6 +795,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       }),
     );
     await settle(rendered.fixture);
@@ -786,6 +811,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       }),
     );
     await settle(rendered.fixture);
@@ -802,6 +828,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     facade.removeAuthenticator.mockImplementation(async () => {
       facade.me.set(
@@ -813,6 +840,7 @@ describe('TwoFactorPage', () => {
           recoveryCodes: 0,
           passkeySignIn: false,
           passkeySignInAllowed: false,
+          passkeysElsewhere: 0,
         }),
       );
       return { ok: true };
@@ -836,6 +864,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -871,6 +900,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -900,6 +930,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [],
       (begin) =>
@@ -923,6 +954,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [laptop],
     );
@@ -959,6 +991,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [],
       (begin, proof) => {
@@ -982,6 +1015,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 2,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(rendered.query('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device');
@@ -1004,6 +1038,7 @@ describe('TwoFactorPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       [
         {
@@ -1012,6 +1047,7 @@ describe('TwoFactorPage', () => {
           createdAt: '2026-10-01T09:00:00+00:00',
           lastUsedAt: null,
           discoverable: true,
+          elsewhere: false,
         },
       ],
     );
@@ -1035,6 +1071,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 8,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(query('two-factor-passkeys-elsewhere')?.textContent).toContain(
@@ -1055,6 +1092,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
 
     expect(query('mfa-lockout')).toBeNull();
@@ -1069,6 +1107,7 @@ describe('TwoFactorPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: true,
+      passkeysElsewhere: 0,
     };
 
     const said = () => (TestBed.inject(Feedback) as RecordedFeedback).said;
@@ -1098,6 +1137,19 @@ describe('TwoFactorPage', () => {
       ).toContain('auth.two_factor.passkey_not_alone');
       expect(rows[1].querySelector('[data-testid="two-factor-passkey-not-alone"]')).toBeNull();
       expect(rows[2].querySelector('[data-testid="two-factor-passkey-not-alone"]')).toBeNull();
+    });
+
+    it('says which passkey was made for another address and no longer works', async () => {
+      const moved: PasskeySummary = { ...laptop, id: 'p0', name: 'Old key', elsewhere: true };
+      const rendered = await render({ ...ready, passkeysElsewhere: 1 }, [moved, laptop]);
+
+      const rows = rendered.fixture.nativeElement.querySelectorAll(
+        '[data-testid="two-factor-passkey"]',
+      );
+      expect(
+        rows[0].querySelector('[data-testid="two-factor-passkey-elsewhere"]')?.textContent,
+      ).toContain('auth.two_factor.passkey_elsewhere');
+      expect(rows[1].querySelector('[data-testid="two-factor-passkey-elsewhere"]')).toBeNull();
     });
 
     it('says nothing of it where the installation offers no sign-in with a passkey alone', async () => {

@@ -74,7 +74,21 @@ export interface PlatformSignup {
 
 /** A switch the operators turn, the last word being theirs: it is set without a version. */
 export type PlatformSwitch =
-  'signup.enabled' | 'signup.approval_required' | 'demo.enabled' | 'presentation.show-coming';
+  | 'signup.enabled'
+  | 'signup.approval_required'
+  | 'demo.enabled'
+  | 'presentation.show-coming'
+  | 'identity.passkey_sign_in'
+  | 'identity.passkeys_on_tailnet_name';
+
+/**
+ * The installation's passkeys as the operators set them: whether one may sign in alone, and whether they are bound to the
+ * shop's Tailscale name rather than the installation's own, which every passkey made before a move stops working with.
+ */
+export interface PlatformPasskeys {
+  readonly signInAlone: boolean;
+  readonly onTailnetName: boolean;
+}
 
 /**
  * The demo as the operators set it: whether visitors may try it (on unless switched off), and how many sandboxes may
@@ -142,6 +156,8 @@ export interface PlatformSettings {
   readonly supportRules: PlatformSupportRules;
   readonly delays: readonly PlatformNumber[];
   readonly demo: PlatformDemo;
+  /** Null where the API declares no such setting. */
+  readonly passkeys: PlatformPasskeys | null;
   readonly imports: PlatformImports;
   /** Null where the API declares no such setting. */
   readonly country: PlatformCountry | null;

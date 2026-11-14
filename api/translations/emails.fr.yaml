@@ -230,6 +230,9 @@ security_notice:
     second_factor_address_locked:
         heading: 'Mot de passe verrouillé sur un appareil après des codes erronés'
         body: 'Votre mot de passe a été verrouillé après plusieurs codes de vérification erronés, saisis après le bon mot de passe depuis un même appareil ou réseau : il y est refusé pour l’instant. Ailleurs, il ouvre toujours votre compte.'
+    passkeys_moved:
+        heading: 'Clés d’accès à refaire'
+        body: 'Les clés d’accès de votre installation sont désormais liées à une autre adresse : celles de votre compte ne fonctionnent plus. Ouvrez l’application à l’adresse qu’elle vous indique, puis ajoutez une clé d’accès dans « Mon compte » et retirez l’ancienne. Votre mot de passe et votre application d’authentification restent valables.'
     factors_replaced:
         heading: 'Facteurs de connexion réinitialisés'
         body: 'La personne qui gère votre installation a retiré les seconds facteurs de votre compte (application d’authentification, codes de secours et, le cas échéant, clés d’accès) et fermé toutes vos sessions. À votre prochaine connexion avec votre mot de passe, vous en configurerez un nouveau.'

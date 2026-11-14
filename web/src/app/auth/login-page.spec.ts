@@ -87,6 +87,7 @@ const me: Me = {
     recoveryCodes: 0,
     passkeySignIn: false,
     passkeySignInAllowed: true,
+    passkeysElsewhere: 0,
   },
   modules: [],
   plannedModules: [],

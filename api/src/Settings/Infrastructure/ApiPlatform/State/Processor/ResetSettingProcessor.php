@@ -12,6 +12,7 @@ namespace App\Settings\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
@@ -53,6 +54,9 @@ final readonly class ResetSettingProcessor implements ProcessorInterface
         } catch (SettingLevelRefused $refused) {
             // Said on the setting, as a change at that level is, so the page marks the field it refused.
             throw SettingRefusals::ofLevel($key, $refused);
+        } catch (InvalidSettingValue $refused) {
+            // Going back to the default is a change its setting's rule may refuse, said as a change's refusal is.
+            throw SettingRefusals::of($refused);
         }
 
         return null;

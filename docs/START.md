@@ -951,7 +951,13 @@ given, mailed links and the phone's pairing carry it rather than the network add
 router's DDNS points at the shop, with `PUBLIC_HTTPS_PORT` (443 when empty) and `PUBLIC_HTTP_PORT` (off when empty), the
 ports the router forwards. Both names join the passkey and realtime origins and the Host the API answers
 (`SYMFONY_TRUSTED_HOSTS`: localhost, any IPv4 address, since the network address may change while a container still
-runs on the one before, and those names); passkeys stay on `localhost` until the platform's switch moves them. A shop
+runs on the one before, and those names); passkeys stay on `localhost` until the platform's switch moves them
+(« Clés d'accès » on `/platform`, `identity.passkeys_on_tailnet_name`, off as shipped), after which they are made and
+checked on `TAILNET_HOST` and work on a phone outside the shop. Every passkey made before a move stops working, either
+way, so the switch is refused while an account's only second factor is a passkey (it names how many) and refused on
+with no `TAILNET_HOST`; once it moves, each holder of a key made on the other name is mailed (`passkeys_moved`), their
+key is marked in « Vérification en deux étapes » and a line on every page asks them to add one. `/api/health` says where
+passkeys work now. A shop
 installed before them gives none: off. `scripts/gates/onprem-overlay.sh` holds every value they reach. They also say
 who must carry a second factor (Q5, `MfaRequirement`): with neither, it is offered to everyone; with `TAILNET_HOST`,
 owners and admins are held at sign-in until they enrol one; with `PUBLIC_HOST`, everyone is. Wrong passwords or codes

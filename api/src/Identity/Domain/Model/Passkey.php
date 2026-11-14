@@ -59,9 +59,17 @@ class Passkey
     #[ORM\Column(nullable: true)]
     private ?bool $discoverable;
 
-    public function __construct(User $user, string $credentialId, string $record, string $name, \DateTimeImmutable $now, ?bool $discoverable = null)
+    /**
+     * The name it was made on (WebAuthn's relying party id), the only one it works on; null for every key made before the
+     * name was kept, all of them on the installation's own.
+     */
+    #[ORM\Column(length: 253, nullable: true)]
+    private ?string $host;
+
+    public function __construct(User $user, string $credentialId, string $record, string $name, \DateTimeImmutable $now, ?bool $discoverable = null, ?string $host = null)
     {
         $this->discoverable = $discoverable;
+        $this->host = $host;
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->credentialId = $credentialId;
@@ -70,6 +78,11 @@ class Passkey
         // A name only helps the person tell their devices apart, so an empty one is given a neutral default.
         $this->name = '' === $name ? 'Passkey' : mb_substr($name, 0, self::NAME_MAX);
         $this->createdAt = $now;
+    }
+
+    public function getHost(): ?string
+    {
+        return $this->host;
     }
 
     /** A verified sign-in: the record carries the new signature counter, which a cloned key could not advance past. */

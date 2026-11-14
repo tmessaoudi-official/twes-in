@@ -26,6 +26,7 @@ final readonly class BeginPasskeyAssertion
         private UserRepository $users,
         private PasskeyRepository $passkeys,
         private PasskeyCeremonies $ceremonies,
+        private PasskeyHost $host,
     ) {
     }
 
@@ -33,7 +34,8 @@ final readonly class BeginPasskeyAssertion
     public function handle(Uuid $userId): string
     {
         $user = $this->users->ofId($userId) ?? throw new PasskeyRefused();
-        $ids = array_map(static fn (Passkey $passkey): string => $passkey->getCredentialId(), $this->passkeys->ofUser($user));
+        $here = array_filter($this->passkeys->ofUser($user), fn (Passkey $passkey): bool => $this->host->madeHere($passkey->getHost()));
+        $ids = array_values(array_map(static fn (Passkey $passkey): string => $passkey->getCredentialId(), $here));
 
         if ([] === $ids) {
             throw new PasskeyRefused();

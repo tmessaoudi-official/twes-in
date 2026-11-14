@@ -34,6 +34,7 @@ import { SETTINGS_INDEX } from './settings-area';
 import { ErasureBanner } from '../data-erasure/erasure-banner';
 import { SupportBanner } from '../support-access/support-banner';
 import { DemoBanner } from '../auth/demo-banner';
+import { PasskeysMovedBanner } from '../auth/passkeys-moved-banner';
 import { CompanyProofPanel } from '../shared/company-proof/company-proof-panel';
 import { CompanyEntry } from '../shared/company-proof/company-entry';
 import { AuthFacade } from '../auth/auth-facade';
@@ -180,6 +181,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     ErasureBanner,
     SupportBanner,
     DemoBanner,
+    PasskeysMovedBanner,
     CompanyProofPanel,
   ],
   templateUrl: './app-shell.html',
@@ -197,6 +199,9 @@ export class AppShell {
   private readonly screen = inject(ScreenActions);
   /** Whether the person owns the working company: the erasure banner is theirs alone. */
   protected readonly owner = computed(() => this.auth.me()?.company?.role === 'owner');
+  protected readonly passkeysElsewhere = computed(
+    () => (this.auth.me()?.mfa.passkeysElsewhere ?? 0) > 0,
+  );
   private paletteOpen = false;
   private shortcutsOpen = false;
   private cameraOpen = false;

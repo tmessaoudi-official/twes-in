@@ -13,7 +13,9 @@
       "invalid_unit_code": "A unit code has 2 or 3 capital letters or digits (example: C62 for a piece, KGM for a kilogram).",
       "invalid_whatsapp": "A WhatsApp number is written in international form: + then the country code and the number, in digits and spaces only (example: +216 20 123 456).",
       "invalid_phone_digits": "A phone number holds 6 to 15 digits, with + before the country code if it has one (example: +216 71 900 868).",
-      "invalid_status_url": "The status page's address starts with https:// then the site's name (example: https://status.example.com)."
+      "invalid_status_url": "The status page's address starts with https:// then the site's name (example: https://status.example.com).",
+      "passkey_only_factor": "Refused: {count, plural, one {one account has a passkey as its only second factor and would be left with none} other {{{count}} accounts have a passkey as their only second factor and would be left with none}}. Have them add an authenticator app in “My account” first.",
+      "no_tailnet_name": "Refused: this installation has no Tailscale address. Give it first (TAILNET_HOST, “twes host set”)."
     }
   }
 }

@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Settings\Application\Rules\GovernsSetting;
 use App\Settings\Domain\Event\PersonalSettingChanged;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
@@ -28,6 +29,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Refusal;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -51,6 +53,9 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         private DomainEvents $events,
         private TypedPhones $phones,
         private LiveChanges $liveChanges,
+        /** @var iterable<GovernsSetting> */
+        #[AutowireIterator('app.settings.rules')]
+        private iterable $rules = [],
     ) {
     }
 
@@ -76,6 +81,7 @@ final readonly class ChangeSettings implements DeclaresAuditActions
             throw new InvalidSettingValue([$key => $refusal]);
         }
         [$value, $refusal] = $this->phoneKept($definition, $address, $key, $definition->normalize($value));
+        $refusal ??= $this->ruleOf($key)?->refusal($value);
         if (null !== $refusal) {
             throw new InvalidSettingValue([$key => $refusal]);
         }
@@ -120,6 +126,7 @@ final readonly class ChangeSettings implements DeclaresAuditActions
                 continue;
             }
             [$value, $refusal] = $this->phoneKept($definition, $address, $change->key, $definition->normalize($change->value));
+            $refusal ??= $this->ruleOf($change->key)?->refusal($value);
             if (null !== $refusal) {
                 $refused[$change->key] = $refusal;
                 continue;
@@ -173,6 +180,7 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         }
         $this->settings->save($setting);
         $this->record(self::CHANGED, $setting, $address, $actorUserId);
+        $this->ruleOf($key)?->changed($value);
 
         return self::personal($address, $key, $value);
     }
@@ -180,17 +188,25 @@ final readonly class ChangeSettings implements DeclaresAuditActions
     /**
      * @throws UnknownSetting
      * @throws SettingLevelRefused
+     * @throws InvalidSettingValue
      */
     public function reset(SettingContext $context, string $key, SettingLevel $level, ?Uuid $actorUserId): ResolvedSetting
     {
-        [, $address] = $this->locate($context, $key, $level);
-        $removed = $this->transactions->run(function () use ($address, $key, $actorUserId): bool {
+        [$definition, $address] = $this->locate($context, $key, $level);
+        $removed = $this->transactions->run(function () use ($definition, $address, $key, $actorUserId): bool {
             $setting = $this->settings->lockedFind($address, $key);
             if (null === $setting) {
                 return false;
             }
+            // Going back puts the declared default in force: a change for the setting's rule, unless the row held it already.
+            $rule = $setting->getValue() === $definition->default ? null : $this->ruleOf($key);
+            $refusal = $rule?->refusal($definition->default);
+            if (null !== $refusal) {
+                throw new InvalidSettingValue([$key => $refusal]);
+            }
             $this->settings->remove($setting);
             $this->record(self::RESET, $setting, $address, $actorUserId);
+            $rule?->changed($definition->default);
 
             return true;
         });
@@ -200,6 +216,17 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         }
 
         return $resolved;
+    }
+
+    private function ruleOf(string $key): ?GovernsSetting
+    {
+        foreach ($this->rules as $rule) {
+            if ($rule->key() === $key) {
+                return $rule;
+            }
+        }
+
+        return null;
     }
 
     /** @return array{SettingDefinition, SettingAddress} */

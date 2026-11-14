@@ -43,6 +43,7 @@ describe('CompanyClosing', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     },
   });
 

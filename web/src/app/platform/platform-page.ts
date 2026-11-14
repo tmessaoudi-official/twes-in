@@ -21,7 +21,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { type MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -506,6 +506,7 @@ export class PlatformPage implements OnInit {
   });
   protected readonly demo = this.platform.demo;
   protected readonly showComing = this.platform.showComing;
+  protected readonly passkeys = this.platform.passkeys;
   private readonly demoMostHeld = computed(() => this.platform.demo()?.most?.value ?? null);
   /** The count as typed until saved, null when untouched: a switch turned meanwhile leaves what is typed alone. */
   protected readonly demoMostDraft = linkedSignal<number | null, number | null>({
@@ -820,8 +821,9 @@ export class PlatformPage implements OnInit {
     );
   }
 
-  protected async turn(key: PlatformSwitch, value: boolean): Promise<void> {
-    await this.platform.setSwitch(key, value);
+  /** A switch the platform did not take goes back where it was, rather than showing a value nothing holds. */
+  protected async turn(key: PlatformSwitch, event: MatSlideToggleChange): Promise<void> {
+    if (!(await this.platform.setSwitch(key, event.checked))) event.source.checked = !event.checked;
   }
 
   /** The address a tab opens: its own name and none of the words another list left behind. */

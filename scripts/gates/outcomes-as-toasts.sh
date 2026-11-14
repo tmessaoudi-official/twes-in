@@ -47,6 +47,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # until the owner closes it, for the operator reading and for the members alike; opening or closing it is a toast.
 # `demo-banner` is that the session is the demo's: a made-up company whose mail never leaves and whose documents have no
 # fiscal value, true on every page until the visitor signs out.
+# `passkeys-moved-banner` is that the account holds a passkey made for another address than the installation's passkeys
+# are bound to now, which no longer works: true on every page until the person removes it; the move itself is mailed.
 # `erasure-waiting` is the same state seen from « Effacer des données », said where the next erasure would be chosen.
 # `list-selection-count` is how many rows a list holds selected, changing with every box ticked: a state of the page that
 # the next action will act on, never the outcome of one.
@@ -56,7 +58,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # notification », which reads as nothing having happened; it is never the outcome of something the person did there.
 # `*-changes` is the record bar's count of what is typed and not saved, its test id bound from the page's own prefix
 # (`testId() + '-changes'`): a bound id is read by its fixed end.
-page_states=' document-taxes-stamp-status list-loading list-status stock-contents-status phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed *-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count product-price-review notifications-failed '
+page_states=' document-taxes-stamp-status list-loading list-status stock-contents-status phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed *-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner passkeys-moved-banner erasure-waiting list-selection-count product-price-review notifications-failed '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

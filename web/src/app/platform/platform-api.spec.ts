@@ -427,6 +427,13 @@ describe('PlatformApi', () => {
         max: 90,
       },
       { key: 'demo.enabled', type: 'bool', value: false, versions: { platform: 4 } },
+      { key: 'identity.passkey_sign_in', type: 'bool', value: false, versions: { platform: 2 } },
+      {
+        key: 'identity.passkeys_on_tailnet_name',
+        type: 'bool',
+        value: true,
+        versions: { platform: 1 },
+      },
       {
         key: 'presentation.show-coming',
         type: 'bool',
@@ -490,6 +497,8 @@ describe('PlatformApi', () => {
           max: 100,
         },
       },
+      // The installation's passkeys: whether one signs in alone, and whether they are bound to the Tailscale name.
+      passkeys: { signInAlone: false, onTailnetName: true },
       // Nor is the rows an imported file may hold.
       imports: {
         rows: {
@@ -545,6 +554,8 @@ describe('PlatformApi', () => {
         'demo.enabled': 4,
         'presentation.show-coming': 8,
         'demo.sandboxes_max': 6,
+        'identity.passkey_sign_in': 2,
+        'identity.passkeys_on_tailnet_name': 1,
         'import.max_rows': 7,
         'platform.country': 9,
         'platform.phones.outside_ranges': 10,

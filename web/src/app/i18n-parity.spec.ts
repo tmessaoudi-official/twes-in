@@ -68,6 +68,9 @@ import frWatch from '../../public/i18n/watch/fr.json';
 import arMfaLockout from '../../public/i18n/mfa-lockout/ar.json';
 import enMfaLockout from '../../public/i18n/mfa-lockout/en.json';
 import frMfaLockout from '../../public/i18n/mfa-lockout/fr.json';
+import arPasskeysMoved from '../../public/i18n/passkeys-moved/ar.json';
+import enPasskeysMoved from '../../public/i18n/passkeys-moved/en.json';
+import frPasskeysMoved from '../../public/i18n/passkeys-moved/fr.json';
 import arNotAllowed from '../../public/i18n/not-allowed/ar.json';
 import enNotAllowed from '../../public/i18n/not-allowed/en.json';
 import frNotAllowed from '../../public/i18n/not-allowed/fr.json';
@@ -160,6 +163,7 @@ const parts: Record<string, Record<string, unknown>> = {
   reports: { fr: frReports, en: enReports, ar: arReports },
   roles: { fr: frRoles, en: enRoles, ar: arRoles },
   'mfa-lockout': { fr: frMfaLockout, en: enMfaLockout, ar: arMfaLockout },
+  'passkeys-moved': { fr: frPasskeysMoved, en: enPasskeysMoved, ar: arPasskeysMoved },
   'spent-budget': { fr: frSpentBudget, en: enSpentBudget, ar: arSpentBudget },
   effects: { fr: frEffects, en: enEffects, ar: arEffects },
   'not-allowed': { fr: frNotAllowed, en: enNotAllowed, ar: arNotAllowed },

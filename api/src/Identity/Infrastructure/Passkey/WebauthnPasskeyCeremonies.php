@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Passkey;
 
+use App\Identity\Application\Mfa\Passkey\PasskeyHost;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Application\VerifiedPasskey;
@@ -40,7 +41,7 @@ use Webauthn\PublicKeyCredentialUserEntity;
  * The port on web-auth/webauthn-lib (MIT).
  *
  * Attestation is "none": a second factor needs proof of possession, not the make of the authenticator, and asking for
- * more makes browsers show a privacy prompt. The relying party id is configuration, never the request's Host header,
+ * more makes browsers show a privacy prompt. The relying party id is configuration (`PasskeyHost`), never the request's Host header,
  * which a proxy or a client can set. Allowed origins are compared whole, scheme and port included.
  */
 final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
@@ -57,8 +58,7 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
 
     /** @param list<string> $origins */
     public function __construct(
-        #[Autowire(param: 'app.webauthn.rp_id')]
-        private string $rpId,
+        private PasskeyHost $host,
         #[Autowire(param: 'app.product_name')]
         private string $rpName,
         #[Autowire(param: 'app.webauthn.origins')]
@@ -75,7 +75,7 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
     public function creationOptions(string $userHandle, string $userName, string $displayName, array $excludeCredentialIds): string
     {
         return $this->toJson(PublicKeyCredentialCreationOptions::create(
-            PublicKeyCredentialRpEntity::create($this->rpName, $this->rpId),
+            PublicKeyCredentialRpEntity::create($this->rpName, $this->host->current()),
             PublicKeyCredentialUserEntity::create($userName, $userHandle, $displayName),
             random_bytes(32),
             [PublicKeyCredentialParameters::createPk(self::ES256), PublicKeyCredentialParameters::createPk(self::RS256)],
@@ -107,14 +107,14 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
             }
 
             $record = AuthenticatorAttestationResponseValidator::create($this->steps->creationCeremony())
-                ->check($credential->response, $options, $this->rpId);
+                ->check($credential->response, $options, $host = $this->host->current());
         } catch (\Exception|\TypeError $e) {
             // The credential is the client's JSON: a field of the wrong type reaches the library's denormalizers as a
             // TypeError before any check runs. Whatever the cause, the answer is the same refusal.
             throw new PasskeyRefused('', 0, $e);
         }
 
-        return new VerifiedPasskey(self::encode($record->publicKeyCredentialId), $this->toJson($record), self::residentKeyOf($credentialJson));
+        return new VerifiedPasskey(self::encode($record->publicKeyCredentialId), $this->toJson($record), self::residentKeyOf($credentialJson), $host);
     }
 
     /**
@@ -139,7 +139,7 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
     {
         return $this->toJson(PublicKeyCredentialRequestOptions::create(
             random_bytes(32),
-            $this->rpId,
+            $this->host->current(),
             $this->descriptors($allowCredentialIds),
             AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
             self::TIMEOUT_MS,
@@ -174,7 +174,7 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
             }
 
             $updated = AuthenticatorAssertionResponseValidator::create($this->steps->requestCeremony())
-                ->check($record, $credential->response, $options, $this->rpId, $userHandle);
+                ->check($record, $credential->response, $options, $this->host->current(), $userHandle);
         } catch (\Exception|\TypeError $e) {
             throw new PasskeyRefused('', 0, $e);
         }

@@ -171,6 +171,7 @@ describe('AccountPage', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     },
     user: { demo: false },
   });
@@ -270,6 +271,7 @@ describe('AccountPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       user: { demo: false },
     });
@@ -332,6 +334,7 @@ describe('AccountPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       user: { demo: false },
     });
@@ -350,6 +353,7 @@ describe('AccountPage', () => {
         recoveryCodes: 3,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       user: { demo: false },
     });
@@ -370,6 +374,7 @@ describe('AccountPage', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       user: { demo: false },
     });
@@ -387,6 +392,7 @@ describe('AccountPage', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
       user: { demo: true },
     });

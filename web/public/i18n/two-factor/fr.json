@@ -65,7 +65,8 @@
           "passkey_sign_in_needs_authenticator": "Ajoutez d’abord une application d’authentification.",
           "passkey_sign_in_needs_passkey": "Ajoutez d’abord une clé d’accès que le navigateur propose de lui-même : celles de ce compte ne le font pas."
         }
-      }
+      },
+      "passkey_elsewhere": "Faite pour une autre adresse : elle ne fonctionne plus. Ajoutez-en une nouvelle ici, puis retirez celle-ci."
     }
   }
 }

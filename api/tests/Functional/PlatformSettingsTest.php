@@ -41,6 +41,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'demo.enabled', 'demo.sandboxes_max',
             // Whether anyone may sign in with a passkey alone (Identity\Application\Login\PasskeySignInSettings).
             'identity.passkey_sign_in',
+            // Whether passkeys are bound to the shop's Tailscale name (Identity\Application\Mfa\Passkey\PasskeyHostSettings).
+            'identity.passkeys_on_tailnet_name',
             // The rows one imported file may hold (ImportExport\Application\ImportSettings).
             'import.max_rows',
             // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.

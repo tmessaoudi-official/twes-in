@@ -29,6 +29,8 @@ final readonly class MeMfa
         #[ApiProperty(required: true)] public bool $passkeySignIn = false,
         /** Whether the installation lets anyone do so: the switch is offered only then. */
         #[ApiProperty(required: true)] public bool $passkeySignInAllowed = false,
+        /** The passkeys made on another name than passkeys are bound to now, which no longer work: its owner adds one again. */
+        #[ApiProperty(required: true)] public int $passkeysElsewhere = 0,
     ) {
     }
 }

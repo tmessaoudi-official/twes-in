@@ -140,6 +140,7 @@ const owner: SignedInState = {
     recoveryCodes: 0,
     passkeySignIn: false,
     passkeySignInAllowed: false,
+    passkeysElsewhere: 0,
   },
   // The API's catalogue (row 150): the menu's planned modules come from here, never from a list of the web's own.
   plannedModules: [

@@ -93,6 +93,7 @@ const inCompany = (id: string): SignedInState =>
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     },
   }) satisfies SignedInState;
 

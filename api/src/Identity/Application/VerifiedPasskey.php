@@ -17,6 +17,8 @@ final readonly class VerifiedPasskey
         public string $record,
         /** Whether the browser said the key lives on the device and can sign in alone; null when it said nothing. */
         public ?bool $discoverable = null,
+        /** The name it was made on, the only one it works on. */
+        public ?string $host = null,
     ) {
     }
 }

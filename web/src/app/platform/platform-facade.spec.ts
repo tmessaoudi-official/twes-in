@@ -60,6 +60,7 @@ const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
 const SETTINGS = {
   signup: { enabled: false, approvalRequired: true },
   showComing: false,
+  passkeys: { signInAlone: true, onTailnetName: false },
   support: { phone: '+216 71 000 000', whatsapp: '', email: '', status_url: '' },
   delays: [
     { key: 'account.deletion_days', labelKey: 'l.a', value: 7, min: 1, max: 90 },
@@ -508,10 +509,29 @@ describe('PlatformFacade', () => {
     await facade.load();
     api.setSwitch.mockRejectedValue(new PlatformRefused('network'));
 
-    await facade.setSwitch('signup.enabled', true);
+    expect(await facade.setSwitch('signup.enabled', true)).toBe(false);
 
     expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
     expect(facade.error()).toBe('network');
+  });
+
+  it('moves the passkeys once the platform holds it, and keeps a refusal naming the switch for it to say', async () => {
+    await facade.load();
+    api.setSwitch.mockResolvedValueOnce(undefined);
+
+    expect(await facade.setSwitch('identity.passkeys_on_tailnet_name', true)).toBe(true);
+    expect(facade.passkeys()).toEqual({ signInAlone: true, onTailnetName: true });
+
+    const alone = {
+      field: 'identity.passkeys_on_tailnet_name',
+      reason: 'passkey_only_factor',
+      params: { count: 2 },
+    };
+    api.setSwitch.mockRejectedValueOnce(new PlatformRefused('invalid', [alone]));
+    expect(await facade.setSwitch('identity.passkeys_on_tailnet_name', false)).toBe(false);
+
+    expect(facade.passkeys()).toEqual({ signInAlone: true, onTailnetName: true });
+    expect(facade.refused()).toEqual({ at: 'switch', refusals: [alone] });
   });
 
   it('opens one subscription at a time, saves its terms and reads the companies again', async () => {

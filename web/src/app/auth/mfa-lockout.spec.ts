@@ -25,6 +25,7 @@ const mfa = (status: Partial<MfaStatus>): MfaStatus => ({
   recoveryCodes: 10,
   passkeySignIn: false,
   passkeySignInAllowed: false,
+  passkeysElsewhere: 0,
   ...status,
 });
 
@@ -57,6 +58,7 @@ describe('lockoutRisk', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       }),
       true,
     ],
@@ -69,6 +71,7 @@ describe('lockoutRisk', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       }),
       true,
     ],
@@ -81,6 +84,7 @@ describe('lockoutRisk', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       }),
       false,
     ],
@@ -114,6 +118,7 @@ describe('lockoutRisk', () => {
           recoveryCodes: 0,
           passkeySignIn: false,
           passkeySignInAllowed: false,
+          passkeysElsewhere: 0,
         }),
       ),
     ).toBeNull();
@@ -184,6 +189,7 @@ describe('MfaLockout', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       }),
       false,
     );

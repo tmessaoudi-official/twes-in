@@ -154,6 +154,8 @@ export interface MfaStatus {
   passkeySignIn: boolean;
   /** the installation lets an account switch that on */
   passkeySignInAllowed: boolean;
+  /** the passkeys made for another address than passkeys are bound to now, which no longer work */
+  passkeysElsewhere: number;
 }
 
 export interface SignedInState {
@@ -252,6 +254,8 @@ export interface PasskeySummary {
   lastUsedAt: string | null;
   /** whether it lives on the device and can sign in alone, as the browser said when it made it; null when it said nothing */
   discoverable: boolean | null;
+  /** made for another address than passkeys are bound to now: it no longer works */
+  elsewhere: boolean;
 }
 
 export type PasskeysOutcome =

@@ -360,6 +360,10 @@
       "none": "Aucune entreprise n’ouvre son accès au support pour le moment.",
       "until": "jusqu’au {{until}}",
       "open": "Ouvrir en lecture"
+    },
+    "passkeys": {
+      "title": "Clés d’accès",
+      "intro": "Une clé d’accès ne fonctionne qu’à l’adresse où elle a été faite. Celles de l’installation sont liées à son adresse sur l’ordinateur de la boutique ; liées à son adresse Tailscale, elles fonctionnent aussi sur un téléphone hors de la boutique. Changer de l’une à l’autre rend inutilisables toutes les clés déjà faites : chacun en ajoute une nouvelle, prévenu par courrier et dans l’application. Ce changement est refusé tant qu’un compte n’a qu’une clé d’accès comme second facteur."
     }
   }
 }

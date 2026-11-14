@@ -52,6 +52,25 @@ final readonly class DoctrinePasskeyRepository implements PasskeyRepository
         return $this->entityManager->getRepository(Passkey::class)->count(['user' => $user]);
     }
 
+    public function countAccountsWithPasskeysAlone(): int
+    {
+        $count = $this->entityManager->createQuery(
+            'SELECT COUNT(DISTINCT u.id) FROM '.Passkey::class.' p JOIN p.user u WHERE u.totpSecret IS NULL OR u.totpConfirmedAt IS NULL',
+        )->getSingleScalarResult();
+
+        return is_numeric($count) ? (int) $count : throw new \UnexpectedValueException('A count reads as a number.');
+    }
+
+    public function holdersOfPasskeysNotMadeOn(string $host, string $installationName): array
+    {
+        /** @var list<User> $users */
+        $users = $this->entityManager->createQuery(
+            'SELECT u FROM '.User::class.' u WHERE u.id IN (SELECT IDENTITY(p.user) FROM '.Passkey::class.' p WHERE COALESCE(p.host, :installation) <> :host) ORDER BY u.id ASC',
+        )->setParameter('host', $host)->setParameter('installation', $installationName)->getResult();
+
+        return array_map(static fn (User $user): Uuid => $user->getId(), $users);
+    }
+
     public function save(Passkey $passkey): void
     {
         $this->entityManager->persist($passkey);

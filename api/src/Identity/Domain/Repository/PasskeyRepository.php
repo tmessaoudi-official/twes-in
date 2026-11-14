@@ -31,6 +31,17 @@ interface PasskeyRepository
 
     public function countFor(User $user): int;
 
+    /** How many accounts hold a passkey and no authenticator app in force: a passkey is their only second factor. */
+    public function countAccountsWithPasskeysAlone(): int;
+
+    /**
+     * The accounts holding a passkey made on another name than this one, a key with no name kept counted as made on the
+     * installation's own.
+     *
+     * @return list<Uuid>
+     */
+    public function holdersOfPasskeysNotMadeOn(string $host, string $installationName): array;
+
     public function save(Passkey $passkey): void;
 
     public function remove(Passkey $passkey): void;

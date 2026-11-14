@@ -548,6 +548,10 @@
       <app-support-banner />
       <!-- While a visitor tries the demo, on every page. -->
       <app-demo-banner />
+      <!-- While the account holds passkeys made for another address, on every page; its own chunk, loaded only then. -->
+      @defer (when passkeysElsewhere()) {
+        <app-passkeys-moved-banner />
+      }
       <!-- A company this sign-in has not proved itself for shows none of its pages until it has. -->
       @if (entryAsked()) {
         <app-company-proof-panel />

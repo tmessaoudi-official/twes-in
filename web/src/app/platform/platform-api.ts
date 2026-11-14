@@ -174,6 +174,12 @@ export class PlatformApi {
             rows.find((row) => row.key === DEMO_MOST),
           ),
         },
+        passkeys: rows.some((row) => row.key === PASSKEYS_ON_TAILNET_NAME)
+          ? {
+              signInAlone: valueOf('identity.passkey_sign_in') !== false,
+              onTailnetName: valueOf(PASSKEYS_ON_TAILNET_NAME) === true,
+            }
+          : null,
         imports: {
           rows: ((row) => (row === undefined ? null : toNumber(row)))(
             rows.find((row) => row.key === IMPORT_ROWS),
@@ -417,6 +423,8 @@ const DEMO_MOST = 'demo.sandboxes_max';
 /** How many rows one imported file may hold: a card of its own too. */
 const IMPORT_ROWS = 'import.max_rows';
 const OWN_CARDS: ReadonlySet<string> = new Set([DEMO_MOST, IMPORT_ROWS]);
+/** Where the installation's passkeys are bound: its own name, or the shop's Tailscale one. */
+const PASSKEYS_ON_TAILNET_NAME = 'identity.passkeys_on_tailnet_name';
 /** The platform's country and the countries it may be set to, or null where the API declares no such setting. */
 function platformCountry(rows: readonly SettingSettingRead[]): PlatformCountry | null {
   const row = rows.find((each) => each.key === PLATFORM_COUNTRY);

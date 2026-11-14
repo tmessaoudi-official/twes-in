@@ -213,6 +213,9 @@ security_notice:
     recovery_codes_renewed:
         heading: 'New recovery codes'
         body: 'New recovery codes were made for your account: the previous ones no longer work.'
+    passkeys_moved:
+        heading: 'Passkeys to add again'
+        body: 'Your installation’s passkeys are now bound to another address: the ones your account holds no longer work. Open the app at the address it shows you, then add a passkey in “My account” and remove the old one. Your password and your authenticator app still work.'
     factors_replaced:
         heading: 'Sign-in factors reset'
         body: 'Whoever runs your installation removed your account’s second factors (authenticator app, recovery codes and, where asked, passkeys) and ended all your sessions. At your next sign-in with your password, you will set up a new one.'

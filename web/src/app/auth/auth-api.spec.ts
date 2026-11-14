@@ -45,6 +45,7 @@ const owner: Me = {
     recoveryCodes: 0,
     passkeySignIn: false,
     passkeySignInAllowed: true,
+    passkeysElsewhere: 0,
   },
   modules: ['customers'],
   plannedModules: [
@@ -263,6 +264,7 @@ describe('AuthApi', () => {
         recoveryCodes: 10,
         passkeySignIn: true,
         passkeySignInAllowed: true,
+        passkeysElsewhere: 0,
       },
     });
     expect((await pending).mfa).toEqual({
@@ -273,6 +275,7 @@ describe('AuthApi', () => {
       recoveryCodes: 10,
       passkeySignIn: true,
       passkeySignInAllowed: true,
+      passkeysElsewhere: 0,
     });
   });
 
@@ -506,6 +509,7 @@ describe('AuthApi', () => {
     createdAt: '2026-09-15T10:00:00+00:00',
     lastUsedAt: null,
     discoverable: false,
+    elsewhere: false,
   };
 
   it('fetches creation options, registers the credential and lists the passkeys', async () => {

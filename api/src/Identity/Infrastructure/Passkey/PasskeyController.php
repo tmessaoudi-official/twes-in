@@ -14,6 +14,7 @@ use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Mfa\Passkey\BeginPasskeyAssertion;
 use App\Identity\Application\Mfa\Passkey\BeginPasskeyRegistration;
 use App\Identity\Application\Mfa\Passkey\FinishPasskeyLogin;
+use App\Identity\Application\Mfa\Passkey\PasskeyHost;
 use App\Identity\Application\Mfa\Passkey\PasskeyNotFound;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\Mfa\Passkey\RegisterPasskey;
@@ -66,6 +67,7 @@ final readonly class PasskeyController
         private FinishPasskeyLogin $finishLogin,
         private RegenerateRecoveryCodesWithPasskey $regenerateRecoveryCodes,
         private SecondFactorLogin $secondFactorLogin,
+        private PasskeyHost $host,
     ) {
     }
 
@@ -74,7 +76,7 @@ final readonly class PasskeyController
     {
         $user = $this->users->ofId($this->currentUserId()) ?? throw new \LogicException('An authenticated account always has a user row.');
 
-        return new JsonResponse(['passkeys' => array_map(self::describe(...), $this->passkeys->ofUser($user))]);
+        return new JsonResponse(['passkeys' => array_map($this->describe(...), $this->passkeys->ofUser($user))]);
     }
 
     #[Route('/api/auth/mfa/passkeys/options', name: 'api_auth_mfa_passkeys_options', methods: ['POST'])]
@@ -114,7 +116,7 @@ final readonly class PasskeyController
             return self::refused(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return new JsonResponse(['passkey' => self::describe($registered->passkey), 'recoveryCodes' => $registered->recoveryCodes], Response::HTTP_CREATED);
+        return new JsonResponse(['passkey' => $this->describe($registered->passkey), 'recoveryCodes' => $registered->recoveryCodes], Response::HTTP_CREATED);
     }
 
     #[Route('/api/auth/mfa/passkeys/{id}', name: 'api_auth_mfa_passkeys_remove', requirements: ['id' => Requirement::UUID], methods: ['DELETE'])]
@@ -243,9 +245,11 @@ final readonly class PasskeyController
     }
 
     /** @return array{id: string, name: string, createdAt: string, lastUsedAt: string|null, discoverable: bool|null} */
-    private static function describe(Passkey $passkey): array
+    private function describe(Passkey $passkey): array
     {
         return [
+            // Made on another name than passkeys are bound to now: it no longer works, and its owner adds one again.
+            'elsewhere' => !$this->host->madeHere($passkey->getHost()),
             'id' => $passkey->getId()->toRfc4122(),
             'name' => $passkey->getName(),
             'createdAt' => $passkey->getCreatedAt()->format(\DATE_ATOM),

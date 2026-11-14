@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Health;
 
+use App\Identity\Application\Mfa\Passkey\PasskeyHost;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SupportSettings;
@@ -45,9 +46,7 @@ final readonly class HealthController
         #[Autowire(env: 'BUILD_COMMIT')] private string $commit,
         #[Autowire('%kernel.environment%')] private string $mode,
         #[Autowire(env: 'DEPLOY_ENV')] private string $deployment,
-        #[Autowire(param: 'app.webauthn.rp_id')] private string $passkeyHost,
-        /** @var list<string> */
-        #[Autowire(param: 'app.webauthn.origins')] private array $passkeyOrigins,
+        private PasskeyHost $passkeyHost,
         #[Autowire(param: ClientErrorBounds::PER_PAGE)] private int $errorReportsPerPage,
         #[Autowire(param: SubmissionRetryBounds::RETRY_MINUTES)] private int $submissionRetryMinutes,
         #[Autowire(param: 'app.password_reset.valid_for')] private string $passwordResetValidFor,
@@ -70,7 +69,7 @@ final readonly class HealthController
                 'build' => ['version' => self::given($this->version), 'commit' => self::given($this->commit), 'mode' => $this->mode],
                 'deployment' => self::given($this->deployment),
                 'statusUrl' => $reachable ? $this->statusUrl() : null,
-                'passkeys' => ['host' => $this->passkeyHost, 'address' => $this->passkeyOrigins[0] ?? null],
+                'passkeys' => ['host' => $this->passkeyHost->current(), 'address' => $this->passkeyHost->address()],
                 'web' => [
                     'errorReportsPerPage' => $this->errorReportsPerPage,
                     'submissionRetryMinutes' => $this->submissionRetryMinutes,

@@ -73,6 +73,7 @@ function state(
       recoveryCodes: 0,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     },
   };
 }

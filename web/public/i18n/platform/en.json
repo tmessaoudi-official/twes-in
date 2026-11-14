@@ -360,6 +360,10 @@
       "none": "No company has opened its access to support for now.",
       "until": "until {{until}}",
       "open": "Open read-only"
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "intro": "A passkey works only at the address it was made at. The installation’s are bound to its address on the shop’s computer; bound to its Tailscale address, they also work on a phone outside the shop. Moving from one to the other makes every passkey already made unusable: each person adds a new one, told by mail and in the app. The move is refused while an account’s only second factor is a passkey."
     }
   }
 }

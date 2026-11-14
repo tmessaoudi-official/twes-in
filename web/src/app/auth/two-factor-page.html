@@ -294,6 +294,11 @@
                   <span data-testid="two-factor-passkey-name-label"
                     ><bdi>{{ passkey.name }}</bdi></span
                   >
+                  @if (passkey.elsewhere) {
+                    <span class="text-sm opacity-80" data-testid="two-factor-passkey-elsewhere">
+                      {{ 'auth.two_factor.passkey_elsewhere' | translate }}
+                    </span>
+                  }
                   <!-- Only where a passkey alone may sign in here: elsewhere what it cannot do changes nothing. -->
                   @if (passkey.discoverable === false && passkeySignIn() !== null) {
                     <span class="text-sm opacity-80" data-testid="two-factor-passkey-not-alone">

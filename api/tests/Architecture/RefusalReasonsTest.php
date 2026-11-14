@@ -11,6 +11,7 @@ namespace App\Tests\Architecture;
 
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
+use App\Settings\Application\Rules\GovernsSetting;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\ValueObject\SettingChain;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -313,26 +314,57 @@ final class RefusalReasonsTest extends KernelTestCase
                     $wrong[] = \sprintf('a save: no %s text for %s', $language, $ofTheSave);
                 }
             }
+            // A setting's rule refuses what its value alone cannot say (whether the installation may take it now).
+            $answers = array_map(static fn (GovernsSetting $rule): array => [$rule->key(), $rule->refusals()], self::settingRules());
             foreach (SettingChain::cases() as $chain) {
                 foreach ($catalog->ofChain($chain) as $definition) {
-                    foreach ($definition->refusals() as $refusal) {
-                        ++$refusals;
-                        $said = $translated[$refusal->reason] ?? null;
-                        if (!\is_string($said) || '' === $said) {
-                            $wrong[] = \sprintf('%s: no %s text for %s', $definition->key, $language, $refusal->reason);
-                            continue;
-                        }
-                        preg_match_all('/\{\{\s*(\w+)\s*\}\}/', $said, $named);
-                        foreach (array_diff($named[1], array_keys($refusal->params)) as $unfilled) {
-                            $wrong[] = \sprintf('%s: its %s text for %s names {{%s}}, which the refusal does not send', $definition->key, $language, $refusal->reason, $unfilled);
-                        }
+                    $answers[] = [$definition->key, $definition->refusals()];
+                }
+            }
+            foreach ($answers as [$key, $answered]) {
+                foreach ($answered as $refusal) {
+                    ++$refusals;
+                    $said = $translated[$refusal->reason] ?? null;
+                    if (!\is_string($said) || '' === $said) {
+                        $wrong[] = \sprintf('%s: no %s text for %s', $key, $language, $refusal->reason);
+                        continue;
+                    }
+                    preg_match_all('/\{\{\s*(\w+)\s*\}\}/', $said, $named);
+                    foreach (array_diff($named[1], array_keys($refusal->params)) as $unfilled) {
+                        $wrong[] = \sprintf('%s: its %s text for %s names {{%s}}, which the refusal does not send', $key, $language, $refusal->reason, $unfilled);
                     }
                 }
             }
         }
 
         self::assertGreaterThan(300, $refusals, 'the declared settings are found');
+        self::assertNotSame([], self::settingRules(), 'the settings\' rules are found');
         self::assertSame([], $wrong);
+    }
+
+    /**
+     * Every setting's rule the application holds, found by its source naming the port, as the engine collects them.
+     *
+     * @return list<GovernsSetting>
+     */
+    private static function settingRules(): array
+    {
+        $root = \dirname(__DIR__, 2).'/src';
+        $rules = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            \assert($file instanceof \SplFileInfo);
+            $source = (string) file_get_contents($file->getPathname());
+            if (1 !== preg_match('/^final readonly class \w+ implements [^{]*\bGovernsSetting\b/m', $source)) {
+                continue;
+            }
+            $class = 'App\\'.str_replace('/', '\\', substr($file->getPathname(), \strlen($root) + 1, -4));
+            $rule = static::getContainer()->get($class);
+            self::assertInstanceOf(GovernsSetting::class, $rule, $class);
+            $rules[] = $rule;
+        }
+
+        return $rules;
     }
 
     /** The texts the settings screens open before saying a settings refusal, beside the screens' own file. */

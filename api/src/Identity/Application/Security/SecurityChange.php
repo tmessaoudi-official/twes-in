@@ -42,6 +42,8 @@ enum SecurityChange: string
     case AddressLocked = 'address_locked';
     /** The same, set by wrong second-factor codes typed after the right password. */
     case SecondFactorAddressLocked = 'second_factor_address_locked';
+    /** The installation's passkeys were bound to another name: the ones the account holds no longer work. */
+    case PasskeysMoved = 'passkeys_moved';
     /** An operator switched the account off, its sessions ended with it. */
     case OperatorDeactivated = 'operator_deactivated';
     /** An operator switched the account on again. */
@@ -65,6 +67,6 @@ enum SecurityChange: string
      */
     public function byTheInstallation(): bool
     {
-        return \in_array($this, [self::FactorsReplaced, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions, self::LockLiftedByOwner, self::LockLiftedByOperator], true);
+        return \in_array($this, [self::FactorsReplaced, self::PasskeysMoved, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions, self::LockLiftedByOwner, self::LockLiftedByOperator], true);
     }
 }

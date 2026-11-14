@@ -212,14 +212,14 @@
                   data-testid="platform-signup-enabled"
                   [checked]="signup()?.enabled ?? false"
                   [disabled]="signup() === null"
-                  (change)="turn('signup.enabled', $event.checked)"
+                  (change)="turn('signup.enabled', $event)"
                   >{{ 'platform.signup.enabled' | translate }}</mat-slide-toggle
                 >
                 <mat-slide-toggle
                   data-testid="platform-approval-required"
                   [checked]="signup()?.approvalRequired ?? true"
                   [disabled]="signup() === null"
-                  (change)="turn('signup.approval_required', $event.checked)"
+                  (change)="turn('signup.approval_required', $event)"
                   >{{ 'platform.signup.approval_required' | translate }}</mat-slide-toggle
                 >
               </div>
@@ -236,7 +236,7 @@
                   data-testid="platform-demo-enabled"
                   [checked]="demo()?.enabled ?? true"
                   [disabled]="demo() === null"
-                  (change)="turn('demo.enabled', $event.checked)"
+                  (change)="turn('demo.enabled', $event)"
                   >{{ 'settings.platform.demo_enabled' | translate }}</mat-slide-toggle
                 >
                 @if (demo()?.most; as most) {
@@ -274,6 +274,42 @@
               </div>
             </mat-card-content>
           </mat-card>
+          @if (passkeys(); as passkeys) {
+            <mat-card appearance="outlined" data-testid="platform-passkeys">
+              <mat-card-header>
+                <mat-card-title>{{ 'platform.passkeys.title' | translate }}</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="mt-4 flex flex-col items-start gap-3">
+                  <p class="max-w-prose text-sm">{{ 'platform.passkeys.intro' | translate }}</p>
+                  <mat-slide-toggle
+                    data-testid="platform-passkey-sign-in"
+                    [checked]="passkeys.signInAlone"
+                    (change)="turn('identity.passkey_sign_in', $event)"
+                    >{{ 'settings.platform.passkey_sign_in' | translate }}</mat-slide-toggle
+                  >
+                  <mat-slide-toggle
+                    data-testid="platform-passkeys-on-tailnet"
+                    [checked]="passkeys.onTailnetName"
+                    (change)="turn('identity.passkeys_on_tailnet_name', $event)"
+                    >{{
+                      'settings.platform.passkeys_on_tailnet_name' | translate
+                    }}</mat-slide-toggle
+                  >
+                  @if (refusalOf('switch', 'identity.passkeys_on_tailnet_name'); as said) {
+                    <!-- read-retry: a refusal of the switch, put right by the accounts it names, not by asking again -->
+                    <p
+                      role="alert"
+                      class="text-sm text-error"
+                      data-testid="platform-passkeys-refused"
+                    >
+                      {{ said.key | translate: said.params }}
+                    </p>
+                  }
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
           <mat-card appearance="outlined" data-testid="platform-coming">
             <mat-card-header>
               <mat-card-title>{{ 'platform.coming.title' | translate }}</mat-card-title>
@@ -285,7 +321,7 @@
                   data-testid="platform-show-coming"
                   [checked]="showComing() ?? false"
                   [disabled]="showComing() === null"
-                  (change)="turn('presentation.show-coming', $event.checked)"
+                  (change)="turn('presentation.show-coming', $event)"
                   >{{ 'settings.presentation.show_coming' | translate }}</mat-slide-toggle
                 >
               </div>

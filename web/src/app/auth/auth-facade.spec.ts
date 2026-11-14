@@ -43,6 +43,7 @@ const owner: SignedInState = {
     recoveryCodes: 10,
     passkeySignIn: false,
     passkeySignInAllowed: false,
+    passkeysElsewhere: 0,
   },
 };
 
@@ -321,6 +322,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -336,6 +338,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -353,6 +356,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -426,6 +430,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 2,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -579,6 +584,7 @@ describe('AuthFacade', () => {
         createdAt: '2026-11-14T10:00:00+00:00',
         lastUsedAt: null,
         discoverable: true,
+        elsewhere: false,
       },
       recoveryCodes: [],
     });
@@ -683,6 +689,7 @@ describe('AuthFacade', () => {
     createdAt: '2026-09-15T10:00:00+00:00',
     lastUsedAt: null,
     discoverable: true,
+    elsewhere: false,
   };
 
   it('lists the passkeys, or the refusal', async () => {
@@ -704,6 +711,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 0,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -729,6 +737,7 @@ describe('AuthFacade', () => {
       recoveryCodes: 1,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
     expect(facade.needsEnrolment()).toBe(false);
   });
@@ -768,6 +777,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -787,6 +797,7 @@ describe('AuthFacade', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
   });
 
@@ -801,6 +812,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: true,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -832,6 +844,7 @@ describe('AuthFacade', () => {
         recoveryCodes: 10,
         passkeySignIn: false,
         passkeySignInAllowed: false,
+        passkeysElsewhere: 0,
       },
     });
     await facade.load();
@@ -854,6 +867,7 @@ describe('AuthFacade', () => {
       recoveryCodes: 10,
       passkeySignIn: false,
       passkeySignInAllowed: false,
+      passkeysElsewhere: 0,
     });
   });
 

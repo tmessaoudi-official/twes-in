@@ -95,6 +95,16 @@ final class SupportDoubles
                 return 0;
             }
 
+            public function countAccountsWithPasskeysAlone(): int
+            {
+                return 0;
+            }
+
+            public function holdersOfPasskeysNotMadeOn(string $host, string $installationName): array
+            {
+                return [];
+            }
+
             public function save(Passkey $passkey): void
             {
             }

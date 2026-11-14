@@ -380,6 +380,7 @@ function toState(me: Me): SignedInState {
       recoveryCodes: me.mfa.recoveryCodes,
       passkeySignIn: me.mfa.passkeySignIn,
       passkeySignInAllowed: me.mfa.passkeySignInAllowed,
+      passkeysElsewhere: me.mfa.passkeysElsewhere,
     },
   };
 }
@@ -391,6 +392,7 @@ function toPasskey(passkey: Passkey): PasskeySummary {
     createdAt: passkey.createdAt,
     lastUsedAt: passkey.lastUsedAt,
     discoverable: passkey.discoverable,
+    elsewhere: passkey.elsewhere,
   };
 }
 

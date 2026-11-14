@@ -30,6 +30,7 @@ import type {
   PlatformError,
   PlatformSignup,
   PlatformDemo,
+  PlatformPasskeys,
   PlatformImports,
   PlatformNumber,
   PlatformSupport,
@@ -366,6 +367,7 @@ describe('PlatformPage', () => {
   const phonesState: PlatformPhones = { key: 'platform.phones.outside_ranges', value: 'refuse' };
   const phones = signal<PlatformPhones | null>(phonesState);
   const showComing = signal<boolean | null>(false);
+  const passkeys = signal<PlatformPasskeys | null>({ signInAlone: true, onTailnetName: false });
   const busy = signal(false);
   const error = signal<PlatformError | UnknownRefusal | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -419,6 +421,7 @@ describe('PlatformPage', () => {
     phones: phones.asReadonly(),
     savePhones: vi.fn(async () => true),
     showComing: showComing.asReadonly(),
+    passkeys: passkeys.asReadonly(),
     busy,
     error,
     readFailed: computed(() => error() !== null),
@@ -466,6 +469,7 @@ describe('PlatformPage', () => {
     country.set(countryState);
     phones.set(phonesState);
     showComing.set(false);
+    passkeys.set({ signInAlone: true, onTailnetName: false });
     error.set(null);
     refused.set({ at: null, refusals: [] });
     accounts.set([account]);
@@ -1035,6 +1039,49 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.setSwitch).toHaveBeenCalledWith('demo.enabled', false);
+  });
+
+  it('shows both passkey switches as the platform holds them and turns one', async () => {
+    const { fixture, switchOf } = await render();
+
+    expect(switchOf('platform-passkey-sign-in').getAttribute('aria-checked')).toBe('true');
+    expect(switchOf('platform-passkeys-on-tailnet').getAttribute('aria-checked')).toBe('false');
+
+    switchOf('platform-passkeys-on-tailnet').click();
+    await fixture.whenStable();
+
+    expect(facade.setSwitch).toHaveBeenCalledWith('identity.passkeys_on_tailnet_name', true);
+  });
+
+  it('puts a switch the platform refused back where it was and says why beside it', async () => {
+    facade.setSwitch.mockImplementationOnce(async () => {
+      refused.set({
+        at: 'switch',
+        refusals: [
+          {
+            field: 'identity.passkeys_on_tailnet_name',
+            reason: 'passkey_only_factor',
+            params: { count: 2 },
+          },
+        ],
+      });
+      return false;
+    });
+    const { fixture, query, switchOf } = await render();
+
+    switchOf('platform-passkeys-on-tailnet').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(switchOf('platform-passkeys-on-tailnet').getAttribute('aria-checked')).toBe('false');
+    expect(query('platform-passkeys-refused')).not.toBeNull();
+  });
+
+  it('draws no passkeys card where the API declares no such setting', async () => {
+    passkeys.set(null);
+    const { query } = await render();
+
+    expect(query('platform-passkeys')).toBeNull();
   });
 
   it('opens the overview on the platform’s content, its legal pages and its texts, and no other tab repeats them', async () => {

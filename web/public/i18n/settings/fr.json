@@ -8,7 +8,8 @@
       "company_reopen_days": "Jours pour rouvrir une entreprise fermée",
       "licensing_grace_days": "Jours de grâce après la fin d’un abonnement",
       "licensing_hold_days": "Jours d’accès pour un paiement à confirmer",
-      "passkey_sign_in": "Connexion par clé d’accès seule"
+      "passkey_sign_in": "Connexion par clé d’accès seule",
+      "passkeys_on_tailnet_name": "Clés d’accès liées à l’adresse Tailscale"
     },
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",

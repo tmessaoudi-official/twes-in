@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Infrastructure;
 
+use App\Identity\Application\Mfa\Passkey\PasskeyHost;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
@@ -30,7 +31,7 @@ final class HealthControllerTest extends TestCase
         };
 
         // No setting declared at all: reading one would throw, so the status page is not asked of a database that is down.
-        $response = (new HealthController($probe, self::settings(), '2026.10.07.5', 'a7adf55f', 'prod', '', 'twes.example.com', ['https://twes.example.com'], 0, 30, 'PT15M', 'P1D', 'PT90S', 'PT48H', 'PT2H'))();
+        $response = (new HealthController($probe, self::settings(), '2026.10.07.5', 'a7adf55f', 'prod', '', self::passkeysOn('twes.example.com', 'https://twes.example.com'), 0, 30, 'PT15M', 'P1D', 'PT90S', 'PT48H', 'PT2H'))();
 
         self::assertSame(503, $response->getStatusCode());
         // Still says which build answers, where passkeys work and what the operator set for the page: the footer, the
@@ -47,10 +48,40 @@ final class HealthControllerTest extends TestCase
             }
         };
 
-        $response = (new HealthController($probe, self::settings(new SupportSettings()), '2026.10.07.5', 'a7adf55f', 'prod', '', 'localhost', [], 5, 15, 'PT1H', 'PT24H', 'PT5M', 'PT24H', 'PT24H'))();
+        $response = (new HealthController($probe, self::settings(new SupportSettings()), '2026.10.07.5', 'a7adf55f', 'prod', '', self::passkeysOn('localhost', null), 5, 15, 'PT1H', 'PT24H', 'PT5M', 'PT24H', 'PT24H'))();
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => null], 'web' => ['errorReportsPerPage' => 5, 'submissionRetryMinutes' => 15, 'passwordResetSeconds' => 3600, 'signupSeconds' => 86400, 'stepUpSeconds' => 300, 'recordsUndoableSeconds' => 86400, 'erasureUndoableSeconds' => 86400]], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
+    }
+
+    /** Where passkeys are bound now, as the installation's configuration or its operators' switch says. */
+    private static function passkeysOn(string $host, ?string $address): PasskeyHost
+    {
+        return new readonly class($host, $address) implements PasskeyHost {
+            public function __construct(private string $host, private ?string $address)
+            {
+            }
+
+            public function current(): string
+            {
+                return $this->host;
+            }
+
+            public function address(): ?string
+            {
+                return $this->address;
+            }
+
+            public function madeHere(?string $host): bool
+            {
+                return ($host ?? $this->host) === $this->host;
+            }
+
+            public function installationName(): string
+            {
+                return $this->host;
+            }
+        };
     }
 
     private static function settings(SupportSettings ...$declared): ReadSetting

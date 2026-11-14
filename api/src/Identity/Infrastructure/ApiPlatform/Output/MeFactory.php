@@ -13,7 +13,9 @@ use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\CompanyProof\EntryProof;
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
 use App\Identity\Application\Login\PasskeySignInSettings;
+use App\Identity\Application\Mfa\Passkey\PasskeyHost;
 use App\Identity\Application\StepUp\ScreenProofs;
+use App\Identity\Domain\Model\Passkey;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\RecoveryCodeRepository;
@@ -57,6 +59,7 @@ final readonly class MeFactory
         private MfaRequirement $mfaRequirement,
         private ModuleStates $modules,
         private PasskeyRepository $passkeys,
+        private PasskeyHost $passkeyHost,
         private CompanyStandings $standings,
         private ModuleCatalog $catalog,
         private CustomerScreenLock $customerScreen,
@@ -85,7 +88,7 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE, $this->screenProofs->ofStepUp($user));
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, \count($passkeys = $this->passkeys->ofUser($user)), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE, $this->screenProofs->ofStepUp($user), \count(array_filter($passkeys, fn (Passkey $passkey): bool => !$this->passkeyHost->madeHere($passkey->getHost()))));
     }
 
     private function proofAsked(User $user, ?WorkingContext $context): ?EntryProof

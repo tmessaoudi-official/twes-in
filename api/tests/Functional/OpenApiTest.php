@@ -58,7 +58,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules', 'customerScreenCompanyId', 'support', 'supportAccessUntil', 'supportAccessReason', 'companyProof', 'phonesOutsideRanges', 'stepUpProof'], $this->required($schemas['Me']));
         self::assertSame(['phone', 'whatsapp', 'email'], $this->required($schemas['MeSupport']));
         self::assertSame(['key', 'planned'], $this->required($schemas['MePlannedModule']));
-        self::assertSame(['enrolled', 'required', 'totp', 'passkeys', 'recoveryCodes', 'passkeySignIn', 'passkeySignInAllowed'], $this->required($schemas['MeMfa']));
+        self::assertSame(['enrolled', 'required', 'totp', 'passkeys', 'recoveryCodes', 'passkeySignIn', 'passkeySignInAllowed', 'passkeysElsewhere'], $this->required($schemas['MeMfa']));
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator', 'demo'], $this->required($schemas['MeUser']));
         self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role', 'access', 'subscription', 'logoVersion', 'closing', 'refused', 'suspensionReason'], $this->required($schemas['MeCompany']));
         self::assertSame(['retainUntil', 'reopenUntil'], $this->required($schemas['MeClosing']));

@@ -15,6 +15,7 @@ import {
   type PlatformCompanySearch,
   type PlatformCompanyRow,
   type PlatformDemo,
+  type PlatformPasskeys,
   type PlatformCountry,
   type PlatformImports,
   type PlatformError,
@@ -48,6 +49,7 @@ export class PlatformFacade {
   private readonly countrySignal = signal<PlatformCountry | null>(null);
   private readonly phonesSignal = signal<PlatformPhones | null>(null);
   private readonly showComingSignal = signal<boolean | null>(null);
+  private readonly passkeysSignal = signal<PlatformPasskeys | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
   private readonly state = requestState(codeOf);
@@ -107,6 +109,7 @@ export class PlatformFacade {
   readonly phones = this.phonesSignal.asReadonly();
   /** Whether the installation shows what is coming until a company or a person chooses, null until read. */
   readonly showComing = this.showComingSignal.asReadonly();
+  readonly passkeys = this.passkeysSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
   private readonly openedSignal = signal<string | null>(null);
   /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
@@ -329,15 +332,30 @@ export class PlatformFacade {
     return this.decide(() => this.api.reject(companyId, reason));
   }
 
-  /** The switch shows the new value only once the platform holds it. */
-  async setSwitch(key: PlatformSwitch, value: boolean): Promise<void> {
+  /**
+   * The switch shows the new value only once the platform holds it; whether it does. A refusal naming the switch, such
+   * as the one moving passkeys while an account holds no other factor, is kept for the switch to say beside it.
+   */
+  async setSwitch(key: PlatformSwitch, value: boolean): Promise<boolean> {
     this.state.clearError();
+    this.refusedSignal.set({ at: 'switch', refusals: [] });
     try {
       await this.proven(() => this.api.setSwitch(key, value));
       const signup = this.signupSignal();
       const demo = this.demoSignal();
+      const passkeys = this.passkeysSignal();
       if (key === 'presentation.show-coming') {
         this.showComingSignal.set(value);
+      } else if (
+        key === 'identity.passkey_sign_in' ||
+        key === 'identity.passkeys_on_tailnet_name'
+      ) {
+        if (passkeys !== null)
+          this.passkeysSignal.set(
+            key === 'identity.passkey_sign_in'
+              ? { ...passkeys, signInAlone: value }
+              : { ...passkeys, onTailnetName: value },
+          );
       } else if (key === 'demo.enabled') {
         if (demo !== null) this.demoSignal.set({ ...demo, enabled: value });
       } else if (signup !== null) {
@@ -347,8 +365,11 @@ export class PlatformFacade {
             : { ...signup, approvalRequired: value },
         );
       }
+      return true;
     } catch (error) {
+      this.refusedAt('switch')(error);
       this.state.fail(error);
+      return false;
     }
   }
 
@@ -450,6 +471,7 @@ export class PlatformFacade {
     this.countrySignal.set(settings.country);
     this.phonesSignal.set(settings.phones);
     this.showComingSignal.set(settings.showComing);
+    this.passkeysSignal.set(settings.passkeys);
     this.versions = settings.versions;
   }
 

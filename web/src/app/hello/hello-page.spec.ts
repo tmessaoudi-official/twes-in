@@ -77,6 +77,7 @@ const owner: SignedInState = {
     recoveryCodes: 0,
     passkeySignIn: false,
     passkeySignInAllowed: false,
+    passkeysElsewhere: 0,
   },
 };
 
