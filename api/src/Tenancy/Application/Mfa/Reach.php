@@ -26,8 +26,8 @@ enum Reach: string
     public static function of(string $tailnetHost, string $publicHost): self
     {
         return match (true) {
-            '' !== trim($publicHost) => self::Public,
-            '' !== trim($tailnetHost) => self::Tailnet,
+            '' !== trim($publicHost) => self::Public, // trim: the installation's environment, never what a person typed
+            '' !== trim($tailnetHost) => self::Tailnet, // trim: the installation's environment, never what a person typed
             default => self::Network,
         };
     }
