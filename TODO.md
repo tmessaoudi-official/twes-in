@@ -258,7 +258,9 @@ Every step is on `docs/release-28-update-day.md`, with its exact commands.
 - [ ] A USB disk or second disk left plugged into the shop's computer for its local backups (without one, a dead disk
   loses everything), and a bucket with its key for the hourly off-site copy (a free Backblaze B2 or Cloudflare R2
   account will do; without one, a stolen or burnt computer loses everything, and `tick` mails you so every day): its
-  values `BACKUP_S3_*` in the shop's values, then `twes offsite on` (`docs/START.md` § 16).
+  values `BACKUP_S3_*` in the shop's values, then `twes offsite on` (`docs/START.md` § 16). Two keys: the shop's may
+  list, read and write but never delete; the one that may delete stays with you, for « Prune a shop's off-site copy »
+  (`docs/RUNBOOK.md`), and Object Lock for 14 days on the bucket where the provider offers it free.
 - [ ] Your monitor at home: a VM or device of its own, on a network segment that cannot reach the machine holding your
   release-signing key and GitHub credentials; a DDNS name pointing at it, ports 80 and 443 forwarded to it; then
   `scripts/monitor/new-monitor.sh` and `docs/START.md` § 15. Until it runs, problems reach you only by the shop's mail.

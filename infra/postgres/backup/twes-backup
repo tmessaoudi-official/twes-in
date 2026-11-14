@@ -8,6 +8,7 @@
 #   twes-backup copy          the nightly pg_dump and the files volume into restic, then what is past 14 days pruned
 #   twes-backup verify        both repositories read back whole
 #   twes-backup offsite       a shop's whole local folder copied off site, when compose.backup-offsite.yaml is on
+#   twes-backup prune-offsite what is past 14 days pruned off site, run by the developer with a key the shop never holds
 #   twes-backup before-update an incremental base backup, the dump and the files, and the base backup's label, which
 #                             a restore to the moment before an update names (scripts/onprem/twes update)
 #   twes-backup due           each step whose last success is older than its period: a shop's computer is off at night,
@@ -49,6 +50,20 @@ rst() {
   restic -o "s3.bucket-lookup=$lookup" "$@"
 }
 
+# A repository made where none is found. restic says 10 for a repository that does not exist; any other failure (a
+# bucket out of reach, a key refused, a wrong passphrase) is no missing repository, and one made then would start a
+# second history beside the first, which the next restore would not find.
+repository() {
+  local what=$1 status=0
+  shift
+  rst "$@" cat config >/dev/null || status=$?
+  case "$status" in
+    0) ;;
+    10) say "$what not found, making it"; rst "$@" init ;;
+    *) say "$what could not be read (restic exited $status): nothing made, as a bucket out of reach, a key refused or a wrong passphrase is no missing repository"; return "$status" ;;
+  esac
+}
+
 wait_for_database() {
   local tries=0
   until gosu postgres pg_isready -q -h /var/run/postgresql -U twes -d twes; do
@@ -74,11 +89,7 @@ init() {
     install -d -o postgres -g postgres -m 0750 "${PGBACKREST_REPO1_PATH:?a folder repository needs its path}"
   fi
   pgbr stanza-create
-  # `cat config` reads the repository's own header: absent means never made, any other failure is a real one.
-  if ! rst cat config >/dev/null 2>&1; then
-    say "restic repository not found, making it"
-    rst init
-  fi
+  repository "restic repository"
   pgbr check
   rst cat config >/dev/null
   say "ready: stanza $STANZA and the files repository"
@@ -102,23 +113,30 @@ copy() {
 
 # The local folder holds both repositories already encrypted; the off-site copy is one more restic repository, in the
 # bucket, which a lost machine is restored from by copying the folder back first (docs/RUNBOOK.md, « Restore a lost
-# shop machine »).
+# shop machine »). The computer's key only adds: one that could prune could empty the bucket, and a computer taken over
+# would take its off-site copies with it (docs/START.md § 16). The developer prunes, below.
 offsite() {
   if [[ -z "${OFFSITE_REPOSITORY:-}" ]]; then
     say "off-site copy off (compose.backup-offsite.yaml is not in this installation)"
     return 0
   fi
-  if ! rst -r "$OFFSITE_REPOSITORY" cat config >/dev/null 2>&1; then
-    say "off-site repository not found, making it"
-    rst -r "$OFFSITE_REPOSITORY" init
-  fi
+  repository "off-site repository" -r "$OFFSITE_REPOSITORY"
   rst -r "$OFFSITE_REPOSITORY" backup --tag offsite --host twes /backup
-  # Copied every hour, pruned once a day: a prune reads and rewrites the bucket's packs, too much to do hourly.
-  if (($(since offsite-prune) >= 20 * 3600)); then
+  say "local folder copied off site"
+}
+
+# What is past fourteen days pruned off site, under the prune key, which the developer gives for this one run from a
+# machine of their own (docs/RUNBOOK.md, « Prune a shop's off-site copy »), never the computer's.
+prune_offsite() {
+  [[ -n "${OFFSITE_REPOSITORY:-}" ]] || { say "OFFSITE_REPOSITORY: the off-site repository to prune, as the shop's compose.backup-offsite.yaml names it"; return 1; }
+  [[ -n "${OFFSITE_PRUNE_KEY:-}" && -n "${OFFSITE_PRUNE_SECRET:-}" ]] || { say "OFFSITE_PRUNE_KEY and OFFSITE_PRUNE_SECRET: the bucket's prune key, which the shop never holds"; return 1; }
+  [[ "$OFFSITE_PRUNE_KEY" != "${AWS_ACCESS_KEY_ID:-}" ]] || { say "OFFSITE_PRUNE_KEY is the computer's own key, which may only add: give the developer's prune key"; return 1; }
+  # The computer's key cannot remove the lock each copy takes, which restic only warns of: those are stale once their
+  # copy ended, and go first.
+  AWS_ACCESS_KEY_ID=$OFFSITE_PRUNE_KEY AWS_SECRET_ACCESS_KEY=$OFFSITE_PRUNE_SECRET rst -r "$OFFSITE_REPOSITORY" unlock
+  AWS_ACCESS_KEY_ID=$OFFSITE_PRUNE_KEY AWS_SECRET_ACCESS_KEY=$OFFSITE_PRUNE_SECRET \
     rst -r "$OFFSITE_REPOSITORY" forget --host twes --keep-within "$KEEP" --prune
-    put offsite-prune.ok "$(date +%s)"
-  fi
-  say "local folder copied off site, kept $KEEP"
+  say "off site: kept $KEEP, the rest pruned"
 }
 
 # What an update is rolled back to when its own rollback is not enough. pgBackRest makes an incremental backup a full
@@ -270,6 +288,7 @@ main() {
     # Off, the step never ran: a monitor that never expects it hears nothing.
     offsite) hold; [[ -z "${OFFSITE_REPOSITORY:-}" ]] || trap 'heartbeat Hors_site offsite' EXIT; offsite ;;
     before-update) hold; before_update ;;
+    prune-offsite) hold; prune_offsite ;;
     due) due ;;
     # Which compose secrets this container read, by the variable each became: their values are never said.
     secrets)
@@ -279,7 +298,7 @@ main() {
         variable=$(basename "$path" | tr 'a-z' 'A-Z')
         if [[ -n "${!variable:-}" ]]; then echo "secrets read: $variable"; else echo "secret not read: $variable"; fi
       done ;;
-    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|before-update|due|secrets" >&2; exit 64 ;;
+    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|prune-offsite|before-update|due|secrets" >&2; exit 64 ;;
   esac
 }
 

@@ -1102,6 +1102,15 @@ refuses rather than backing up onto this computer's own disk (the database keeps
 stick left plugged into the shop's computer is a second disk, not an off-site copy. While no copy leaves the
 computer, `tick` mails the developer once a day saying so and naming what to do.
 
+**The bucket's two keys.** The key in the shop's values (`BACKUP_S3_KEY`, `BACKUP_S3_SECRET`) may list, read and write,
+never delete: a computer taken over (ransomware, a thief) could otherwise empty its off-site copies along with the
+backups beside it. So the computer never prunes them; the developer does, with a second key that may delete and never
+goes on the computer (docs/RUNBOOK.md « Prune a shop's off-site copy »). Where the provider offers it at no cost, the
+bucket also keeps every object under Object Lock for 14 days in governance mode, with a lifecycle rule removing a
+version 15 days after it was replaced. A repository is made only where restic says none exists: an unreachable bucket,
+a refused key or a wrong passphrase fails the step and makes nothing, as a second repository beside the first would
+hide the copies already made.
+
 **Alerts.** A failed or rolled-back update, a failing deep health that starting the installation again did not mend, a failed backup step and a backup schedule gone quiet
 are mailed through the shop's own account to `ALERT_EMAIL`, so a mail leaves while the application is down, and told
 to the platform's operators in the application (`app:installation:tell`), held under `~/.twes-in/state/` until it

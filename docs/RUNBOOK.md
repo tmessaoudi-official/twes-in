@@ -305,6 +305,25 @@ It needs the off-site copy (`twes offsite on`, docs/START.md § 16): without it,
 9. Tell the shop the window: what was written after the last off-site copy (an hour of the computer being on at most)
    is gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
 
+## Prune a shop's off-site copy
+
+The shop's computer only adds to its off-site copy: its bucket key cannot delete (docs/START.md § 16), so what is past
+14 days stays there until you prune it with the bucket's prune key, which never goes on the computer. Once a month, or
+when the bucket's size says so, from a machine of your own:
+
+1. A file `prune.env`, mode 600, outside any checkout, from the shop's escrowed values:
+   `OFFSITE_REPOSITORY=s3:https://<BACKUP_S3_ENDPOINT>:<BACKUP_S3_PORT, 443 if blank>/<BACKUP_S3_BUCKET>/<BACKUP_S3_PREFIX>offsite`,
+   `BACKUP_S3_URI_STYLE` (host or path, as the values say), `AWS_DEFAULT_REGION=<BACKUP_S3_REGION>`,
+   `RESTIC_PASSWORD=<BACKUP_FILES_PASSPHRASE>`, and the prune key as `OFFSITE_PRUNE_KEY` and `OFFSITE_PRUNE_SECRET`.
+2. `docker run --rm --env-file prune.env --entrypoint twes-backup <the shop's TWES_DATABASE_IMAGE> prune-offsite < /dev/null`,
+   the image as the shop's `~/.twes-in/releases/<commit>.env` names it. It removes the stale locks the computer's copies
+   could not, keeps 14 days and prunes the rest, and ends with `off site: kept 14d, the rest pruned`. It refuses to run
+   without the prune key, or with the computer's own.
+3. Delete `prune.env`.
+
+Untried on a real bucket: under Object Lock, a delete only hides an object until its 14 days are over, and a provider
+whose lock refuses deletes outright stops the prune at its first delete; read its output.
+
 ## Rotate a secret
 
 The ten values `new-instance.sh` draws. For each: change it in `/etc/twes-in/deploy.env` (keep the old one until the

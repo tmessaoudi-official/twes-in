@@ -9,7 +9,8 @@ SCRIPT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/infra/postgres/backup
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 
-# Each tool appends its own line to calls; pgbackrest answers `info` with INFO_JSON, restic fails when told to.
+# Each tool appends its own line to calls; pgbackrest answers `info` with INFO_JSON, restic fails when told to and,
+# with RESTIC_SHOW_KEY, writes down the bucket key it ran under.
 mkdir -p "$TMPDIR/bin"
 cat > "$TMPDIR/bin/gosu" <<'EOF'
 #!/usr/bin/env bash
@@ -24,8 +25,9 @@ exit "${PGBR_STATUS:-0}"
 EOF
 cat > "$TMPDIR/bin/restic" <<'EOF'
 #!/usr/bin/env bash
-echo "restic $*" >> "$TMPDIR/calls"
-[[ " $* " == *" cat config "* ]] && exit "${RESTIC_MISSING:-0}"
+echo "restic $*${RESTIC_SHOW_KEY:+ key=$AWS_ACCESS_KEY_ID secret=${AWS_SECRET_ACCESS_KEY:-}}" >> "$TMPDIR/calls"
+# A repository found missing reads back once it has been made.
+[[ " $* " == *" cat config "* ]] && { grep -qE ' init( |$)' "$TMPDIR/calls" && exit 0; exit "${RESTIC_MISSING:-0}"; }
 exit "${RESTIC_STATUS:-0}"
 EOF
 for tool in pg_isready pg_dump curl supercronic; do printf '#!/usr/bin/env bash\necho "%s $*" >> "$TMPDIR/calls"\n' "$tool" > "$TMPDIR/bin/$tool"; done
@@ -64,6 +66,16 @@ out=$(STEP=init run PGBACKREST_REPO1_TYPE=posix PGBACKREST_REPO1_PATH=/backup/pg
 check "  its own: made ready" $? 0 "$(calls)" "pgbackrest --stanza=twes stanza-create"
 out=$(STEP=init run PGBACKREST_REPO1_TYPE=s3 PGBACKREST_REPO1_PATH=/pgbackrest)
 [[ "$(calls)" != *"install "* ]]; check "a bucket needs no folder made" $? 0 "$out" ""
+# restic says 10 when a repository does not exist; anything else (a bucket out of reach, a key refused, a wrong
+# passphrase) is no missing repository, and one made then would start a second history beside the first.
+out=$(STEP=init run RESTIC_MISSING=10)
+check "the files repository not found: made" $? 0 "$(calls)" "restic -o s3.bucket-lookup=dns init"
+out=$(STEP=init run RESTIC_MISSING=1)
+check "the files repository unreadable: refused, saying why" $? 1 "$out" "could not be read (restic exited 1)"
+[[ "$(calls)" != *" init"* ]]; check "  and no repository made" $? 0 "$(calls)" ""
+out=$(STEP=init run RESTIC_MISSING=12)
+check "  nor for a wrong passphrase" $? 12 "$(calls)" ""
+[[ "$(calls)" != *" init"* ]]; check "  which makes none either" $? 0 "$(calls)" ""
 
 out=$(STEP=offsite run OFFSITE_REPOSITORY=)
 check "the off-site copy is off until switched on, and says so" $? 0 "$out" "off-site copy off"
@@ -75,9 +87,32 @@ check "switched on, it has its own heartbeat" $? 0 "$(calls)" "Sauvegardes_Hors_
 
 rm -rf "$O"; out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
 check "switched on, it copies the whole local folder into the off-site repository" $? 0 "$(calls)" "restic -o s3.bucket-lookup=dns -r s3:https://bucket.test:443/b/offsite backup --tag offsite --host twes /backup|"
-check "then keeps fourteen days there" 0 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite forget --host twes --keep-within 14d --prune"
-out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite RESTIC_MISSING=1)
+# The computer's key only adds: one that could prune could also empty the bucket, so a computer taken over would
+# take its off-site copies with it. The developer prunes, with a key the computer never holds.
+[[ "$(calls)" != *" forget "* && "$(calls)" != *"prune"* ]]; check "  and never prunes it, whatever the time since" $? 0 "$(calls)" ""
+out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite RESTIC_MISSING=10)
 check "making the off-site repository the first time" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite init"
+out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite RESTIC_MISSING=1)
+check "an off-site bucket that cannot be read: the copy fails, saying why" $? 1 "$out" "could not be read (restic exited 1)"
+[[ "$(calls)" != *" init"* && "$(calls)" != *" backup "* ]]; check "  and nothing is made or copied there" $? 0 "$(calls)" ""
+
+# The prune the developer runs from a machine of their own (docs/RUNBOOK.md), with the prune key given for that run.
+out=$(STEP=prune-offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
+check "the off-site prune without its own key: refused" $? 1 "$out" "OFFSITE_PRUNE_KEY and OFFSITE_PRUNE_SECRET: the bucket's prune key"
+[[ -z "$(calls)" ]]; check "  touching nothing" $? 0 "$(calls)" ""
+out=$(STEP=prune-offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite AWS_ACCESS_KEY_ID=pc OFFSITE_PRUNE_KEY=dev)
+check "  nor with its key's name alone" $? 1 "$out" "the bucket's prune key"
+out=$(STEP=prune-offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite AWS_ACCESS_KEY_ID=pc OFFSITE_PRUNE_KEY=pc OFFSITE_PRUNE_SECRET=s)
+check "  the computer's own key given as the prune key: refused" $? 1 "$out" "the computer's own"
+out=$(STEP=prune-offsite run OFFSITE_REPOSITORY=)
+check "  no off-site repository named: refused" $? 1 "$out" "OFFSITE_REPOSITORY"
+out=$(STEP=prune-offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite AWS_ACCESS_KEY_ID=pc OFFSITE_PRUNE_KEY=dev OFFSITE_PRUNE_SECRET=s RESTIC_SHOW_KEY=1)
+check "with its key: fourteen days kept, the rest pruned" $? 0 "$(calls)" "restic -o s3.bucket-lookup=dns -r s3:https://bucket.test:443/b/offsite forget --host twes --keep-within 14d --prune"
+check "  under the prune key, never the computer's" 0 0 "$(calls)" "--prune key=dev secret=s"
+check "  the stale locks the computer's copies could not remove gone first" 0 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite unlock key=dev secret=s|restic -o s3.bucket-lookup=dns -r s3:https://bucket.test:443/b/offsite forget"
+out=$(STEP=prune-offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite OFFSITE_PRUNE_KEY=dev OFFSITE_PRUNE_SECRET=s RESTIC_STATUS=1)
+check "  a prune that fails says so" $? 1 "$out" ""
+[[ "$out" != *"the rest pruned"* ]]; check "  and claims nothing" $? 0 "$out" ""
 out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite BACKUP_S3_URI_STYLE=path)
 check "addressed by path when the bucket is" $? 0 "$(calls)" "restic -o s3.bucket-lookup=path -r s3:https://bucket.test:443/b/offsite backup"
 out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite RESTIC_STATUS=1)
@@ -138,17 +173,12 @@ check "  and the read-back" 0 0 "$(calls)" "pgbackrest --stanza=twes verify"
 rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30
 out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
 check "the off-site copy switched on, never made: made" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"
-check "  and its old snapshots pruned, never done yet" 0 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite forget"
+[[ "$(calls)" != *" forget "* ]]; check "  and never pruned from here" $? 0 "$(calls)" ""
 
-# A lost computer loses what the bucket lacks: the folder goes off site every hour, its old copies pruned once a day.
-rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 1; done_ago offsite-prune 2
+# A lost computer loses what the bucket lacks: the folder goes off site every hour.
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 1
 out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
 check "an hour since the off-site copy: copied again" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"
-[[ "$(calls)" != *" forget "* ]]; check "  without pruning, done two hours ago" $? 0 "$(calls)" ""
-(( $(date +%s) - $(cat "$O/offsite-prune.ok") >= 7200 )); check "  and the prune's own time is left alone" $? 0 "$(cat "$O/offsite-prune.ok")" ""
-rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 1; done_ago offsite-prune 25
-out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
-check "a day since the prune: pruned with the copy" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite forget --host twes --keep-within"
 rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 0
 out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite); [[ "$(calls)" != *"offsite backup"* ]]
 check "an off-site copy just made: not again" $? 0 "$(calls)" ""

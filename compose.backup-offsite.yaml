@@ -2,7 +2,8 @@
 # is on (BACKUP_OFFSITE_EVERY seconds, blank for twes-backup's own period) the backup service copies the whole local
 # folder, both repositories as they are (already encrypted), into a restic repository in a bucket, under the instance's
 # prefix, opened with the files' passphrase (`backup_files_passphrase`, compose.backup.yaml). An hour without the internet only misses that copy: archiving stays local and never
-# waits on it. Switched on by BACKUP_OFFSITE=on in the install's values, which then require every bucket value.
+# waits on it. Switched on by BACKUP_OFFSITE=on in the install's values, which then require every bucket value. The key
+# given here may write but never delete; the developer prunes with another (twes-backup prune-offsite, docs/RUNBOOK.md).
 x-offsite-environment: &offsite-environment
   OFFSITE_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT, the bucket service's host name}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-}offsite"
   BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
