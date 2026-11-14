@@ -235,6 +235,7 @@ describe('installation notifications', () => {
       'installation.backup_stopped': 'cloud_off',
       'installation.address_moved': 'smartphone',
       'installation.clock_off': 'schedule',
+      'installation.security_updated': 'security',
     };
     for (const [type, icon] of Object.entries(icons)) {
       expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);

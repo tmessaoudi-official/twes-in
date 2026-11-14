@@ -23,12 +23,12 @@ DEV=$(newkey "$TMPDIR/dev-gnupg" release) OTHER=$(newkey "$TMPDIR/other-gnupg" s
 GNUPGHOME=$TMPDIR/dev-gnupg gpg --batch --armor --export "$DEV" > "$TMPDIR/release-key.asc"
 GNUPGHOME=$TMPDIR/other-gnupg gpg --batch --armor --export "$OTHER" > "$TMPDIR/other-key.asc"
 GNUPGHOME=$TMPDIR/dev-gnupg gpg --batch --armor --pinentry-mode loopback --passphrase '' --export-secret-keys "$DEV" > "$TMPDIR/secret-key.asc"
-sign() { # repository, tag; SIGN_NEW says how the newest is made: dev (the default), other or none
-  local by=${3:-dev}
+sign() { # repository, tag, by whom (SIGN_NEW for the newest: dev, the default, other or none), then its message's values
+  local by=${3:-dev} message=$2${4:+$'\n\n'$4}
   case "$by" in
-    dev) GNUPGHOME=$TMPDIR/dev-gnupg git -C "$1" tag -s -u "$DEV" "$2" -m "$2" ;;
-    other) GNUPGHOME=$TMPDIR/other-gnupg git -C "$1" tag -s -u "$OTHER" "$2" -m "$2" ;;
-    none) git -C "$1" tag -a "$2" -m "$2" ;;
+    dev) GNUPGHOME=$TMPDIR/dev-gnupg git -C "$1" tag -s -u "$DEV" "$2" -m "$message" ;;
+    other) GNUPGHOME=$TMPDIR/other-gnupg git -C "$1" tag -s -u "$OTHER" "$2" -m "$message" ;;
+    none) git -C "$1" tag -a "$2" -m "$message" ;;
   esac
 }
 OLD=v2026.10.20.1 NEW=v2026.10.21.1
@@ -59,6 +59,12 @@ case "$mode" in
     case "$*" in
       "exec -T backup twes-backup before-update") [[ -n "${BACKUP_LABEL:-}" ]] || exit 1; echo "2026 twes-backup before-update: $BACKUP_LABEL" ;;
       "exec -T api bin/console app:installation:tell"*) echo "$*" >> "$TMPDIR/told"; [[ -z "${TELL_SAYS:-}" ]] || echo "$TELL_SAYS"; exit "${TELL_EXIT:-0}" ;;
+      "exec -T api bin/console app:installation:sign-ins"*)
+        echo "$*" > "$TMPDIR/sign-ins.asked"
+        [[ "${SIGN_INS_EXIT:-0}" == 0 ]] || { echo "service \"api\" is not running" >&2; exit 1; }
+        echo "${SIGN_INS:-failed=0 locked=0}" ;;
+      # The web tier's access lines of the hour, WEB_LOG's (its \n written so).
+      "logs --no-log-prefix --since 60m web") printf '%b' "${WEB_LOG:-}" ;;
       "exec -T api bin/console app:seed"*) { echo "$*"; cat; } > "$TMPDIR/seeded"; exit "${SEED_EXIT:-0}" ;;
       "exec -T api bin/console app:demo:switch-off-at-install"*) echo "$*" >> "$TMPDIR/demo-off"; [[ "${DEMO_EXIT:-0}" != 0 ]] || echo "${DEMO_SAYS:-demo switched off}"; exit "${DEMO_EXIT:-0}" ;;
       "exec -T backup sh -c"*)
@@ -137,7 +143,7 @@ origin() {
   cp "$HERE/onprem/twes" "$w/scripts/onprem/twes"; cp "$TMPDIR/stand-ins/deploy.sh" "$w/scripts/deploy/deploy.sh"
   cp "$HERE/deploy/new-instance.sh" "$w/scripts/deploy/new-instance.sh"; cp "$TMPDIR/release-key.asc" "$w/infra/onprem/release-key.asc"
   git -C "$w" init -q -b master && git -C "$w" add -A && git -C "$w" commit -qm one && sign "$w" "$OLD"
-  echo two > "$w/two"; git -C "$w" add -A && git -C "$w" commit -qm two && sign "$w" "$NEW" "${SIGN_NEW:-dev}"
+  echo two > "$w/two"; git -C "$w" add -A && git -C "$w" commit -qm two && sign "$w" "$NEW" "${SIGN_NEW:-dev}" "${SECURITY_NEW:+SECURITY=$SECURITY_NEW}"
   # PATCH: a patch on the old release's own branch (the maintenance lane), tagged after the newest, master left as it is.
   if [[ -n "${PATCH:-}" ]]; then
     git -C "$w" checkout -q -b "release/${OLD:1:10}" "$OLD"; echo patch > "$w/patch"; git -C "$w" add -A
@@ -751,6 +757,66 @@ out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" tick)
 out=$(AT=$((NOON + 600)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "auto tries once a day" $? 0 "$(deployed)" ""
 echo $((NOON + 86400 - 900)) > "$d/etc/state/last-tick" # on all day, ticking
 out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); check "  and never again a release that failed here" $? 0 "$out" "applied only by hand"
+
+# A release its tag marks as mending a security defect (tag-release.sh --security) does not wait for the window: under
+# auto it is applied at the next tick, the developer mailed and the owners told, whom the application mails.
+d=$(SECURITY_NEW="a session kept after its password changed" installed); twes "$d" policy auto 15:00-16:00 >/dev/null
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); check "a security release, outside the window: applied at the next tick" $? 0 "$out" "updated to $NEW"
+check "  saying why it did not wait" 0 0 "$out" "a session kept after its password changed"
+check "  the developer mailed" 0 0 "$(subject)" "Mise à jour de sécurité vers $NEW faite"
+check "  why, in the mail" 0 0 "$(mailed)" "a session kept after its password changed"
+check "  the owners told, whom the application mails" 0 0 "$(told)" "installation.security_updated version=$NEW previous=$OLD"
+out=$(AT=$((NOON + 900)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* && -z "$(told)" ]]
+check "  once: the next tick finds it running" $? 0 "$(deployed)$(told)" ""
+d=$(SECURITY_NEW="a session kept" installed); twes "$d" policy auto 15:00-16:00 >/dev/null; echo $((NOON - 300)) > "$d/etc/state/started-at"
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "  never at start, as the window's" $? 0 "$(deployed)" ""
+d=$(SECURITY_NEW="a session kept" SIGN_NEW=other installed); twes "$d" policy auto 15:00-16:00 >/dev/null
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]
+check "  a mark on a tag the pinned key does not sign: nothing applied, the tag refused" $? 0 "$(told)" "installation.update_refused version=$NEW"
+[[ "$(cat "$d/etc/state/twes.log")" != *"security defect"* ]]; check "  its mark never believed, not even in words" $? 0 "$(cat "$d/etc/state/twes.log")" ""
+d=$(SECURITY_NEW="a session kept" installed); twes "$d" policy auto 15:00-16:00 >/dev/null
+out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" tick); check "  unhealthy: taken back as any update, the tick stopping on it" $? 1 "$(at_tag "$d")" "$OLD"
+[[ "$(told)" != *security_updated* ]]; check "  and nobody told it was applied" $? 0 "$(told)" ""
+out=$(AT=$((NOON + 900)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "  then never retried by itself" $? 0 "$(deployed)" ""
+d=$(SECURITY_NEW="a session kept" installed); twes "$d" policy auto 15:00-16:00 >/dev/null
+out=$(twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "  its backup failing: nothing changed" $? 0 "$(deployed)" ""
+out=$(AT=$((NOON + 900)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "  tried once a day, as the window's" $? 0 "$(deployed)" ""
+echo $((NOON + 86400 - 900)) > "$d/etc/state/last-tick" # on all day, ticking
+out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); check "  and the next day again" $? 0 "$out" "updated to $NEW"
+# Under notify the updates are run by hand: a security release is told at once, to the owners and by mail to the
+# developer, and applied by whoever runs them; under off, nothing.
+d=$(SECURITY_NEW="a session kept" installed)
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "notify: a security release is not applied by itself" $? 0 "$(deployed)" ""
+check "  the owners told it is out" 0 0 "$(told)" "installation.update_available version=$NEW previous=$OLD"
+check "  the developer mailed that it waits" 0 0 "$(subject)" "Mise à jour de sécurité disponible : $NEW"
+check "  why, in the mail" 0 0 "$(mailed)" "a session kept"
+out=$(AT=$((NOON + 900)) twes "$d" tick); [[ -z "$(mailed)" ]]; check "  once per release" $? 0 "$(mailed)" ""
+d=$(installed); out=$(twes "$d" tick); [[ -z "$(mailed)" ]]; check "  a release with no mark: no mail" $? 0 "$(mailed)" ""
+d=$(SECURITY_NEW="a session kept" installed); twes "$d" policy off >/dev/null
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* && -z "$(told)" ]]; check "off: nothing" $? 0 "$(deployed)$(told)" ""
+
+# Signs of an attack once the shop is reachable from outside, read at each tick over the hour before: sign-ins refused
+# and accounts locked (the application's journal), refusals (429) and server errors (5xx) at the web tier. Past its
+# threshold, a value of the shop's, the developer is mailed, once an hour at most for each.
+weblog() { # count, status: that many access lines of the web tier's format
+  local i; for ((i = 0; i < $1; i++)); do printf '172.18.0.4 - - [21/Oct/2026:12:00:00 +0000] "POST /api/auth/login HTTP/1.1" %s 31 "-" "curl/8" "8.8.4.4" upstream="172.18.0.5:80" %s 0.001\\n' "$2" "$2"; done
+}
+d=$(installed)
+out=$(SIGN_INS="failed=21 locked=0" twes "$d" tick); check "sign-ins refused past the threshold: the developer mailed" $? 0 "$(subject)" "Connexions refusées en nombre : 21 en une heure"
+check "  read over the hour before" 0 0 "$(cat "$TMPDIR/sign-ins.asked")" "--since=$((NOON - 3600))"
+check "  saying what to look at" 0 0 "$(mailed)" "twes status"
+out=$(AT=$((NOON + 900)) SIGN_INS="failed=40 locked=0" twes "$d" tick); [[ -z "$(mailed)" ]]; check "  once an hour at most" $? 0 "$(mailed)" ""
+out=$(AT=$((NOON + 3600)) SIGN_INS="failed=40 locked=0" twes "$d" tick); check "  again an hour later while it lasts" $? 0 "$(subject)" "Connexions refusées en nombre : 40 en une heure"
+d=$(installed); out=$(SIGN_INS="failed=20 locked=0" twes "$d" tick); [[ -z "$(mailed)" ]]; check "  at the threshold itself: nothing" $? 0 "$(mailed)" ""
+d=$(installed); echo ALERT_SIGN_IN_FAILURES=5 >> "$d/etc/install.env"
+out=$(SIGN_INS="failed=6 locked=0" twes "$d" tick); check "  the threshold is the shop's value" $? 0 "$(subject)" "Connexions refusées en nombre : 6 en une heure"
+d=$(installed); out=$(SIGN_INS="failed=10 locked=3" twes "$d" tick); check "accounts locked past the threshold: mailed" $? 0 "$(subject)" "Comptes verrouillés : 3 en une heure"
+d=$(installed); out=$(SIGN_INS="failed=10 locked=2" twes "$d" tick); [[ -z "$(mailed)" ]]; check "  two in an hour: nothing" $? 0 "$(mailed)" ""
+d=$(installed); out=$(WEB_LOG="$(weblog 101 429)$(weblog 3 200)" twes "$d" tick); check "refusals (429) past the threshold: mailed" $? 0 "$(subject)" "Requêtes refusées (429) : 101 en une heure"
+check "  the web tier's hour read" 0 0 "$(deployed)" "logs --no-log-prefix --since 60m web"
+d=$(installed); out=$(WEB_LOG="$(weblog 11 502)" twes "$d" tick); check "server errors (5xx) past the threshold: mailed" $? 0 "$(subject)" "Erreurs du serveur (5xx) : 11 en une heure"
+d=$(installed); out=$(WEB_LOG="$(weblog 10 503)$(weblog 200 404)" twes "$d" tick); [[ -z "$(mailed)" ]]; check "  ten, and any number of 404s: nothing" $? 0 "$(mailed)" ""
+d=$(installed); out=$(SIGN_INS_EXIT=1 twes "$d" tick); check "the journal unread: said, nothing mailed, the tick goes on" $? 0 "$(cat "$d/etc/state/twes.log")" "sign-ins not read"
 
 # twes doctor --network: what the developer reads at the shop before choosing how it is reached from outside. It runs
 # before anything is installed, changes nothing, and a probe that answers nothing says so on its own line.

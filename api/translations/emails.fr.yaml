@@ -113,6 +113,7 @@ notification:
         company_reopened: 'Entreprise rouverte'
         company_removal_near: 'Suppression prochaine d’une entreprise fermée'
         signup_awaiting_approval: 'Entreprise en attente d’approbation'
+        installation_security_updated: 'Mise à jour de sécurité appliquée'
     types:
         invitation_accepted: '%display_name% a rejoint l’entreprise.'
         stock_delivery_note_lines_left_out: 'Le bon de livraison %number% est validé, mais certaines de ses lignes n’ont pas sorti de stock (unité différente ou quantité absente).'
@@ -145,6 +146,7 @@ notification:
         company_reopened: '%by% a rouvert %company% : on peut de nouveau y travailler.'
         company_removal_near: '%company%, fermée, sera supprimée définitivement avec toutes ses données après le %retain_until%. Téléchargez d’ici là ce que vous devez garder.'
         signup_awaiting_approval: '%company% (%email%) s’est inscrite et attend votre approbation dans la page de la plateforme.'
+        installation_security_updated: 'Cet ordinateur est passé à la version %version% (depuis la %previous%) : elle corrige un défaut de sécurité et a été appliquée sans attendre la fenêtre de mise à jour.'
     open: 'Ouvrir %product%'
     why: 'Vous recevez cet e-mail parce que « %kind% » vous est aussi envoyé par e-mail.'
     stop: 'Ne plus recevoir « %kind% » par e-mail'

@@ -691,6 +691,7 @@
       "installation_backup_stopped": "توقّف النسخ الاحتياطي.",
       "installation_address_moved": "تغيّر عنوان هذا الحاسوب على الشبكة: تفتح الهواتف الآن https://{{to}} (كان {{from}}). على الهاتف الذي حفظ العنوان القديم أن يفتح الجديد.",
       "installation_clock_off": "تبتعد ساعة لينكس (WSL) على هذا الحاسوب {{seconds}} ث عن ساعة ويندوز: تُؤرَّخ بها الفواتير وكلّ ما يُسجَّل. إيقاف WSL (الأمر wsl --shutdown في PowerShell) يضبطها عند تشغيله من جديد.",
+      "installation_security_updated": "انتقل هذا الحاسوب إلى الإصدار {{version}} (بعد الإصدار {{previous}}): يصلح خللًا أمنيًّا، وطُبِّق دون انتظار نافذة التحديث.",
       "signup_awaiting_approval": "سجّلت {{company}} ({{email}}) وهي في انتظار موافقتك."
     },
     "kinds": {
@@ -738,6 +739,7 @@
       "installation_backup_stopped": "توقّف النسخ الاحتياطي",
       "installation_address_moved": "عنوان جديد للهواتف",
       "installation_clock_off": "ساعة لينكس غير مضبوطة",
+      "installation_security_updated": "تحديث أمني مُطبَّق",
       "signup_awaiting_approval": "شركة في انتظار الموافقة"
     }
   },

@@ -12,15 +12,17 @@
 # this very tree (their markers under var/claude/gates/proofs, keyed on the tree, so a commit re-signed keeps them and
 # any change loses them), every commit since the last release tag carries a good signature, and no tag is made in the
 # year-end freeze (TWES_RELEASE_FREEZE, YYYY.MM.DD-YYYY.MM.DD) unless it is a hotfix. Each exception says why, in the
-# tag's own message: --unrehearsed <why>, --hotfix <why>.
-# Usage: tag-release.sh [--unrehearsed <why>] [--hotfix <why>] <registry prefix, such as ghcr.io/owner> <tag> [<commit>]
+# tag's own message: --unrehearsed <why>, --hotfix <why>. A release that mends a security defect says so, --security <why>:
+# a shop applies a release carrying that mark at its next tick, outside its update window (scripts/onprem/twes).
+# Usage: tag-release.sh [--unrehearsed <why>] [--hotfix <why>] [--security <why>] <registry prefix, such as ghcr.io/owner> <tag> [<commit>]
 set -euo pipefail
-usage() { echo "Usage: tag-release.sh [--unrehearsed <why>] [--hotfix <why>] <registry prefix> <tag vYYYY.MM.DD.N> [<commit>]" >&2; exit 2; }
-unrehearsed='' hotfix=''
+usage() { echo "Usage: tag-release.sh [--unrehearsed <why>] [--hotfix <why>] [--security <why>] <registry prefix> <tag vYYYY.MM.DD.N> [<commit>]" >&2; exit 2; }
+unrehearsed='' hotfix='' security=''
 while [[ "${1:-}" == --* ]]; do
   case "$1" in
     --unrehearsed) [[ -n "${2:-}" ]] || usage; unrehearsed=$2; shift 2 ;;
     --hotfix) [[ -n "${2:-}" ]] || usage; hotfix=$2; shift 2 ;;
+    --security) [[ -n "${2:-}" ]] || usage; security=$2; shift 2 ;;
     *) usage ;;
   esac
 done
@@ -29,6 +31,11 @@ prefix=${1%/} tag=$2 commit=${3:-HEAD}
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 refuse() { echo "tag-release: refused — $*" >&2; exit 1; }
 freeze=${TWES_RELEASE_FREEZE:-2026.12.20-2027.01.10}
+# Each why is one line of the tag's message, whose lines are read as its values: a second line would be another value,
+# such as an image a shop deploys.
+for why in "$unrehearsed" "$hotfix" "$security"; do
+  [[ "$why" != *[$'\n\r']* ]] || refuse "a why is one line of the tag's message, and this one is several: $(tr '\r\n' '  ' <<<"$why")"
+done
 
 [[ "$tag" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]+$ ]] || refuse "$tag is not a release's name, vYYYY.MM.DD.N"
 ! git -C "$root" rev-parse -q --verify "refs/tags/$tag" >/dev/null || refuse "$tag exists; a release tag is never moved"
@@ -129,6 +136,7 @@ done
 [[ "$is_release" == yes ]] || lines+=("REHEARSAL=signed with ${signing:-$key}, not the pinned release key")
 [[ -z "$unrehearsed" ]] || lines+=("UNREHEARSED=$unrehearsed")
 [[ -z "$hotfix" ]] || lines+=("HOTFIX=$hotfix")
+[[ -z "$security" ]] || lines+=("SECURITY=$security")
 git -C "$root" tag -s -u "$key" "$tag" "$revision" -F - <<EOF || refuse "git could not sign $tag with $key: is that key in this keyring, and its agent answering?"
 twes-in $tag
 
@@ -137,6 +145,7 @@ EOF
 git -C "$root" verify-tag "$tag" >/dev/null 2>&1 || { git -C "$root" tag -d "$tag" >/dev/null; refuse "$tag did not verify once signed, and was removed"; }
 echo "tag-release: $tag made and verified at $revision${base:+ on $lane from $base}, naming:"
 printf '  %s\n' "${lines[@]:1}"
+[[ -z "$security" ]] || echo "A security release: once pushed, each shop applies it at its next tick, outside its update window, and mails its owners."
 # Staging follows master's :master image alone (publish.sh --no-master leaves it for a lane): a patch rests on the
 # shops' proofs read above instead, and on CI's run of its branch.
 if [[ -n "$base" ]]; then

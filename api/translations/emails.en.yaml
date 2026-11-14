@@ -112,6 +112,7 @@ notification:
         company_reopened: 'Company reopened'
         company_removal_near: 'A closed company is removed soon'
         signup_awaiting_approval: 'Company waiting for approval'
+        installation_security_updated: 'Security update applied'
     types:
         invitation_accepted: '%display_name% joined the company.'
         stock_delivery_note_lines_left_out: 'Delivery note %number% is validated, but some of its lines moved no stock (another unit, or no quantity).'
@@ -144,6 +145,7 @@ notification:
         company_reopened: '%by% reopened %company%: work can go on there again.'
         company_removal_near: '%company%, closed, will be deleted for good with all its data after %retain_until%. Download what you must keep before then.'
         signup_awaiting_approval: '%company% (%email%) signed up and waits for your approval on the platform page.'
+        installation_security_updated: 'This computer moved to version %version% (from %previous%): it mends a security defect and was applied without waiting for the update window.'
     open: 'Open %product%'
     why: 'You receive this e-mail because « %kind% » is also sent to you by e-mail.'
     stop: 'Stop receiving « %kind% » by e-mail'

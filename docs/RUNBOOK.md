@@ -88,7 +88,7 @@ Untried end to end; `tag-release.sh`, `point-master.sh` and `deploy.sh --release
    `make onprem-check` have not proved (each writes `var/claude/gates/proofs/<rehearsal|onprem>-<tree>.ok` when it
    passes, so the same tree re-signed keeps its proofs), any commit since the last release tag without a good
    signature, and a tag dated in, or made during, the year-end freeze (`TWES_RELEASE_FREEZE`, 2026.12.20-2027.01.10 by
-   default). `UNREHEARSED=<why>` and `HOTFIX=<why>` let one through, and the tag's message says why. It writes the three digests into the annotated tag, signs it
+   default). `UNREHEARSED=<why>` and `HOTFIX=<why>` let one through, and the tag's message says why. A release that mends a security defect is tagged with `SECURITY=<why>`: each shop applies it at its next tick, outside its update window, and its owners are mailed (`twes tick`); in the freeze it still needs `HOTFIX=<why>`. Each why is one line. It writes the three digests into the annotated tag, signs it
    with your git `user.signingkey` (or `TWES_RELEASE_KEY`), which shops verify before taking it, and verifies it once
    made. It reads each image's label and digest from the registry without pulling it (`docker buildx imagetools`, a
    few seconds an image, one line each). The date is the day you tag, `.N` that day's count of releases.

@@ -7,12 +7,14 @@
 #                                  the release deployed by digest, its deep health read through the edge; unhealthy,
 #                                  the release it left is started again on the current schema and the developer told;
 #                                  only a start step failing is told and the update kept, the step run at the next start
-#   twes policy auto HH:MM-HH:MM   updates applied by tick inside that daily window, in the shop's time
-#   twes policy notify | off       the owners told in the app that a release is out, or nothing
+#   twes policy auto HH:MM-HH:MM   updates applied by tick inside that daily window, in the shop's time; a release its tag
+#                                  marks as mending a security defect at the next tick, the owners and the developer mailed
+#   twes policy notify | off       the owners told in the app that a release is out, the developer mailed at once when it
+#                                  mends a security defect; or nothing
 #   twes offsite on | off          the off-site copy of the backups (its bucket's values given first)
 #   twes tick                      every quarter hour: a new network address, alerts held back, deep health (failing, the
 #                                  installation started again once before anyone is told), the backups' outcomes and their
-#                                  schedule, then the update policy
+#                                  schedule, the signs of an attack over the hour before, then the update policy
 #   twes status                    what runs, its policy, address, health and backups
 #   twes restore-commands          what takes the installation back to the backup made before the last update
 #   twes hold on | off             a restore under way: tick and update act on nothing and start refuses, the start at
@@ -983,6 +985,7 @@ tick() {
 
   why=$(backup_folder_ready) || backup_folder_missing "$why"
   offsite_untold
+  watch_signs
 
   policy=$(value UPDATE_POLICY)
   case "$policy" in
@@ -995,8 +998,22 @@ tick() {
         echo "$newest" >> "$state/notified"
         tell installation.update_available "version=$newest" "previous=${current:--}"
         say "$newest is out; the owners are told"
+        why=$(security_mark "$newest")
+        [[ -z "$why" ]] || mail_alert "[twes-in $(hostname)] Mise à jour de sécurité disponible : $newest" \
+          "$newest corrige un défaut de sécurité : $why. Cet ordinateur tourne sur ${current:-une version sans étiquette}, et ses mises à jour se font à la main (twes policy notify) : appliquez-la dès que possible avec twes update, ou laissez-les se faire seules avec twes policy auto HH:MM-HH:MM, qui applique une version de sécurité au quart d'heure suivant."
       fi ;;
     auto)
+      # A release mending a security defect does not wait for the window: its mark is read only once its tag verifies.
+      # The releases unread (no network), the window's own update says so when it comes.
+      if git -C "$root" fetch --quiet --tags origin; then
+        newest=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
+        current=$(tag_of "$(running)")
+        if [[ -n "$newest" && "$newest" != "$current" ]] && verified "$newest" "$current" once \
+          && why=$(security_mark "$newest") && [[ -n "$why" ]]; then
+          security_update "$newest" "$current" "$why" "$awake"
+          return 0
+        fi
+      fi
       window=$(value UPDATE_WINDOW)
       [[ "$window" =~ ^[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}$ ]] || { say "UPDATE_POLICY=auto without a window: nothing applied (twes policy auto HH:MM-HH:MM)"; return 0; }
       t=$(shop_time "$(now)")
@@ -1010,6 +1027,73 @@ tick() {
       update --auto ;;
     *) say "UPDATE_POLICY=$policy: auto, notify or off" ;;
   esac
+}
+
+# --- Signs of an attack ------------------------------------------------------------------------------------------------
+
+# Read at each tick over the hour before: the sign-ins refused and the accounts they locked (the application's journal),
+# the requests refused for too many (429) and the server's errors (5xx) at the web tier, whose access lines carry each
+# answer's status. Past its threshold, a value of the shop's (ALERT_*, the default beside it), the developer is mailed,
+# once an hour at most for each, while the shop is reachable from outside or not: a guess from the shop's own network
+# is worth reading too.
+watch_signs() {
+  local counts failed='' locked='' lines refused errors
+  if counts=$(compose exec -T api bin/console app:installation:sign-ins --no-interaction "--since=$(($(now) - 3600))" 2>&1) \
+    && [[ "$counts" =~ failed=([0-9]+)\ locked=([0-9]+) ]]; then
+    failed=${BASH_REMATCH[1]} locked=${BASH_REMATCH[2]}
+  else
+    say "sign-ins not read from the application: $(tr '\n' ' ' <<<"$counts" | sed 's/ *$//')"
+  fi
+  if lines=$(compose logs --no-log-prefix --since 60m web 2>&1); then
+    refused=$(awk '/\] "[^"]*" 429 / { n++ } END { print n + 0 }' <<<"$lines")
+    errors=$(awk '/\] "[^"]*" 5[0-9][0-9] / { n++ } END { print n + 0 }' <<<"$lines")
+  else
+    say "the web tier's access lines not read: $(tr '\n' ' ' <<<"$lines" | sed 's/ *$//')"
+  fi
+  sign_past sign-in-failures "$failed" ALERT_SIGN_IN_FAILURES 20 "Connexions refusées en nombre" \
+    "connexions refusées (mot de passe ou code faux, adresse inconnue) : quelqu'un devine peut-être des mots de passe."
+  sign_past lockouts "$locked" ALERT_LOCKOUTS 2 "Comptes verrouillés" \
+    "comptes verrouillés après trop d'essais faux : leurs propriétaires en ont reçu un courrier."
+  sign_past refused "${refused:-}" ALERT_REFUSED 100 "Requêtes refusées (429)" \
+    "requêtes refusées pour être venues trop nombreuses d'une même adresse : un robot, ou un appareil de la boutique qui insiste."
+  sign_past server-errors "${errors:-}" ALERT_SERVER_ERRORS 10 "Erreurs du serveur (5xx)" \
+    "réponses en erreur du serveur : une partie de l'application échoue, ou quelqu'un cherche à la faire échouer."
+}
+sign_past() { # its name, its count over the hour (empty: not read), the value naming its threshold, its default, subject, what
+  local threshold
+  [[ "$2" =~ ^[0-9]+$ ]] || return 0
+  threshold=$(value "$3")
+  [[ "$threshold" =~ ^[0-9]+$ ]] || threshold=$4
+  ((10#$2 > 10#$threshold)) || return 0
+  (($(now) - $(recall "sign-$1" 0) >= 3600)) || return 0
+  now > "$state/sign-$1"
+  mail_alert "[twes-in $(hostname)] $5 : $2 en une heure" \
+    "$2 $6 Le seuil est de $threshold par heure ($3 dans $values). twes status dit ce qui tourne ; les lignes d'accès de l'heure : docker compose logs --since 60m web. Ce courrier revient au plus une fois par heure tant que cela dure."
+}
+
+# A release its tag marks as mending a security defect (tag-release.sh --security): the mark's why, or nothing. Read
+# from a tag whose signature verified, since the mark is the tag's message, which anyone could write on a forged one.
+security_mark() {
+  git -C "$root" for-each-ref --format='%(contents)' "refs/tags/$1" | awk 'index($0, "SECURITY=") == 1 { print substr($0, 10); exit }'
+}
+
+# A security release applied outside the window, as the window's are: never in the first half hour after a start or a
+# waking, tried once a day, never again by itself once it failed here (update --auto). Applied, the developer is mailed
+# and the owners are told, whom the application mails, since they did not choose this moment.
+security_update() { # tag, the release running, why, when the computer has been awake since
+  local day
+  (($(now) - $4 >= 1800)) || return 0
+  day=$(shop_day "$(now)")
+  [[ "$(recall security-tried)" != "$1 $day" ]] || return 0
+  echo "$1 $day" > "$state/security-tried"
+  say "$1 mends a security defect ($3): applied now, outside the update window"
+  flock -u 8
+  # Failed, update has said so, taken the release back and alerted, and this script stops on its status.
+  update --auto
+  [[ "$(tag_of "$(running)")" == "$1" ]] || return 0
+  alert installation.security_updated "Mise à jour de sécurité vers $1 faite" \
+    "Cet ordinateur est passé de ${2:-une version sans étiquette} à $1 sans attendre sa fenêtre de mise à jour : $1 corrige un défaut de sécurité ($3). Les propriétaires des entreprises en sont avertis par l'application." \
+    "version=$1" "previous=${2:--}"
 }
 
 # twes doctor --network: what the shop's network looks like from this computer, which decides how it may be reached from

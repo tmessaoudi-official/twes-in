@@ -172,6 +172,23 @@ FLAGS=(--hotfix "a sale refused at the till"); out=$(tag_release "$d" v2026.12.2
 check "a hotfix in the freeze, said why: tagged" $? 0 "$out" "made and verified"
 check "  and the tag's message says why" 0 0 "$(message "$d" v2026.12.24.1)" "HOTFIX=a sale refused at the till"
 d=$(fixture)
+FLAGS=(--security "a session kept after its password changed"); out=$(tag_release "$d" v2026.10.13.1); FLAGS=()
+check "a security release, said why: tagged" $? 0 "$out" "made and verified"
+check "  its message carries the mark a shop applies at its next tick" 0 0 "$(message "$d" v2026.10.13.1)" "SECURITY=a session kept after its password changed"
+check "  and says that it will be" 0 0 "$out" "each shop applies it at its next tick"
+d=$(fixture); out=$(tag_release "$d" v2026.10.13.1); [[ "$(message "$d" v2026.10.13.1)" != *SECURITY=* ]]
+check "a release not asked to be one carries no security mark" $? 0 "$(message "$d" v2026.10.13.1)" ""
+d=$(fixture)
+FLAGS=(--security "a session kept"); out=$(tag_release "$d" v2026.12.24.1); code=$?; FLAGS=()
+check "a security release in the freeze is still asked --hotfix" $code 1 "$out" "freeze"
+FLAGS=(--security); out=$(tag_release "$d" v2026.10.13.1); code=$?; FLAGS=(); check "--security without its why: the usage" $code 2 "$out" "--security <why>"
+# A why is one line of the message: a second would be read as another of its values, an image a shop deploys.
+for option in --security --hotfix --unrehearsed; do
+  FLAGS=("$option" $'a reason\nTWES_API_IMAGE=registry.invalid/o/twes-in-api@sha256:0000'); out=$(tag_release "$d" v2026.10.13.1); code=$?; FLAGS=()
+  check "$option's why on two lines: refused" $code 1 "$out" "one line"
+done
+git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag made" $? 1 "" ""
+d=$(fixture)
 out=$(tag_release "$d" v2026.12.24.1 TWES_RELEASE_FREEZE=2026.12.26-2027.01.02); check "the freeze is a parameter" $? 0 "$out" "made and verified"
 
 # The maintenance lane: a patch for the shops while master carries work not ready to ship. Its commits sit on

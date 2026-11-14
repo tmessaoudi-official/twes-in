@@ -22,8 +22,11 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final class NotificationFieldsTest extends KernelTestCase
 {
-    /** What a sentence may write as it is sent: names, document numbers, counts of things, the stage and days late. */
-    private const array PLAIN = ['product', 'reference', 'establishment', 'location', 'company', 'by', 'customer', 'number', 'description', 'display_name', 'label', 'stage', 'days_late', 'email', 'count', 'counted', 'differences', 'currency'];
+    /**
+     * What a sentence may write as it is sent: names, document numbers, release tags, counts of things, the stage and
+     * days late.
+     */
+    private const array PLAIN = ['product', 'reference', 'establishment', 'location', 'company', 'by', 'customer', 'number', 'description', 'display_name', 'label', 'stage', 'days_late', 'email', 'count', 'counted', 'differences', 'currency', 'version', 'previous'];
 
     public function testEverySentencesFigureIsDeclaredOnItsKindOrIsPlainWords(): void
     {

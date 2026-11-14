@@ -15,6 +15,8 @@ use App\Tenancy\Domain\Model\Role;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\ApplicationTester;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\RawMessage;
 
 /**
  * What a shop's installation script (scripts/onprem/twes) tells the application about itself: a release out goes to
@@ -133,7 +135,44 @@ final class InstallationTellTest extends ApiTestCase
         self::assertSame(Command::INVALID, $refused->getStatusCode(), $refused->getDisplay());
     }
 
-    /** The bell's preferences offer each kind to whom it is told; none is mailed here, the script mails on its own. */
+    /**
+     * A release mending a security defect is applied at the shop's next tick, outside the window its owners chose: they
+     * are told, and mailed, which no other installation kind is here, since they did not pick that moment; the
+     * operators are told too. A demo visitor decides nothing here and hears nothing.
+     */
+    public function testASecurityReleaseAppliedIsToldAndMailedToEachCompanysOwnersAndToldToTheOperators(): void
+    {
+        $shop = $this->createCompany('Quincaillerie');
+        $owner = $this->createUser('owner@shop.test', self::PASSWORD, $shop);
+        $this->createUser('clerk@shop.test', self::PASSWORD, $shop, ['company.read'], Role::MEMBER);
+        $operator = $this->createUser('operator@twes.local', self::PASSWORD, operator: true);
+        $this->readySandbox('TN');
+        $this->em()->flush();
+
+        $tester = $this->tell('installation.security_updated', 'version=v2026.10.21.1', 'previous=v2026.10.20.1');
+
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $told = $this->told('installation.security_updated');
+        self::assertEqualsCanonicalizing([
+            [$owner->getId()->toRfc4122(), $shop->getId()->toRfc4122()],
+            [$operator->getId()->toRfc4122(), null],
+        ], array_map(static fn (array $row): array => [$row['recipient_id'], $row['company_id']], $told));
+        self::assertSame(['version' => 'v2026.10.21.1', 'previous' => 'v2026.10.20.1'], json_decode($this->stringAt($told[0], 'payload'), true));
+
+        self::assertGreaterThan(0, $this->deliverQueued());
+        $toOwner = array_values(array_filter(self::getMailerMessages(), static fn (RawMessage $mail): bool => $mail instanceof Email
+            && \in_array('owner@shop.test', array_map(static fn ($address): string => $address->getAddress(), $mail->getTo()), true)));
+        self::assertCount(1, $toOwner);
+        $body = (string) $toOwner[0]->getHtmlBody();
+        self::assertStringContainsString('v2026.10.21.1', $body);
+        self::assertStringContainsString('sécurité', $body);
+        self::assertStringNotContainsString('notification.', $body);
+
+        $refused = $this->tell('installation.security_updated', 'version=v2026.10.21.1');
+        self::assertSame(Command::INVALID, $refused->getStatusCode(), $refused->getDisplay());
+    }
+
+    /** The bell's preferences offer each kind to whom it is told; none but a security release is mailed here, the script mails on its own. */
     public function testTheKindsAreDeclaredForTheirAudienceAndMailedByTheScriptAlone(): void
     {
         $kinds = static::getContainer()->get(NotificationKinds::class);
@@ -147,6 +186,11 @@ final class InstallationTellTest extends ApiTestCase
         self::assertSame(NotificationAudience::Company, $moved->audience);
         self::assertSame(Role::OWNER, $moved->role);
         self::assertFalse($moved->mailed);
+        $security = $kinds->get('installation.security_updated');
+        self::assertNotNull($security);
+        self::assertSame(NotificationAudience::Company, $security->audience);
+        self::assertSame(Role::OWNER, $security->role);
+        self::assertTrue($security->mailed, 'the owners did not choose the moment a security release is applied: they are mailed it');
         foreach (['rolled_back', 'update_failed', 'update_refused', 'update_behind', 'unhealthy', 'backup_failed', 'backup_stopped', 'clock_off'] as $name) {
             $kind = $kinds->get('installation.'.$name);
             self::assertNotNull($kind, $name);

@@ -112,6 +112,7 @@ notification:
         company_reopened: 'أُعيد فتح الشركة'
         company_removal_near: 'حذف قريب لشركة مغلقة'
         signup_awaiting_approval: 'شركة في انتظار الموافقة'
+        installation_security_updated: 'تحديث أمني مُطبَّق'
     types:
         invitation_accepted: 'انضمّ %display_name% إلى الشركة.'
         stock_delivery_note_lines_left_out: 'صودق على وصل التسليم %number%، لكن بعض أسطره لم تُخرج من المخزون (وحدة مختلفة أو كمية غائبة).'
@@ -144,6 +145,7 @@ notification:
         company_reopened: 'أعاد %by% فتح %company%: يمكن العمل فيها من جديد.'
         company_removal_near: 'ستُحذف %company% المغلقة نهائيًا مع كلّ بياناتها بعد %retain_until%. نزّل قبل ذلك ما يجب أن تحتفظ به.'
         signup_awaiting_approval: 'سجّلت %company% (%email%) وهي في انتظار موافقتك في صفحة المنصّة.'
+        installation_security_updated: 'انتقل هذا الحاسوب إلى الإصدار %version% (بعد الإصدار %previous%): يصلح خللًا أمنيًّا، وطُبِّق دون انتظار نافذة التحديث.'
     open: 'فتح %product%'
     why: 'تصلك هذه الرسالة لأن « %kind% » يُرسل إليك أيضًا بالبريد الإلكتروني.'
     stop: 'إيقاف تلقّي « %kind% » بالبريد الإلكتروني'

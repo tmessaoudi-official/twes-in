@@ -691,6 +691,7 @@
       "installation_backup_stopped": "Les sauvegardes ne tournent plus.",
       "installation_address_moved": "L’adresse de cet ordinateur sur le réseau a changé : les téléphones ouvrent maintenant https://{{to}} (avant : {{from}}). Un téléphone qui avait gardé l’ancienne doit ouvrir la nouvelle.",
       "installation_clock_off": "L’horloge de Linux (WSL) sur cet ordinateur s’écarte de {{seconds}} s de celle de Windows : les factures et tout ce qui est enregistré sont datés avec elle. Arrêter WSL (wsl --shutdown dans PowerShell) la remet à l’heure quand il redémarre.",
+      "installation_security_updated": "Cet ordinateur est passé à la version {{version}} (depuis la {{previous}}) : elle corrige un défaut de sécurité et a été appliquée sans attendre la fenêtre de mise à jour.",
       "signup_awaiting_approval": "{{company}} ({{email}}) s’est inscrite et attend votre approbation."
     },
     "kinds": {
@@ -738,6 +739,7 @@
       "installation_backup_stopped": "Sauvegardes arrêtées",
       "installation_address_moved": "Nouvelle adresse pour les téléphones",
       "installation_clock_off": "Horloge de Linux décalée",
+      "installation_security_updated": "Mise à jour de sécurité appliquée",
       "signup_awaiting_approval": "Entreprise en attente d’approbation"
     }
   },

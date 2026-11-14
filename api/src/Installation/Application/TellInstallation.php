@@ -19,8 +19,9 @@ use App\Tenancy\Domain\Repository\MembershipRepository;
 /**
  * What a shop's installation script (scripts/onprem/twes) tells about the installation it runs: a release out goes to
  * each company's owners, who decide when it is applied, but never to a demo sandbox's, a visitor who decides nothing
- * here; a new network address, which every phone that saved the old one must open instead, goes to those owners and
- * to the operators; an update that failed or was rolled back, a health check that fails, backups that failed or stopped and,
+ * here; a new network address, which every phone that saved the old one must open instead, and a release mending a
+ * security defect, applied at once rather than in the window the owners chose, go to those owners and to the
+ * operators; an update that failed or was rolled back, a health check that fails, backups that failed or stopped and,
  * under WSL, a Linux clock off Windows' by more than a minute, which would date invoices and journals wrong, go to the
  * platform's operators, who mend them. The script also mails its own alerts, since the application may be what is
  * down; here they reach the bell once it answers.
@@ -41,10 +42,13 @@ final readonly class TellInstallation
     public const string BACKUP_STOPPED = 'installation.backup_stopped';
     public const string ADDRESS_MOVED = 'installation.address_moved';
     public const string CLOCK_OFF = 'installation.clock_off';
+    /** A release mending a security defect, applied at the next tick rather than in the window the owners chose. */
+    public const string SECURITY_UPDATED = 'installation.security_updated';
 
     /** Each kind's parameters, true when required. */
     private const array PARAMETERS = [
         self::UPDATE_AVAILABLE => ['version' => true, 'previous' => true],
+        self::SECURITY_UPDATED => ['version' => true, 'previous' => true],
         self::ROLLED_BACK => ['version' => true, 'previous' => true, 'label' => true],
         self::UPDATE_FAILED => ['version' => true, 'previous' => true, 'label' => true],
         self::UPDATE_REFUSED => ['version' => true],
@@ -87,7 +91,7 @@ final readonly class TellInstallation
         if (self::UPDATE_AVAILABLE === $kind) {
             return $this->tellOwners($kind, $payload);
         }
-        $told = self::ADDRESS_MOVED === $kind ? $this->tellOwners($kind, $payload) : 0;
+        $told = \in_array($kind, [self::ADDRESS_MOVED, self::SECURITY_UPDATED], true) ? $this->tellOwners($kind, $payload) : 0;
         foreach ($this->users->platformOperators() as $operator) {
             $this->notifications->publish(new Notification('user:'.$operator->getId()->toRfc4122(), $kind, $payload));
             ++$told;
