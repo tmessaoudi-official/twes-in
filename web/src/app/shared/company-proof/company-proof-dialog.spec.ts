@@ -15,13 +15,16 @@ import { CompanyEntryProof, type EntryAsked, type EntryOutcome } from './company
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      step_up: { errors: { refused: 'Mauvais mot de passe.' } },
-      company_proof: {
-        title: 'Entrer dans {{company}}',
+      step_up: {
         passkey_only: 'Votre clé d’accès suffit.',
         passkey_unavailable: 'Ce navigateur n’en a pas.',
-        errors: { code_refused: 'Mauvais code.', passkey_required: 'Clé d’accès demandée.' },
+        errors: {
+          refused: 'Mauvais mot de passe.',
+          code_refused: 'Mauvais code.',
+          passkey_required: 'Clé d’accès demandée.',
+        },
       },
+      company_proof: { title: 'Entrer dans {{company}}' },
     });
   }
 }

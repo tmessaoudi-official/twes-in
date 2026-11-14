@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Locator, type Page, type Response } from '@playwright/test';
+import { OPERATOR_TOTP_SECRET } from './session';
+import { freshTotp, stepSpent } from './totp';
 
 // The company's bank details, a member added or removed and a role changed each wait for the person to prove who they
 // are again (docs/SPEC.md § 7, the step-up list), and a proof holds a few minutes of that sign-in. Most scenarios share
 // the operator's session, so whether the question comes depends on what ran before: these helpers answer it when it
-// comes and carry on when it does not.
+// comes and carry on when it does not. Where a second factor is required of the account, as of every operator, the
+// proof takes the authenticator code beside the password: one from a step no code was spent in, since a code is
+// refused once spent, as a replay. Every account the scenarios enrol holds the operators' secret.
 
 const CSRF = '0123456789abcdef0123456789abcdef';
 
@@ -12,13 +16,51 @@ const CSRF = '0123456789abcdef0123456789abcdef';
  * After a change on the list was asked for on the screen: answers the step-up dialog if it opens, then lets `outcome`
  * (what the change shows once made, a toast most often) appear. Neither showing fails, as the change would have.
  */
-export async function proveIfAsked(page: Page, password: string, outcome: Locator): Promise<void> {
+export async function proveIfAsked(
+  page: Page,
+  password: string,
+  outcome: Locator,
+  secret: string = OPERATOR_TOTP_SECRET,
+): Promise<void> {
   const field = page.getByTestId('step-up-password');
   await expect(field.or(outcome).first()).toBeVisible();
-  if (await field.isVisible()) {
-    await field.fill(password);
+  if (await field.isVisible()) await answerStepUp(page, password, secret);
+}
+
+/**
+ * Answers the open step-up dialog: the password, and the code of `secret`'s authenticator where the dialog asks one. A
+ * code the API refuses is one another run spent (the setup's sign-in): the next step's is given once.
+ */
+export async function answerStepUp(
+  page: Page,
+  password: string,
+  secret: string = OPERATOR_TOTP_SECRET,
+): Promise<void> {
+  await page.getByTestId('step-up-password').fill(password);
+  const code = page.getByTestId('step-up-code');
+  for (let attempt = 0; ; attempt++) {
+    if (await code.isVisible()) await code.fill(await freshTotp(secret));
+    const answered = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/auth/step-up' &&
+        response.request().method() === 'POST',
+    );
     await page.getByTestId('step-up-confirm').click();
+    const response = await answered;
+    if (attempt > 0 || !(await codeRefused(response.status(), () => response.json()))) return;
+    stepSpent();
   }
+}
+
+/** Whether a proof answered that the code beside the password is missing or wrong. */
+async function codeRefused(status: number, body: () => Promise<unknown>): Promise<boolean> {
+  if (status !== 422) return false;
+  const answer = await body();
+  return (
+    typeof answer === 'object' &&
+    answer !== null &&
+    (answer as { error?: unknown }).error === 'invalid_code'
+  );
 }
 
 /** What the API answered a call made from inside the page. */
@@ -65,10 +107,11 @@ export async function sendProving(
   method: string,
   url: string,
   body: unknown = null,
+  secret: string = OPERATOR_TOTP_SECRET,
 ): Promise<Answer> {
   const answer = await send(page, method, url, body);
   if (!heldBack(answer)) return answer;
-  await proveByApi(page, password);
+  await proveByApi(page, password, secret);
   return send(page, method, url, body);
 }
 
@@ -81,6 +124,7 @@ export async function proveIfHeldBack(
   page: Page,
   password: string,
   answered: Promise<Response>,
+  secret: string = OPERATOR_TOTP_SECRET,
 ): Promise<Response> {
   const response = await answered;
   const status = response.status();
@@ -89,26 +133,49 @@ export async function proveIfHeldBack(
     (next) =>
       next.url() === response.url() && next.request().method() === response.request().method(),
   );
-  await page.getByTestId('step-up-password').fill(password);
-  await page.getByTestId('step-up-confirm').click();
+  await answerStepUp(page, password, secret);
   return again;
 }
 
 /**
- * Proves who is signed in on this page, as the dialog does. Only where the proof is always wanted, a session that has
- * given none yet; elsewhere `sendProving` and `proveIfHeldBack` prove only when the API asks.
+ * Proves who is signed in on this page, as the dialog does, the code beside the password where the session says the
+ * step-up asks one. Only where the proof is always wanted, a session that has given none yet; elsewhere `sendProving`
+ * and `proveIfHeldBack` prove only when the API asks.
  */
-export async function proveByApi(page: Page, password: string): Promise<void> {
-  const status = await page.evaluate(
-    async ([csrf, secret]) =>
-      (
-        await fetch('/api/auth/step-up', {
+export async function proveByApi(
+  page: Page,
+  password: string,
+  secret: string = OPERATOR_TOTP_SECRET,
+): Promise<void> {
+  const asksCode = await page.evaluate(
+    async () =>
+      ((await (await fetch('/api/auth/me')).json()) as { stepUpProof: { code: boolean } })
+        .stepUpProof.code,
+  );
+  for (let attempt = 0; ; attempt++) {
+    const code = asksCode ? await freshTotp(secret) : null;
+    const answer = await page.evaluate(
+      async ([csrf, secret, typed]) => {
+        const response = await fetch('/api/auth/step-up', {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: JSON.stringify({ password: secret }),
-        })
-      ).status,
-    [CSRF, password] as const,
-  );
-  expect(status).toBe(204);
+          body: JSON.stringify(
+            typed === null ? { password: secret } : { password: secret, code: typed },
+          ),
+        });
+        const text = await response.text();
+        return {
+          status: response.status,
+          body: text === '' ? null : (JSON.parse(text) as unknown),
+        };
+      },
+      [CSRF, password, code] as const,
+    );
+    if (attempt === 0 && (await codeRefused(answer.status, async () => answer.body))) {
+      stepSpent();
+      continue;
+    }
+    expect(answer.status).toBe(204);
+    return;
+  }
 }

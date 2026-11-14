@@ -1,25 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { Signal } from '@angular/core';
-import type { StepUpOutcome } from '../step-up/step-up-proof';
+import type { ProofAsked, StepUpOutcome } from '../step-up/step-up-proof';
 
 /** What the working company asks before this sign-in may act in it. */
-export interface EntryAsked {
+export interface EntryAsked extends ProofAsked {
   readonly companyId: string;
   readonly companyName: string;
-  /** a passkey of the account would do instead of the password */
-  readonly passkey: boolean;
-  /** the authenticator code is asked beside the password */
-  readonly code: boolean;
-  /** false where the account's passkey is the second factor the company requires: the passkey alone enters it */
-  readonly password: boolean;
 }
 
-/**
- * How entering came out: a step-up's outcomes, a code the company asks that is missing or wrong, and a password sent
- * where the company takes only the account's passkey.
- */
-export type EntryOutcome = StepUpOutcome | 'code_refused' | 'passkey_required';
+/** How entering came out: a step-up's outcomes, which a password proof's refusals are part of. */
+export type EntryOutcome = StepUpOutcome;
 
 /**
  * The port shared code proves the entry into a company through, so shared/ depends on no feature. An account in two

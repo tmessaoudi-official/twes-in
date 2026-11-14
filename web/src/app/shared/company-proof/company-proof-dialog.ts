@@ -1,201 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  type ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { CompanyEntryProof, type EntryAsked, type EntryOutcome } from './company-entry-proof';
-import { PasswordToggle } from '../form/password-toggle';
-import { signInAddress } from '../session/return-to';
-import { typedCode } from '../form/typed-code';
-import { SpentBudget } from '../errors/spent-budget';
-import { typeAgain } from '../step-up/type-again';
-import { RefusalPipe } from '../errors/refusal-pipe';
+import { CompanyEntryProof, type EntryAsked } from './company-entry-proof';
+import { ProofForm } from '../step-up/proof-form';
 
 /**
- * The step-up's question for entering a company: the password, the authenticator code beside it where the company
- * requires one, or a passkey where the company takes one. A refusal is said in the dialog and leaves it open; the
- * API's budget of attempts is what stops a guess being repeated forever.
+ * The question for entering a company, asked by the step-up's one proof form: the password, the authenticator code
+ * beside it where the company requires one, or a passkey where the company takes one.
  */
 @Component({
   selector: 'app-company-proof-dialog',
-  imports: [
-    RefusalPipe,
-    PasswordToggle,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    ReactiveFormsModule,
-    TranslatePipe,
-  ],
+  imports: [MatDialogModule, ProofForm, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="company-proof-title">
       {{ 'company_proof.title' | translate: { company: asked.companyName } }}
     </h2>
-    <form (submit)="$event.preventDefault(); confirmPassword()" novalidate>
-      <mat-dialog-content>
-        <!-- Material styles mat-dialog-content after Tailwind and sets it back to a block: the layout goes inside.
-             Its foot leaves room for the eye's 48 px touch target, which hangs 4 px below the 40 px field. -->
-        <div class="flex flex-col gap-3 pb-1">
-          <p data-testid="company-proof-intro">{{ 'company_proof.intro' | translate }}</p>
-          @if (!asked.password) {
-            <p data-testid="company-proof-passkey-only">
-              {{
-                (proof.passkeySupported()
-                  ? 'company_proof.passkey_only'
-                  : 'company_proof.passkey_unavailable'
-                ) | translate
-              }}
-            </p>
-          } @else {
-            <mat-form-field>
-              <mat-label>{{ 'step_up.password' | translate }}</mat-label>
-              <input
-                matInput
-                #entryPassword
-                type="password"
-                autocomplete="current-password"
-                [formControl]="password"
-                data-testid="company-proof-password"
-              />
-              <app-password-toggle matSuffix [field]="entryPassword" />
-            </mat-form-field>
-          }
-          @if (asked.password && asked.code) {
-            <mat-form-field>
-              <mat-label>{{ 'company_proof.code' | translate }}</mat-label>
-              <input
-                matInput
-                type="text"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                #entryCode
-                [formControl]="code"
-                data-testid="company-proof-code"
-              />
-            </mat-form-field>
-          }
-          @if (problem(); as key) {
-            <p role="alert" class="text-error" data-testid="company-proof-error">
-              {{
-                key
-                  | refusal
-                    : (key === 'code_refused' || key === 'passkey_required'
-                        ? 'company_proof.errors'
-                        : 'step_up.errors')
-                    : { retry: budget.retry() }
-              }}
-            </p>
-          }
-        </div>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button
-          mat-button
-          type="button"
-          (click)="ref.close(false)"
-          data-testid="company-proof-cancel"
-        >
-          {{ 'step_up.cancel' | translate }}
-        </button>
-        @if (asked.passkey && proof.passkeySupported()) {
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="busy()"
-            (click)="confirmPasskey()"
-            data-testid="company-proof-passkey"
-          >
-            <mat-icon aria-hidden="true">passkey</mat-icon>
-            {{ 'step_up.passkey' | translate }}
-          </button>
-        }
-        @if (asked.password) {
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="busy()"
-            data-testid="company-proof-confirm"
-          >
-            {{ 'company_proof.confirm' | translate }}
-          </button>
-        }
-      </mat-dialog-actions>
-    </form>
+    <app-proof-form
+      testIds="company-proof"
+      confirmKey="company_proof.confirm"
+      [asked]="asked"
+      [passkeySupported]="proof.passkeySupported()"
+      [byPassword]="byPassword"
+      [byPasskey]="byPasskey"
+      (closed)="ref.close($event)"
+    >
+      <p data-testid="company-proof-intro">{{ 'company_proof.intro' | translate }}</p>
+    </app-proof-form>
   `,
 })
 export class CompanyProofDialog {
   protected readonly ref = inject<MatDialogRef<CompanyProofDialog, boolean>>(MatDialogRef);
   protected readonly proof = inject(CompanyEntryProof);
-  /** When a spent budget may be tried again, which its refusal says. */
-  protected readonly budget = inject(SpentBudget);
-  private readonly router = inject(Router);
   protected readonly asked = inject<EntryAsked>(MAT_DIALOG_DATA);
-  protected readonly password = new FormControl('', { nonNullable: true });
-  protected readonly code = new FormControl('', { nonNullable: true });
-  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('entryPassword');
-  private readonly codeInput = viewChild<ElementRef<HTMLInputElement>>('entryCode');
-  protected readonly busy = signal(false);
-  protected readonly problem = signal<Exclude<EntryOutcome, 'confirmed' | 'signed_out'> | null>(
-    null,
-  );
-
-  protected async confirmPassword(): Promise<void> {
-    if (this.password.value === '') {
-      this.problem.set('refused');
-      typeAgain(this.passwordInput());
-      return;
-    }
-    const code = typedCode(this.code.value);
-    if (this.asked.code && code === '') {
-      this.problem.set('code_refused');
-      typeAgain(this.codeInput());
-      return;
-    }
-    await this.settle(() =>
-      this.proof.enterWithPassword(
-        this.asked.companyId,
-        this.password.value,
-        this.asked.code ? code : null,
-      ),
-    );
-    if (this.problem() === 'refused') typeAgain(this.passwordInput());
-    if (this.problem() === 'code_refused') typeAgain(this.codeInput());
-  }
-
-  protected async confirmPasskey(): Promise<void> {
-    await this.settle(() => this.proof.enterWithPasskey(this.asked.companyId));
-  }
-
-  private async settle(proof: () => Promise<EntryOutcome>): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    this.problem.set(null);
-    try {
-      const outcome = await proof();
-      if (outcome === 'confirmed') this.ref.close(true);
-      else if (outcome === 'signed_out') {
-        // The session is over: the sign-in says why.
-        this.ref.close(false);
-        void this.router.navigateByUrl(signInAddress(this.router.url, true));
-      } else this.problem.set(outcome);
-    } finally {
-      this.busy.set(false);
-    }
-  }
+  protected readonly byPassword = (password: string, code: string | null) =>
+    this.proof.enterWithPassword(this.asked.companyId, password, code);
+  protected readonly byPasskey = () => this.proof.enterWithPasskey(this.asked.companyId);
 }

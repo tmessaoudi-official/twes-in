@@ -319,10 +319,11 @@ final class PasskeyTest extends ApiTestCase
         $this->login('someone@twes.local', self::PASSWORD);
         $this->getJson('/api/me/companies');
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'held back until the account has a factor');
-        $this->registerPasskey(new FakeAuthenticator());
+        $this->registerPasskey($held = new FakeAuthenticator());
         $this->getJson('/api/me/companies');
         self::assertResponseIsSuccessful('a passkey is a factor the requirement accepts');
-        $this->registerPasskey(new FakeAuthenticator());
+        // The passkey is now the factor required of the account, and alone proves it: the password would be the weaker proof.
+        $this->registerPasskey(new FakeAuthenticator(), provedBy: $held);
         [$first, $second] = $this->listedIds();
 
         $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$theirs);
@@ -493,18 +494,24 @@ final class PasskeyTest extends ApiTestCase
     }
 
     /** @return list<string> */
-    private function registerPasskey(FakeAuthenticator $authenticator, int $signCount = 0): array
+    private function registerPasskey(FakeAuthenticator $authenticator, int $signCount = 0, ?FakeAuthenticator $provedBy = null): array
     {
-        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($this->creationOptions(), signCount: $signCount)]);
+        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($this->creationOptions($provedBy), signCount: $signCount)]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return array_values(array_filter($this->arrayAt($this->json(), 'recoveryCodes'), 'is_string'));
     }
 
     /** @return array<string, mixed> */
-    private function creationOptions(): array
+    private function creationOptions(?FakeAuthenticator $provedBy = null): array
     {
-        $this->stepUp(self::PASSWORD);
+        if (null === $provedBy) {
+            $this->stepUp(self::PASSWORD);
+        } else {
+            $this->postJson('/api/auth/step-up/passkey/options', null);
+            $this->postJson('/api/auth/step-up/passkey', ['credential' => $provedBy->assert($this->json())]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        }
         $this->postJson('/api/auth/mfa/passkeys/options', null);
         self::assertResponseIsSuccessful();
 

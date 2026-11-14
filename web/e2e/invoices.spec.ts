@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { answerStepUp } from './step-up';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { choose, expectFacetCount } from './select';
@@ -818,8 +819,7 @@ test('invoices are selected on their page, counted in a bar that stands for the 
       ),
     ]);
     if (asked) {
-      await stepUp.fill(OPERATOR_PASSWORD);
-      await page.getByTestId('step-up-confirm').click();
+      await answerStepUp(page, OPERATOR_PASSWORD);
     }
     const file = await download;
     expect(file.suggestedFilename()).toBe('invoices.csv');

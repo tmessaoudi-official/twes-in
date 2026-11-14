@@ -356,6 +356,8 @@ describe('AuthFacade', () => {
       },
     });
     await facade.load();
+    // The session read again after the change has not answered yet: what shows meanwhile is the patch.
+    api.me.mockReturnValue(new Promise(() => undefined));
     const enrolment = { secret: 'JBSWY3DPEHPK3PXP', provisioningUri: 'otpauth://totp/x' };
     api.beginTotpEnrolment.mockResolvedValue(enrolment);
     expect(await facade.beginTotpEnrolment()).toEqual({ ok: true, enrolment });
@@ -530,27 +532,81 @@ describe('AuthFacade', () => {
     await facade.load();
     api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('step_up_exhausted'));
 
-    expect(await facade.withPassword('cinquième')).toBe('signed_out');
+    expect(await facade.withPassword('cinquième', null)).toBe('signed_out');
     expect(facade.me()).toBeNull();
   });
 
   // A server failing during the proof is never said as « Ce n'est pas le bon mot de passe ».
   it('keeps the code of a proof answered by something it has no words for', async () => {
     api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused({ unknown: '500' }));
-    expect(await facade.withPassword('le-bon')).toEqual({ unknown: '500' });
+    expect(await facade.withPassword('le-bon', null)).toEqual({ unknown: '500' });
     api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused({ unknown: 'brand_new' }));
-    expect(await facade.withPassword('le-bon')).toEqual({ unknown: 'brand_new' });
+    expect(await facade.withPassword('le-bon', null)).toEqual({ unknown: 'brand_new' });
+  });
+
+  it('asks what the session says a step-up takes, the code beside the password where one is required', async () => {
+    expect(facade.proofAsked()).toEqual({ passkey: false, code: false, password: true });
+    api.me.mockResolvedValueOnce({
+      ...owner,
+      stepUpProof: { passkey: true, code: true, password: true },
+    });
+    await facade.load();
+    expect(facade.proofAsked()).toEqual({ passkey: true, code: true, password: true });
+
+    api.stepUpWithPassword.mockResolvedValueOnce(undefined);
+    expect(await facade.withPassword('le-bon', '123456')).toBe('confirmed');
+    expect(api.stepUpWithPassword).toHaveBeenLastCalledWith('le-bon', '123456');
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('invalid_code'));
+    expect(await facade.withPassword('le-bon', '000000')).toBe('code_refused');
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('passkey_required'));
+    expect(await facade.withPassword('le-bon', null)).toBe('passkey_required');
+  });
+
+  // What a proof asks follows from the factors the account holds, which the API alone works out from them.
+  it('reads the session again once a factor is added or removed', async () => {
+    api.me.mockResolvedValue(owner);
+    await facade.load();
+    api.me.mockResolvedValue({
+      ...owner,
+      stepUpProof: { passkey: true, code: false, password: true },
+    });
+    api.passkeyRegistrationOptions.mockResolvedValue({ challenge: 'abc' });
+    client.create.mockResolvedValue({ id: 'cred' });
+    api.registerPasskey.mockResolvedValue({
+      passkey: {
+        id: 'p1',
+        name: 'Work laptop',
+        createdAt: '2026-11-14T10:00:00+00:00',
+        lastUsedAt: null,
+        discoverable: true,
+      },
+      recoveryCodes: [],
+    });
+    await facade.addPasskey('Work laptop');
+    await vi.waitFor(() => expect(facade.proofAsked().passkey).toBe(true));
+
+    api.confirmTotpEnrolment.mockResolvedValue(['aaaa-bbbb']);
+    const read = (): number => api.me.mock.calls.length;
+    for (const change of [
+      () => facade.removePasskey('p1'),
+      () => facade.removeAuthenticator(),
+      () => facade.confirmTotpEnrolment('123456'),
+    ]) {
+      const before = read();
+      await change();
+      await vi.waitFor(() => expect(read()).toBe(before + 1));
+    }
   });
 
   it('says how a proof of who is at the screen came out', async () => {
     api.stepUpWithPassword.mockResolvedValueOnce(undefined);
-    expect(await facade.withPassword('le-bon')).toBe('confirmed');
+    expect(await facade.withPassword('le-bon', null)).toBe('confirmed');
     api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('invalid_credentials'));
-    expect(await facade.withPassword('autre')).toBe('refused');
+    expect(await facade.withPassword('autre', null)).toBe('refused');
     api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('too_many_attempts'));
-    expect(await facade.withPassword('encore')).toBe('too_many');
+    expect(await facade.withPassword('encore', null)).toBe('too_many');
     api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('network'));
-    expect(await facade.withPassword('x')).toBe('network');
+    expect(await facade.withPassword('x', null)).toBe('network');
 
     api.stepUpPasskeyOptions.mockResolvedValue({ challenge: 'rst' });
     client.get.mockRejectedValueOnce(new DOMException('Not allowed.', 'NotAllowedError'));
@@ -651,6 +707,8 @@ describe('AuthFacade', () => {
       },
     });
     await facade.load();
+    // The session read again after the change has not answered yet: what shows meanwhile is the patch.
+    api.me.mockReturnValue(new Promise(() => undefined));
     api.passkeyRegistrationOptions.mockResolvedValue({ challenge: 'abc' });
     client.create.mockResolvedValue({ id: 'cred' });
     api.registerPasskey.mockResolvedValue({ passkey: laptop, recoveryCodes: ['aaaaa-bbbbb'] });
@@ -713,6 +771,8 @@ describe('AuthFacade', () => {
       },
     });
     await facade.load();
+    // The session read again after the change has not answered yet: what shows meanwhile is the patch.
+    api.me.mockReturnValue(new Promise(() => undefined));
     api.removePasskey.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
     expect(await facade.removePasskey('p1')).toEqual({ ok: false, error: 'mfa_last_factor' });
     expect(facade.me()?.mfa.passkeys).toBe(1);
@@ -775,6 +835,8 @@ describe('AuthFacade', () => {
       },
     });
     await facade.load();
+    // The session read again after the change has not answered yet: what shows meanwhile is the patch.
+    api.me.mockReturnValue(new Promise(() => undefined));
     api.removeAuthenticator.mockRejectedValueOnce(new AuthRefused('mfa_authenticator_required'));
     expect(await facade.removeAuthenticator()).toEqual({
       ok: false,

@@ -9,7 +9,7 @@ import {
   signInWithCode,
 } from './session';
 import { pickOption } from './select';
-import { proveByApi } from './step-up';
+import { answerStepUp, proveByApi } from './step-up';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 
@@ -58,8 +58,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
   await page.getByTestId('platform-company-create').click();
   // A platform write waits for the operator to prove who is at the screen, and a sign-in is no proof (docs/SPEC.md
   // § 7); once given, the invitation that follows asks nothing more.
-  await page.getByTestId('step-up-password').fill(OPERATOR_PASSWORD);
-  await page.getByTestId('step-up-confirm').click();
+  await answerStepUp(page, OPERATOR_PASSWORD);
   await expect(toast(page)).toContainText(owner);
   // A company an operator opens waits for its first owner. The list is a page of many: search for it.
   await page.goto(`/platform?tab=companies&q=${encodeURIComponent(name)}`);
@@ -88,6 +87,8 @@ test('an operator opens a company from the platform, and the switcher moves the 
     async () =>
       ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company.id,
   );
+  // The operator's address is the same every run: only a mail sent after this invitation carries its link.
+  const invitedAt = Date.now();
   const invited = await ownerPage.evaluate(
     async ([id, csrf, email]) =>
       (
@@ -103,7 +104,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
 
   try {
     // The operator already has an account, so accepting asks for nothing (docs/SPEC.md § 7, 2026-09-15).
-    const token = await invitationTokenFor(request, CODES_OPERATOR_EMAIL);
+    const token = await invitationTokenFor(request, CODES_OPERATOR_EMAIL, { since: invitedAt });
     const accepted = await page.evaluate(
       async ([link, csrf]) =>
         (

@@ -66,6 +66,6 @@ final class RacerContext
         $request = Request::create('/');
         $request->setSession(new Session(new MockArraySessionStorage()));
         $container->get('request_stack')->push($request);
-        $container->get(StepUpProofs::class)->remember($userId, $container->get(ClockInterface::class)->now());
+        $container->get(StepUpProofs::class)->remember($userId, $container->get(ClockInterface::class)->now(), true);
     }
 }

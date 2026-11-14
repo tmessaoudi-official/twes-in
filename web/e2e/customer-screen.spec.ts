@@ -2,6 +2,7 @@
 import { expect, test } from '@playwright/test';
 import { aProduct, forget } from './catalogue';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { answerStepUp, proveByApi } from './step-up';
 
 // The customer screen stands at one establishment and says that establishment's stock (docs/SPEC.md row 207). An
 // establishment can never be removed and the suite shares one database, so the second one is answered by the route
@@ -99,29 +100,28 @@ test(
       // Leaving it takes the password again.
       await page.getByTestId('customer-screen-leave').click();
       await expect(page.getByTestId('step-up-title')).toBeVisible();
-      await page.getByTestId('step-up-password').fill(OPERATOR_PASSWORD);
-      await page.getByTestId('step-up-confirm').click();
+      await answerStepUp(page, OPERATOR_PASSWORD);
       await expect(page).toHaveURL(/\/$/);
     } finally {
       // The operator's session is shared by every scenario after this one: a failure above must not leave it held.
-      await page.evaluate(
-        async ([token, password]) => {
-          const me = (await (await fetch('/api/auth/me')).json()) as {
-            customerScreenCompanyId: string | null;
-          };
-          if (me.customerScreenCompanyId === null) return;
-          const headers = { 'content-type': 'application/json', 'csrf-token': token };
-          const proved = await fetch('/api/auth/step-up', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ password }),
-          });
-          if (!proved.ok) throw new Error(`the step-up answered ${proved.status}`);
-          const left = await fetch('/api/auth/customer-screen', { method: 'DELETE', headers });
-          if (!left.ok) throw new Error(`leaving the customer screen answered ${left.status}`);
-        },
-        [CSRF, OPERATOR_PASSWORD] as const,
+      const held = await page.evaluate(
+        async () =>
+          (
+            (await (await fetch('/api/auth/me')).json()) as {
+              customerScreenCompanyId: string | null;
+            }
+          ).customerScreenCompanyId !== null,
       );
+      if (held) {
+        await proveByApi(page, OPERATOR_PASSWORD);
+        await page.evaluate(async (token) => {
+          const left = await fetch('/api/auth/customer-screen', {
+            method: 'DELETE',
+            headers: { 'content-type': 'application/json', 'csrf-token': token },
+          });
+          if (!left.ok) throw new Error(`leaving the customer screen answered ${left.status}`);
+        }, CSRF);
+      }
       await page.unroute('**/api/companies/*/establishments');
       await forget(page, [product]);
     }

@@ -106,7 +106,9 @@ test('an address that already has an account joins from the mailed link with not
     fullPage: true,
   });
 
-  await theirPage.goto(`/invitations/${await invitationTokenFor(request, existing, firstToken)}`);
+  await theirPage.goto(
+    `/invitations/${await invitationTokenFor(request, existing, { unlike: firstToken })}`,
+  );
   await expect(theirPage.getByTestId('invitation-has-account')).toBeVisible();
   await expect(theirPage.getByTestId('invitation-name')).toHaveCount(0);
   await expect(theirPage.getByTestId('invitation-password')).toHaveCount(0);

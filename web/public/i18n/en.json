@@ -3028,13 +3028,18 @@
     "intro_export": "To download this list, enter your password or use a passkey.",
     "password": "Password",
     "passkey": "Passkey",
+    "code": "Authenticator app code",
+    "passkey_only": "A second proof is asked, and yours is your passkey: it is enough, with no password.",
+    "passkey_unavailable": "Your passkey is asked, and this browser cannot offer one: open this page on the device that holds yours.",
     "confirm": "Confirm",
     "cancel": "Close",
     "errors": {
       "refused": "That is not the right password.",
       "too_many": "Too many attempts. {{retry}}",
       "no_passkey": "No passkey could be used.",
-      "network": "The server is not answering: try again."
+      "network": "The server is not answering: try again.",
+      "code_refused": "This code is not the right one: type the one your app shows right now.",
+      "passkey_required": "The password alone is not enough here: confirm with your passkey."
     },
     "intro_erasure": "To open « Erase data », enter your password or use a passkey.",
     "intro_factors": "To change how you verify it is you, enter your password or use a passkey.",
@@ -3045,16 +3050,9 @@
   "company_proof": {
     "title": "Enter {{company}}",
     "intro": "You work in several companies: each one asks you, once per sign-in, to confirm it is you.",
-    "code": "Authenticator app code",
     "confirm": "Enter",
     "panel": "This company waits for you to confirm it is you before opening its pages.",
-    "prove": "Confirm it is me",
-    "passkey_only": "This company asks for a second proof, and yours is your passkey: it is enough, with no password.",
-    "passkey_unavailable": "This company asks for your passkey, and this browser cannot offer one: open this page on the device that holds yours.",
-    "errors": {
-      "code_refused": "This code is not the right one: type the one your app shows right now.",
-      "passkey_required": "This company does not take the password alone: enter with your passkey."
-    }
+    "prove": "Confirm it is me"
   },
   "customer_display": {
     "title": "Customer display",

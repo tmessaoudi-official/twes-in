@@ -3,8 +3,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
-import { proveIfAsked, sendProving } from './step-up';
-import { totp } from './totp';
+import { answerStepUp, proveIfAsked, sendProving } from './step-up';
+import { freshTotp, totp } from './totp';
 import { toast } from './toast';
 
 // Two-step verification through the real stack, for a freshly invited account. Never the shared operator: every
@@ -19,11 +19,13 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.getByTestId('submit').click();
 }
 
-/** Adding or removing a factor asks who is at the screen first: the password, in the step-up dialog. */
-async function prove(page: Page, password: string): Promise<void> {
+/**
+ * Adding or removing a factor asks who is at the screen first: the password in the step-up dialog, and the code of the
+ * account's authenticator beside it once a company of the account requires a second factor.
+ */
+async function prove(page: Page, password: string, secret?: string): Promise<void> {
   await expect(page.getByTestId('step-up-title')).toBeVisible();
-  await page.getByTestId('step-up-password').fill(password);
-  await page.getByTestId('step-up-confirm').click();
+  await answerStepUp(page, password, secret);
   await expect(page.getByTestId('step-up-title')).toHaveCount(0);
 }
 
@@ -234,7 +236,7 @@ test('a company that requires two-step verification sends its owner to set it up
 
   await expect(page.getByTestId('two-factor-secret')).not.toBeEmpty();
   const secret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
-  await page.getByTestId('two-factor-code').fill(totp(secret));
+  await page.getByTestId('two-factor-code').fill(await freshTotp(secret));
   await page.getByTestId('two-factor-submit').click();
   await expect(page.getByTestId('two-factor-recovery-codes').locator('li')).toHaveCount(10);
   await page.getByTestId('two-factor-continue').click();
@@ -253,7 +255,9 @@ test('a company that requires two-step verification sends its owner to set it up
   await expectAccessible(page, 'two-factor, the authenticator a company requires');
   await page.screenshot({ path: test.info().outputPath('two-factor-kept.png'), fullPage: true });
   // The API holds it too, for a tab drawn before the requirement.
-  expect(await sendProving(page, NEW_PASSWORD, 'DELETE', '/api/auth/mfa/authenticator')).toEqual({
+  expect(
+    await sendProving(page, NEW_PASSWORD, 'DELETE', '/api/auth/mfa/authenticator', null, secret),
+  ).toEqual({
     status: 409,
     body: { error: 'mfa_authenticator_required' },
   });
@@ -265,7 +269,7 @@ test('a company that requires two-step verification sends its owner to set it up
   await signOut(page);
   await signIn(page, owner, NEW_PASSWORD);
   await nextStep(page);
-  await page.getByTestId('mfa-code').fill(totp(secret));
+  await page.getByTestId('mfa-code').fill(await freshTotp(secret));
   await page.getByTestId('mfa-submit').click();
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
   await page.goto('/company/security');
@@ -276,7 +280,9 @@ test('a company that requires two-step verification sends its owner to set it up
   await expect(page.getByTestId('step-up-title')).toHaveCount(0);
   await expect(requirement).toHaveAttribute('aria-checked', 'true');
   await requirement.click();
-  await prove(page, NEW_PASSWORD);
+  // A second factor required of the account, which holds an authenticator: the code goes beside the password.
+  await expect(page.getByTestId('step-up-code')).toBeVisible();
+  await prove(page, NEW_PASSWORD, secret);
   await expect(requirement).toHaveAttribute('aria-checked', 'false');
 
   // Required no more, the authenticator goes, a phone lost or replaced, and the page offers to set one up again.

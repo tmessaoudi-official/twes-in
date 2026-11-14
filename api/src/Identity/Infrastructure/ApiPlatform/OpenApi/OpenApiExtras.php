@@ -181,6 +181,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'required' => ['password'],
             'properties' => [
                 'password' => ['type' => 'string', 'description' => "The signed-in account's own password."],
+                'code' => ['type' => 'string', 'description' => 'The authenticator code, where Me.stepUpProof.code asks one beside the password'],
             ],
         ]);
         $schemas['MfaPending'] = new \ArrayObject([
@@ -464,13 +465,13 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             operationId: 'stepUpWithPassword',
             tags: ['Auth'],
             responses: [
-                '204' => new Response('The password is the account\'s'),
+                '204' => new Response('The password is the account\'s, and the code where one is asked'),
                 '401' => $errorResponse('Not signed in, or `step_up_exhausted`: that wrong answer was the last this sign-in may give (app.step_up.attempts), which is now signed out'),
-                '422' => $errorResponse('The password is not the account\'s'),
+                '422' => $errorResponse('`invalid_credentials`: the password is not the account\'s; `invalid_code`: a second factor is required of the account and the authenticator code is missing or wrong; `passkey_required`: a second factor is required and the account\'s is a passkey, which alone proves it'),
                 '429' => $spentResponse('Too many attempts'),
             ],
-            summary: 'Confirm who is at the screen with the password',
-            requestBody: new RequestBody('The password', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/StepUpPassword']))]), true),
+            summary: 'Confirm who is at the screen with the password, and the authenticator code where one is required',
+            requestBody: new RequestBody('The password, and the code where Me.stepUpProof.code asks one', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/StepUpPassword']))]), true),
         )));
         $openApi->getPaths()->addPath('/api/auth/step-up/passkey/options', new PathItem(post: new Operation(
             operationId: 'stepUpPasskeyOptions',

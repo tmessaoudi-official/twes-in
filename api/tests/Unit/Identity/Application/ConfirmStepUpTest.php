@@ -15,16 +15,21 @@ use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Application\PasswordHasher;
+use App\Identity\Application\SecretCipher;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpExhausted;
 use App\Identity\Application\StepUp\StepUpProofs;
 use App\Identity\Application\StepUp\StepUpRefused;
+use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\PasskeyRepository;
+use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryUsers;
 use App\Tests\Support\RecordedSecurityNotices;
+use App\Tests\Support\StepUpDoubles;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -55,12 +60,12 @@ final class ConfirmStepUpTest extends TestCase
             /** @var array<string, \DateTimeImmutable> */
             private array $at = [];
 
-            public function remember(Uuid $userId, \DateTimeImmutable $at): void
+            public function remember(Uuid $userId, \DateTimeImmutable $at, bool $withSecondFactor): void
             {
                 $this->at[$userId->toRfc4122()] = $at;
             }
 
-            public function lastFor(Uuid $userId): ?\DateTimeImmutable
+            public function lastFor(Uuid $userId, bool $withSecondFactor): ?\DateTimeImmutable
             {
                 return $this->at[$userId->toRfc4122()] ?? null;
             }
@@ -87,7 +92,7 @@ final class ConfirmStepUpTest extends TestCase
 
     public function testAProofOpensTheNextFiveMinutesAndNotOneSecondMore(): void
     {
-        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
+        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD, null);
 
         $this->clock->sleep(300);
         self::assertTrue($this->confirm()->isRecent($this->user->getId()), 'five minutes on, still open');
@@ -98,7 +103,7 @@ final class ConfirmStepUpTest extends TestCase
     public function testARefusedProofOpensNothing(): void
     {
         try {
-            $this->confirm()->withPassword($this->user->getId(), 'not-it');
+            $this->confirm()->withPassword($this->user->getId(), 'not-it', null);
             self::fail('the wrong password was accepted');
         } catch (StepUpRefused) {
         }
@@ -110,7 +115,7 @@ final class ConfirmStepUpTest extends TestCase
     {
         for ($i = 0; $i < 4; ++$i) {
             try {
-                $this->confirm()->withPassword($this->user->getId(), 'guess-'.$i);
+                $this->confirm()->withPassword($this->user->getId(), 'guess-'.$i, null);
                 self::fail('a wrong password proved itself');
             } catch (StepUpExhausted) {
                 self::fail('four wrong answers spent the budget');
@@ -119,7 +124,7 @@ final class ConfirmStepUpTest extends TestCase
         }
         $this->expectException(StepUpExhausted::class);
         try {
-            $this->confirm()->withPassword($this->user->getId(), 'guess-4');
+            $this->confirm()->withPassword($this->user->getId(), 'guess-4', null);
         } finally {
             self::assertSame(0, $this->user->getFailedLoginCount(), 'no step toward the account lock');
             self::assertFalse($this->user->isLockedAt($this->clock->now()));
@@ -131,7 +136,7 @@ final class ConfirmStepUpTest extends TestCase
     {
         for ($i = 0; $i < 2; ++$i) {
             try {
-                $this->confirm(attempts: 3)->withPassword($this->user->getId(), 'guess-'.$i);
+                $this->confirm(attempts: 3)->withPassword($this->user->getId(), 'guess-'.$i, null);
                 self::fail('a wrong password proved itself');
             } catch (StepUpExhausted) {
                 self::fail('two wrong answers spent a budget of three');
@@ -140,25 +145,25 @@ final class ConfirmStepUpTest extends TestCase
         }
 
         $this->expectException(StepUpExhausted::class);
-        $this->confirm(attempts: 3)->withPassword($this->user->getId(), 'guess-2');
+        $this->confirm(attempts: 3)->withPassword($this->user->getId(), 'guess-2', null);
     }
 
     public function testALockedAccountIsRefusedEvenTheRightPasswordUntilTheLockEnds(): void
     {
-        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 'PT15M');
+        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 'PT15M');
         for ($i = 0; $i < 5; ++$i) {
             $failures->handle(new FailedLoginAttempt($this->user->getId(), 'someone@example.test', 'test', true));
         }
 
         try {
-            $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
+            $this->confirm()->withPassword($this->user->getId(), self::PASSWORD, null);
             self::fail('a locked account proved itself');
         } catch (StepUpRefused) {
         }
         self::assertSame(5, $this->user->getFailedLoginCount(), 'a refusal because of the lock is not one more guess');
 
         $this->clock->modify('+16 minutes');
-        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
+        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD, null);
         self::assertTrue($this->confirm()->isRecent($this->user->getId()));
     }
 
@@ -173,7 +178,7 @@ final class ConfirmStepUpTest extends TestCase
 
     public function testAnotherAccountsProofIsNotThisOnes(): void
     {
-        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
+        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD, null);
 
         self::assertFalse($this->confirm()->isRecent(Uuid::v7()));
     }
@@ -212,6 +217,10 @@ final class ConfirmStepUpTest extends TestCase
             }
         };
 
-        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $demoAccounts, $this->clock, 'PT5M', $attempts);
+        $passkeys = $this->createStub(PasskeyRepository::class);
+        $asked = StepUpDoubles::screenProofs(new InMemoryMemberships(), $passkeys);
+        $secondFactor = StepUpDoubles::secondFactor($this->users, $this->createStub(RecoveryCodeRepository::class), $this->createStub(TotpCodes::class), $this->createStub(SecretCipher::class), $passkeys, $this->clock);
+
+        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $asked, $secondFactor, $demoAccounts, $this->clock, 'PT5M', $attempts);
     }
 }

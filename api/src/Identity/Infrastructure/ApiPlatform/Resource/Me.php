@@ -68,6 +68,8 @@ final readonly class Me
          * fields judge a number as the API will (Settings\Application\PhoneSettings).
          */
         #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => [PhoneSettings::REFUSE, PhoneSettings::KEEP]])] public string $phonesOutsideRanges = PhoneSettings::REFUSE,
+        /** What proving this sign-in again asks of it, before an export or a change a stranger at the screen must not make. */
+        #[ApiProperty(required: true)] public MeCompanyProof $stepUpProof = new MeCompanyProof(false, false, true),
     ) {
     }
 
@@ -76,7 +78,7 @@ final readonly class Me
      * @param Standing|null         $standing       where the working company stands in its subscription, null when licensing does not manage it
      * @param list<MePlannedModule> $plannedModules the modules not built yet, whoever is signed in
      */
-    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false, ?EntryProof $companyProof = null, string $phonesOutsideRanges = PhoneSettings::REFUSE): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false, ?EntryProof $companyProof = null, string $phonesOutsideRanges = PhoneSettings::REFUSE, ?EntryProof $stepUpProof = null): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $demo ? DemoAccounts::SHOWN_AS : $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator(), $demo),
@@ -91,6 +93,7 @@ final readonly class Me
             $context?->supportAccessReason,
             null === $companyProof ? null : MeCompanyProof::of($companyProof),
             $phonesOutsideRanges,
+            null === $stepUpProof ? new MeCompanyProof(false, false, true) : MeCompanyProof::of($stepUpProof),
         );
     }
 }

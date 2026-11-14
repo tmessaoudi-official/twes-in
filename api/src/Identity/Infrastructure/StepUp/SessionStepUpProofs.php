@@ -26,10 +26,10 @@ final readonly class SessionStepUpProofs implements StepUpProofs
     {
     }
 
-    public function remember(Uuid $userId, \DateTimeImmutable $at): void
+    public function remember(Uuid $userId, \DateTimeImmutable $at, bool $withSecondFactor): void
     {
         $session = $this->requestStack->getSession();
-        $session->set(self::KEY, ['user' => $userId->toRfc4122(), 'at' => $at->getTimestamp()]);
+        $session->set(self::KEY, ['user' => $userId->toRfc4122(), 'at' => $at->getTimestamp(), 'factor' => $withSecondFactor]);
         $session->remove(self::FAILED);
     }
 
@@ -43,11 +43,15 @@ final readonly class SessionStepUpProofs implements StepUpProofs
         return $count;
     }
 
-    public function lastFor(Uuid $userId): ?\DateTimeImmutable
+    public function lastFor(Uuid $userId, bool $withSecondFactor): ?\DateTimeImmutable
     {
         $proof = $this->requestStack->getSession()->get(self::KEY);
 
         if (!\is_array($proof) || $userId->toRfc4122() !== ($proof['user'] ?? null) || !\is_int($proof['at'] ?? null)) {
+            return null;
+        }
+        // A session the release before wrote holds no 'factor': it was the password alone as far as anyone can tell.
+        if ($withSecondFactor && true !== ($proof['factor'] ?? null)) {
             return null;
         }
 

@@ -24,3 +24,27 @@ export function totp(secret: string, at: number = Date.now()): string {
   const offset = digest[digest.length - 1]! & 0x0f;
   return String((digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
+
+/** The newest step this run gave a code in: the API refuses a step's code once spent, as a replay. */
+let spentStep = -1;
+const STEP = 30_000;
+
+/**
+ * A code from a step this run has not spent yet: a step-up just after the sign-in, or a company's proof, would
+ * otherwise send the code the sign-in spent, which the API refuses as a replay. The API takes one step of leeway, as
+ * an app running a few seconds fast shows the next step's code, so a second proof in the same step sends that one at
+ * once; only a third waits for the clock (up to thirty seconds), which a scenario's thirty-second budget cannot spare.
+ */
+export async function freshTotp(secret: string): Promise<string> {
+  const step = Math.max(Math.floor(Date.now() / STEP), spentStep + 1);
+  if (step > Math.floor(Date.now() / STEP) + 1) {
+    await new Promise((resolve) => setTimeout(resolve, (step - 1) * STEP - Date.now() + 1_000));
+  }
+  spentStep = step;
+  return totp(secret, step * STEP);
+}
+
+/** Marks the step it is as spent, after the API refused its code as a replay: another run, or the setup, spent it. */
+export function stepSpent(): void {
+  spentStep = Math.max(spentStep, Math.floor(Date.now() / STEP));
+}

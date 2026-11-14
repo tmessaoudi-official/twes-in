@@ -63,6 +63,9 @@ abstract class ApiTestCase extends WebTestCase
     /** @var array<string, true> the addresses createUser enrolled, whose login() goes through the code step */
     private array $enrolled = [];
 
+    /** The address login() last signed in, whose step-up sends the authenticator code beside the password where it is enrolled. */
+    private ?string $signedIn = null;
+
     /** The instant setUp held the clock at, from which moveClock() counts. */
     private \DateTimeImmutable $heldSince;
 
@@ -428,16 +431,22 @@ abstract class ApiTestCase extends WebTestCase
     protected function login(string $email, string $password): void
     {
         $this->postJson('/api/auth/login', ['email' => $email, 'password' => $password]);
+        $this->signedIn = strtolower($email);
         if (!isset($this->enrolled[strtolower($email)]) || Response::HTTP_OK !== $this->client->getResponse()->getStatusCode() || true !== ($this->json()['mfaRequired'] ?? null)) {
             return;
         }
 
-        // The last spent step goes back into the past first, so signing in twice within thirty seconds is not a replay.
+        $this->rewindSpentStep($email);
+        $this->postJson('/api/auth/mfa/verify', ['code' => self::authenticatorCode()]);
+    }
+
+    /** The last spent step goes back into the past, so a code given twice within thirty seconds is not a replay. */
+    private function rewindSpentStep(string $email): void
+    {
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString($email)]);
         self::assertNotNull($user);
         $user->confirmTotpEnrolment(self::spentTimestep(), self::heldNow());
         $this->em()->flush();
-        $this->postJson('/api/auth/mfa/verify', ['code' => self::authenticatorCode()]);
     }
 
     /** A step a minute before the API's now: any code for its now is newer than it. */
@@ -700,7 +709,14 @@ abstract class ApiTestCase extends WebTestCase
     /** Proves who is at the screen again, as the step-up dialog does before an export (docs/SPEC.md § 7, audit H-b2). */
     protected function stepUp(string $password): void
     {
-        $this->postJson('/api/auth/step-up', ['password' => $password]);
+        // An enrolled account gives its code beside the password wherever a second factor is required of it, as an
+        // operator always is; one asked for none ignores it.
+        if (null !== $this->signedIn && isset($this->enrolled[$this->signedIn])) {
+            $this->rewindSpentStep($this->signedIn);
+            $this->postJson('/api/auth/step-up', ['password' => $password, 'code' => self::authenticatorCode()]);
+        } else {
+            $this->postJson('/api/auth/step-up', ['password' => $password]);
+        }
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
 

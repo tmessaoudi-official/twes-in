@@ -5,6 +5,7 @@ export const MAILPIT = process.env['MAILPIT_URL'] ?? 'http://127.0.0.1:8092';
 
 interface Listed {
   ID: string;
+  Created: string;
   Subject: string;
   To: { Address: string }[];
 }
@@ -35,22 +36,26 @@ export async function mailTo(
 /**
  * The raw token of the newest link of that kind mailed to that address. A token already used is passed as `unlike`
  * when a second mail is awaited: the worker sends mail asynchronously, so until the second one arrives the newest
- * mail is still the first. Mails of other kinds are passed over: a member is also mailed what their companies are
+ * mail is still the first. An address the scenarios share across runs (the seeded operator's) passes `since`, a moment
+ * taken before the mail was asked for: the link of an earlier run, already used, is otherwise the newest until the
+ * worker has sent this one. Mails of other kinds are passed over: a member is also mailed what their companies are
  * told, and one of those can arrive after the link.
  */
 async function tokenFor(
   request: APIRequestContext,
   to: string,
   path: 'invitations' | 'signup',
-  unlike?: string,
+  { unlike, since }: { unlike?: string; since?: number } = {},
 ): Promise<string> {
   const pattern = new RegExp(`/${path}/([0-9a-f]{64})`);
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const listed = await request.get(`${MAILPIT}/api/v1/messages`);
     const { messages } = (await listed.json()) as { messages: Listed[] };
     // Mailpit lists the newest first.
-    for (const message of messages.filter((one) =>
-      one.To.some((address) => address.Address === to),
+    for (const message of messages.filter(
+      (one) =>
+        one.To.some((address) => address.Address === to) &&
+        (since === undefined || Date.parse(one.Created) >= since),
     )) {
       const body = (await (
         await request.get(`${MAILPIT}/api/v1/message/${message.ID}`)
@@ -71,9 +76,9 @@ async function tokenFor(
 export function invitationTokenFor(
   request: APIRequestContext,
   to: string,
-  unlike?: string,
+  sent: { unlike?: string; since?: number } = {},
 ): Promise<string> {
-  return tokenFor(request, to, 'invitations', unlike);
+  return tokenFor(request, to, 'invitations', sent);
 }
 
 export function signupTokenFor(request: APIRequestContext, to: string): Promise<string> {

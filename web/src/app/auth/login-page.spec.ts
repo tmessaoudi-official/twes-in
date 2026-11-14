@@ -96,6 +96,7 @@ const me: Me = {
   companyProof: null,
   support: { phone: null, whatsapp: null, email: null },
   phonesOutsideRanges: 'refuse',
+  stepUpProof: { passkey: false, code: false, password: true },
 };
 
 const OPTIONS = '/api/auth/passkey-sign-in/options';

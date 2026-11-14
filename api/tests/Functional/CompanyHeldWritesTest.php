@@ -91,7 +91,7 @@ final class CompanyHeldWritesTest extends ApiTestCase
         $request = new Request();
         $request->setSession(new Session(new MockArraySessionStorage()));
         static::getContainer()->get(RequestStack::class)->push($request);
-        static::getContainer()->get(StepUpProofs::class)->remember($this->owner->getId(), self::heldNow());
+        static::getContainer()->get(StepUpProofs::class)->remember($this->owner->getId(), self::heldNow(), true);
         $closing = static::getContainer()->get(CloseDownCompany::class);
 
         $version = $this->savedSinceRead();

@@ -1,27 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  type ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { type StepUpOutcome, StepUpProof } from './step-up-proof';
-import { PasswordToggle } from '../form/password-toggle';
-import { signInAddress } from '../session/return-to';
-import { SpentBudget } from '../errors/spent-budget';
-import { typeAgain } from './type-again';
-import { RefusalPipe } from '../errors/refusal-pipe';
+import { StepUpProof } from './step-up-proof';
+import { ProofForm } from './proof-form';
 
 /** What the dialog is opened with: the translation key of the sentence saying why it asks. */
 export interface StepUpReason {
@@ -29,118 +12,35 @@ export interface StepUpReason {
 }
 
 /**
- * The question behind a step-up: the password, or a passkey where the browser has one. A refusal is said in the
- * dialog and leaves it open, so a mistyped password is tried again; the API's own budget of attempts is what stops
- * a guess being repeated forever.
+ * The question behind a step-up, asked by the one proof form a company's entry asks with too: the password, the
+ * authenticator code beside it where a second factor is required of the account, or one of its passkeys.
  */
 @Component({
   selector: 'app-step-up-dialog',
-  imports: [
-    RefusalPipe,
-    PasswordToggle,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    ReactiveFormsModule,
-    TranslatePipe,
-  ],
+  imports: [MatDialogModule, ProofForm, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="step-up-title">{{ 'step_up.title' | translate }}</h2>
-    <form (submit)="$event.preventDefault(); confirmPassword()" novalidate>
-      <mat-dialog-content>
-        <!-- Material styles mat-dialog-content after Tailwind and sets it back to a block: the layout goes inside.
-             Its foot leaves room for the eye's 48 px touch target, which hangs 4 px below the 40 px field. -->
-        <div class="flex flex-col gap-3 pb-1">
-          <p data-testid="step-up-intro">{{ intro | translate }}</p>
-          <mat-form-field>
-            <mat-label>{{ 'step_up.password' | translate }}</mat-label>
-            <input
-              matInput
-              #stepUpPassword
-              type="password"
-              autocomplete="current-password"
-              [formControl]="password"
-              data-testid="step-up-password"
-            />
-            <app-password-toggle matSuffix [field]="stepUpPassword" />
-          </mat-form-field>
-          @if (problem(); as key) {
-            <p role="alert" class="text-error" data-testid="step-up-error">
-              {{ key | refusal: 'step_up.errors' : { retry: budget.retry() } }}
-            </p>
-          }
-        </div>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-button type="button" (click)="ref.close(false)" data-testid="step-up-cancel">
-          {{ 'step_up.cancel' | translate }}
-        </button>
-        @if (proof.passkeySupported()) {
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="busy()"
-            (click)="confirmPasskey()"
-            data-testid="step-up-passkey"
-          >
-            <mat-icon aria-hidden="true">passkey</mat-icon>
-            {{ 'step_up.passkey' | translate }}
-          </button>
-        }
-        <button mat-flat-button type="submit" [disabled]="busy()" data-testid="step-up-confirm">
-          {{ 'step_up.confirm' | translate }}
-        </button>
-      </mat-dialog-actions>
-    </form>
+    <app-proof-form
+      testIds="step-up"
+      confirmKey="step_up.confirm"
+      [asked]="proof.proofAsked()"
+      [passkeySupported]="proof.passkeySupported()"
+      [byPassword]="byPassword"
+      [byPasskey]="byPasskey"
+      (closed)="ref.close($event)"
+    >
+      <p data-testid="step-up-intro">{{ intro | translate }}</p>
+    </app-proof-form>
   `,
 })
 export class StepUpDialog {
   protected readonly ref = inject<MatDialogRef<StepUpDialog, boolean>>(MatDialogRef);
   protected readonly proof = inject(StepUpProof);
-  /** When a spent budget may be tried again, which its refusal says. */
-  protected readonly budget = inject(SpentBudget);
-  private readonly router = inject(Router);
   /** Why the proof is asked for, as a translation key: leaving customer view unless the caller says otherwise. */
   protected readonly intro =
     inject<StepUpReason | undefined>(MAT_DIALOG_DATA, { optional: true })?.intro ?? 'step_up.intro';
-  protected readonly password = new FormControl('', { nonNullable: true });
-  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('stepUpPassword');
-  protected readonly busy = signal(false);
-  protected readonly problem = signal<Exclude<StepUpOutcome, 'confirmed' | 'signed_out'> | null>(
-    null,
-  );
-
-  protected async confirmPassword(): Promise<void> {
-    if (this.password.value === '') {
-      this.problem.set('refused');
-      typeAgain(this.passwordInput());
-      return;
-    }
-    await this.settle(() => this.proof.withPassword(this.password.value));
-    if (this.problem() === 'refused') typeAgain(this.passwordInput());
-  }
-
-  protected async confirmPasskey(): Promise<void> {
-    await this.settle(() => this.proof.withPasskey());
-  }
-
-  private async settle(proof: () => Promise<StepUpOutcome>): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    this.problem.set(null);
-    try {
-      const outcome = await proof();
-      if (outcome === 'confirmed') this.ref.close(true);
-      else if (outcome === 'signed_out') {
-        // The session is over: what the dialog guarded is gone with it, so the sign-in says why.
-        this.ref.close(false);
-        void this.router.navigateByUrl(signInAddress(this.router.url, true));
-      } else this.problem.set(outcome);
-    } finally {
-      this.busy.set(false);
-    }
-  }
+  protected readonly byPassword = (password: string, code: string | null) =>
+    this.proof.withPassword(password, code);
+  protected readonly byPasskey = () => this.proof.withPasskey();
 }

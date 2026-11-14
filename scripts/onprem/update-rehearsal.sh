@@ -164,12 +164,18 @@ signs_in() {
 deep() { ask --max-time 15 -o /dev/null -w '%{http_code}' -H @"$WORK/health.header" https://localhost/api/health/deep; }
 printf 'Authorization: Bearer %s\n' "$(value MONITOR_TOKEN)" > "$WORK/health.header"
 # A change on the step-up list is held back until the person proves who they are again (403 step_up_required), as
-# the screens ask: the password is given, and the change sent again.
+# the screens ask: the password is given, with the authenticator's code beside it once it is enrolled (a second factor
+# is always required of an operator), and the change sent again.
 held_back() { [[ "$1" == 403 ]] && grep -q '"step_up_required"' "$2"; }
 prove() {
-  local code
+  local code body="$WORK/step-up-body.json"
+  if [[ -n "$secret" ]]; then
+    next_code
+    jq --arg code "$code_now" '. + {code: $code}' "$WORK/step-up-body.json" > "$WORK/step-up-coded.json"
+    body="$WORK/step-up-coded.json"
+  fi
   code=$(api -o "$WORK/step-up.json" -w '%{http_code}' -H 'Content-Type: application/json' \
-    --data @"$WORK/step-up-body.json" https://localhost/api/auth/step-up)
+    --data @"$body" https://localhost/api/auth/step-up)
   [[ "$code" == 204 ]] || fail "proving who the operator is answered $code: $(head -c 300 "$WORK/step-up.json")"
 }
 signs_in "installed"

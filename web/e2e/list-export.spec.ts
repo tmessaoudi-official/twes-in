@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { proveByApi } from './step-up';
 
 // Through the real stack: every list that offers its rows as a file does so from the screen, and what its « Exporter ▾ »
 // menu's two entries fetch is a real file, read with the session the browser holds (the API sets the cookie
@@ -40,19 +41,18 @@ test.describe('lists as files', () => {
       await expect(xlsx).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`${list.testId}.png`) });
 
+      const csvAddress = (await csv.getAttribute('data-address')) ?? '';
+      const xlsxAddress = (await xlsx.getAttribute('data-address')) ?? '';
+      // An export waits for a proof of who is at the screen, which holds a few minutes once given.
+      const heldBack = await page.evaluate(
+        async (address) => (await fetch(address)).status === 403,
+        csvAddress,
+      );
+      if (heldBack) await proveByApi(page, OPERATOR_PASSWORD);
       const files = await page.evaluate(
-        async ([csvAddress, xlsxAddress, csrf, password]) => {
+        async ([csvFile, xlsxFile]) => {
           const read = async (address: string) => {
-            let response = await fetch(address);
-            if (response.status === 403) {
-              const proof = await fetch('/api/auth/step-up', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-                body: JSON.stringify({ password }),
-              });
-              if (proof.status !== 204) throw new Error(`step-up answered ${proof.status}`);
-              response = await fetch(address);
-            }
+            const response = await fetch(address);
             const bytes = new Uint8Array(await response.arrayBuffer());
             return {
               status: response.status,
@@ -61,14 +61,9 @@ test.describe('lists as files', () => {
               zipped: bytes[0] === 0x50 && bytes[1] === 0x4b,
             };
           };
-          return { csv: await read(csvAddress), xlsx: await read(xlsxAddress) };
+          return { csv: await read(csvFile), xlsx: await read(xlsxFile) };
         },
-        [
-          (await csv.getAttribute('data-address')) ?? '',
-          (await xlsx.getAttribute('data-address')) ?? '',
-          CSRF,
-          OPERATOR_PASSWORD,
-        ] as const,
+        [csvAddress, xlsxAddress] as const,
       );
 
       expect(files.csv.status).toBe(200);

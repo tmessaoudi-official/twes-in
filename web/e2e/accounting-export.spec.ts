@@ -2,6 +2,7 @@
 
 import { expect, test } from '@playwright/test';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { answerStepUp } from './step-up';
 
 /** The token every e2e sends with a write, as the others declare it. */
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -39,8 +40,7 @@ test('the accountant files of a period download from « Export comptable »', as
     ),
   ]);
   if (asked) {
-    await stepUp.fill(OPERATOR_PASSWORD);
-    await page.getByTestId('step-up-confirm').click();
+    await answerStepUp(page, OPERATOR_PASSWORD);
   }
   expect((await download).suggestedFilename()).toBe('sales-journal.csv');
 

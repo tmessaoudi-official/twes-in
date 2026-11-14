@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\StepUp;
 
+use App\Identity\Application\CompanyProof\EntryProofRefused;
 use App\Identity\Application\Mfa\Passkey\BeginPasskeyAssertion;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\StepUpCodeRefused;
 use App\Identity\Application\StepUp\StepUpExhausted;
+use App\Identity\Application\StepUp\StepUpPasskeyRequired;
 use App\Identity\Application\StepUp\StepUpRefused;
 use App\Identity\Infrastructure\Passkey\PasskeyChallenges;
 use App\Identity\Infrastructure\Security\SecurityUser;
@@ -27,7 +30,8 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Proving who is at the screen again, with the password or a passkey. The answer is only yes or no: what the proof
+ * Proving who is at the screen again, with the password (the authenticator code beside it where a company of the account
+ * requires a second factor) or a passkey, as `ScreenProofs::ofStepUp` asks. The answer is only yes or no: what the proof
  * unlocks is the screen's to decide. A proof holds a few minutes, so several files in a row ask once (docs/SPEC.md
  * § 7, H-b2); leaving the customer screen spends it, or the customer next at the screen would ride on it.
  *
@@ -60,14 +64,21 @@ final readonly class StepUpController
             return SpentBudget::answer($limit);
         }
 
-        $password = self::body($request)['password'] ?? null;
+        $body = self::body($request);
+        $password = $body['password'] ?? null;
+        $code = $body['code'] ?? null;
 
         try {
-            $this->confirm->withPassword($userId, \is_string($password) ? $password : '');
+            $this->confirm->withPassword($userId, \is_string($password) ? $password : '', \is_string($code) ? $code : null);
         } catch (StepUpExhausted) {
             return $this->signedOut();
+        } catch (StepUpPasskeyRequired) {
+            // The words a company's entry answers for the same refusals, so the screen says them one way.
+            return new JsonResponse(['error' => EntryProofRefused::PASSKEY_REQUIRED], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (StepUpRefused) {
             return new JsonResponse(['error' => 'invalid_credentials'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (StepUpCodeRefused) {
+            return new JsonResponse(['error' => EntryProofRefused::CODE], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $attempts->reset();
 

@@ -17,10 +17,14 @@ use Symfony\Component\Uid\Uuid;
  */
 interface StepUpProofs
 {
-    public function remember(Uuid $userId, \DateTimeImmutable $at): void;
+    /** @param bool $withSecondFactor the proof was a passkey, or the password with the authenticator code */
+    public function remember(Uuid $userId, \DateTimeImmutable $at, bool $withSecondFactor): void;
 
-    /** @return \DateTimeImmutable|null when this account last proved itself in this sign-in, or null when it has not */
-    public function lastFor(Uuid $userId): ?\DateTimeImmutable;
+    /**
+     * When this account last proved itself in this sign-in, or null when it has not; asked for one given with a second
+     * factor, null unless it was, a proof that does not say counting as without.
+     */
+    public function lastFor(Uuid $userId, bool $withSecondFactor): ?\DateTimeImmutable;
 
     /** Counts one more wrong answer in this sign-in and says how many there have been since its last proof. */
     public function failed(Uuid $userId): int;

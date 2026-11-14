@@ -29,14 +29,14 @@ mfa_last_factor act the last factor is never taken off while one is required
 totp_not_enrolled act no authenticator is enrolled to confirm or remove
 invalid_passkey act the passkey's proof did not verify
 passkey_not_found act the passkey named is not one of the person's
-passkey_required act this entry asks a passkey the person has not
+passkey_required act this entry or step-up takes only the person's passkey, a second factor being required
 passkey_sign_in_off act signing in with a passkey alone is switched off
 passkey_sign_in_needs_authenticator act a passkey-only sign-in asks an authenticator kept as a way back
 passkey_sign_in_needs_passkey act a passkey-only sign-in asks a passkey first
 enabled_required act the switch was sent without saying on or off
 not_found act the company to prove oneself for is not one the person belongs to
 link_not_usable act the reset link is used, expired or never was
-invalid_code act the code typed at sign-in or for a company's proof is wrong
+invalid_code act the code typed at sign-in, for a company's proof or a step-up is wrong
 
 # Companies, support and the demo
 company_closed act the company is closed: read-only to its members

@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { choose } from './select';
 import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
+import { answerStepUp } from './step-up';
 
 // « Rapports » through the real stack (docs/SPEC.md § 7, 2026-09-24 12:05): an expense recorded under this run's own
 // category is counted in « Dépenses par catégorie » for this month, its row opens the expenses list narrowed to it, and
@@ -123,8 +124,7 @@ test('a recorded expense is counted by category, opens its list, and the report 
       ),
     ]);
     if (asked) {
-      await stepUp.fill(OPERATOR_PASSWORD);
-      await page.getByTestId('step-up-confirm').click();
+      await answerStepUp(page, OPERATOR_PASSWORD);
     }
     expect((await download).suggestedFilename()).toBe(`expenses-by-category_${from}_${to}.csv`);
 

@@ -7,7 +7,7 @@ import { RequestActivity } from '../shared/feedback/request-activity';
 import { Session } from '../shared/session/session';
 import { SessionData } from '../shared/session/session-data';
 import { CustomerScreenHold } from '../shared/customer-view/customer-screen-hold';
-import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
+import { type ProofAsked, type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
 import {
   CompanyEntryProof,
   type EntryAsked,
@@ -190,6 +190,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
             mfa: { ...state.mfa, enrolled: true, totp: true, recoveryCodes: recoveryCodes.length },
           },
       );
+      this.factorsChanged();
       return { ok: true, recoveryCodes };
     } catch (error) {
       return { ok: false, error: shownOf(error) };
@@ -281,11 +282,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
       await this.api.proveCompany(companyId, password, code);
       return 'confirmed';
     } catch (error) {
-      const code = codeOf(error);
-      if (code === 'invalid_code') return 'code_refused';
-      // The session read before the company changed what it takes: the passkey is now the way in.
-      if (code === 'passkey_required') return 'passkey_required';
-      return this.stepUpRefused(error);
+      return this.passwordRefused(error);
     }
   }
 
@@ -330,13 +327,32 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
     }
   }
 
-  async withPassword(password: string): Promise<StepUpOutcome> {
+  /** What a step-up asks of this sign-in; the password alone until the session is read. */
+  readonly proofAsked = computed<ProofAsked>(() => {
+    const proof = this.stateSignal()?.stepUpProof;
+    return proof === undefined
+      ? { passkey: false, code: false, password: true }
+      : { passkey: proof.passkey, code: proof.code, password: proof.password };
+  });
+
+  async withPassword(password: string, code: string | null): Promise<StepUpOutcome> {
     try {
-      await this.api.stepUpWithPassword(password);
+      await this.api.stepUpWithPassword(password, code);
       return 'confirmed';
     } catch (error) {
-      return this.stepUpRefused(error);
+      return this.passwordRefused(error);
     }
+  }
+
+  /**
+   * A password proof's refusal, the step-up's and a company's entry alike: a code missing or wrong, and a password where
+   * only the passkey proves the account, which a session read before the requirement changed can still send.
+   */
+  private passwordRefused(error: unknown): StepUpOutcome {
+    const code = codeOf(error);
+    if (code === 'invalid_code') return 'code_refused';
+    if (code === 'passkey_required') return 'passkey_required';
+    return this.stepUpRefused(error);
   }
 
   async withPasskey(): Promise<StepUpOutcome> {
@@ -374,6 +390,14 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
     return this.refresh();
   }
 
+  /**
+   * A factor added or removed changes what a proof of who is at the screen asks (`stepUpProof`, `companyProof`), which
+   * the API alone works out: the session is read again, the factors patched above showing meanwhile.
+   */
+  private factorsChanged(): void {
+    void this.refresh();
+  }
+
   async listPasskeys(): Promise<PasskeysOutcome> {
     try {
       return { ok: true, passkeys: await this.api.listPasskeys() };
@@ -404,6 +428,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
             },
           },
       );
+      this.factorsChanged();
       return { ok: true, ...added };
     } catch (error) {
       return { ok: false, error: shownOf(error) };
@@ -423,6 +448,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
           mfa: { ...state.mfa, passkeys, enrolled: state.mfa.totp || passkeys > 0 },
         };
       });
+      this.factorsChanged();
       return { ok: true };
     } catch (error) {
       return { ok: false, error: shownOf(error) };
@@ -453,6 +479,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
               mfa: { ...state.mfa, totp: false, enrolled: state.mfa.passkeys > 0 },
             },
       );
+      this.factorsChanged();
       return { ok: true };
     } catch (error) {
       return { ok: false, error: shownOf(error) };

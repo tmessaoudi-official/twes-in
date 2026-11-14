@@ -13,10 +13,13 @@ use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Application\PasswordHasher;
+use App\Identity\Application\SecretCipher;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpProofs;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\PasskeyRepository;
+use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RecordStore;
@@ -28,6 +31,8 @@ use App\Shared\Application\LiveChanges;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryMemberships;
+use App\Tests\Support\StepUpDoubles;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -129,11 +134,11 @@ final class RestoreRecordsTest extends TestCase
             {
             }
 
-            public function remember(Uuid $userId, \DateTimeImmutable $at): void
+            public function remember(Uuid $userId, \DateTimeImmutable $at, bool $withSecondFactor): void
             {
             }
 
-            public function lastFor(Uuid $userId): ?\DateTimeImmutable
+            public function lastFor(Uuid $userId, bool $withSecondFactor): ?\DateTimeImmutable
             {
                 return $this->at;
             }
@@ -156,6 +161,8 @@ final class RestoreRecordsTest extends TestCase
             new PasskeyAssertions($this->createStub(PasskeyRepository::class), $this->createStub(PasskeyCeremonies::class)),
             new InMemoryAuditTrail(),
             $proofs,
+            StepUpDoubles::screenProofs(new InMemoryMemberships(), $passkeys = $this->createStub(PasskeyRepository::class)),
+            StepUpDoubles::secondFactor($this->createStub(UserRepository::class), $this->createStub(RecoveryCodeRepository::class), $this->createStub(TotpCodes::class), $this->createStub(SecretCipher::class), $passkeys, $this->clock),
             $demo,
             $this->clock,
             'PT5M',

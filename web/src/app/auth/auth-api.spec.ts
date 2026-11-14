@@ -57,6 +57,7 @@ const owner: Me = {
   companyProof: null,
   support: { phone: null, whatsapp: null, email: null },
   phonesOutsideRanges: 'refuse',
+  stepUpProof: { passkey: false, code: false, password: true },
 };
 
 /** A value sent refused, as API Platform writes the violation on its field. */
@@ -464,13 +465,20 @@ describe('AuthApi', () => {
   });
 
   it('confirms who is at the screen with the password, or with a passkey', async () => {
-    const confirmed = api.stepUpWithPassword('le-bon');
+    const confirmed = api.stepUpWithPassword('le-bon', null);
     const request = http.expectOne({ method: 'POST', url: '/api/auth/step-up' });
     expect(request.request.body).toEqual({ password: 'le-bon' });
     request.flush(null, { status: 204, statusText: 'No Content' });
     await confirmed;
 
-    const refused = api.stepUpWithPassword('autre');
+    // The code goes beside the password where the step-up asks one.
+    const withCode = api.stepUpWithPassword('le-bon', '123456');
+    const coded = http.expectOne({ method: 'POST', url: '/api/auth/step-up' });
+    expect(coded.request.body).toEqual({ password: 'le-bon', code: '123456' });
+    coded.flush(null, { status: 204, statusText: 'No Content' });
+    await withCode;
+
+    const refused = api.stepUpWithPassword('autre', null);
     http
       .expectOne('/api/auth/step-up')
       .flush(

@@ -13,8 +13,8 @@ use ApiPlatform\Metadata\ApiProperty;
 use App\Identity\Application\CompanyProof\EntryProof;
 
 /**
- * What the working company asks before this sign-in acts in it: the password where `password` is set, the authenticator
- * code beside it where `code` is, and a passkey instead where `passkey` is.
+ * What a proof of who is at the screen asks, entering the working company or proving this sign-in again: the password
+ * where `password` is set, the authenticator code beside it where `code` is, and a passkey instead where `passkey` is.
  */
 final readonly class MeCompanyProof
 {

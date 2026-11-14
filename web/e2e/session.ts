@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { type BrowserContext, expect, type Page } from '@playwright/test';
 import { iconFontLoaded } from './icon-font';
-import { totp } from './totp';
+import { freshTotp } from './totp';
 
 // The seeded operator must carry a second factor (docs/SPEC.md § 7, 2026-09-15, S3), and every code check counts
 // against five per account in five minutes, successes included. So the run signs the operator in with a code once,
@@ -15,7 +15,8 @@ export const OPERATOR_EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 /** The operator the scenarios signing in with a code use: an owner of Demo too, seeded beside the first. */
 export const CODES_OPERATOR_EMAIL = process.env['E2E_CODES_EMAIL'] ?? 'codes@twes.local';
 export const OPERATOR_PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
-const OPERATOR_TOTP_SECRET = process.env['E2E_TOTP_SECRET'] ?? 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+export const OPERATOR_TOTP_SECRET =
+  process.env['E2E_TOTP_SECRET'] ?? 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 
 /** Where the setup project leaves the operator's session, relative to web/ (gitignored). */
 export const OPERATOR_SESSION = 'playwright/.auth/operator.json';
@@ -96,6 +97,7 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
   // is refused as a replay, so the proof is tried again with the next step's code, thirty seconds on: every attempt
   // counts against the operator's five in five minutes, which the step-ups share.
   await expect(async () => {
+    const code = proof.code ? await freshTotp(OPERATOR_TOTP_SECRET) : null;
     const status = await page.evaluate(
       async ([companyId, token, password, code]) =>
         (
@@ -105,12 +107,7 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
             body: JSON.stringify(code === null ? { password } : { password, code }),
           })
         ).status,
-      [
-        proof.companyId,
-        csrf,
-        OPERATOR_PASSWORD,
-        proof.code ? totp(OPERATOR_TOTP_SECRET) : null,
-      ] as const,
+      [proof.companyId, csrf, OPERATOR_PASSWORD, code] as const,
     );
     expect(status).toBe(204);
   }).toPass({ intervals: [31_000], timeout: 70_000 });
@@ -220,6 +217,6 @@ export async function signInWithCode(page: Page, email: string = OPERATOR_EMAIL)
 export async function enterOperatorCode(page: Page): Promise<void> {
   await expect(page.getByTestId('mfa-form')).toBeVisible();
   await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 1_000);
-  await page.getByTestId('mfa-code').fill(totp(OPERATOR_TOTP_SECRET));
+  await page.getByTestId('mfa-code').fill(await freshTotp(OPERATOR_TOTP_SECRET));
   await page.getByTestId('mfa-submit').click();
 }

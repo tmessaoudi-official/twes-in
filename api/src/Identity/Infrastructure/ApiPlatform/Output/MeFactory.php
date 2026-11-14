@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\ApiPlatform\Output;
 
 use App\Identity\Application\Account\DemoAccounts;
-use App\Identity\Application\CompanyProof\CompanyEntryProofs;
 use App\Identity\Application\CompanyProof\EntryProof;
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
 use App\Identity\Application\Login\PasskeySignInSettings;
+use App\Identity\Application\StepUp\ScreenProofs;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\RecoveryCodeRepository;
@@ -65,7 +65,7 @@ final readonly class MeFactory
         private RecoveryCodeRepository $recoveryCodes,
         private PhoneNumbers $phones,
         private CompanyEntry $entry,
-        private CompanyEntryProofs $entryProofs,
+        private ScreenProofs $screenProofs,
         private CompanyRepository $companies,
         private PhonePolicy $phonePolicy,
     ) {
@@ -85,7 +85,7 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE);
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE, $this->screenProofs->ofStepUp($user));
     }
 
     private function proofAsked(User $user, ?WorkingContext $context): ?EntryProof
@@ -95,7 +95,7 @@ final readonly class MeFactory
         }
         $company = $this->companies->ofId(Uuid::fromString($context->companyId));
 
-        return null === $company ? null : $this->entryProofs->of($user, $company);
+        return null === $company ? null : $this->screenProofs->ofEntry($user, $company);
     }
 
     private function support(): MeSupport

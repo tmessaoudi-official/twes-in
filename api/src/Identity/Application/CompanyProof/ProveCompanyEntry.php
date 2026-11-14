@@ -15,11 +15,11 @@ use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\Passkey\BeginPasskeyAssertion;
-use App\Identity\Application\Mfa\SecondFactorRefused;
-use App\Identity\Application\Mfa\SecondFactorUnreadable;
-use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\ScreenProofs;
+use App\Identity\Application\StepUp\StepUpCodeRefused;
 use App\Identity\Application\StepUp\StepUpExhausted;
+use App\Identity\Application\StepUp\StepUpPasskeyRequired;
 use App\Identity\Application\StepUp\StepUpRefused;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
@@ -33,8 +33,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A member of several companies proves, once in this sign-in, that they are the one entering this company, with the
- * proof it takes (CompanyEntryProofs). A wrong answer is this sign-in's own, counted with the step-up's, and the last
- * one the sign-in may give ends it, as a wrong step-up does: never a step toward the account lock.
+ * proof it takes (`ScreenProofs::ofEntry`, the step-up's canon). A wrong answer is this sign-in's own, counted with the
+ * step-up's, and the last one the sign-in may give ends it, as a wrong step-up does: never a step toward the account lock.
  */
 final readonly class ProveCompanyEntry implements DeclaresAuditActions
 {
@@ -44,10 +44,9 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
         private UserRepository $users,
         private CompanyRepository $companies,
         private MembershipRepository $memberships,
-        private CompanyEntryProofs $proofs,
+        private ScreenProofs $proofs,
         private CompanyEntry $entry,
         private ConfirmStepUp $stepUp,
-        private VerifySecondFactor $secondFactor,
         private BeginPasskeyAssertion $passkeyAssertion,
         private AuditTrail $audit,
         private Transactions $transactions,
@@ -59,7 +58,7 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
     {
         [$user, $company] = $this->memberIn($userId, $companyId);
 
-        return $this->proofs->of($user, $company);
+        return $this->proofs->ofEntry($user, $company);
     }
 
     /**
@@ -70,24 +69,14 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
     public function withPassword(Uuid $userId, Uuid $companyId, string $password, ?string $code): void
     {
         [$user, $company] = $this->memberIn($userId, $companyId);
-        $asked = $this->proofs->of($user, $company);
-        // Refused before the password is read, so a person sent to the wrong form spends none of the sign-in's answers.
-        if (!$asked->password) {
-            throw new EntryProofRefused(EntryProofRefused::PASSKEY_REQUIRED);
-        }
         try {
-            $this->stepUp->withPassword($userId, $password);
+            $this->stepUp->asAsked($userId, $password, $code, $this->proofs->ofEntry($user, $company));
+        } catch (StepUpPasskeyRequired) {
+            throw new EntryProofRefused(EntryProofRefused::PASSKEY_REQUIRED);
         } catch (StepUpRefused) {
             throw new EntryProofRefused(EntryProofRefused::PASSWORD);
-        }
-        if ($asked->code) {
-            try {
-                $this->secondFactor->handle($userId, $code ?? '');
-            } catch (SecondFactorRefused|SecondFactorUnreadable) {
-                $this->stepUp->countWrong($userId, 'code');
-
-                throw new EntryProofRefused(EntryProofRefused::CODE);
-            }
+        } catch (StepUpCodeRefused) {
+            throw new EntryProofRefused(EntryProofRefused::CODE);
         }
         $this->proved($user, $company, 'password');
     }
@@ -101,7 +90,7 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
     public function passkeyOptions(Uuid $userId, Uuid $companyId): string
     {
         [$user, $company] = $this->memberIn($userId, $companyId);
-        if (!$this->proofs->of($user, $company)->passkey) {
+        if (!$this->proofs->ofEntry($user, $company)->passkey) {
             throw new EntryProofRefused(EntryProofRefused::PASSKEY_NOT_TAKEN);
         }
 
@@ -116,7 +105,7 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
     public function withPasskey(Uuid $userId, Uuid $companyId, string $optionsJson, string $credentialJson): void
     {
         [$user, $company] = $this->memberIn($userId, $companyId);
-        if (!$this->proofs->of($user, $company)->passkey) {
+        if (!$this->proofs->ofEntry($user, $company)->passkey) {
             throw new EntryProofRefused(EntryProofRefused::PASSKEY_NOT_TAKEN);
         }
         try {

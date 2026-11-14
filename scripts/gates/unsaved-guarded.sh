@@ -53,6 +53,7 @@ declare -A exempt=(
   [web/src/app/shared/list/data-list.ts]="a list's search and choices, kept in the address"
   [web/src/app/shared/list/list-filter-panel.ts]="a list's filters, kept in the address"
   [web/src/app/shared/scan/camera-view.ts]="the camera a scan reads through"
+  [web/src/app/shared/step-up/proof-form.ts]="the proof of who is at the screen, drawn inside the step-up and company-entry dialogs, which close with their question"
   [web/src/app/shell/settings-area.ts]="a search over the settings"
   [web/src/app/signup/finish-signup-page.ts]="signed out: an account finished in one step"
   [web/src/app/signup/signup-page.ts]="signed out: an address typed and sent"

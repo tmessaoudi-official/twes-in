@@ -174,15 +174,17 @@ export interface SignedInState {
   supportAccessReason?: string | null;
   /** what the working company asks before this sign-in acts in it, null once proved or when it asks nothing */
   companyProof?: CompanyProofAsked | null;
+  /** what proving this sign-in again asks of it, before an export or a change a stranger at the screen must not make */
+  stepUpProof?: CompanyProofAsked;
   /** what becomes of a phone outside the ranges its country hands out, which every phone field reads as the API applies it */
   phonesOutsideRanges?: PhonesOutsideRanges;
 }
 
-/** The proof a company asks: the password, the authenticator code beside it, or a passkey instead. */
+/** The proof a company or a step-up asks: the password, the authenticator code beside it, or a passkey instead. */
 export interface CompanyProofAsked {
   readonly passkey: boolean;
   readonly code: boolean;
-  /** false where the account's passkey is the second factor the company requires, which alone enters it */
+  /** false where the account's passkey is the second factor required of it, which alone proves it */
   readonly password: boolean;
 }
 

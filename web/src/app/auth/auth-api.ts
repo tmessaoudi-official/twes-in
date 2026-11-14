@@ -170,9 +170,12 @@ export class AuthApi {
     await send(this.http.put<void>('/api/auth/password', { currentPassword, newPassword }));
   }
 
-  /** Confirms who is at the screen with the account's password; rejects when it is not the account's. */
-  async stepUpWithPassword(password: string): Promise<void> {
-    const body: StepUpPassword = { password };
+  /**
+   * Confirms who is at the screen with the account's password, and the authenticator code beside it where the step-up
+   * asks one; rejects when either is not the account's.
+   */
+  async stepUpWithPassword(password: string, code: string | null): Promise<void> {
+    const body: StepUpPassword = code === null ? { password } : { password, code };
     await send(this.http.post<void>('/api/auth/step-up', body));
   }
 
@@ -359,6 +362,11 @@ function toState(me: Me): SignedInState {
             code: me.companyProof.code,
             password: me.companyProof.password,
           },
+    stepUpProof: {
+      passkey: me.stepUpProof.passkey,
+      code: me.stepUpProof.code,
+      password: me.stepUpProof.password,
+    },
     support: {
       phone: me.support.phone,
       whatsapp: me.support.whatsapp,

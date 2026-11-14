@@ -3028,13 +3028,18 @@
     "intro_export": "Pour télécharger cette liste, saisissez votre mot de passe ou utilisez une clé d’accès.",
     "password": "Mot de passe",
     "passkey": "Clé d’accès",
+    "code": "Code de l’application d’authentification",
+    "passkey_only": "Une seconde preuve est demandée, et la vôtre est votre clé d’accès : elle suffit, sans mot de passe.",
+    "passkey_unavailable": "Votre clé d’accès est demandée, et ce navigateur ne peut pas en proposer : ouvrez cette page sur l’appareil qui garde la vôtre.",
     "confirm": "Confirmer",
     "cancel": "Fermer",
     "errors": {
       "refused": "Ce n’est pas le bon mot de passe.",
       "too_many": "Trop de tentatives. {{retry}}",
       "no_passkey": "Aucune clé d’accès n’a pu être utilisée.",
-      "network": "Le serveur ne répond pas : réessayez."
+      "network": "Le serveur ne répond pas : réessayez.",
+      "code_refused": "Ce code n’est pas le bon : tapez celui que votre application affiche en ce moment.",
+      "passkey_required": "Le mot de passe seul ne suffit pas ici : confirmez avec votre clé d’accès."
     },
     "intro_erasure": "Pour ouvrir « Effacer des données », saisissez votre mot de passe ou utilisez une clé d’accès.",
     "intro_factors": "Pour changer vos moyens de vérification, saisissez votre mot de passe ou utilisez une clé d’accès.",
@@ -3045,16 +3050,9 @@
   "company_proof": {
     "title": "Entrer dans {{company}}",
     "intro": "Vous travaillez dans plusieurs entreprises : chacune demande, une fois par connexion, que vous confirmiez que c’est bien vous.",
-    "code": "Code de l’application d’authentification",
     "confirm": "Entrer",
     "panel": "Cette entreprise attend que vous confirmiez que c’est bien vous avant d’ouvrir ses pages.",
-    "prove": "Confirmer que c’est bien moi",
-    "passkey_only": "Cette entreprise demande une seconde preuve, et la vôtre est votre clé d’accès : elle suffit, sans mot de passe.",
-    "passkey_unavailable": "Cette entreprise demande votre clé d’accès, et ce navigateur ne peut pas en proposer : ouvrez cette page sur l’appareil qui garde la vôtre.",
-    "errors": {
-      "code_refused": "Ce code n’est pas le bon : tapez celui que votre application affiche en ce moment.",
-      "passkey_required": "Cette entreprise n’accepte pas le mot de passe seul : entrez avec votre clé d’accès."
-    }
+    "prove": "Confirmer que c’est bien moi"
   },
   "customer_display": {
     "title": "Affichage client",
