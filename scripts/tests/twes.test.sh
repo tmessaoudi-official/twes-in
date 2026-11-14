@@ -785,6 +785,18 @@ out=$(NO_ROUTE=1 twes "$b" doctor --network); check "  off Windows with no route
 check "  and every probe after it still runs" 0 0 "$out" "ups:       (not read: not under Windows)"
 out=$(twes "$b" doctor); check "  doctor alone asks for --network" $? 2 "$out" "Usage"
 
+# Where the shop is reached from outside (TAILNET_HOST, PUBLIC_HOST and its ports, each empty while off), said by status.
+d=$(installed); out=$(twes "$d" status)
+check "status says the shop is reached on its own network only" 0 0 "$out" "address:  https://localhost, https://192.168.1.20"
+check "  no tailnet" 0 0 "$out" "tailnet:  off: reached from the shop's network only"
+check "  and the public path off" 0 0 "$out" "public:   off"
+printf 'TAILNET_HOST=shop-pc.tail0000.ts.net\nPUBLIC_HOST=shop.example.org\nPUBLIC_HTTPS_PORT=8443\nPUBLIC_HTTP_PORT=\n' >> "$d/etc/install.env"
+out=$(twes "$d" status)
+check "  the tailnet name once given, which mailed links carry" 0 0 "$out" "tailnet:  https://shop-pc.tail0000.ts.net, which mailed links carry"
+check "  the public name with its ports" 0 0 "$out" "public:   https://shop.example.org:8443 (plain HTTP off)"
+sed -i 's/^PUBLIC_HTTPS_PORT=8443$/PUBLIC_HTTPS_PORT=443/; s/^PUBLIC_HTTP_PORT=$/PUBLIC_HTTP_PORT=80/' "$d/etc/install.env"
+check "  the default port left out, plain HTTP named" 0 0 "$(twes "$d" status)" "public:   https://shop.example.org (plain HTTP on 80)"
+
 out=$(twes "$d" sometimes); check "an unknown command is refused" $? 2 "$out" "Usage"
 d=$(installed); rm "$d/etc/install.env"; out=$(twes "$d" status); check "no values: refused, naming where they are looked for" $? 1 "$out" "twes install writes them"
 

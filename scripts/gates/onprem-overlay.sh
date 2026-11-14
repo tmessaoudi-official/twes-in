@@ -6,6 +6,9 @@
 #   ports      only the edge publishes, on 80 and 443: the shop's network reaches nothing else, the database least of all
 #   addresses  passkeys are bound to localhost, the one name the shop's computer has; mailed links, the phone's pairing
 #              and the realtime origins name the network address LAN_HOST, which may change between two starts
+#   reached    the Tailscale name (TAILNET_HOST) and the public one (PUBLIC_HOST), empty while off, reach every value naming
+#              where the app is answered once given: links and pairing carry the Tailscale name, the passkey, realtime
+#              origins and the edge every name; the API answers only localhost, IPv4 addresses and those names
 #   database   api and both workers connect as the application's role; the owner's password reaches postgres and migrate only
 #   required   LAN_HOST and MAILER_SENDER have no default; each secret (the two database passwords, the mail account, the
 #              deep health's token, both backup passphrases) is a compose secret every service that needs it mounts,
@@ -141,6 +144,57 @@ while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r 
   | "\(.key) holds the owner'"'"'s password: only postgres and migrate may"' <<<"$config")
 got=$(jq -r '.services.centrifugo.environment.CENTRIFUGO_CLIENT_ALLOWED_ORIGINS // "(unset)"' <<<"$config")
 [[ "$got" == "https://localhost https://$LAN" ]] || problem "centrifugo accepts origins [$got], wanted https://localhost https://$LAN"
+# Which Host the API answers: localhost, any IPv4 address, since the network address may change between two starts
+# while a container still runs on the one before, and the outside names once given; nothing else.
+hosts_answered() { # merged configuration, label, then host=yes|no ...
+  local config=$1 label=$2 service pattern host want got patterns list pair; shift 2
+  for service in api worker demo-worker migrate; do
+    patterns=$(jq -r --arg s "$service" '.services[$s].environment.SYMFONY_TRUSTED_HOSTS // ""' <<<"$config")
+    if [[ -z "$patterns" ]]; then problem "$service answers any Host ($label): SYMFONY_TRUSTED_HOSTS is not set"; continue; fi
+    # Symfony splits the list on its commas and matches each pattern case-insensitively (Request::setTrustedHosts).
+    IFS=, read -ra list <<<"$patterns"
+    for pair in "$@"; do
+      host=${pair%=*} want=${pair##*=} got=no
+      for pattern in "${list[@]}"; do
+        [[ "${host,,}" =~ $pattern ]] && got=yes
+      done
+      [[ "$got" == "$want" ]] || problem "$service $([[ $want == yes ]] && echo refuses || echo answers) the Host $host ($label; SYMFONY_TRUSTED_HOSTS $patterns)"
+    done
+  done
+}
+hosts_answered "$config" "nothing outside" localhost=yes "$LAN=yes" 192.0.2.77=yes shop-pc.tail0000.ts.net=no elsewhere.example=no
+for service in api worker demo-worker migrate edge; do
+  for key in TAILNET_HOST PUBLIC_HOST; do
+    got=$(jq -r --arg s "$service" --arg k "$key" '.services[$s].environment[$k] // "(unset)"' <<<"$config")
+    [[ "$got" == "" ]] || problem "$service $key is $got with none given, wanted it empty: off"
+  done
+done
+# reached: the Tailscale name, once the shop's computer has joined its tailnet, and the public name, built and switched
+# off, reach every value naming where the app is answered; links and the phone's pairing carry the Tailscale name when it
+# is on, else the network address (docs/SPEC.md § 7, 2026-10-31 21:14, Q6), and passkeys stay on localhost until the
+# platform's own switch moves them (Q1). A browser names the default port in no origin, so the public name is listed with
+# and without the one the router forwards.
+TAILNET=shop-pc.tail0000.ts.net PUBLIC=shop.example.org
+reached=$(compose shop "${values[@]}" TAILNET_HOST=$TAILNET PUBLIC_HOST=$PUBLIC PUBLIC_HTTPS_PORT=8443) \
+  || { problem "docker compose config failed with the Tailscale and public names given: $reached"; reached='{}'; }
+for service in api worker demo-worker migrate; do
+  for pair in "DEFAULT_URI=https://$TAILNET" "PAIRING_ORIGIN=https://$TAILNET" "APP_WEBAUTHN_RP_ID=localhost" \
+    "APP_WEBAUTHN_ORIGINS=https://localhost,https://$TAILNET,https://$PUBLIC,https://$PUBLIC:8443" \
+    "TAILNET_HOST=$TAILNET" "PUBLIC_HOST=$PUBLIC"; do
+    key=${pair%%=*} want=${pair#*=}
+    got=$(jq -r --arg s "$service" --arg k "$key" '.services[$s].environment[$k] // "(unset)"' <<<"$reached")
+    [[ "$got" == "$want" ]] || problem "$service $key is $got with the Tailscale and public names given, wanted $want"
+  done
+done
+for pair in "TAILNET_HOST=$TAILNET" "PUBLIC_HOST=$PUBLIC"; do
+  got=$(jq -r --arg k "${pair%%=*}" '.services.edge.environment[$k] // "(unset)"' <<<"$reached")
+  [[ "$got" == "${pair#*=}" ]] || problem "the edge's ${pair%%=*} is $got, wanted ${pair#*=}: it cannot answer on that name"
+done
+got=$(jq -r '.services.centrifugo.environment.CENTRIFUGO_CLIENT_ALLOWED_ORIGINS // "(unset)"' <<<"$reached")
+want="https://localhost https://$LAN https://$TAILNET https://$PUBLIC https://$PUBLIC:8443"
+[[ "$got" == "$want" ]] || problem "centrifugo accepts origins [$got] with the Tailscale and public names given, wanted $want"
+hosts_answered "$reached" "the Tailscale and public names given" localhost=yes "$LAN=yes" 192.0.2.77=yes "$TAILNET=yes" \
+  "$PUBLIC=yes" "${TAILNET^^}=yes" elsewhere.example=no "$TAILNET.elsewhere.example=no" "x$PUBLIC=no"
 jq -e '.services | has("mailpit") | not' <<<"$config" >/dev/null || problem "mailpit starts in a shop's installation: put it behind a profile"
 while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(pdf_renderer_shut_in "$config")
 jq -e '.services | has("lan") | not' <<<"$config" >/dev/null || problem "development's phone door starts in a shop's installation: the edge is the door"

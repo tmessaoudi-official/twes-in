@@ -62,6 +62,14 @@ MONITOR_URL=
 SENTRY_DSN=
 # A fixed network address, when the router reserves one for this machine; otherwise twes reads it at each start.
 # LAN_HOST=192.168.1.20
+# Reaching the shop from outside (docs/START.md § 16), each empty while off. This machine's Tailscale name once it has
+# joined the shop's tailnet, such as shop-pc.tail1234.ts.net: mailed links then carry it.
+TAILNET_HOST=
+# The public path, built and switched off: a name the router's DDNS points at the shop, and the ports the router
+# forwards to this machine, HTTPS (443 when empty) and plain HTTP (off when empty).
+PUBLIC_HOST=
+PUBLIC_HTTPS_PORT=443
+PUBLIC_HTTP_PORT=
 EOF
 else
   cat > "$file" <<'EOF'

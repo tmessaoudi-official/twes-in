@@ -42,6 +42,27 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "the monitor is optional on premises
 d=$(project); edit "$d/compose.onprem.yaml" 's|APP_WEBAUTHN_RP_ID: localhost|APP_WEBAUTHN_RP_ID: "${LAN_HOST:?set LAN_HOST}"|'
 out=$(bash "$GATE" --root "$d" 2>&1); check "passkeys bound to the network address, which changes, are named" $? 1 "$out" "APP_WEBAUTHN_RP_ID"
 
+# The Tailscale and public names, once given, reach every value naming where the app is answered.
+d=$(project); edit "$d/compose.onprem.yaml" 's|DEFAULT_URI: "https://\${TAILNET_HOST:-\(\${LAN_HOST[^}]*}\)}"|DEFAULT_URI: "https://\1"|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "links left on the network address once the Tailscale name is given are named" $? 1 "$out" "DEFAULT_URI is https://192.0.2.10 with the Tailscale"
+d=$(project); edit "$d/compose.onprem.yaml" 's|PAIRING_ORIGIN: "https://\${TAILNET_HOST:-\(\${LAN_HOST[^}]*}\)}"|PAIRING_ORIGIN: "https://\1"|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a pairing left on the network address is named" $? 1 "$out" "PAIRING_ORIGIN is https://192.0.2.10 with the Tailscale"
+d=$(project); edit "$d/compose.onprem.yaml" 's|^\(  APP_WEBAUTHN_ORIGINS: "https://localhost\)\${TAILNET_HOST:+,https://\${TAILNET_HOST}}|\1|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "passkey origins without the Tailscale name are named" $? 1 "$out" "APP_WEBAUTHN_ORIGINS is https://localhost,https://shop.example.org"
+d=$(project); edit "$d/compose.onprem.yaml" '/CENTRIFUGO_CLIENT_ALLOWED_ORIGINS/s|\${PUBLIC_HOST:+[^"]*}"|"|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "realtime origins without the public name are named" $? 1 "$out" "centrifugo accepts origins"
+d=$(project); edit "$d/compose.onprem.yaml" '/^      TAILNET_HOST: /d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an edge never told the Tailscale name is named" $? 1 "$out" "the edge's TAILNET_HOST is (unset)"
+d=$(project); edit "$d/compose.onprem.yaml" '/^  TAILNET_HOST: /d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an API never told the Tailscale name is named" $? 1 "$out" "api TAILNET_HOST is (unset)"
+# The Host the API answers: an address that changed while a container ran on the old one is still answered.
+d=$(project); edit "$d/compose.onprem.yaml" 's|\^\[0-9\]+(\\\.\[0-9\]+){3}\$\$|^${LAN_HOST}$$|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a Host pinned to the network address of one start is named" $? 1 "$out" "refuses the Host 192.0.2.77"
+d=$(project); edit "$d/compose.onprem.yaml" '/^  SYMFONY_TRUSTED_HOSTS: /d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an API answering any Host is named" $? 1 "$out" "SYMFONY_TRUSTED_HOSTS is not set"
+d=$(project); edit "$d/compose.onprem.yaml" '/^  SYMFONY_TRUSTED_HOSTS: /s|\$\$}|}|g'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an outside name matched as a prefix is named" $? 1 "$out" "answers the Host shop-pc.tail0000.ts.net.elsewhere.example"
+
 d=$(project); edit "$d/compose.backup-offsite.yaml" 's/\${BACKUP_S3_KEY:?[^}]*}/${BACKUP_S3_KEY:-}/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "the off-site copy switched on without its key is named" $? 1 "$out" "BACKUP_S3_KEY"
 

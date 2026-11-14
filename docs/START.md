@@ -944,6 +944,16 @@ HTTPS address. An Android phone installs it as a CA certificate from its securit
 an iPhone installs the downloaded profile, then turns on full trust under Settings > General >
 About > Certificate Trust Settings, without which Safari still warns. Mailed links name the network address.
 
+**Reached from outside: the tailnet first, the public path built and off** (docs/SPEC.md § 7, 2026-11-01 10:20). Four
+values, each empty while off, which `twes status` reports (`tailnet:`, `public:`) and `deploy.sh` refuses unless each is
+a bare name in lower case or a port: `TAILNET_HOST`, this machine's Tailscale name (`shop-pc.tail1234.ts.net`), and once
+given, mailed links and the phone's pairing carry it rather than the network address (Q6); `PUBLIC_HOST`, a name the
+router's DDNS points at the shop, with `PUBLIC_HTTPS_PORT` (443 when empty) and `PUBLIC_HTTP_PORT` (off when empty), the
+ports the router forwards. Both names join the passkey and realtime origins and the Host the API answers
+(`SYMFONY_TRUSTED_HOSTS`: localhost, any IPv4 address, since the network address may change while a container still
+runs on the one before, and those names); passkeys stay on `localhost` until the platform's switch moves them. A shop
+installed before them gives none: off. `scripts/gates/onprem-overlay.sh` holds every value they reach.
+
 **Installing on Windows.** The checkout lives inside WSL's own filesystem (`~`, never `/mnt/c`), where `.gitattributes`
 keeps every file as git holds it, and Docker runs one of two ways, chosen at the shop:
 

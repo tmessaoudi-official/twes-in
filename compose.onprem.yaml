@@ -24,10 +24,22 @@ x-onprem-environment: &onprem-environment
   DEPLOY_ENV: prod
   # A shop's own computer: the API keeps the demo closed here until an operator opens it.
   APP_INSTALLATION: onprem
-  DEFAULT_URI: "https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+  # Mailed links and the phone's pairing carry the Tailscale name once the shop's computer has joined its tailnet, which
+  # opens from a staff device anywhere, else the network address (docs/SPEC.md § 7, 2026-10-31 21:14, Q6).
+  DEFAULT_URI: "https://${TAILNET_HOST:-${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}}"
+  # Passkeys stay bound to localhost until the platform's own switch moves them to the Tailscale name (Q1); the origins
+  # list every name the app answers on, the public one with and without the port the router forwards, since a browser
+  # names the default port in no origin.
   APP_WEBAUTHN_RP_ID: localhost
-  APP_WEBAUTHN_ORIGINS: https://localhost
-  PAIRING_ORIGIN: "https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+  APP_WEBAUTHN_ORIGINS: "https://localhost${TAILNET_HOST:+,https://${TAILNET_HOST}}${PUBLIC_HOST:+,https://${PUBLIC_HOST},https://${PUBLIC_HOST}:${PUBLIC_HTTPS_PORT:-443}}"
+  PAIRING_ORIGIN: "https://${TAILNET_HOST:-${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}}"
+  # Where the app is reached from outside, both empty while off: the Tailscale name (TAILNET_HOST, such as
+  # shop-pc.tail1234.ts.net) and the public one (PUBLIC_HOST), built and switched off (docs/SPEC.md § 7, 2026-11-01 10:20).
+  TAILNET_HOST: "${TAILNET_HOST:-}"
+  PUBLIC_HOST: "${PUBLIC_HOST:-}"
+  # The Host the API answers (Symfony's own variable): localhost, any IPv4 address, since the network address may change
+  # while a container still runs on the one before, and the outside names once given.
+  SYMFONY_TRUSTED_HOSTS: '^localhost$$,^[0-9]+(\.[0-9]+){3}$$${TAILNET_HOST:+,^${TAILNET_HOST}$$}${PUBLIC_HOST:+,^${PUBLIC_HOST}$$}'
   # The shop's mail account itself, such as smtp://shop%40gmail.com:app-password@smtp.gmail.com:587, is the secret
   # mailer_dsn.
   MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER, the address mails come from, the account's own for Gmail}"
@@ -53,6 +65,9 @@ services:
         && rm -rf /data/caddy/certificates/local && exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     environment:
       LAN_HOST: "${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+      # The outside names, empty while off: the edge's sites for them are its own (infra/onprem/Caddyfile).
+      TAILNET_HOST: "${TAILNET_HOST:-}"
+      PUBLIC_HOST: "${PUBLIC_HOST:-}"
     volumes:
       - ./infra/onprem/Caddyfile:/etc/caddy/Caddyfile:ro
       # The authority and its certificates: kept, or every phone would have to trust a new one after a restart.
@@ -85,7 +100,7 @@ services:
     secrets: [monitor_heartbeat_token]
   centrifugo:
     environment:
-      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://localhost https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://localhost https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}${TAILNET_HOST:+ https://${TAILNET_HOST}}${PUBLIC_HOST:+ https://${PUBLIC_HOST} https://${PUBLIC_HOST}:${PUBLIC_HTTPS_PORT:-443}}"
   web:
     ports: !reset []
   gotenberg:

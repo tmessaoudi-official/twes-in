@@ -211,6 +211,25 @@ d=$(repo); e=$(onprem_values 'BACKUP_OFFSITE=yes'); annotate "$d" "$(release_lin
 out=$(run "$d" --release "$e"); check "  any other word is refused, never read as one or the other" $? 1 "$out" "BACKUP_OFFSITE"
 [[ -z "$(called)" ]]; check "  and nothing starts" $? 0 "" ""
 
+# The outside names and ports (docs/SPEC.md § 7, 2026-11-01 10:20): compose writes them into every origin as they are, so
+# a scheme, a path or a port in a name, or a port that is no port, would start the shop on origins nothing answers.
+d=$(repo); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+e=$(onprem_values $'TAILNET_HOST=shop-pc.tail0000.ts.net\nPUBLIC_HOST=shop.example.org\nPUBLIC_HTTPS_PORT=443\nPUBLIC_HTTP_PORT=80')
+out=$(run "$d" --release "$e"); check "a shop given its Tailscale and public names deploys" $? 0 "$out" "running"
+e=$(onprem_values $'TAILNET_HOST=\nPUBLIC_HOST=\nPUBLIC_HTTPS_PORT=\nPUBLIC_HTTP_PORT=')
+out=$(run "$d" --release "$e"); check "  and with all four left empty, off" $? 0 "$out" "running"
+for bad in 'TAILNET_HOST=https://shop-pc.tail0000.ts.net' 'TAILNET_HOST=shop-pc' 'TAILNET_HOST=shop-pc.example.org' \
+  'TAILNET_HOST=Shop-PC.tail0000.ts.net' 'PUBLIC_HOST=shop.example.org:8443' 'PUBLIC_HOST=203.0.113.7' 'PUBLIC_HOST=shop.example.org/' \
+  'PUBLIC_HOST=-shop.example.org' 'PUBLIC_HTTPS_PORT=0' 'PUBLIC_HTTPS_PORT=65536' 'PUBLIC_HTTP_PORT=http'; do
+  e=$(onprem_values "$bad")
+  out=$(run "$d" --release "$e"); check "  $bad is refused" $? 1 "$out" "${bad%%=*}"
+  [[ -z "$(called)" ]]; check "    and nothing starts" $? 0 "" ""
+  out=$(run "$d" --compose "$e" ps); check "    nor any compose command" $? 1 "$out" "${bad%%=*}"
+done
+# A shop installed before they existed gives none of them: off, as before.
+e=$(onprem_values); run "$d" --release "$e" >/dev/null
+out=$(run "$d" --compose "$e" ps); check "  a shop's values naming none of them still run compose" $? 0 "$out" ""
+
 d=$(repo); e=$(onprem_values)
 out=$(run "$d" --build "$e"); check "a shop's installation may build from its release tag" $? 0 "$out" "v2026.10.12.1"
 check "  over its own layers" 0 0 "$(called)" "-f compose.backup-local.yaml -f compose.onprem.yaml up -d --build --wait"

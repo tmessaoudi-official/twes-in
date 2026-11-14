@@ -1073,10 +1073,22 @@ doctor_network() {
   else echo "ups:       (not read: $got)"; fi
 }
 
+# Where the shop is reached from outside, each value empty while off (compose.onprem.yaml says what each one reaches).
+outside_said() {
+  local tailnet public port plain
+  tailnet=$(value TAILNET_HOST) public=$(value PUBLIC_HOST) port=$(value PUBLIC_HTTPS_PORT) plain=$(value PUBLIC_HTTP_PORT)
+  if [[ -n "$tailnet" ]]; then echo "tailnet:  https://$tailnet, which mailed links carry"
+  else echo "tailnet:  off: reached from the shop's network only"; fi
+  if [[ -z "$public" ]]; then echo "public:   off"; return 0; fi
+  [[ -z "$port" || "$port" == 443 ]] && port='' || port=":$port"
+  echo "public:   https://$public$port (plain HTTP $([[ -n "$plain" ]] && echo "on $plain" || echo off))"
+}
+
 status() {
   local failing t
   echo "release:  $(tag_of "$(running)")"
   echo "address:  https://localhost, https://$(recall lan-host '(not started)')"
+  outside_said
   echo "updates:  $(value UPDATE_POLICY) $(value UPDATE_WINDOW)"
   ! on_hold || echo "held:     $(hold_said | sed 's/^held //'): twes hold off once it is done"
   echo "backups to: $(backups_place)"

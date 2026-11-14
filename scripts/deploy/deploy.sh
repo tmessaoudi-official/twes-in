@@ -72,6 +72,24 @@ esac
 files=()
 for layer in "${layers[@]}"; do files+=(-f "$layer"); done
 
+# Where a shop is reached from outside, each empty while off (docs/START.md § 16): compose writes the names into every
+# origin and Host the app answers as they are given, so a scheme, a port or a path in a name would start the shop on
+# origins nothing answers, or an API answering any Host. A shop installed before they existed gives none: off.
+if [[ "$(value TWES_INSTALL)" == onprem ]]; then
+  label='[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?'
+  given=$(value TAILNET_HOST)
+  [[ -z "$given" || "$given" =~ ^($label\.)+ts\.net$ ]] \
+    || refuse "$values say TAILNET_HOST=$given: this machine's Tailscale name alone, in lower case, such as shop-pc.tail1234.ts.net (tailscale status shows it), or empty while the shop has no tailnet"
+  given=$(value PUBLIC_HOST)
+  [[ -z "$given" || "$given" =~ ^($label\.)+[a-z]([a-z0-9-]*[a-z0-9])?$ ]] \
+    || refuse "$values say PUBLIC_HOST=$given: a name alone, in lower case, such as shop.example.org, with no scheme, port or path (an address gets no certificate), or empty while the public path is off"
+  for port in PUBLIC_HTTPS_PORT PUBLIC_HTTP_PORT; do
+    given=$(value "$port")
+    [[ -z "$given" ]] || { [[ "$given" =~ ^[1-9][0-9]{0,4}$ ]] && ((given <= 65535)); } \
+      || refuse "$values say $port=$given: a port from 1 to 65535, or empty (HTTPS then 443, plain HTTP off)"
+  done
+fi
+
 # Every secret the installation mounts must have its value: compose starts a container whose secret is set but empty
 # with nothing mounted, so a blank MAILER_DSN, which new-instance.sh leaves for the developer to fill, would start an
 # instance that sends no mail. Read from the merged configuration, where the top-level secrets are only those mounted.
