@@ -437,12 +437,14 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
     // Due today, so it is already « à surveiller » (docs/SPEC.md § 7, 2026-09-21 18:50: due this week); back to the invoice after.
     await page.goto('/watch/invoices.instruments_due');
-    await expect(
-      page
-        .getByTestId('watch-table')
-        .getByRole('row')
-        .filter({ hasText: `CHQ ${run}` }),
-    ).toHaveCount(1);
+    // Found by its customer, a column the list always keeps: the instrument's number gives way when this run's letters
+    // are wide (« MWGMWXMF » on CI), and the row is then there without it.
+    const instrument = page
+      .getByTestId('watch-table')
+      .getByRole('row')
+      .filter({ hasText: customerNumber });
+    await expect(instrument).toHaveCount(1);
+    await expect(instrument).toContainText(/Chèque|Cheque/);
     expect(await wcagViolations(page)).toEqual([]);
     await expect(page.getByTestId('watch-elsewhere')).toHaveAttribute('href', '/instruments');
     await page.goBack();
