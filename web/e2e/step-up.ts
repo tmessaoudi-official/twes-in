@@ -48,7 +48,7 @@ export async function answerStepUp(
     await page.getByTestId('step-up-confirm').click();
     const response = await answered;
     if (attempt > 0 || !(await codeRefused(response.status(), () => response.json()))) return;
-    stepSpent();
+    stepSpent(secret);
   }
 }
 
@@ -172,7 +172,7 @@ export async function proveByApi(
       [CSRF, password, code] as const,
     );
     if (attempt === 0 && (await codeRefused(answer.status, async () => answer.body))) {
-      stepSpent();
+      stepSpent(secret);
       continue;
     }
     expect(answer.status).toBe(204);
