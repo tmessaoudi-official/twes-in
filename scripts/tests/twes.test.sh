@@ -67,6 +67,15 @@ case "$mode" in
       "logs --no-log-prefix --since 60m web") printf '%b' "${WEB_LOG:-}" ;;
       "exec -T api bin/console app:seed"*) { echo "$*"; cat; } > "$TMPDIR/seeded"; exit "${SEED_EXIT:-0}" ;;
       "exec -T api bin/console app:demo:switch-off-at-install"*) echo "$*" >> "$TMPDIR/demo-off"; [[ "${DEMO_EXIT:-0}" != 0 ]] || echo "${DEMO_SAYS:-demo switched off}"; exit "${DEMO_EXIT:-0}" ;;
+      # twes export: the backup folder (BACKUP_TREE, failing with BACKUP_TAR_FAILS; whether the hold stood is kept),
+      # PostgreSQL's major, the last migration, the counts, the edge's authority (EDGE_CA) and the release's images.
+      "exec -T backup tar -C /backup -cf - .") [[ -z "${BACKUP_TAR_FAILS:-}" ]] || exit 1
+        [[ ! -f "$(dirname "$values")/state/hold" ]] || echo held > "$TMPDIR/held-while-read"; tar -C "$BACKUP_TREE" -cf - . ;;
+      "exec -T postgres sh -c"*) echo "${PG_MAJOR:-18}" ;;
+      "exec -T api bin/console doctrine:migrations:current"*) echo 'DoctrineMigrations\Version20261114183314' ;;
+      "exec -T api bin/console app:fiscal:inventory --json"*) echo '{"fiscal":true,"companies":[{"name":"Shop","fiscal":true}],"platform":[]}'; exit "${INVENTORY_EXIT:-3}" ;;
+      "exec -T edge tar -C /data/caddy/pki/authorities -cf - local") [[ -n "${EDGE_CA:-}" ]] || exit 1; tar -C "$EDGE_CA" -cf - local ;;
+      "config --images") printf 'ghcr.io/x/api@sha256:aa\nghcr.io/x/web@sha256:bb\n' ;;
       "exec -T backup sh -c"*)
         [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1
         # OUTCOME_DIR: twes's own script run against that folder, on the clock of whatever runs it, as the container does.
@@ -126,6 +135,7 @@ EOF
 # names DOCKER_OS, Docker Engine's Ubuntu by default.
 cat > "$TMPDIR/bin/docker" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$1" == save ]]; then echo "$*" > "$TMPDIR/docker.save"; echo images > "$3"; exit "${SAVE_EXIT:-0}"; fi
 [[ "$1" == info ]] || exit 0
 tries=$(($(cat "$TMPDIR/docker.tries" 2>/dev/null || echo 0) + 1)); echo "$tries" > "$TMPDIR/docker.tries"
 [[ "${DOCKER_LATE:-0}" != never ]] && ((tries > ${DOCKER_LATE:-0})) || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
@@ -140,7 +150,7 @@ chmod +x "$TMPDIR/bin/"* "$TMPDIR/stand-ins/deploy.sh"
 origin() {
   local w; w=$(mktemp -d)
   mkdir -p "$w/scripts/onprem" "$w/scripts/deploy" "$w/infra/onprem"
-  cp "$HERE/onprem/twes" "$w/scripts/onprem/twes"; cp "$TMPDIR/stand-ins/deploy.sh" "$w/scripts/deploy/deploy.sh"
+  cp "$HERE/onprem/twes" "$w/scripts/onprem/twes"; cp -r "$HERE/onprem/lib" "$w/scripts/onprem/lib"; cp "$TMPDIR/stand-ins/deploy.sh" "$w/scripts/deploy/deploy.sh"
   cp "$HERE/deploy/new-instance.sh" "$w/scripts/deploy/new-instance.sh"; cp "$TMPDIR/release-key.asc" "$w/infra/onprem/release-key.asc"
   git -C "$w" init -q -b master && git -C "$w" add -A && git -C "$w" commit -qm one && sign "$w" "$OLD"
   echo two > "$w/two"; git -C "$w" add -A && git -C "$w" commit -qm two && sign "$w" "$NEW" "${SIGN_NEW:-dev}" "${SECURITY_NEW:+SECURITY=$SECURITY_NEW}"
@@ -888,6 +898,76 @@ out=$(checkout_check "$d"); check "  a tag signed by the key a forged checkout c
 # Windows PowerShell 5.1 reads a script without a byte-order mark in the computer's ANSI code page.
 # grep answers 1 when no line holds anything else, 2 when it could not read the file.
 out=$(LC_ALL=C grep -n '[^ -~	]' "$HERE/onprem/install.ps1" 2>&1); check "the Windows installer is plain ASCII" $? 1 "$out" ""
+
+# twes export and twes verify-export: one archive, its MANIFEST sealed with the person's passphrase, read back whole.
+PASS='a long shop passphrase'
+mkdir -p "$TMPDIR/backup-tree/pgbackrest" "$TMPDIR/edge-ca/local"; echo wal > "$TMPDIR/backup-tree/pgbackrest/archive"; echo root > "$TMPDIR/edge-ca/local/root.crt"
+exported() { BACKUP_TREE=$TMPDIR/backup-tree BACKUP_LABEL=$LABEL twes "$@"; } # shop folder, then export's arguments
+archive_in() { compgen -G "$1/twes-export-*.tar" | head -n 1; }
+unsealed() { # sealed file, file: opened with the passphrase in a keyring of the test's own
+  local g; g=$(mktemp -d); printf '%s' "$PASS" > "$g/p"
+  GNUPGHOME=$g gpg --batch --quiet --pinentry-mode loopback --passphrase-file "$g/p" --decrypt --output "$2" "$1"; local s=$?
+  GNUPGHOME=$g gpgconf --kill all 2>/dev/null; rm -rf "$g"; return "$s"
+}
+sealed() { # file, sealed file: what one holding the passphrase writes
+  local g; g=$(mktemp -d); printf '%s' "$PASS" > "$g/p"
+  GNUPGHOME=$g gpg --batch --quiet --pinentry-mode loopback --passphrase-file "$g/p" --symmetric --output "$2" "$1"; local s=$?
+  GNUPGHOME=$g gpgconf --kill all 2>/dev/null; rm -rf "$g"; return "$s"
+}
+repacked() { # archive, then what to do in its unpacked folder: the archive written again from that folder
+  local a=$1 u; u=$(mktemp -d); shift; tar -C "$u" -xf "$a"; (cd "$u" && eval "$*"); tar -C "$u" -cf "$a" .; rm -rf "$u"
+}
+d=$(installed); o=$(mktemp -d)
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | EDGE_CA=$TMPDIR/edge-ca exported "$d" export "$o"); check "export: one archive written" $? 0 "$out" "exported to $o/twes-export-"
+a=$(archive_in "$o"); members=$(tar -tf "$a" | sed 's|^\./||' | LC_ALL=C sort | tr '\n' ' ')
+check "  it holds the MANIFEST, its seal and every member" 0 0 "$members" "MANIFEST MANIFEST.gpg backup.tar ca.tar.gpg counts.json release-keys.tar releases.tar state.tar values.env.gpg "
+check "  no plain values, no images unless asked" 0 0 "$( [[ "$members" != *"values.env "* && "$members" != *images.tar* ]] && echo clean)" clean
+check "  its sha256 beside it" 0 0 "$(cd "$o" && sha256sum -c "$(basename "$a").sha256" 2>&1)" ": OK"
+u=$(mktemp -d); tar -C "$u" -xf "$a"
+check "  the MANIFEST names the release, PostgreSQL, the migration, the backup and the key slots" 0 0 "$(tr '\n' '|' < "$u/MANIFEST")" "release $OLD $(git -C "$d/twes-in" rev-parse HEAD)|postgres-major 18|migration DoctrineMigrations\Version20261114183314|backup-label $LABEL|key-slots "
+check "  APP_MFA_KEY among the key slots" 0 0 "$(grep '^key-slots' "$u/MANIFEST")" " APP_MFA_KEY"
+check "  no value written in the MANIFEST" 0 0 "[$(grep -cF -e "$(value_of "$d" APP_MFA_KEY)" "$u/MANIFEST")]" "[0]"
+check "  the counts are app:fiscal:inventory's" 0 0 "$(cat "$u/counts.json")" '"fiscal":true'
+unsealed "$u/values.env.gpg" "$u/values.env"; check "  the values open with the passphrase, APP_MFA_KEY in them" $? 0 "[$(grep -cxF -e "APP_MFA_KEY=$(value_of "$d" APP_MFA_KEY)" "$u/values.env")]" "[1]"
+check "  the backup folder whole" 0 0 "$(tar -xOf "$u/backup.tar" ./pgbackrest/archive)" wal
+check "  held while the backups were read, the hold given back after" 0 0 "$(cat "$TMPDIR/held-while-read" 2>&1)$( [[ -f "$d/etc/state/hold" ]] || echo ' released')" "held released"
+check "  backed up first" 0 0 "$(deployed)" "--compose exec -T backup twes-backup before-update|"
+check "  nothing left behind in the folder" 0 0 "[$(cd "$o" && ls -A | tr '\n' ' ')]" "[$(basename "$a") $(basename "$a").sha256 ]"
+rm -rf "$u"; rm -f "$TMPDIR/held-while-read"
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$a"); check "verify-export: the archive as sealed" $? 0 "$out" "verified: $a, 7 members as sealed"
+check "  it says what the MANIFEST holds" 0 0 "$out" "backup-label $LABEL"
+out=$(printf 'not the passphrase\n' | twes "$d" verify-export "$a"); check "  a wrong passphrase refused" $? 1 "$out" "the passphrase does not open the MANIFEST"
+cp "$a" "$o/changed.tar"; repacked "$o/changed.tar" 'echo "{}" > counts.json'
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/changed.tar"); check "  a member changed after the MANIFEST refused" $? 1 "$out" "counts.json was changed after the MANIFEST"
+cp "$a" "$o/dropped.tar"; repacked "$o/dropped.tar" 'rm state.tar'
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/dropped.tar"); check "  a member dropped refused" $? 1 "$out" "state.tar is named by the MANIFEST and missing"
+cp "$a" "$o/extra.tar"; repacked "$o/extra.tar" 'echo x > extra.sh'
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/extra.tar"); check "  a member added refused" $? 1 "$out" "extra.sh is in the archive and not in the MANIFEST"
+# Whoever changes a member and writes its sum in the MANIFEST again, without the passphrase, cannot seal it again.
+cp "$a" "$o/forged.tar"; repacked "$o/forged.tar" 'echo "{}" > counts.json; sed -i "s/^sha256 [0-9a-f]* counts.json$/sha256 $(sha256sum counts.json | cut -d" " -f1) counts.json/" MANIFEST'
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/forged.tar"); check "  a MANIFEST written again without the passphrase refused" $? 1 "$out" "the MANIFEST was changed after it was sealed"
+# One holding the passphrase who sealed a MANIFEST without a required member: an archive of another format, or cut.
+cp "$a" "$o/unlisted.tar"; repacked "$o/unlisted.tar" 'grep -v " state.tar$" MANIFEST > m; mv m MANIFEST; rm state.tar MANIFEST.gpg; sealed MANIFEST MANIFEST.gpg'
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/unlisted.tar"); check "  a required member missing from the MANIFEST refused" $? 1 "$out" "state.tar is missing from the MANIFEST"
+d=$(installed); o=$(mktemp -d)
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o" --with-images); check "export --with-images: the release's images saved" $? 0 "$(tar -tf "$(archive_in "$o")")$(cat "$TMPDIR/docker.save")" "images.tar"
+check "  by the digests compose names" 0 0 "$(cat "$TMPDIR/docker.save")" "save -o"
+check "  no authority where the edge has none" 0 0 "[$(tar -tf "$(archive_in "$o")" | grep -c ca.tar.gpg)]" "[0]"
+d=$(installed); o=$(mktemp -d)
+out=$(printf 'too short\ntoo short\n' | exported "$d" export "$o"); check "export: a short passphrase refused" $? 1 "$out" "a passphrase of 12 characters at least: nothing exported"
+out=$(printf '%s\n%s\n' "$PASS" "another passphrase" | exported "$d" export "$o"); check "  two passphrases differing refused" $? 1 "$out" "the two passphrases differ"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | BACKUP_LABEL='' twes "$d" export "$o"); check "  no final backup, nothing exported" $? 1 "$out" "the final backup was not made: nothing exported"
+check "  the hold given back, nothing left in the folder" 0 0 "[$( [[ -f "$d/etc/state/hold" ]] && echo held)$(ls -A "$o")]" "[]"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | BACKUP_TAR_FAILS=1 exported "$d" export "$o"); check "  a backup folder unread refused" $? 1 "$out" "the backup folder could not be read: nothing exported"
+check "  and leaves no part behind" 0 0 "[$( [[ -f "$d/etc/state/hold" ]] && echo held)$(ls -A "$o")]" "[]"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | INVENTORY_EXIT=1 exported "$d" export "$o"); check "  a database that cannot be counted refused" $? 1 "$out" "could not be counted (app:fiscal:inventory exited 1)"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o/none"); check "  a folder that is not there refused" $? 1 "$out" "is not a folder this account can write"
+twes "$d" hold on >/dev/null; out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o"); check "  on hold refused" $? 1 "$out" "no export until twes hold off"
+twes "$d" hold off >/dev/null; sed -i 's/^APP_MFA_KEY=.*/APP_MFA_KEY=/' "$d/etc/install.env"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o"); check "  no APP_MFA_KEY refused" $? 1 "$out" "the values hold no APP_MFA_KEY"
+check "  none of them wrote anything" 0 0 "[$(ls -A "$o")]" "[]"
+out=$(twes "$d" export); check "  no folder named: its usage" $? 2 "$out" "export <folder> [--with-images]"
+out=$(twes "$d" export "$o" --with-everything); check "  an unknown option: its usage" $? 2 "$out" "verify-export <archive>"
 
 echo "twes: $pass passed, $fail failed"
 ((fail == 0))

@@ -27,6 +27,11 @@
 #   twes schedule                  Linux, and Docker Engine inside WSL's Ubuntu: systemd units running twes start at boot
 #                                  and twes tick every quarter hour, as this account, once Docker runs (sudo asks for the
 #                                  password); with Docker Desktop, Windows' tasks are install.ps1's
+#   twes export <folder> [--with-images]  everything moving the installation to another computer needs, in one archive
+#                                  written to that folder: a final backup, the backups, the values sealed with a
+#                                  passphrase asked twice, the release keys, its record and state, the authority, the
+#                                  images if asked; held while it reads (scripts/onprem/lib/export.sh)
+#   twes verify-export <archive>   the archive read back with its passphrase: every member as the MANIFEST sealed it
 # The values are the file scripts/deploy/new-instance.sh --onprem wrote, TWES_VALUES, by default ~/.twes-in/install.env;
 # beside it, releases/ (deploy.sh's record) and state/ (this script's). Alerts are mailed through the shop's own account
 # to ALERT_EMAIL, so a mail leaves while the application is down, and recorded in the application, held under state/
@@ -35,7 +40,7 @@
 # checkout carries, which whoever forged a tag could change too.
 set -euo pipefail
 usage() {
-  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule | doctor --network" >&2
+  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule | doctor --network | export <folder> [--with-images] | verify-export <archive>" >&2
   exit 2
 }
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -1206,5 +1211,7 @@ case "${1:-}" in
   install) [[ $# -eq 1 ]] || usage; install ;;
   schedule) [[ $# -eq 1 ]] || usage; schedule ;;
   doctor) [[ $# -eq 2 && "$2" == --network ]] || usage; doctor_network ;;
+  export) [[ $# -eq 2 || ($# -eq 3 && "$3" == --with-images) ]] || usage; source "$root/scripts/onprem/lib/export.sh"; export_installation "$2" "${3:-}" ;;
+  verify-export) [[ $# -eq 2 ]] || usage; source "$root/scripts/onprem/lib/export.sh"; verify_export "$2" ;;
   *) usage ;;
 esac
