@@ -33,6 +33,7 @@
       "invalid_credentials": "Adresse e-mail ou mot de passe incorrect.",
       "account_locked": "Compte verrouillé après trop de tentatives. Réessayez dans quelques minutes.",
       "account_disabled": "Ce compte est désactivé.",
+      "operator_outside": "Un opérateur se connecte ici depuis le réseau de la boutique ou son accès Tailscale, jamais d’ailleurs.",
       "too_many_attempts": "Trop de tentatives. {{retry}}",
       "authentication_required": "Veuillez vous connecter.",
       "csrf_token_missing": "La page a expiré, rechargez-la puis réessayez.",

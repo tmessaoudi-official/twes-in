@@ -89,7 +89,7 @@ final readonly class PasskeySignInController
         } catch (PasskeyRefused) {
             return self::refused();
         } catch (AccountStatusException $refused) {
-            // error-codes: UserChecker::ACCOUNT_DISABLED
+            // error-codes: UserChecker::ACCOUNT_DISABLED UserChecker::OPERATOR_OUTSIDE
             return new JsonResponse(['error' => $refused->getMessageKey()], Response::HTTP_UNAUTHORIZED);
         }
 

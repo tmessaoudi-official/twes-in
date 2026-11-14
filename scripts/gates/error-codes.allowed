@@ -15,6 +15,7 @@ step_up_exhausted act the proof's wrong answers are spent: the sign-in ends
 invalid_credentials act the address or the password is wrong, never told which
 account_locked act the account is locked after too many wrong answers
 account_disabled act the account was deactivated, told only to the right password
+operator_outside act an operator signing in to a shop's computer from outside its network and tailnet, told only to the right password
 session_not_found act the session to end is no longer one of the person's
 customer_screen_locked act the customer screen holds this session to itself
 platform_operator act an operator's account is not deleted from the account screen

@@ -33,6 +33,7 @@
       "invalid_credentials": "Wrong email address or password.",
       "account_locked": "Account locked after too many attempts. Try again in a few minutes.",
       "account_disabled": "This account is disabled.",
+      "operator_outside": "Here an operator signs in from the shop's network or its Tailscale access, never from elsewhere.",
       "too_many_attempts": "Too many attempts. {{retry}}",
       "authentication_required": "Please sign in.",
       "csrf_token_missing": "The page has expired; reload it and try again.",

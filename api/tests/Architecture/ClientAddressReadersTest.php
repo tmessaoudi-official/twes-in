@@ -14,7 +14,8 @@ use PHPUnit\Framework\TestCase;
 /**
  * Who reads the client's address, and what for. A per-client budget is spent under `ClientAddress::of`, which refuses a
  * caller with no address rather than give every such caller one shared key; the two places recording where a request
- * came from read it as it is, null when there is none. A new reader is named here with its budget or its record.
+ * came from read it as it is, null when there is none. A new reader is named here with its budget, its decision or its
+ * record.
  */
 final class ClientAddressReadersTest extends TestCase
 {
@@ -34,6 +35,11 @@ final class ClientAddressReadersTest extends TestCase
         'Tenancy/Infrastructure/ApiPlatform/State/Provider/InvitationProvider.php' => 'invitation_link',
     ];
 
+    /** Each class judging a request by where it came from, and what it decides. */
+    private const array JUDGES = [
+        'Shared/Infrastructure/Http/ShopNetwork.php' => 'on a shop\'s computer, whether the platform\'s side answers',
+    ];
+
     /** Each class reading the address as it is, and why: it records it, and records none when there is none. */
     private const array RECORDS = [
         'Audit/Infrastructure/DoctrineAuditTrail.php' => 'the journal\'s address of an action',
@@ -43,7 +49,10 @@ final class ClientAddressReadersTest extends TestCase
 
     public function testEveryBudgetIsSpentUnderTheCanon(): void
     {
-        self::assertSame(array_keys(self::BUDGETS), $this->filesHolding('ClientAddress::of('), 'A class spending a per-client budget is named in BUDGETS with the budget it spends.');
+        $expected = [...array_keys(self::BUDGETS), ...array_keys(self::JUDGES)];
+        sort($expected);
+
+        self::assertSame($expected, $this->filesHolding('ClientAddress::of('), 'A class spending a per-client budget is named in BUDGETS with the budget it spends, one judging by the address in JUDGES.');
     }
 
     public function testNoOtherClassReadsTheAddressItself(): void

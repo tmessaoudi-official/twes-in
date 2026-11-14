@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Shared\Infrastructure\Http\ShopNetwork;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAccountStatusException;
 use Symfony\Component\Security\Core\User\UserCheckerInterface;
@@ -22,10 +23,19 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * The lock is not checked here: it is the password's, refused before the password is compared
  * (`RefuseALockedPassword`), while a passkey or a recovery code still signs in on it, and every second step ends in
  * `Security::login`, which runs this checker.
+ *
+ * An operator signing in to a shop's computer from outside its network and tailnet is refused the same way, once proved
+ * (`ShopNetwork`): the platform's side is not reached from anywhere else there.
  */
 final readonly class UserChecker implements UserCheckerInterface
 {
     public const string ACCOUNT_DISABLED = 'account_disabled';
+
+    public const string OPERATOR_OUTSIDE = 'operator_outside';
+
+    public function __construct(private ShopNetwork $network)
+    {
+    }
 
     public function checkPreAuth(UserInterface $user): void
     {
@@ -35,6 +45,9 @@ final readonly class UserChecker implements UserCheckerInterface
     {
         if ($user instanceof SecurityUser && !$user->isActive()) {
             throw new CustomUserMessageAccountStatusException(self::ACCOUNT_DISABLED);
+        }
+        if ($user instanceof SecurityUser && $user->isPlatformOperator() && $this->network->outside()) {
+            throw new CustomUserMessageAccountStatusException(self::OPERATOR_OUTSIDE);
         }
     }
 }

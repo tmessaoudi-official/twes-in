@@ -16,6 +16,8 @@ export const LOGIN_ERRORS = [
   // answers a wrong password, so the lock never says which guess was right.
   'account_locked',
   'account_disabled',
+  // An operator's right password on a shop's computer from outside its network and tailnet.
+  'operator_outside',
   'too_many_attempts',
   'authentication_required',
   'csrf_token_missing',
