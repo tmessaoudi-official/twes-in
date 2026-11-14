@@ -23,11 +23,16 @@ use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Infrastructure\Pdf\GotenbergFacturXPdf;
+use App\Shared\Infrastructure\Pdf\GotenbergPdfRenderer;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\FakeFacturXPdf;
 use App\Tests\Support\FakePdfRenderer;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\Part\DataPart;
+use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 
 /**
  * An issued French invoice or credit note as its Factur-X file: the EN 16931 CII XML alone,
@@ -278,6 +283,52 @@ final class FacturXTest extends ApiTestCase
         static::getContainer()->get(FakeFacturXPdf::class)->failing = true;
         $this->client->request('GET', $this->path($id).'/factur-x.pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_SERVICE_UNAVAILABLE);
+    }
+
+    /**
+     * The one case reaching the Gotenberg compose.yaml pins (`make gate-api`, `make test-api` and CI's api job start it):
+     * the page an issued invoice is printed from goes through the real Chromium, then the real remediation to Factur-X
+     * with the XML the route answers, and Gotenberg's own validator (PDF/A-3b and the Factur-X rules, the XML's
+     * Schematron included) must find the result compliant, with no fatal violation. A Gotenberg not started fails it.
+     */
+    public function testTheFacturXPdfMadeFromTheIssuedPageIsCompliantToGotenbergsOwnValidator(): void
+    {
+        $this->signedIn();
+        $id = $this->issued(['lines' => [$this->line('Réglage du tour', '2', 'C62', '150', 'TVA20')]]);
+        $pages = static::getContainer()->get(FakePdfRenderer::class)->rendered;
+        $page = end($pages);
+        self::assertIsString($page, 'issuing printed the invoice');
+        $this->client->request('GET', $this->path($id).'/factur-x.xml');
+        self::assertResponseIsSuccessful();
+        $xml = (string) $this->client->getResponse()->getContent();
+        $url = rtrim((string) static::getContainer()->getParameter('app.pdf.gotenberg_url'), '/');
+        $http = HttpClient::create();
+
+        $facturX = new GotenbergFacturXPdf($http, $url)->embed(new GotenbergPdfRenderer($http, $url)->render($page), $xml);
+
+        $form = new FormDataPart([['files' => new DataPart($facturX, 'factur-x.pdf', 'application/pdf', '8bit')], 'profile' => 'Factur-X']);
+        $answer = $http->request('POST', $url.'/forms/pdf/validate', ['headers' => $form->getPreparedHeaders()->toArray(), 'body' => $form->bodyToString(), 'timeout' => 60])->toArray();
+        $report = $answer['factur-x.pdf'] ?? null;
+        self::assertIsArray($report, json_encode($answer, \JSON_THROW_ON_ERROR));
+        $violations = $report['violations'] ?? null;
+        self::assertIsArray($violations);
+        $fatal = array_values(array_filter($violations, static fn (mixed $violation): bool => !\is_array($violation) || 'warning' !== ($violation['severity'] ?? null)));
+        self::assertSame(['Factur-X', true, []], [$report['profile'] ?? null, $report['compliant'] ?? null, $fatal], json_encode($report, \JSON_THROW_ON_ERROR));
+    }
+
+    public function testAFacturXPdfMadeWithViolationsLeftIsRefusedByNameNotHandedOutOrSaidUnreachable(): void
+    {
+        $this->signedIn();
+        $id = $this->issued(['lines' => [$this->line('Réglage du tour', '2', 'C62', '150', 'TVA20')]]);
+        $this->client->disableReboot();
+        static::getContainer()->get(FakeFacturXPdf::class)->leftViolations = 2;
+
+        $this->client->request('GET', $this->path($id).'/factur-x.pdf');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $refusal = $this->json();
+        self::assertSame(['pdf_not_conformant', ['violations' => 2], []], [$refusal['code'], $refusal['params'], $refusal['gaps']]);
+        self::assertStringNotContainsString('%PDF-', (string) $this->client->getResponse()->getContent());
     }
 
     public function testAnotherCompanysDocumentAndAMemberWithoutInvoiceReadFindNothing(): void

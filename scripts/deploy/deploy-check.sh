@@ -133,8 +133,8 @@ dc exec -T api php -r 'exit(false === @file_get_contents("http://gotenberg:3000/
 render() { dc exec -T gotenberg sh -c 'cat > /tmp/probe.html && curl -sS -o /dev/null -w "%{http_code}" -F "files=@/tmp/probe.html;filename=index.html" -F failOnConsoleExceptions=true http://127.0.0.1:3000/forms/chromium/convert/html'; }
 [[ "$(render <<<'<p>probe</p><script>throw new Error("a script ran")</script>')" == 200 ]] || fail "gotenberg ran a page's script"
 [[ "$(render <<<'<p>probe</p><img src="http://api/api/health">')" == 200 ]] || fail "gotenberg did not render a page asking for an address of the stack"
-dc logs gotenberg 2>&1 | grep -qF "'http://api/api/health' does not match any expression from the allowed list" \
-  || fail "gotenberg's Chromium was not refused an address of the stack"
+dc logs gotenberg 2>&1 | grep -F '"msg":"outbound request blocked by the Chromium filters"' | grep -F '"url":"http://api/api/health"' \
+  | grep -qF '"rule":"allow-list"' || fail "gotenberg's Chromium was not refused an address of the stack"
 step "gotenberg shut in: no way out, no script, no URL but its files"
 
 printf 'deploy-check: OK — deployed and checked through its edge in %ss in all\n' "$(($(date +%s) - started))"

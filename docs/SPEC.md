@@ -3196,8 +3196,12 @@ functional tests run in the `tools` container, on the host's network, against th
   - the seller is read from the company as it is now, since issuing takes no snapshot of it;
   - BT-115 equals BT-112, since later payments are not a document amount;
   - the seller's SIREN and full French addresses are required, which is stricter than EN 16931.
-  Uncertified: the EN 16931 schematron, since no XSLT 2.0 processor is on the machine; PDF/A-3b conformance, since
-  veraPDF is absent; and the PDF route end to end, since the functional tests stub Gotenberg. The schemas are kept
+  Certified by execution for one issued invoice: the Factur-X PDF made from its real printed page by the Gotenberg
+  compose.yaml pins (`/forms/pdf/remediate`, which refuses to hand out a file with violations left, `pdf_not_conformant`)
+  is found compliant, with no fatal violation, by Gotenberg's own validator (`/forms/pdf/validate`, profile Factur-X:
+  PDF/A-3b and the Factur-X rules, the XML's Schematron included); `FacturXTest` runs it in `make gate-api` and CI.
+  Uncertified: a credit note's file and every other shape of document through that validator; the EN 16931
+  schematron run by itself, since no XSLT 2.0 processor is on the machine. The schemas are kept
   out of the tree and of CI until their licences are ruled. The FNFE XSDs carry no licence text, and CEN's artefacts
   are EUPL-1.2. Open, to rule:
   - may the schemas, or Saxon-HE for the schematron, enter CI;

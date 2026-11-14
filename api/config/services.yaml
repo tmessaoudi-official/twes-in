@@ -333,7 +333,8 @@ when@test:
         # Files a test stores stay out of the development volume.
         app.files.directory: '%kernel.project_dir%/var/test-files'
     services:
-        # No test reaches Gotenberg either: the fake answers a PDF header followed by the page, which a test can read.
+        # Requests reach no Gotenberg either: the fake answers a PDF header followed by the page, which a test can read.
+        # FacturXTest's compliant case alone drives the real one, through its adapters built by hand.
         App\Tests\Support\FakePdfRenderer: ~
         App\Shared\Application\PdfRenderer: '@App\Tests\Support\FakePdfRenderer'
         App\Tests\Support\FakeFacturXPdf: ~

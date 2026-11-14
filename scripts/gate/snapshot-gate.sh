@@ -95,6 +95,7 @@ inside() {
   local token=_gate
   grep -qx "TEST_TOKEN=$token" api/.env.test.local 2>/dev/null || printf 'TEST_TOKEN=%s\n' "$token" > api/.env.test.local
   docker compose up -d --wait --no-recreate postgres || return 2
+  docker compose up -d --wait gotenberg || return 2
   if ! docker compose exec -T postgres psql -U twes -d twes -tAc "SELECT 1 FROM pg_database WHERE datname = 'twes_test$token'" | grep -qx 1; then
     docker compose exec -T postgres psql -U twes -d twes -qc "CREATE DATABASE twes_test$token OWNER twes" || return 2
   fi

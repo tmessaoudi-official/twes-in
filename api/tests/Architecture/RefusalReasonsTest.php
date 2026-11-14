@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
+use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\ValueObject\SettingChain;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -338,6 +339,35 @@ final class RefusalReasonsTest extends KernelTestCase
     private const string SETTINGS_REFUSALS = 'settings-refusals';
 
     /** The texts a form's adapter opens when a save comes back refused on its fields (`FORM_REFUSAL_TEXTS`). */
+    /**
+     * The Factur-X dialog says a refusal by its code under `invoices.factur_x.refused` and each gap under `.gaps`: a
+     * reason or gap the contract lists without its words would show the person the key itself.
+     */
+    public function testEveryFacturXReasonAndGapIsWordedInEachLanguage(): void
+    {
+        $unworded = [];
+        foreach (['fr', 'en', 'ar'] as $language) {
+            $texts = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json'), true, 512, \JSON_THROW_ON_ERROR);
+            self::assertIsArray($texts);
+            $invoices = $texts['invoices'] ?? null;
+            self::assertIsArray($invoices, $language);
+            $facturX = $invoices['factur_x'] ?? null;
+            self::assertIsArray($facturX, $language);
+            foreach (['refused' => FacturXRefused::REASONS, 'gaps' => FacturXRefused::GAPS] as $group => $codes) {
+                $words = $facturX[$group] ?? [];
+                self::assertIsArray($words, "$language $group");
+                foreach ($codes as $code) {
+                    if (!\is_string($words[$code] ?? null) || '' === trim($words[$code])) {
+                        $unworded[] = "$language: invoices.factur_x.$group.$code";
+                    }
+                }
+            }
+        }
+
+        self::assertContains(FacturXRefused::PDF_NOT_CONFORMANT, FacturXRefused::REASONS);
+        self::assertSame([], $unworded);
+    }
+
     private const string FORM_REFUSALS = 'form-refusals';
 
     /** @return array<mixed> the screens' texts for a refusal, by reason, with those of the texts parts named over them */

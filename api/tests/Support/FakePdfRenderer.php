@@ -13,8 +13,9 @@ use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 
 /**
- * No test reaches Gotenberg: this "PDF" is a PDF header followed by the page it was given, so a test reads what was
- * printed. The adapter's own contract is GotenbergPdfRendererTest's, and the real renderer is driven by Playwright.
+ * Requests reach no Gotenberg: this "PDF" is a PDF header followed by the page it was given, so a test reads what was
+ * printed. The adapter's own contract is GotenbergPdfRendererTest's; the real renderer is driven by Playwright and by
+ * FacturXTest's compliant case, which hands it the page this fake was given.
  */
 final class FakePdfRenderer implements PdfRenderer
 {

@@ -97,8 +97,8 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
     }
 
     /**
-     * Gotenberg's PDF engines merge the files in the order of their names, whatever order they arrive in, so each is
-     * named by its place, padded so that the tenth does not sort before the second.
+     * Gotenberg's merge (`/forms/pdf/merge`) takes the files in the order of their names, whatever order they arrive in,
+     * so each is named by its place, padded so that the tenth does not sort before the second.
      */
     public function merge(array $pdfs): string
     {
@@ -113,7 +113,7 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
         foreach ($pdfs as $index => $pdf) {
             $parts[] = ['files' => new DataPart($pdf, str_pad((string) ($index + 1), max(3, $width), '0', \STR_PAD_LEFT).'.pdf', 'application/pdf', '8bit')];
         }
-        $merged = $this->send('pdfengines/merge', $parts);
+        $merged = $this->send('pdf/merge', $parts);
         if (!str_starts_with($merged, '%PDF-')) {
             throw new PdfRenderingFailed('Gotenberg answered something other than a PDF.');
         }

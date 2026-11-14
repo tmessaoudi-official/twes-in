@@ -466,7 +466,7 @@ These are exactly CI's jobs (`.github/workflows/ci.yml`). They need § 1's host 
 
 ```sh
 make gate-licences    # dependency licences, SPDX headers, executable bits, version pins, and each gate's own test
-make gate-api         # php-cs-fixer, PHPStan, PHPUnit against the twes_test database (needs postgres running)
+make gate-api         # php-cs-fixer, PHPStan, PHPUnit against the twes_test database and the compose Gotenberg (both started for it)
 make gate-web         # regenerate the API types, lint, format, unit tests, production build
 make gate             # the three above
 make gate-stamps      # the Decisions Log stamps alone, as the decision-stamps workflow checks a push touching only docs/SPEC.md

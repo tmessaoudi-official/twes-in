@@ -134,7 +134,7 @@ final class GotenbergPdfRendererTest extends TestCase
         $merged = new GotenbergPdfRenderer(new MockHttpClient($response), self::URL)->merge($pdfs);
 
         self::assertSame('%PDF-1.4 merged', $merged);
-        self::assertSame(['POST', self::URL.'/forms/pdfengines/merge'], [$response->getRequestMethod(), $response->getRequestUrl()]);
+        self::assertSame(['POST', self::URL.'/forms/pdf/merge'], [$response->getRequestMethod(), $response->getRequestUrl()]);
         $options = $response->getRequestOptions();
         self::assertIsString($options['body']);
         preg_match_all('/name="files"; filename="([^"]+)".*?\r\n\r\n(%PDF-1\.7 page \d+)\r\n/s', $options['body'], $parts);

@@ -152,7 +152,7 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
             'required' => ['code', 'params', 'message', 'gaps'],
             'properties' => [
                 'code' => ['type' => 'string', 'enum' => FacturXRefused::REASONS],
-                'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']], 'description' => 'status; preset; count.'],
+                'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']], 'description' => 'status; preset; count; violations (pdf_not_conformant: the violations the PDF engine left, when it said).'],
                 'message' => ['type' => 'string'],
                 'gaps' => [
                     'type' => 'array',

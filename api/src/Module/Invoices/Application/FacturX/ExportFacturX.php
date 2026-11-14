@@ -13,6 +13,7 @@ use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\Print\PrintInvoice;
+use App\Shared\Application\FacturXNotConformant;
 use App\Shared\Application\FacturXPdf;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Model\Company;
@@ -40,7 +41,8 @@ final readonly class ExportFacturX
     }
 
     /**
-     * The XML is written first, so a document it refuses never reaches the PDF engine.
+     * The XML is written first, so a document it refuses never reaches the PDF engine. A file the engine made with
+     * violations left is refused by name (`pdf_not_conformant`): asking again makes the same file.
      *
      * @throws InvoiceNotFound
      * @throws FacturXRefused
@@ -52,8 +54,13 @@ final readonly class ExportFacturX
     {
         $invoice = $this->describe->describe($company, $id);
         $xml = $this->xml->write($invoice);
+        try {
+            $pdf = $this->pdf->embed($this->print->pdf($company, $id)->contents, $xml);
+        } catch (FacturXNotConformant $notConformant) {
+            throw new FacturXRefused($notConformant->getMessage(), FacturXRefused::PDF_NOT_CONFORMANT, null === $notConformant->residual ? [] : ['violations' => $notConformant->residual]);
+        }
 
-        return new FacturXFile(self::fileName($invoice->number).'-factur-x.pdf', $this->pdf->embed($this->print->pdf($company, $id)->contents, $xml));
+        return new FacturXFile(self::fileName($invoice->number).'-factur-x.pdf', $pdf);
     }
 
     /** A numbering format may carry slashes, which a file name may not. */

@@ -426,9 +426,10 @@ in-gate-licences:
 	bash scripts/gates/test-clock.sh
 	bash scripts/gates/docs-run-lines.sh
 
-gate-api:      ## the postgres service is started for it (the tests need a real database)
+gate-api:      ## postgres and gotenberg are started for it (a real database; FacturXTest validates a real Factur-X)
 gate-api: tools-image
 	docker compose up -d --wait --no-recreate postgres
+	docker compose up -d --wait gotenberg
 	$(TOOLS) make --no-print-directory in-gate-api
 in-gate-api:
 	mkdir -p api/vendor api/var var/tmp var/cache
@@ -448,6 +449,7 @@ in-gate-api-static:
 	cd api && composer gate:static
 gate-api-tests: tools-image
 	docker compose up -d --wait --no-recreate postgres
+	docker compose up -d --wait gotenberg
 	$(TOOLS) $(WITH_FISCAL_XSD) sh -c 'cd api && composer test'
 gate-web-static: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate:static'
@@ -469,6 +471,7 @@ rc-tools-image: ## build the RC lane's toolchain: the tools image on PHP's next 
 rc-lane:       ## the API on PHP's release candidate and Symfony's next minor, on a copy: var/rc-lane/summary.md
 rc-lane: rc-tools-image
 	docker compose up -d --wait --no-recreate postgres
+	docker compose up -d --wait gotenberg
 	mkdir -p $(TOOLS_TMP)
 	( flock -n 9 || { echo "make rc-lane: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
 	  docker run --rm --network host -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e IN_TOOLS=1 -e TMPDIR=$(TOOLS_TMP) \
@@ -478,6 +481,7 @@ rc-lane: rc-tools-image
 
 test-api: tools-image
 	docker compose up -d --wait --no-recreate postgres
+	docker compose up -d --wait gotenberg
 	$(TOOLS) make --no-print-directory in-test-api
 in-test-api:   # composer test: the test database migrated, then the suite on paratest, a database copy a worker (api/tests/parallel.php)
 	$(WITH_FISCAL_XSD) sh -c 'cd api && composer test'

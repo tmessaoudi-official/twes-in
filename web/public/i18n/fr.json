@@ -1572,7 +1572,8 @@
       "refused": {
         "not_issued": "Un brouillon n’a pas de Factur-X : il s’écrit une fois la facture émise.",
         "preset_not_supported": "Factur-X ne s’écrit que pour une entreprise française.",
-        "incomplete_document": "Il manque ce que la norme EN 16931 demande. Complétez-le, puis téléchargez à nouveau :"
+        "incomplete_document": "Il manque ce que la norme EN 16931 demande. Complétez-le, puis téléchargez à nouveau :",
+        "pdf_not_conformant": "Le fichier Factur-X obtenu ne respecte pas toutes les règles Factur-X et PDF/A-3 : il n’est pas remis, et un nouveau téléchargement donnerait le même. Le PDF émis reste disponible ; signalez ce problème."
       },
       "gaps": {
         "seller_siren_missing": "Le SIREN de votre entreprise (profil de l’entreprise)",

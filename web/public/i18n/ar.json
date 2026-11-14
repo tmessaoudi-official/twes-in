@@ -1572,7 +1572,8 @@
       "refused": {
         "not_issued": "ليس للمسودة ملف Factur-X: يُكتب بعد إصدار الفاتورة.",
         "preset_not_supported": "لا يُكتب ملف Factur-X إلا لشركة فرنسية.",
-        "incomplete_document": "ينقص ما يشترطه المعيار EN 16931. أكمله، ثم أعد التنزيل:"
+        "incomplete_document": "ينقص ما يشترطه المعيار EN 16931. أكمله، ثم أعد التنزيل:",
+        "pdf_not_conformant": "ملف Factur-X الناتج لا يستوفي كل قواعد Factur-X وPDF/A-3: لا يُسلَّم، وإعادة التنزيل تعطي الملف نفسه. يبقى ملف PDF الصادر متاحًا؛ أبلغ عن هذه المشكلة."
       },
       "gaps": {
         "seller_siren_missing": "رقم SIREN لشركتك (ملف الشركة)",

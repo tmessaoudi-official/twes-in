@@ -211,11 +211,12 @@ services:
   gotenberg:
     logging: *logging
     restart: unless-stopped
-    image: gotenberg/gotenberg:8.39.0@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5
+    image: gotenberg/gotenberg:9.4.1@sha256:7d790c081a944f4d30cacb59a2cdccbe71569532af691b93c36551f6a877b4fc
     # Its Chromium renders HTML written from what people typed, so one escaping mistake would hand it markup: shut in,
     # that markup can do nothing. No JavaScript; no URL but its own working files (the logo is a data URI, which is no
-    # request); no download or webhook of its own; LibreOffice, which nothing here uses, closed. A wider allow-list would
-    # also skip the two IP denials, which Gotenberg warns of at start. scripts/gates/lib/pdf-renderer.sh holds them.
+    # request); no download or webhook of its own; LibreOffice, which nothing here uses, closed; the conversion route
+    # only converts, refusing a `stages` field (the PDF routes, merge and Factur-X, stay). A wider allow-list would also
+    # skip the two IP denials, which Gotenberg warns of at start. scripts/gates/lib/pdf-renderer.sh holds them.
     command:
       - gotenberg
       - --chromium-disable-javascript
@@ -225,6 +226,7 @@ services:
       - --api-disable-download-from
       - --webhook-disable
       - --libreoffice-disable-routes
+      - --pdf-disable-stages
     # Alone on its own network with the api and the workers. Here it is an ordinary bridge, so the port below reaches
     # the toolchain, which runs on the host's network; compose.prod.yaml makes it internal, with no way out, and
     # publishes nothing.

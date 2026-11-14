@@ -1572,7 +1572,8 @@
       "refused": {
         "not_issued": "A draft has no Factur-X: it is written once the invoice is issued.",
         "preset_not_supported": "Factur-X is written only for a French company.",
-        "incomplete_document": "What the EN 16931 standard asks for is missing. Fill it in, then download again:"
+        "incomplete_document": "What the EN 16931 standard asks for is missing. Fill it in, then download again:",
+        "pdf_not_conformant": "The Factur-X file made does not meet every Factur-X and PDF/A-3 rule: it is not handed out, and downloading again would give the same file. The PDF as issued is still available; report this problem."
       },
       "gaps": {
         "seller_siren_missing": "Your company’s SIREN (company profile)",

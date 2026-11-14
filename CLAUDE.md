@@ -199,7 +199,7 @@ those three is needed. Run them through `make`, which hands compose the uid, the
 | `make mutants SPEC=…` | `tools`, `web-tools` | applying a sabotage by hand, running its test and restoring the file; it reads each tool's tally, so a mutant that does not compile is INVALID, not killed |
 | `make gate-licences` | `tools` | the gate chain's `php` and `bash` lines, with `logrotate`, `jq`, `perl`, `python3`, `docker` |
 | `make gate-stamps` | `tools` | `bash scripts/gates/decision-stamps.sh` alone; CI's `decision-stamps` workflow runs it on a push touching `docs/SPEC.md`, which `ci.yml` skips |
-| `make gate-api`, `make test-api` | `tools` (+ compose `postgres`) | `cd api && composer gate`, `vendor/bin/phpunit` |
+| `make gate-api`, `make test-api` | `tools` (+ compose `postgres`, `gotenberg`: the Factur-X case validates a real file) | `cd api && composer gate`, `vendor/bin/phpunit` |
 | `make gate-web`, `make test-web`, `make api-types` | `web-tools` | `cd web && npm run gate`, `npx ng test`, `npm run api:types` |
 | `make api-openapi` | `tools` | `bin/console api:openapi:export` on host PHP |
 | `make e2e`, `make gallery` (`E2E_ARGS=…`) | `web-tools` | `npx playwright test` and a host-installed Chromium |

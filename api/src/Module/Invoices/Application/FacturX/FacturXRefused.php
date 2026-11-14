@@ -11,15 +11,19 @@ namespace App\Module\Invoices\Application\FacturX;
 
 /**
  * A document that is not written as Factur-X: not issued yet (`not_issued`), of a country the product writes no Factur-X
- * for (`preset_not_supported`), or lacking what EN 16931 asks for (`incomplete_document`, each gap named by its own code
- * and parameters for a screen to translate). A file a validator would refuse is never written instead.
+ * for (`preset_not_supported`), lacking what EN 16931 asks for (`incomplete_document`, each gap named by its own code
+ * and parameters for a screen to translate), or made by the PDF engine with Factur-X or PDF/A-3 violations left
+ * (`pdf_not_conformant`, with their count as `violations` when the engine said one). A file a validator would refuse is
+ * never handed out instead.
  */
 final class FacturXRefused extends \DomainException
 {
     public const string NOT_ISSUED = 'not_issued';
 
+    public const string PDF_NOT_CONFORMANT = 'pdf_not_conformant';
+
     /** Every reason a document is refused for, as the contract lists them. */
-    public const array REASONS = [self::NOT_ISSUED, 'preset_not_supported', 'incomplete_document'];
+    public const array REASONS = [self::NOT_ISSUED, 'preset_not_supported', 'incomplete_document', self::PDF_NOT_CONFORMANT];
 
     /** Every gap an incomplete document is refused with, as the contract lists them. */
     public const array GAPS = [

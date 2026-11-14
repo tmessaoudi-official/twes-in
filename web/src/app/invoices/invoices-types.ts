@@ -38,8 +38,12 @@ export type CreditExcessTo = 'balance' | 'refund';
 /** The two Factur-X files of an issued document: the EN 16931 XML alone, or embedded in its PDF as PDF/A-3. */
 export type FacturXFormat = 'pdf' | 'xml';
 
-/** Why the API writes no Factur-X: a draft, a company outside the presets it serves, or data EN 16931 asks for. */
-export type FacturXRefusalCode = 'not_issued' | 'preset_not_supported' | 'incomplete_document';
+/**
+ * Why the API writes no Factur-X: a draft, a company outside the presets it serves, data EN 16931 asks for, or a file
+ * the PDF engine made with violations left.
+ */
+export type FacturXRefusalCode =
+  'not_issued' | 'preset_not_supported' | 'incomplete_document' | 'pdf_not_conformant';
 
 /** One datum a document lacks, by its code, with what the screen needs to say which line or field. */
 export interface FacturXGap {

@@ -6,7 +6,8 @@
 
 # The flags each installation starts Gotenberg with, as compose.yaml's `command:` gives them.
 PDF_RENDERER_FLAGS=(--chromium-disable-javascript "--chromium-allow-list=^file:///tmp/" --chromium-deny-private-ips
-  --chromium-deny-public-ips --api-disable-download-from --webhook-disable --libreoffice-disable-routes)
+  --chromium-deny-public-ips --api-disable-download-from --webhook-disable --libreoffice-disable-routes
+  --pdf-disable-stages)
 # Who sends pages to Gotenberg: the api renders on request, the workers when they issue and mail.
 PDF_RENDERER_CLIENTS=(api worker demo-worker)
 
