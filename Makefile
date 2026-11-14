@@ -139,7 +139,7 @@ api-types: api-openapi web-tools-image   ## regenerate web/src/app/api (types on
 down:          ## stop it, keep the database volume
 	docker compose down
 
-reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database and stored files (both volumes), the host caches and the e2e session, then make up. Asks first; CONFIRM=yes skips the question. Refused on a shop's own computer (scripts/reset-guard.sh), CONFIRM or not.
+reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database and stored files (both volumes), the host caches and the e2e session, then make up. Asks first; CONFIRM=yes skips the question. Refused on a shop's own computer, and on a database holding issued documents unless WITH_ISSUED_DOCUMENTS=yes and their counts are typed back (scripts/reset-guard.sh), CONFIRM or not.
 	@bash scripts/reset-guard.sh
 	@if [ "$(CONFIRM)" != yes ]; then \
 		printf 'make reset deletes the database and the stored files (issued PDFs) of compose project %s, api/var/cache and the saved e2e session. Type yes to go on: ' "$${COMPOSE_PROJECT_NAME:-twes-in}"; \

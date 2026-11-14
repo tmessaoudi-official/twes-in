@@ -16,7 +16,13 @@ cat > "$TMPDIR/bin/docker" <<'FAKE'
 #!/usr/bin/env bash
 echo "docker $*" >> "$TMPDIR/docker.calls"
 case "$1 $2" in
-  "volume inspect") [[ -n "${SHOP_VOLUME:-}" && "$3" == twes-in_backup-local ]] && exit 0; exit 1 ;;
+  "volume inspect") [[ -n "${SHOP_VOLUME:-}" && "$3" == twes-in_backup-local ]] && exit 0
+    [[ -n "${DB_VOLUME:-}" && "$3" == twes-in_postgres-data ]] && exit 0; exit 1 ;;
+  # The application's own count of issued documents: INVENTORY names the JSON it prints, INVENTORY_EXIT its exit (3 when
+  # anything fiscal is there), and an api that is not running answers as compose does.
+  "compose exec") [[ "$*" == *"bin/console app:fiscal:inventory --json"* ]] || exit 1
+    [[ -n "${INVENTORY_EXIT:-}" ]] || { echo 'service "api" is not running' >&2; exit 1; }
+    cat "${INVENTORY:-/dev/null}"; exit "$INVENTORY_EXIT" ;;
   "ps -aq") [[ "$*" == *label=com.docker.compose.project=twes-in* ]] && echo c0ffee; exit 0 ;;
   "inspect --format") echo DEPLOY_ENV=prod; [[ -z "${SHOP_ENV:-}" ]] || echo APP_INSTALLATION=onprem; exit 0 ;;
 esac
@@ -65,5 +71,46 @@ check "  values named by TWES_VALUES are read too" $? 2 "$out" "refused"
 d=$(tree "TWES_INSTALL=onprem\n"); chmod 000 "$d/home/.twes-in/install.env"
 if [[ -r "$d/home/.twes-in/install.env" ]]; then echo "  skip an unreadable values file (this account reads anything)"
 else out=$(reset "$d" CONFIRM=yes); check "  a values file it cannot read: refused, not taken for none" $? 2 "$out" "cannot be read"; fi
+
+# Issued documents: the database the volume holds is counted by the application itself before anything goes.
+echo "issued documents"
+typing() { # what is typed at the question, the tree, then make's arguments
+  local said=$1 d=$2; shift 2; rm -f "$TMPDIR/docker.calls"
+  (cd "$d" && env -u TWES_VALUES HOME="$d/home" PATH="$TMPDIR/bin:$PATH" make --no-print-directory reset "$@" 2>&1 <<< "$said")
+}
+printf '%s' '{"fiscal":true,"companies":[{"id":"a","name":"Carthage","fiscal":true,"records":[{"code":"invoices.issued","kind":"fiscal","count":34},{"code":"invoices.payments","kind":"fiscal","count":8},{"code":"audit.journal","kind":"kept","count":500}]},{"id":"b","name":"Vide","fiscal":false,"records":[{"code":"invoices.issued","kind":"fiscal","count":0}]}],"platform":[]}' > "$TMPDIR/fiscal.json"
+printf '%s' '{"fiscal":false,"companies":[{"id":"b","name":"Vide","fiscal":false,"records":[{"code":"invoices.issued","kind":"fiscal","count":0}]}],"platform":[]}' > "$TMPDIR/none.json"
+sentence='erase 42 fiscal records in 1 of 2 companies of twes-in'
+
+d=$(tree ""); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/none.json" INVENTORY_EXIT=0 reset "$d" CONFIRM=yes)
+check "a database holding nothing issued: reset goes on" 0 0 "$(calls)" "docker compose down --volumes"
+check "  having asked the application to count" 0 0 "$(calls)" "app:fiscal:inventory --json"
+
+d=$(tree ""); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/fiscal.json" INVENTORY_EXIT=3 reset "$d" CONFIRM=yes)
+check "issued documents in the database: refused, CONFIRM=yes or not" $? 2 "$out" "42 fiscal records in 1 of 2 companies"
+check "  saying how to go on knowingly" 0 0 "$out" "WITH_ISSUED_DOCUMENTS=yes"
+[[ "$(calls)" != *"down --volumes"* ]]; check "  nothing deleted" $? 0 "$(calls)" ""
+
+d=$(tree ""); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/fiscal.json" INVENTORY_EXIT=3 typing "yes" "$d" CONFIRM=yes WITH_ISSUED_DOCUMENTS=yes)
+check "  acknowledged, but the sentence not typed: refused" $? 2 "$out" "$sentence"
+[[ "$(calls)" != *"down --volumes"* ]]; check "  nothing deleted" $? 0 "$(calls)" ""
+
+d=$(tree ""); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/fiscal.json" INVENTORY_EXIT=3 typing "$sentence" "$d" CONFIRM=yes WITH_ISSUED_DOCUMENTS=yes)
+check "  acknowledged and the counts typed back: reset goes on" 0 0 "$(calls)" "docker compose down --volumes"
+
+d=$(tree ""); out=$(DB_VOLUME=1 reset "$d" CONFIRM=yes)
+check "a database the api cannot count (not running): refused, not taken for empty" $? 2 "$out" "could not count"
+check "  saying what to start" 0 0 "$out" "make up"
+[[ "$(calls)" != *"down --volumes"* ]]; check "  nothing deleted" $? 0 "$(calls)" ""
+
+d=$(tree ""); out=$(DB_VOLUME=1 INVENTORY=/dev/null INVENTORY_EXIT=1 reset "$d" CONFIRM=yes)
+check "  the count failing: refused too" $? 2 "$out" "could not count"
+
+d=$(tree ""); out=$(INVENTORY="$TMPDIR/fiscal.json" INVENTORY_EXIT=3 reset "$d" CONFIRM=yes)
+check "no database volume at all: nothing to count, reset goes on" 0 0 "$(calls)" "docker compose down --volumes"
+[[ "$(calls)" != *"app:fiscal:inventory"* ]]; check "  the api not asked" $? 0 "$(calls)" ""
+
+d=$(tree "TWES_INSTALL=onprem\n"); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/none.json" INVENTORY_EXIT=0 reset "$d" CONFIRM=yes WITH_ISSUED_DOCUMENTS=yes)
+check "a shop's computer stays refused whatever the count" $? 2 "$out" "twes restore-commands"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

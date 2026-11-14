@@ -37,3 +37,39 @@ if ((${#containers[@]})) && docker inspect --format '{{range .Config.Env}}{{prin
   grep -qx 'APP_INSTALLATION=onprem'; then
   refuse "a container of compose project $project was started as a shop's (APP_INSTALLATION=onprem)"
 fi
+
+# Issued documents: a database holding any is not wiped by a bare reset, CONFIRM=yes or not. The application counts
+# them by its own definition (app:fiscal:inventory, exit 3 when any is there). Going on needs WITH_ISSUED_DOCUMENTS=yes
+# and the counts typed back, as twes reset asks on a shop. No database volume: nothing to count. A database the api
+# cannot count (not running, or the count failing) is refused as an unreadable values file is: not taken for empty.
+if docker volume inspect "${project}_postgres-data" >/dev/null 2>&1; then
+  err=$(mktemp); counted=$(docker compose exec -T api bin/console app:fiscal:inventory --json --no-interaction 2>"$err"); code=$?
+  said=$(cat "$err"); rm -f "$err"
+  if ((code != 0 && code != 3)); then
+    echo "make reset: refused — could not count the issued documents of the database in volume ${project}_postgres-data" \
+      "(app:fiscal:inventory exited $code: ${said:-no message}). Start the stack (make up) and run make reset again, so" \
+      "what it would delete is known first." >&2
+    exit 1
+  fi
+  if ((code == 3)); then
+    read -r records companies all < <(jq -r '[([.companies[].records[] | select(.kind == "fiscal") | .count] | add // 0),
+      ([.companies[] | select(.fiscal)] | length), (.companies | length)] | @tsv' <<< "$counted")
+    if [[ ! "${records:-}" =~ ^[0-9]+$ ]]; then
+      echo "make reset: refused — could not read the count app:fiscal:inventory printed; nothing deleted." >&2
+      exit 1
+    fi
+    sentence="erase $records fiscal records in $companies of $all companies of $project"
+    if [[ "${WITH_ISSUED_DOCUMENTS:-}" != yes ]]; then
+      echo "make reset: refused — the database holds $records fiscal records in $companies of $all companies (issued" \
+        "documents and their ledger, app:fiscal:inventory lists them). Back them up first if they matter; to delete them" \
+        "knowingly run make reset WITH_ISSUED_DOCUMENTS=yes and type the counts back. CONFIRM=yes does not change that." >&2
+      exit 1
+    fi
+    printf 'make reset deletes issued documents. Type « %s » to go on: ' "$sentence"
+    read -r typed
+    if [[ "$typed" != "$sentence" ]]; then
+      echo "make reset: refused — the sentence typed was not « $sentence ». Nothing deleted." >&2
+      exit 1
+    fi
+  fi
+fi

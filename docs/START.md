@@ -453,6 +453,12 @@ stack there is the shop's, whose compose project is `twes-in` too, and a shop go
 `twes restore-commands`, never by a wipe. A bare `docker compose down --volumes` is the same wipe with no guard at all:
 never there.
 
+A database holding issued documents or their ledger (any invoice issued, delivery note validated, payment, recorded
+expense, stock movement…, as `bin/console app:fiscal:inventory` counts them; `make fixtures` writes some) is refused
+too, `CONFIRM=yes` included: `make reset WITH_ISSUED_DOCUMENTS=yes` then asks you to type the counts back
+(« erase 42 fiscal records in 1 of 2 companies of twes-in »). The count needs the running api: with the database
+volume there and the api down or failing, reset refuses rather than guess; `make up` first.
+
 `make reset CONFIRM=yes` skips the question, for scripts. It keeps the Docker images (the rebuild is quick) and
 `api/vendor` and `web/node_modules`. To also drop the images: `docker compose down --volumes --rmi local`, then
 `make up`.
