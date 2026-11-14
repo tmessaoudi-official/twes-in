@@ -51,7 +51,7 @@ final readonly class SymfonySecurityNoticeMailer implements SecurityNoticeMailer
                     // Locked, the person cannot sign in to check anything: they are told when it ends and how to end it now.
                     'locked' => $mail->change->isALock(),
                     // Locked by wrong codes, the password was right: changing it is what ends the danger.
-                    'passwordKnown' => SecurityChange::SecondFactorLocked === $mail->change,
+                    'passwordKnown' => \in_array($mail->change, [SecurityChange::SecondFactorLocked, SecurityChange::SecondFactorAddressLocked], true),
                     'lockedUntil' => null === $lockEnd ? null : $this->figures->moment($lockEnd->moment, $mail->locale, $lockEnd->dateFormat),
                     'zone' => $lockEnd?->zone,
                     'productName' => $this->productName,

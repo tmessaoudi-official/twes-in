@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Identity\Application\Mfa;
 
 use App\Identity\Application\Login\FailedLoginAttempt;
+use App\Identity\Application\Login\PasswordLock;
 use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\RecoveryCode;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -33,7 +33,7 @@ final readonly class SecondFactorLockout
     public function __construct(
         private UserRepository $users,
         private RecordFailedLogin $recordFailedLogin,
-        private ClockInterface $clock,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -47,12 +47,15 @@ final readonly class SecondFactorLockout
         return !RecoveryCode::isShaped($code) && $this->locked($userId);
     }
 
-    /** Whether this account is locked right now. An account that no longer exists is not locked; it simply fails later. */
+    /**
+     * Whether this account's password is locked right now, from here or everywhere. An account that no longer exists is
+     * not locked; it simply fails later.
+     */
     public function locked(Uuid $userId): bool
     {
         $user = $this->users->ofId($userId);
 
-        return null !== $user && $user->isLockedAt($this->clock->now());
+        return null !== $user && $this->lock->holdsFor($user);
     }
 
     /**

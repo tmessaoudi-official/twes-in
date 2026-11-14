@@ -18,16 +18,21 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  * checked when the container is built: none, or a minute or two, hands a guesser the next five tries at once, which is
  * the lockout switched off; past a day the lock is a way to keep the account's owner out, whom only their company's owner
  * can let in again meanwhile. How many failures lock it is the operator's too (app.auth.lock_after_failures): one or two
- * lock a person out on a typo, past twenty a guesser has twenty tries a lock.
+ * lock a person out on a typo, past twenty a guesser has twenty tries a lock. Those lock the password from one address;
+ * the account's ceiling locks it everywhere (app.auth.account_lock_after_failures): below twice an address's count, two
+ * addresses would lock the owner out everywhere, which the per-address lock is there to prevent; past a thousand, guesses
+ * spread over many addresses meet no limit worth the name.
  */
 final class LockoutBounds implements CompilerPassInterface
 {
     public const string LOCK_DURATION = 'app.auth.lock_duration';
     public const string LOCK_AFTER = 'app.auth.lock_after_failures';
+    public const string ACCOUNT_LOCK_AFTER = 'app.auth.account_lock_after_failures';
 
     public function process(ContainerBuilder $container): void
     {
         ParameterBounds::duration($container, self::LOCK_DURATION, 300, 86_400, 'five minutes to a day (PT5M to PT24H)');
         ParameterBounds::whole($container, self::LOCK_AFTER, 3, 20);
+        ParameterBounds::whole($container, self::ACCOUNT_LOCK_AFTER, 2 * $container->getParameter(self::LOCK_AFTER), 1_000, 'at least twice '.self::LOCK_AFTER);
     }
 }

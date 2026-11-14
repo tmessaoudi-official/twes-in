@@ -16,6 +16,7 @@ use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\CompanyProof\EntryProof;
+use App\Identity\Application\Login\PasswordLock;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\Mfa\SecondFactorRefused;
@@ -60,6 +61,7 @@ final readonly class ConfirmStepUp implements DeclaresAuditActions
         /** Wrong answers a sign-in may give before it ends. */
         #[Autowire(param: 'app.step_up.attempts')]
         private int $attempts,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -109,7 +111,7 @@ final readonly class ConfirmStepUp implements DeclaresAuditActions
     {
         $user = $this->users->ofId($userId);
 
-        if (null === $user || $user->isLockedAt($this->clock->now())) {
+        if (null === $user || $this->lock->holdsFor($user)) {
             $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => 'password']));
 
             throw new StepUpRefused();

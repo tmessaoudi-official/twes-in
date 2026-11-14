@@ -46,11 +46,13 @@ final class ConfirmStepUpTest extends TestCase
     private User $user;
     private MockClock $clock;
     private StepUpProofs $proofs;
+    private \App\Tests\Support\InMemoryAddressLocks $addressLocks;
     /** @var list<string> the accounts a demo visitor holds */
     private array $demo = [];
 
     protected function setUp(): void
     {
+        $this->addressLocks = new \App\Tests\Support\InMemoryAddressLocks();
         $this->users = new InMemoryUsers();
         $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr', new \DateTimeImmutable());
         $this->user->setPasswordHash('hash:'.self::PASSWORD, new \DateTimeImmutable('2026-09-01'));
@@ -150,7 +152,7 @@ final class ConfirmStepUpTest extends TestCase
 
     public function testALockedAccountIsRefusedEvenTheRightPasswordUntilTheLockEnds(): void
     {
-        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 'PT15M');
+        $failures = new RecordFailedLogin($this->users, $this->addressLocks, new \App\Tests\Support\FixedCallerAddress(), new InMemoryAuditTrail(), new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 50, 'PT15M');
         for ($i = 0; $i < 5; ++$i) {
             $failures->handle(new FailedLoginAttempt($this->user->getId(), 'someone@example.test', 'test', true));
         }
@@ -221,6 +223,6 @@ final class ConfirmStepUpTest extends TestCase
         $asked = StepUpDoubles::screenProofs(new InMemoryMemberships(), $passkeys);
         $secondFactor = StepUpDoubles::secondFactor($this->users, $this->createStub(RecoveryCodeRepository::class), $this->createStub(TotpCodes::class), $this->createStub(SecretCipher::class), $passkeys, $this->clock);
 
-        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $asked, $secondFactor, $demoAccounts, $this->clock, 'PT5M', $attempts);
+        return new ConfirmStepUp($this->users, $hasher, $assertions, $audit, $this->proofs, $asked, $secondFactor, $demoAccounts, $this->clock, 'PT5M', $attempts, \App\Tests\Support\InMemoryAddressLocks::lockOn($this->clock, $this->addressLocks));
     }
 }

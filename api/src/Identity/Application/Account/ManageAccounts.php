@@ -15,6 +15,7 @@ use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Login\LiftPasswordLock;
+use App\Identity\Application\Login\PasswordLock;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Model\User;
@@ -50,6 +51,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
         private CompanyOwners $owners,
         private AccountChanges $accounts,
         private ClockInterface $clock,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -61,8 +63,10 @@ final readonly class ManageAccounts implements DeclaresAuditActions
     public function search(AccountSearch $search, PageRequest $page): Page
     {
         $now = $this->clock->now();
+        $found = $this->users->search($search->leavingOut($this->demos->all()), $page);
+        $locked = $this->lock->shownUntilOf($found->items, $now);
 
-        return $this->users->search($search->leavingOut($this->demos->all()), $page)->map(static fn (User $user): AccountView => AccountView::of($user, $now));
+        return $found->map(static fn (User $user): AccountView => AccountView::of($user, $locked[$user->getId()->toRfc4122()] ?? null));
     }
 
     /** @throws AccountNotFound|NotAnOwner */
@@ -75,7 +79,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
             }
             $this->locks->lift($user->getId(), $operatorId, null, SecurityChange::LockLiftedByOperator);
 
-            return AccountView::of($user, $this->clock->now());
+            return AccountView::of($user, $this->lock->shownUntil($user, $this->clock->now()));
         });
     }
 
@@ -89,7 +93,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
             $this->record($user, self::SESSIONS_ENDED, $operatorId);
             $this->notices->tell($user->getId(), SecurityChange::OperatorEndedSessions);
 
-            return AccountView::of($user, $this->clock->now());
+            return AccountView::of($user, $this->lock->shownUntil($user, $this->clock->now()));
         });
     }
 
@@ -111,7 +115,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $this->notices->tell($user->getId(), SecurityChange::OperatorDeactivated);
             }
 
-            return AccountView::of($user, $this->clock->now());
+            return AccountView::of($user, $this->lock->shownUntil($user, $this->clock->now()));
         });
     }
 
@@ -128,7 +132,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $this->notices->tell($user->getId(), SecurityChange::OperatorReactivated);
             }
 
-            return AccountView::of($user, $this->clock->now());
+            return AccountView::of($user, $this->lock->shownUntil($user, $this->clock->now()));
         });
     }
 

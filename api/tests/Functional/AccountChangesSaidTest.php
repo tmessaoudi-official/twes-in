@@ -23,6 +23,7 @@ use App\Shared\Application\RealtimePublisher;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\InMemoryPasswordResetMailer;
 use App\Tests\Support\RecordingRealtimePublisher;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * What an account's row shows on a company's members list and on the platform's accounts (its password lock, whether it
@@ -134,9 +135,16 @@ final class AccountChangesSaidTest extends ApiTestCase
         static::getContainer()->set(PasswordResetMailer::class, $this->mailer);
     }
 
+    /** A wrong guess counts against the address it came from: the use case runs inside the sign-in's request. */
     private function guess(User $user): void
     {
-        static::getContainer()->get(RecordFailedLogin::class)->handle(new FailedLoginAttempt($user->getId(), $user->getEmail()->value, 'invalid_credentials', true));
+        $requests = static::getContainer()->get('request_stack');
+        $requests->push(Request::create('/api/auth/login', 'POST', server: ['REMOTE_ADDR' => '203.0.113.9']));
+        try {
+            static::getContainer()->get(RecordFailedLogin::class)->handle(new FailedLoginAttempt($user->getId(), $user->getEmail()->value, 'invalid_credentials', true));
+        } finally {
+            $requests->pop();
+        }
     }
 
     private function locked(User $user): void

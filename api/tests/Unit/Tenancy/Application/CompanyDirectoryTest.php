@@ -151,7 +151,7 @@ final class CompanyDirectoryTest extends TestCase
             }
         };
 
-        return new ListMembers($this->memberships, $this->invitations, $nobodyIsADemo, new MockClock('2026-09-09 10:00:00'), 'P30D');
+        return new ListMembers($this->memberships, $this->invitations, $nobodyIsADemo, $clock = new MockClock('2026-09-09 10:00:00'), 'P30D', \App\Tests\Support\InMemoryAddressLocks::lockOn($clock));
     }
 
     private function logos(): CompanyLogo

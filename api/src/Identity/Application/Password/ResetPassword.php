@@ -15,6 +15,7 @@ use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Account\AccountChanges;
+use App\Identity\Application\Login\PasswordLock;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -45,6 +46,7 @@ final readonly class ResetPassword implements DeclaresAuditActions
         private UserSessionRepository $sessions,
         private SecurityNotices $notices,
         private AccountChanges $accounts,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -75,8 +77,9 @@ final readonly class ResetPassword implements DeclaresAuditActions
             $user = $reset->getUser();
             $user->setPasswordHash($this->hasher->hash($newPassword), $now);
             // Whoever used the mailed link holds the mailbox, so a lock from wrong guesses ends with it.
-            $wasLocked = $user->isLockedAt($now);
+            $wasLocked = $this->lock->anyHolds($user, $now);
             $user->unlock($now);
+            $this->lock->forgetEverywhere($user->getId());
             $this->users->save($user);
             $this->sessions->revokeEveryOf($user, $now);
             $reset->markUsed($now);

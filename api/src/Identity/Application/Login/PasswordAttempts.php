@@ -12,7 +12,6 @@ namespace App\Identity\Application\Login;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Shared\Application\Transactions;
-use Psr\Clock\ClockInterface;
 
 /**
  * The account's password asked again inside a session, at a step-up or a password change: a wrong one is a guess at the
@@ -25,14 +24,14 @@ final readonly class PasswordAttempts
     public function __construct(
         private PasswordHasher $hasher,
         private RecordFailedLogin $failures,
-        private ClockInterface $clock,
+        private PasswordLock $lock,
         private Transactions $transactions,
     ) {
     }
 
     public function matches(User $user, string $password, string $reason): bool
     {
-        if ($user->isLockedAt($this->clock->now())) {
+        if ($this->lock->holdsFor($user)) {
             return false;
         }
         if ('' !== $password && $this->hasher->verify($user->getPasswordHash(), $password)) {

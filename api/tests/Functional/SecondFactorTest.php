@@ -264,9 +264,9 @@ final class SecondFactorTest extends ApiTestCase
 
     /**
      * The limiter paces guesses, it never stops them: five a window, for as long as the attacker cares to wait.
-     * Wrong codes must lock the account itself, the way wrong passwords do (docs/SPEC.md § 8 row 22, review S6).
+     * Wrong codes must lock the password from their address, the way wrong passwords do.
      */
-    public function testWrongCodesLockTheAccountAsWrongPasswordsDo(): void
+    public function testWrongCodesLockThePasswordFromTheirAddressAsWrongPasswordsDo(): void
     {
         $this->enrolledUser('someone@twes.local');
         $this->login('someone@twes.local', self::PASSWORD);
@@ -276,15 +276,15 @@ final class SecondFactorTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
             self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
         }
-        self::assertSame(['second_factor_locked'], $this->securityNotices(), 'the code that sets the lock tells its owner by mail, as a lock set after the right password');
+        self::assertSame(['second_factor_address_locked'], $this->securityNotices(), 'the code that sets the lock tells its owner by mail, as a lock set after the right password');
 
         // The right code now buys nothing, and what refuses it is the lock: a limiter would say too_many_attempts.
         $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
         self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
 
-        // And the lock is the account's, not this session's: the password step refuses a fresh browser too, as it refuses
-        // a wrong password, so the lock never says whether the password was right.
+        // And the lock is the address's, not this session's: the password step refuses a fresh browser there too, as it
+        // refuses a wrong password, so the lock never says whether the password was right.
         $this->signOut();
         $this->login('someone@twes.local', self::PASSWORD);
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);

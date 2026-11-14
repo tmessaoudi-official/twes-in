@@ -33,7 +33,7 @@ final class RecordSuccessfulLoginTest extends TestCase
         $user->recordFailedLogin($clock->now(), 5, new \DateInterval('PT15M'));
         $users->save($user);
 
-        (new RecordSuccessfulLogin($users, $audit, new InMemoryCurrentCompany($companyId), $clock))->handle($user->getId());
+        (new RecordSuccessfulLogin($users, $audit, new InMemoryCurrentCompany($companyId), $clock, \App\Tests\Support\InMemoryAddressLocks::lockOn($clock)))->handle($user->getId());
 
         self::assertSame(0, $user->getFailedLoginCount());
         self::assertEquals($clock->now(), $user->getLastLoginAt());
@@ -45,7 +45,7 @@ final class RecordSuccessfulLoginTest extends TestCase
 
     public function testAnUnknownIdIsARefusedInvariantNotASilentNoOp(): void
     {
-        $useCase = new RecordSuccessfulLogin(new InMemoryUsers(), new InMemoryAuditTrail(), new InMemoryCurrentCompany(), new MockClock());
+        $useCase = new RecordSuccessfulLogin(new InMemoryUsers(), new InMemoryAuditTrail(), new InMemoryCurrentCompany(), $clock = new MockClock(), \App\Tests\Support\InMemoryAddressLocks::lockOn($clock));
 
         $this->expectException(\DomainException::class);
         $useCase->handle(Uuid::v7());

@@ -13,6 +13,7 @@ use App\Identity\Application\Login\SignInFactors;
 use App\Identity\Application\Login\SwitchPasskeySignIn;
 use App\Identity\Application\StepUp\ScreenProofs;
 use App\Identity\Domain\Model\User;
+use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Domain\Model\Company;
 
 /**
@@ -24,6 +25,7 @@ final readonly class CompanyEntryProofs
     public function __construct(
         private ScreenProofs $screenProofs,
         private SwitchPasskeySignIn $passkeySignIn,
+        private MfaRequirement $requirement,
     ) {
     }
 
@@ -32,7 +34,7 @@ final readonly class CompanyEntryProofs
     {
         return match ($factors) {
             SignInFactors::PasswordAndFactor => true,
-            SignInFactors::Password => !$company->isMfaRequired(),
+            SignInFactors::Password => !$this->requirement->inCompany($user, $company),
             // A passkey sign-in exists only while the installation allows one; one switched off since is asked again.
             SignInFactors::Passkey => $this->passkeySignIn->allowedHere() && $this->screenProofs->companyTakesPasskey($user, $company),
         };

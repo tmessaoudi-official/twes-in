@@ -21,7 +21,10 @@ use App\Shared\Application\CurrentCompany;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** Once the password has been accepted: the counters reset, the login is dated, and the row names the session company. */
+/**
+ * Once the password has been accepted: the counters reset, the account's and this address's, the login is dated, and the
+ * row names the session company.
+ */
 final readonly class RecordSuccessfulLogin implements DeclaresAuditActions
 {
     public function __construct(
@@ -29,6 +32,7 @@ final readonly class RecordSuccessfulLogin implements DeclaresAuditActions
         private AuditTrail $audit,
         private CurrentCompany $currentCompany,
         private ClockInterface $clock,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -37,6 +41,7 @@ final readonly class RecordSuccessfulLogin implements DeclaresAuditActions
         $user = $this->users->ofId($userId) ?? throw new \DomainException('A login succeeded for a user that does not exist.');
         $now = $this->clock->now();
         $user->recordSuccessfulLogin($now);
+        $this->lock->forgetHere($userId);
         // Signing in again before the deletion a person asked for is final takes it back: the mail says so.
         $cancelled = $user->isDeletionPending();
         if ($cancelled) {

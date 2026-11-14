@@ -26,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * The lock wrong guesses set on a password, lifted by someone in charge of the account rather than by time or the mailed
  * link (row 241): a company's owner for one of its members, the platform's operator for an owner. The wrong guesses are
- * forgotten with it, as a password reset forgets them. Recorded in the company's journal when an owner lifts it, outside
+ * forgotten with it, from every address, as a password reset forgets them. Recorded in the company's journal when an owner lifts it, outside
  * any company when the operator does, and the account is told who let it back in.
  */
 final readonly class LiftPasswordLock implements DeclaresAuditActions
@@ -41,6 +41,7 @@ final readonly class LiftPasswordLock implements DeclaresAuditActions
         private AccountChanges $accounts,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -54,10 +55,11 @@ final readonly class LiftPasswordLock implements DeclaresAuditActions
         return $this->transactions->run(function () use ($userId, $actorUserId, $companyId, $told): bool {
             $user = $this->users->ofId($userId) ?? throw new AccountNotFound(\sprintf('No account %s.', $userId->toRfc4122()));
             $now = $this->clock->now();
-            if (!$user->isLockedAt($now)) {
+            if (!$this->lock->anyHolds($user, $now)) {
                 return false;
             }
             $user->unlock($now);
+            $this->lock->forgetEverywhere($user->getId());
             $this->users->save($user);
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $user->getId(), self::LIFTED, $actorUserId, [], $companyId));
             $this->notices->tell($user->getId(), $told);

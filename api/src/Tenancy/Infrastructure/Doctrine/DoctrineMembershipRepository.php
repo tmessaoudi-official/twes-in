@@ -31,6 +31,17 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
         )->setParameter('user', $userId, 'uuid')->getSingleScalarResult();
     }
 
+    public function holdsAnyRoleNamed(Uuid $userId, array $roleNames): bool
+    {
+        if ([] === $roleNames) {
+            return false;
+        }
+
+        return (bool) $this->entityManager->createQuery(
+            'SELECT COUNT(m.id) FROM '.Membership::class.' m JOIN m.role r WHERE m.user = :user AND r.name IN (:names)',
+        )->setParameter('user', $userId, 'uuid')->setParameter('names', $roleNames, ArrayParameterType::STRING)->getSingleScalarResult();
+    }
+
     public function ofUser(Uuid $userId, int $limit): array
     {
         // By company name: the switcher is a menu, and a row a sign-in touched must not move in it.

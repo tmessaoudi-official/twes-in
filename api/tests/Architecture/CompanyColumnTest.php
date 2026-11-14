@@ -13,6 +13,7 @@ use App\Audit\Domain\Model\AuditLog;
 use App\Demo\Domain\Model\DemoMail;
 use App\Fiscal\Domain\Model\CustomerTaxRegime;
 use App\Identity\Domain\Model\Passkey;
+use App\Identity\Domain\Model\PasswordAddressLock;
 use App\Identity\Domain\Model\PasswordReset;
 use App\Identity\Domain\Model\RecoveryCodeEntry;
 use App\Identity\Domain\Model\User;
@@ -46,6 +47,7 @@ final class CompanyColumnTest extends KernelTestCase
         Signup::class => 'a request for a company that does not exist yet',
         Passkey::class => "one of an account's second factors",
         PasswordReset::class => 'a link to an account, which belongs to no company',
+        PasswordAddressLock::class => "an account's wrong guesses from one address, which belong to no company",
         UserSession::class => 'a browser an account is signed in on, which belongs to no company',
         RecoveryCodeEntry::class => "one of an account's second factors",
         CustomerTaxRegime::class => "a country preset's reference data, which no company edits",

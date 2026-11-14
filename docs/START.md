@@ -952,7 +952,12 @@ router's DDNS points at the shop, with `PUBLIC_HTTPS_PORT` (443 when empty) and 
 ports the router forwards. Both names join the passkey and realtime origins and the Host the API answers
 (`SYMFONY_TRUSTED_HOSTS`: localhost, any IPv4 address, since the network address may change while a container still
 runs on the one before, and those names); passkeys stay on `localhost` until the platform's switch moves them. A shop
-installed before them gives none: off. `scripts/gates/onprem-overlay.sh` holds every value they reach.
+installed before them gives none: off. `scripts/gates/onprem-overlay.sh` holds every value they reach. They also say
+who must carry a second factor (Q5, `MfaRequirement`): with neither, it is offered to everyone; with `TAILNET_HOST`,
+owners and admins are held at sign-in until they enrol one; with `PUBLIC_HOST`, everyone is. Wrong passwords or codes
+lock a password from the address they came from (an IPv6 one by its network), five of them for a quarter hour
+(`app.auth.lock_after_failures`, `app.auth.lock_duration`), so a guesser outside cannot keep the owner out from inside;
+the account's own ceiling, fifty counted from many addresses (`app.auth.account_lock_after_failures`), locks it everywhere.
 
 **Installing on Windows.** The checkout lives inside WSL's own filesystem (`~`, never `/mnt/c`), where `.gitattributes`
 keeps every file as git holds it, and Docker runs one of two ways, chosen at the shop:

@@ -31,7 +31,7 @@ final class StepUpDoubles
     public static function screenProofs(MembershipRepository $memberships, PasskeyRepository $passkeys): ScreenProofs
     {
         return new ScreenProofs(
-            new MfaRequirement($memberships),
+            new MfaRequirement($memberships, '', ''),
             $passkeys,
             new ReadSetting(new ResolveSettings(new SettingCatalog([new CompanyEntrySettings()]), new InMemorySettings())),
             $memberships,

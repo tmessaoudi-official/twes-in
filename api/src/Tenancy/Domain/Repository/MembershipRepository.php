@@ -73,6 +73,13 @@ interface MembershipRepository
      */
     public function anyCompanyRequiresMfa(Uuid $userId): bool;
 
+    /**
+     * Whether this user holds one of these roles, by name, in any company: a predicate for the same reason.
+     *
+     * @param list<string> $roleNames
+     */
+    public function holdsAnyRoleNamed(Uuid $userId, array $roleNames): bool;
+
     public function save(Membership $membership): void;
 
     public function remove(Membership $membership): void;

@@ -26,6 +26,7 @@ final class ClientAddressReadersTest extends TestCase
         'Demo/Infrastructure/Http/DemoEntryController.php' => 'demo_entry',
         'Identity/Infrastructure/Passkey/PasskeySignInController.php' => 'passkey_sign_in',
         'Identity/Infrastructure/Password/PasswordResetController.php' => 'password_reset_client, password_reset_use',
+        'Identity/Infrastructure/Security/RequestCallerAddress.php' => 'a password\'s lock from one address (app.auth.lock_after_failures)',
         'Inbox/Infrastructure/Http/NotificationMailStopController.php' => 'notification_mail_stop',
         'Module/Scanning/Infrastructure/Http/PairedPhoneController.php' => 'scan_pairing_claim',
         'Shared/Infrastructure/ErrorReporting/ClientErrorController.php' => 'client_errors',

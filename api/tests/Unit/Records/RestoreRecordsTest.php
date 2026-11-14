@@ -167,6 +167,7 @@ final class RestoreRecordsTest extends TestCase
             $this->clock,
             'PT5M',
             5,
+            \App\Tests\Support\InMemoryAddressLocks::lockOn($this->clock),
         );
     }
 }

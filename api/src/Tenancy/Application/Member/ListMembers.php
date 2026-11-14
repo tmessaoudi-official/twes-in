@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Member;
 
 use App\Identity\Application\Account\DemoAccounts;
+use App\Identity\Application\Login\PasswordLock;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -34,6 +35,7 @@ final readonly class ListMembers
         private ClockInterface $clock,
         #[Autowire(param: 'app.invitation.expired_shown_for')]
         private string $expiredShownFor,
+        private PasswordLock $lock,
     ) {
     }
 
@@ -47,6 +49,8 @@ final readonly class ListMembers
     {
         $now = $this->clock->now();
         $ownerReads = null !== $readerId && Role::OWNER === $this->memberships->ofUserInCompany($readerId, $companyId)?->getRole()->getName();
+        $memberships = $this->memberships->ofCompany($companyId);
+        $locked = $ownerReads ? $this->lock->shownUntilOf(array_map(static fn (Membership $m) => $m->getUser(), $memberships), $now) : [];
         $members = array_map(
             fn (Membership $m) => new MemberView(
                 $m->getUser()->getId()->toRfc4122(),
@@ -55,9 +59,9 @@ final readonly class ListMembers
                 $m->getRole()->getName(),
                 $m->getCreatedAt()->format(\DATE_ATOM),
                 // Said to the owner, who may lift it: the member was told by mail when it was set.
-                passwordLockedUntil: $ownerReads && $m->getUser()->isLockedAt($now) ? $m->getUser()->getLockedUntil()?->format(\DATE_ATOM) : null,
+                passwordLockedUntil: ($locked[$m->getUser()->getId()->toRfc4122()] ?? null)?->format(\DATE_ATOM),
             ),
-            $this->memberships->ofCompany($companyId),
+            $memberships,
         );
         // An invitation names nobody: an existing account is not a member, and not shown as one, until it accepts.
         $invited = array_map(

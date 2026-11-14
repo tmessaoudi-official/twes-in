@@ -35,6 +35,13 @@ enum SecurityChange: string
      * password is known to someone else, not that someone guesses at it.
      */
     case SecondFactorLocked = 'second_factor_locked';
+    /**
+     * Wrong passwords or codes from one device or network locked the password from there alone: told when that address is
+     * first locked, its owner still signing in from anywhere else.
+     */
+    case AddressLocked = 'address_locked';
+    /** The same, set by wrong second-factor codes typed after the right password. */
+    case SecondFactorAddressLocked = 'second_factor_address_locked';
     /** An operator switched the account off, its sessions ended with it. */
     case OperatorDeactivated = 'operator_deactivated';
     /** An operator switched the account on again. */
@@ -49,7 +56,7 @@ enum SecurityChange: string
     /** Whether it tells of a lock, which ends on its own and which its owner cannot sign in to look at. */
     public function isALock(): bool
     {
-        return self::AccountLocked === $this || self::SecondFactorLocked === $this;
+        return \in_array($this, [self::AccountLocked, self::SecondFactorLocked, self::AddressLocked, self::SecondFactorAddressLocked], true);
     }
 
     /**

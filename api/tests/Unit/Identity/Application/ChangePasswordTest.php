@@ -103,7 +103,7 @@ final class ChangePasswordTest extends TestCase
 
         $clock = new MockClock('2026-10-02 12:00:00');
 
-        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $this->audit, new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), $this->transactions, $clock, 5, 'PT15M'), $clock, $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock, new InMemorySessions(), new RecordedSecurityNotices());
+        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, new \App\Tests\Support\InMemoryAddressLocks(), new \App\Tests\Support\FixedCallerAddress(), $this->audit, new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), $this->transactions, $clock, 5, 50, 'PT15M'), \App\Tests\Support\InMemoryAddressLocks::lockOn($clock), $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock, new InMemorySessions(), new RecordedSecurityNotices());
     }
 
     private function assertRefused(string $reason, callable $act): void

@@ -27,7 +27,7 @@ use App\Tenancy\Domain\Repository\MembershipRepository;
  * the installation's passkey sign-in; a company's or role's own switch still decides whether one ENTERS that company.
  *
  * A step-up asks the code where a company of the account requires a second factor, as its sign-in does; a company's
- * entry where that company requires one.
+ * entry where that company, or where the installation is reached from for the member's role there, requires one.
  */
 final readonly class ScreenProofs
 {
@@ -46,7 +46,7 @@ final readonly class ScreenProofs
 
     public function ofEntry(User $user, Company $company): EntryProof
     {
-        return $this->asked($user, $company->isMfaRequired(), $this->companyTakesPasskey($user, $company));
+        return $this->asked($user, $this->requirement->inCompany($user, $company), $this->companyTakesPasskey($user, $company));
     }
 
     /**

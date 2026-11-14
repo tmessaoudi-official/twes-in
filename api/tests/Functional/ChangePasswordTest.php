@@ -96,8 +96,8 @@ final class ChangePasswordTest extends ApiTestCase
         $this->assertTheWaitIsSaid(300);
     }
 
-    /** Audit 2026-10-06, D-4: as at the sign-in, a wrong current password counts toward the account's lockout. */
-    public function testWrongCurrentPasswordsLockTheAccountAsWrongSignInsDo(): void
+    /** As at the sign-in, a wrong current password counts toward the lockout of the address it came from. */
+    public function testWrongCurrentPasswordsLockThePasswordFromThatAddressAsWrongSignInsDo(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
@@ -109,7 +109,9 @@ final class ChangePasswordTest extends ApiTestCase
         $this->em()->clear();
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('someone@twes.local')]);
         self::assertInstanceOf(User::class, $user);
-        self::assertTrue($user->isLockedAt(self::heldNow()));
+        $until = $this->em()->getConnection()->fetchOne('SELECT locked_until FROM password_address_lock WHERE user_id = :user AND address = :address', ['user' => $user->getId()->toRfc4122(), 'address' => '127.0.0.1']);
+        self::assertIsString($until, 'the password is locked from the address the guesses came from');
+        self::assertFalse($user->isLockedAt(self::heldNow()), 'and from that address alone');
     }
 
     public function testSomeoneNotSignedInCannotChangeAPassword(): void

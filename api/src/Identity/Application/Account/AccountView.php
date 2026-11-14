@@ -26,7 +26,8 @@ final readonly class AccountView
     ) {
     }
 
-    public static function of(User $user, \DateTimeImmutable $now): self
+    /** @param \DateTimeImmutable|null $lockedUntil `PasswordLock::shownUntil`, from one address or everywhere */
+    public static function of(User $user, ?\DateTimeImmutable $lockedUntil): self
     {
         return new self(
             $user->getId()->toRfc4122(),
@@ -35,7 +36,7 @@ final readonly class AccountView
             $user->isActive(),
             $user->isPlatformOperator(),
             $user->getCreatedAt()->format(\DATE_ATOM),
-            $user->isLockedAt($now) ? $user->getLockedUntil()?->format(\DATE_ATOM) : null,
+            $lockedUntil?->format(\DATE_ATOM),
         );
     }
 }

@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Audit\Domain\Model\AuditLog;
 use App\Identity\Application\Login\LoginAudit;
+use App\Identity\Domain\Model\PasswordAddressLock;
 use App\Identity\Domain\Model\User;
 
 final class AuthTest extends ApiTestCase
@@ -122,7 +123,7 @@ final class AuthTest extends ApiTestCase
         self::assertResponseStatusCodeSame(400);
     }
 
-    public function testFiveFailuresLockTheAccountEvenAgainstTheRightPassword(): void
+    public function testFiveFailuresLockThePasswordFromThatAddressEvenAgainstTheRightOne(): void
     {
         $user = $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
         for ($i = 0; $i < 5; ++$i) {
@@ -134,9 +135,79 @@ final class AuthTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(401);
         self::assertSame(['error' => 'invalid_credentials'], $this->json(), 'the lock is never told: telling it would say the address is real');
+        $lock = $this->addressLock($user, '127.0.0.1');
+        self::assertSame(5, $lock?->getFailedCount());
+        self::assertNotNull($lock->getLockedUntil());
         $user = $this->reload($user);
-        self::assertSame(5, $user->getFailedLoginCount());
-        self::assertNotNull($user->getLockedUntil());
+        self::assertSame(5, $user->getFailedLoginCount(), 'the account counts them toward its own, far higher, ceiling');
+        self::assertNull($user->getLockedUntil(), 'and is not locked everywhere by one address');
+    }
+
+    /** Whoever guesses from one address cannot keep the account's owner out from another. */
+    public function testFiveWrongPasswordsFromOneAddressLeaveTheOwnerSigningInFromAnother(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        $this->from('203.0.113.9');
+        for ($i = 0; $i < 5; ++$i) {
+            $this->login('owner@example.test', 'wrong');
+        }
+        $this->login('owner@example.test', self::PASSWORD);
+        self::assertResponseStatusCodeSame(401, 'locked from where the guesses came');
+
+        $this->from('198.51.100.7');
+        $this->login('owner@example.test', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+    }
+
+    /** One machine on IPv6 picks the last 64 bits of its address at will: its network is the one address. */
+    public function testAnIpv6NetworkIsOneAddress(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        foreach (['a', 'b', 'c', 'd', 'e'] as $host) {
+            $this->from('2001:db8:1:2::'.$host);
+            $this->login('owner@example.test', 'wrong');
+        }
+
+        $this->from('2001:db8:1:2::f');
+        $this->login('owner@example.test', self::PASSWORD);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->from('2001:db8:1:3::1');
+        $this->login('owner@example.test', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+    }
+
+    /** Guesses spread over many addresses meet the account's ceiling, which locks the password everywhere. */
+    public function testGuessesFromManyAddressesLockThePasswordEverywhere(): void
+    {
+        $user = $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        for ($address = 1; $address <= 10; ++$address) {
+            $this->from('198.51.100.'.$address);
+            for ($i = 0; $i < 5; ++$i) {
+                $this->login('owner@example.test', 'wrong');
+            }
+            self::assertSame([$address < 10 ? 'address_locked' : 'account_locked'], $this->securityNotices(), 'each address told once, the tenth locking it everywhere');
+        }
+
+        $this->from('192.0.2.200');
+        $this->login('owner@example.test', self::PASSWORD);
+
+        self::assertResponseStatusCodeSame(401);
+        self::assertNotNull($this->reload($user)->getLockedUntil());
+    }
+
+    /** The right password from an address forgets that address's guesses, never another's. */
+    public function testSigningInForgetsOnlyTheGuessesMadeFromThere(): void
+    {
+        $user = $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        $this->from('203.0.113.9');
+        $this->login('owner@example.test', 'wrong');
+        $this->from('198.51.100.7');
+        $this->login('owner@example.test', 'wrong');
+        $this->login('owner@example.test', self::PASSWORD);
+
+        self::assertNull($this->addressLock($user, '198.51.100.7'));
+        self::assertSame(1, $this->addressLock($user, '203.0.113.9')?->getFailedCount());
     }
 
     /**
@@ -180,7 +251,7 @@ final class AuthTest extends ApiTestCase
         }
 
         $this->login('owner@example.test', 'wrong');
-        self::assertSame(['account_locked'], $this->securityNotices(), 'the guess that sets the lock tells its owner');
+        self::assertSame(['address_locked'], $this->securityNotices(), 'the guess that locks its address tells its owner');
 
         $this->login('owner@example.test', 'wrong');
         self::assertSame([], $this->securityNotices());
@@ -441,5 +512,18 @@ final class AuthTest extends ApiTestCase
     {
         $count = $this->em()->getRepository(User::class)->count([]);
         self::assertSame(0, $count, 'the transaction starts empty: dama rolls every test back');
+    }
+
+    /** The requests that follow come from this address, the API's only hop being none. */
+    private function from(string $address): void
+    {
+        $this->client->setServerParameter('REMOTE_ADDR', $address);
+    }
+
+    private function addressLock(User $user, string $address): ?PasswordAddressLock
+    {
+        $this->em()->clear();
+
+        return $this->em()->getRepository(PasswordAddressLock::class)->findOneBy(['user' => $user->getId(), 'address' => $address]);
     }
 }
