@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use App\Tenancy\Application\Signup\SignupPolicy;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\SignupResource;
@@ -51,7 +52,7 @@ final readonly class RequestSignupProcessor implements ProcessorInterface
         }
 
         $request = $context['request'] ?? null;
-        $client = $request instanceof Request ? ($request->getClientIp() ?? '') : '';
+        $client = ClientAddress::of($request instanceof Request ? $request : null);
         $limit = $this->signupClientLimiter->create($client)->consume();
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many signup requests from here; try again later.');

@@ -12,6 +12,7 @@ namespace App\Module\Scanning\Infrastructure\Http;
 use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\PhonePhotos;
 use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -51,7 +52,7 @@ final readonly class PairedPhoneController
     #[Route('/api/scan-pairings/claim', name: 'api_scan_pairing_claim', methods: ['POST'])]
     public function claim(Request $request): Response
     {
-        $limit = $this->claimLimiter->create($request->getClientIp() ?? '')->consume();
+        $limit = $this->claimLimiter->create(ClientAddress::of($request))->consume();
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many pairing links tried from here; try again later.');
         }

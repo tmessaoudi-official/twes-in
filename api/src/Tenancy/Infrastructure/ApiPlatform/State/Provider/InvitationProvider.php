@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Provider;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use App\Tenancy\Application\Invitation\DescribeInvitation;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\InvitationResource;
@@ -34,7 +35,7 @@ final readonly class InvitationProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): InvitationResource
     {
         // Before the link is looked up, so a client past its budget learns nothing of any link.
-        $limit = $this->limiter->create($this->requests->getMainRequest()?->getClientIp() ?? '')->consume();
+        $limit = $this->limiter->create(ClientAddress::of($this->requests->getMainRequest()))->consume();
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many attempts.');
         }

@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Invitation\PasswordBreached;
@@ -41,7 +42,7 @@ final readonly class CompleteSignupProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): SignupResource
     {
         // Before the link is even looked up: a refused finish leaves it usable, and each try would say whether a name is taken.
-        $limit = $this->limiter->create($this->requests->getMainRequest()?->getClientIp() ?? '')->consume();
+        $limit = $this->limiter->create(ClientAddress::of($this->requests->getMainRequest()))->consume();
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many attempts.');
         }

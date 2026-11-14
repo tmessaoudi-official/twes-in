@@ -14,6 +14,7 @@ use App\Demo\Application\DemoSwitchedOff;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Identity\Infrastructure\Session\PostgresSessionHandler;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -51,7 +52,7 @@ final readonly class DemoEntryController
     #[Route('/api/auth/demo', name: 'api_auth_demo', methods: ['POST'])]
     public function enter(Request $request): Response
     {
-        $limit = $this->limiter->create($request->getClientIp() ?? '')->consume();
+        $limit = $this->limiter->create(ClientAddress::of($request))->consume();
         if (!$limit->isAccepted()) {
             return SpentBudget::answer($limit);
         }

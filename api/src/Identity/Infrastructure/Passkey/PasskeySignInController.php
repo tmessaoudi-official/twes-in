@@ -18,6 +18,7 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Identity\Infrastructure\Security\UserChecker;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -65,7 +66,7 @@ final readonly class PasskeySignInController
     #[Route('/api/auth/passkey-sign-in', name: 'api_auth_passkey_sign_in', methods: ['POST'])]
     public function signIn(Request $request): Response
     {
-        $limit = $this->limiter->create($request->getClientIp() ?? 'unknown')->consume();
+        $limit = $this->limiter->create(ClientAddress::of($request))->consume();
         if (!$limit->isAccepted()) {
             return SpentBudget::answer($limit);
         }

@@ -14,6 +14,7 @@ use App\Identity\Application\Password\ResetLinkNotUsable;
 use App\Identity\Application\Password\ResetPassword;
 use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -46,7 +47,7 @@ final readonly class PasswordResetController
     #[Route('/api/auth/password/forgot', name: 'api_auth_password_forgot', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function forgot(Request $request): Response
     {
-        $limit = $this->clientLimiter->create($request->getClientIp() ?? '')->consume();
+        $limit = $this->clientLimiter->create(ClientAddress::of($request))->consume();
         if (!$limit->isAccepted()) {
             return SpentBudget::answer($limit);
         }
@@ -68,7 +69,7 @@ final readonly class PasswordResetController
     #[Route('/api/auth/password/reset', name: 'api_auth_password_reset', defaults: ['_api_respond' => true], methods: ['POST'])]
     public function reset(Request $request): Response
     {
-        $limit = $this->useLimiter->create($request->getClientIp() ?? '')->consume();
+        $limit = $this->useLimiter->create(ClientAddress::of($request))->consume();
         if (!$limit->isAccepted()) {
             return SpentBudget::answer($limit);
         }

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\ErrorReporting;
 
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -52,7 +53,7 @@ final readonly class ClientErrorController
         if (0 === $this->perPage) {
             return new Response(null, Response::HTTP_NO_CONTENT);
         }
-        $limit = $this->limiter->create($request->getClientIp() ?? '')->consume();
+        $limit = $this->limiter->create(ClientAddress::of($request))->consume();
         if (!$limit->isAccepted()) {
             return SpentBudget::answer($limit);
         }
