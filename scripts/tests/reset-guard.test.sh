@@ -20,7 +20,10 @@ case "$1 $2" in
     [[ -n "${DB_VOLUME:-}" && "$3" == twes-in_postgres-data ]] && exit 0; exit 1 ;;
   # The application's own count of issued documents: INVENTORY names the JSON it prints, INVENTORY_EXIT its exit (3 when
   # anything fiscal is there), and an api that is not running answers as compose does.
-  "compose exec") [[ "$*" == *"bin/console app:fiscal:inventory --json"* ]] || exit 1
+  # make reset-empty's emptying in the migrate service and the seed after it: written down, as each case says.
+  "compose run") exit "${RUN_EXIT:-0}" ;;
+  "compose exec") [[ "$*" != *"bin/console app:seed"* ]] || exit 0
+    [[ "$*" == *"bin/console app:fiscal:inventory --json"* ]] || exit 1
     [[ -n "${INVENTORY_EXIT:-}" ]] || { echo 'service "api" is not running' >&2; exit 1; }
     cat "${INVENTORY:-/dev/null}"; exit "$INVENTORY_EXIT" ;;
   "ps -aq") [[ "$*" == *label=com.docker.compose.project=twes-in* ]] && echo c0ffee; exit 0 ;;
@@ -112,5 +115,21 @@ check "no database volume at all: nothing to count, reset goes on" 0 0 "$(calls)
 
 d=$(tree "TWES_INSTALL=onprem\n"); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/none.json" INVENTORY_EXIT=0 reset "$d" CONFIRM=yes WITH_ISSUED_DOCUMENTS=yes)
 check "a shop's computer stays refused whatever the count" $? 2 "$out" "twes restore-commands"
+
+echo "reset-empty"
+emptied() { # the tree, then make's arguments
+  local d=$1; shift; rm -f "$TMPDIR/docker.calls"
+  (cd "$d" && env -u TWES_VALUES HOME="$d/home" PATH="$TMPDIR/bin:$PATH" make --no-print-directory reset-empty "$@" 2>&1 < /dev/null)
+}
+d=$(tree ""); out=$(DB_VOLUME=1 INVENTORY="$TMPDIR/fiscal.json" INVENTORY_EXIT=3 emptied "$d")
+check "reset-empty: emptied in place by app:platform:reset in the migrate service, which holds the owner's address" $? 0 "$(calls)" "docker compose run --rm --no-deps migrate bin/console app:platform:reset --force --installation=twes-in"
+check "  the operator made again after it" 0 0 "$(calls)" "bin/console app:seed"
+[[ "$(calls)" != *"app:fiscal:inventory"* && "$(calls)" != *"down"* ]]; check "  no volume removed, the fiscal refusal left to the command" $? 0 "$(calls)" ""
+d=$(tree ""); out=$(RUN_EXIT=3 emptied "$d"); code=$?
+[[ "$(calls)" != *"app:seed"* ]]; check "  refused by the command (anything fiscal): nothing seeded" $? 0 "[$code]" "[2]"
+d=$(tree "TWES_INSTALL=onprem\n"); out=$(emptied "$d")
+check "  a shop's computer refused, under its own name" $? 2 "$out" "make reset-empty: refused — "
+[[ "$(calls)" != *"compose run"* ]]; check "  and nothing run" $? 0 "$(calls)" ""
+d=$(tree ""); out=$(SHOP_VOLUME=1 emptied "$d"); check "  nor where a shop's backup volume exists" $? 2 "$out" "twes-in_backup-local"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

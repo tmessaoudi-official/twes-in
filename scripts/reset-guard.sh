@@ -4,17 +4,22 @@
 # stack is the shop's (its compose project is twes-in too) and reset would delete its invoices and their PDFs. Refused
 # there whatever CONFIRM says; a shop is taken back to a backup, never wiped. The values file is the one scripts/onprem/twes
 # reads, read the same way: its last TWES_INSTALL line decides.
+#
+# With --shop-only (make reset-empty) only the shop is asked about: app:platform:reset refuses anything fiscal itself,
+# as it never empties an issued document in place.
 set -uo pipefail
+what='make reset'
+[[ "${1:-}" != --shop-only ]] || what='make reset-empty'
 values=${TWES_VALUES:-$HOME/.twes-in/install.env}
 install=''
 if [[ -e "$values" && ! -r "$values" ]]; then
-  echo "make reset: refused — $values cannot be read, so whether this is a shop's computer is not known" >&2
+  echo "$what: refused — $values cannot be read, so whether this is a shop's computer is not known" >&2
   exit 1
 elif [[ -e "$values" ]]; then
   install=$(awk 'index($0, "TWES_INSTALL=") == 1 { v = substr($0, 14) } END { print v }' "$values")
 fi
 if [[ "$install" == onprem ]]; then
-  echo "make reset: refused — $values is a shop's installation (TWES_INSTALL=onprem): this computer's stack holds the" \
+  echo "$what: refused — $values is a shop's installation (TWES_INSTALL=onprem): this computer's stack holds the" \
     "shop's invoices. A shop is taken back to a backup with twes restore-commands (docs/RUNBOOK.md « Restore a shop »)," \
     "never wiped; CONFIRM=yes does not change that." >&2
   exit 1
@@ -25,7 +30,7 @@ fi
 # Docker not answering adds no reason: reset could not reach the stack either. A volume it does not know answers 1.
 project=${COMPOSE_PROJECT_NAME:-twes-in}
 refuse() {
-  echo "make reset: refused — $1: this computer's stack is a shop's and holds its invoices. A shop is taken back to a" \
+  echo "$what: refused — $1: this computer's stack is a shop's and holds its invoices. A shop is taken back to a" \
     "backup with twes restore-commands (docs/RUNBOOK.md « Restore a shop »), never wiped; CONFIRM=yes does not change that." >&2
   exit 1
 }
@@ -42,6 +47,7 @@ fi
 # them by its own definition (app:fiscal:inventory, exit 3 when any is there). Going on needs WITH_ISSUED_DOCUMENTS=yes
 # and the counts typed back, as twes reset asks on a shop. No database volume: nothing to count. A database the api
 # cannot count (not running, or the count failing) is refused as an unreadable values file is: not taken for empty.
+[[ "${1:-}" != --shop-only ]] || exit 0
 if docker volume inspect "${project}_postgres-data" >/dev/null 2>&1; then
   err=$(mktemp); counted=$(docker compose exec -T api bin/console app:fiscal:inventory --json --no-interaction 2>"$err"); code=$?
   said=$(cat "$err"); rm -f "$err"

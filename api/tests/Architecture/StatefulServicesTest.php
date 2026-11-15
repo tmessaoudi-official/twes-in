@@ -19,6 +19,7 @@ use App\Shared\Infrastructure\Logging\ChannelStreams;
 use App\Tests\Support\FakeFacturXPdf;
 use App\Tests\Support\FakePdfRenderer;
 use App\Tests\Support\RecordedLogs;
+use App\Tests\Support\RecordingPlatformContents;
 use App\Tests\Support\Stateful\ForgetsTheLastCompany;
 use App\Tests\Support\Stateful\KeepsTheLastCompany;
 use App\Texts\Infrastructure\Catalogue\ShippedTextFiles;
@@ -53,6 +54,7 @@ final class StatefulServicesTest extends TestCase
         FakePdfRenderer::class => 'a test\'s recorder, read by the test after its requests; no worker runs it',
         FakeFacturXPdf::class => 'a test\'s recorder, read by the test after its requests; no worker runs it',
         RecordedLogs::class => 'a test\'s recorder, read by the test after its requests; no worker runs it',
+        RecordingPlatformContents::class => 'a test\'s recorder, set back by the test before it runs the command; no worker runs it',
     ];
 
     /** The environments a worker serves: test, as the functional tests' kernel does once it no longer reboots. */

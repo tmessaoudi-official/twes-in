@@ -466,6 +466,14 @@ volume there and the api down or failing, reset refuses rather than guess; `make
 What is **not** reset: anything outside this compose project. The volumes belong to project `twes-in` (or to
 `$COMPOSE_PROJECT_NAME`, see § 8).
 
+To empty the installation without rebuilding anything, `make reset-empty` keeps the volumes and the schema: it runs
+`bin/console app:platform:reset` in the `migrate` service, the one holding the schema owner's address, which empties
+every table but the migrations list (read from the database, so a table added later is emptied too) and every stored
+file, then `make seed`. It asks the installation's name (`twes-in`, or `$COMPOSE_PROJECT_NAME`) to be typed back
+when a company or an account is there, a `yes` otherwise. Anything fiscal is never emptied in place: the command
+refuses (exit 3) and `make reset` is the way then; a shop's own computer is refused as above. It prints one record of
+what was there (`--json`: scope, who, when, the counts), as the journal goes with the rest.
+
 ## 7. Run the checks
 
 These are exactly CI's jobs (`.github/workflows/ci.yml`). They need § 1's host toolchain.

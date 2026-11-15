@@ -46,7 +46,7 @@ WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile 
 WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: rc-lane rc-tools-image stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
+.PHONY: rc-lane rc-tools-image stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -148,6 +148,11 @@ reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database 
 	docker compose down --volumes --remove-orphans
 	rm -rf api/var/cache api/var/openapi.json web/src/app/api web/playwright/.auth
 	$(MAKE) up
+
+reset-empty:   ## DESTRUCTIVE: this installation emptied in place, its schema kept (app:platform:reset in the migrate service, the one holding the owner's address: every table but the migrations list, every stored file), then make seed. Asks the installation's name; refused while anything fiscal is kept (make reset then) and on a shop's own computer (scripts/reset-guard.sh --shop-only)
+	@bash scripts/reset-guard.sh --shop-only
+	docker compose run --rm --no-deps migrate bin/console app:platform:reset --force --installation="$${COMPOSE_PROJECT_NAME:-twes-in}" --by="$${USER:-make}"
+	$(MAKE) seed
 
 backup-drill:  ## the restore drill (docs/START.md § 13; DRILL=local for a shop's folder and off-site copy, § 16): the production images with the backup overlay, backed up, restored from the bucket alone into empty volumes to a moment and to the latest, checked; its own compose project (twes-drill), removed at the end
 	bash scripts/backup/restore-drill.sh $(DRILL)

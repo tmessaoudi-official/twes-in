@@ -348,6 +348,10 @@ when@test:
         App\Shared\Application\PdfRenderer: '@App\Tests\Support\FakePdfRenderer'
         App\Tests\Support\FakeFacturXPdf: ~
         App\Shared\Application\FacturXPdf: '@App\Tests\Support\FakeFacturXPdf'
+        # app:platform:reset empties on the owner's connection, outside a case's transaction: in a test it would empty
+        # the suite's own database, so no test reaches it; OwnerPlatformContentsTest empties a database of its own.
+        App\Tests\Support\RecordingPlatformContents: ~
+        App\Tenancy\Infrastructure\Platform\PlatformContents: '@App\Tests\Support\RecordingPlatformContents'
         # A module only the tests declare, needing customers: the dependency refusals go through the API with it.
         App\Tests\Support\RecordedLogs: ~
         App\Tests\Support\Module\LedgerFixtureModule:
