@@ -135,6 +135,24 @@ final class FiscalGuardTest extends ApiTestCase
         self::assertStringContainsString('fiscal guard', $this->refusal('UPDATE invoice SET amount_due = amount_due - 1 WHERE id = :id', $id) ?? 'the database let it through');
     }
 
+    /**
+     * A transaction already released (the scale generator's clones, a company let go) keeps no list of the invoices it
+     * writes issued: each would lengthen one setting every later row reads, and a chunk of clones took minutes on it.
+     */
+    public function testAReleasedTransactionKeepsNoListOfWhatItWritesIssued(): void
+    {
+        $id = $this->issued('100');
+        $connection = $this->connection();
+        $connection->executeStatement('SELECT fiscal_guard_test_release(true)');
+        $connection->executeStatement('CREATE TEMPORARY TABLE invoice_clone ON COMMIT DROP AS SELECT * FROM invoice WHERE id = ?', [$id]);
+        $connection->executeStatement("UPDATE invoice_clone SET id = gen_random_uuid(), number = number || '-C', pdf_file_id = NULL, chain_position = NULL, chain_previous = NULL, chain_hash = NULL, chain_version = NULL");
+        $connection->executeStatement('INSERT INTO invoice SELECT * FROM invoice_clone');
+        $listed = $connection->fetchOne("SELECT current_setting('twes.issuing', true)");
+        $connection->executeStatement('SELECT fiscal_guard_test_release(false)');
+
+        self::assertContains($listed, ['', null]);
+    }
+
     public function testADraftIsTheCompanysToChange(): void
     {
         $id = $this->draft('100');
