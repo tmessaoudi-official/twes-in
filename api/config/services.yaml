@@ -252,6 +252,12 @@ parameters:
     app.pdf.gotenberg_url: '%env(GOTENBERG_URL)%'
     # Files live on a local volume through Flysystem, or in an S3-compatible bucket when FILES_STORAGE=s3 (docs/SPEC.md § 2 Files).
     app.files.directory: '%env(resolve:FILES_DIRECTORY)%'
+    # How old bytes under a company's folder that no file row names must be before the hourly task removes them: a write
+    # cut short between the bytes and the row, by a process killed or a disk that filled, leaves them, and nobody can open
+    # them. Far past what any write takes between its bytes and its row, a worker's included, which no request bound holds;
+    # the data check reports them once the task should have taken them. Checked when the container is built
+    # (UnnamedBytesBounds): PT6H to P30D.
+    app.files.unnamed_removed_after: 'PT24H'
     # What /api/health/deep fails on (docs/START.md § 15): a message due for the worker and waiting longer than this, and
     # less than this share of the disk under the stored files left free. The wait is checked when the container is built
     # (HealthBounds): 60 to 3,600.

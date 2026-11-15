@@ -11,6 +11,7 @@ namespace App;
 
 use App\Demo\Infrastructure\Http\DemoBounds;
 use App\Erasure\Infrastructure\Http\ErasureUndoBounds;
+use App\Files\Infrastructure\Scheduler\UnnamedBytesBounds;
 use App\Identity\Infrastructure\Mfa\PendingSecondFactorBounds;
 use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
@@ -81,6 +82,7 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new DraftWatchBounds());
         $container->addCompilerPass(new RemovalNoticeBounds());
         $container->addCompilerPass(new LapseNoticeBounds());
+        $container->addCompilerPass(new UnnamedBytesBounds());
         $container->addCompilerPass(new EarlierNumberingDaysBounds());
         $container->addCompilerPass(new RateLimitBounds());
     }

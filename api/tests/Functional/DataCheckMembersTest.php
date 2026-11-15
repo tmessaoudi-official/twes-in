@@ -151,9 +151,10 @@ final class DataCheckMembersTest extends ApiTestCase
 
     /**
      * The other way round: bytes under a company's folder that no file row names, which a write cut short between the
-     * bytes and the row leaves. Bytes written within the longest a request takes are a write still running, left out.
+     * bytes and the row leaves, once the hourly task should have taken them (UnnamedBytesTest): younger ones are a write
+     * still on its way or the task's to take.
      */
-    public function testBytesNoFileRowNamesAreFoundOnceNoRequestCanStillBeWritingThem(): void
+    public function testBytesNoFileRowNamesAreFoundOnceTheTaskShouldHaveTakenThem(): void
     {
         $storage = static::getContainer()->get(FileStorage::class);
         $key = 'companies/'.$this->company.'/'.Uuid::v7()->toRfc4122();
@@ -165,7 +166,7 @@ final class DataCheckMembersTest extends ApiTestCase
             Clock::set(new MockClock($written));
             self::assertNotContains('files.stored', array_map(static fn (DataFinding $finding): string => $finding->check, $this->findings()), 'a write still running');
 
-            Clock::set(new MockClock($written->modify('+1 hour')));
+            Clock::set(new MockClock($written->modify('+26 hours')));
 
             $found = array_values(array_filter($this->findings(), static fn (DataFinding $finding): bool => 'files.stored' === $finding->check));
             self::assertCount(1, $found);

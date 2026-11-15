@@ -280,7 +280,10 @@ checkout:
 7. `bash scripts/onprem/twes start`: the release started again. Its migrate service waits until the restored database
    takes writes, as it does once promoted.
 8. `twes status` must read health ok. Tell the shop the window between the backup and now: what was written in it is
-   gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
+   gone, and an invoice issued in it leaves a gap in its series to explain to their accountant. The files written in it
+   stay in the files volume with no row naming them, and the worker's hourly task removes them once a day old
+   (`app.files.unnamed_removed_after`): a document the shop needs from that window is found among them before then, by
+   its date under `companies/<company id>/`.
 
 ## Restore a lost shop machine
 

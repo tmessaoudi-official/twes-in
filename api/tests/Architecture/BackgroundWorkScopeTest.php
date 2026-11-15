@@ -14,6 +14,7 @@ use App\DataHealth\Infrastructure\Scheduler\CheckDataEveryNight;
 use App\Demo\Infrastructure\Messenger\SandboxToBuildHandler;
 use App\Demo\Infrastructure\Scheduler\TendDemoSandboxesEveryFiveMinutes;
 use App\Erasure\Infrastructure\Scheduler\EndErasuresEveryQuarterHour;
+use App\Files\Infrastructure\Scheduler\RemoveUnnamedBytesEveryHour;
 use App\Identity\Infrastructure\Mail\SecurityNoticeToMailHandler;
 use App\Identity\Infrastructure\Password\PasswordResetAskedHandler;
 use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
@@ -53,6 +54,7 @@ final class BackgroundWorkScopeTest extends TestCase
         TendDemoSandboxesEveryFiveMinutes::class => 'each sandbox done with, locked by its own id, removed with the one company and the one owner it names; then no company: it counts the sandboxes, read across companies, and queues new ones, which have none yet',
         SandboxToBuildHandler::class => 'the sandbox by its id, and the company it opens for that sandbox alone, named by id in every step',
         EndErasuresEveryQuarterHour::class => 'each due erasure, locked by its own id, ends the company or account it names',
+        RemoveUnnamedBytesEveryHour::class => 'each company\'s folder in turn, read against that company\'s file rows alone',
         EndRemovalsEveryQuarterHour::class => 'each due delete, locked by its own id and its company, ends in that company',
         FinalizeAccountDeletionsEveryNight::class => 'each due account, locked by its own id, no company: an account belongs to none, and its memberships go with it',
         InvitationToMailHandler::class => 'the invitation by its id, and the company that invitation names',

@@ -14,6 +14,7 @@ use App\Erasure\Application\UndoErasure;
 use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Files\Application\FileStorage;
 use App\Files\Application\StoredFileMissing;
+use App\Files\Infrastructure\Scheduler\RemoveUnnamedBytesEveryHour;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
@@ -271,6 +272,34 @@ final class DataErasureTest extends ApiTestCase
         self::assertSame(['error' => 'erasure_conflict', 'table' => 'venue_area'], $this->json());
         self::assertSame(0, $this->rowsOf("SELECT COUNT(*) FROM venue_spot WHERE company_id = '{$this->companyId()}'"), 'nothing came back by halves');
         self::assertSame(['pending', 1], [$this->text("SELECT state FROM data_erasure WHERE id = '$erasureId'"), $this->rowsOf("SELECT COUNT(*) FROM data_erasure_row WHERE erasure_id = '$erasureId' AND table_name = 'venue_area'")]);
+    }
+
+    /**
+     * The hourly task removing bytes no file row names never takes an erased draft's attachment while the erasure may be
+     * undone: its file row stays until the erasure is final, so the bytes are named, whatever their age.
+     */
+    public function testAPendingErasuresFilesOutliveTheTaskRemovingBytesNoRowNames(): void
+    {
+        $this->signedIn('owner@twes.local', 'owner');
+        $this->stepUp(self::PASSWORD);
+        $quote = $this->quote();
+        $this->uploadFile($this->path("quotes/$quote/attachments"), 'plan.pdf', AttachmentsTest::PDF);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $key = $this->text("SELECT f.storage_key FROM file f JOIN attachment a ON a.file_id = f.id WHERE a.entity_id = '$quote'");
+        $this->postJson($this->path('data-erasures'), ['parts' => ['drafts']]);
+        $erasureId = $this->stringAt($this->json(), 'id');
+
+        $this->moveClock('+25 hours');
+        try {
+            static::getContainer()->get(RemoveUnnamedBytesEveryHour::class)();
+        } finally {
+            $this->clockBack();
+        }
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company vanished');
+        $owner = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('owner@twes.local')]) ?? self::fail('the owner vanished');
+        static::getContainer()->get(UndoErasure::class)->handle($company, $owner->getId(), Uuid::fromString($erasureId));
+
+        self::assertSame(AttachmentsTest::PDF, static::getContainer()->get(FileStorage::class)->read($key), 'the attachment came back with its bytes');
     }
 
     public function testAfterTwentyFourHoursNothingComesBackAndTheFilesOnlyTheCopyNamedGo(): void

@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Files\Application\FileStorage;
 use App\Files\Application\StoredFileMissing;
+use App\Files\Infrastructure\Scheduler\RemoveUnnamedBytesEveryHour;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Vendors\Domain\Model\Vendor;
@@ -80,6 +81,34 @@ final class ProductRemovalTest extends ApiTestCase
     }
 
     /** A movement, and a price list with no say in the product itself, both make it used: the delete names each. */
+    /**
+     * The hourly task removing bytes no file row names never takes a deleted product's photos while the delete may be
+     * undone: their file rows stay until the delete is final, so the bytes are named, whatever their age.
+     */
+    public function testAPendingDeletesPhotosOutliveTheTaskRemovingBytesNoRowNames(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'stock.read']);
+        $product = $this->aProduct('VIS-8', 'Vis 8 mm');
+        $photo = $this->photoOf($product);
+        $this->postJson($this->path('record-removals'), ['subject' => 'product', 'ids' => [$product]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->stringAt($this->json(), 'id');
+
+        $this->moveClock('+25 hours');
+        try {
+            static::getContainer()->get(RemoveUnnamedBytesEveryHour::class)();
+        } finally {
+            $this->clockBack();
+        }
+        $this->postJson($this->path("record-removals/$removal/restore"), null);
+
+        self::assertResponseIsSuccessful();
+        foreach (['small', 'large', 'original'] as $size) {
+            $this->getJson($this->path("products/$product/photos/$photo/content?size=$size"));
+            self::assertResponseIsSuccessful("the $size photo's bytes are there");
+        }
+    }
+
     public function testAProductAMovementOrAPriceListNamesIsRefusedAndKept(): void
     {
         $this->signedIn(['product.read', 'product.write', 'stock.read', 'stock.write']);

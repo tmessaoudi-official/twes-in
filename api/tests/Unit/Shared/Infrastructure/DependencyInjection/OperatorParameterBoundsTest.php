@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Shared\Infrastructure\DependencyInjection;
 
 use App\Demo\Infrastructure\Http\DemoBounds;
 use App\Erasure\Infrastructure\Http\ErasureUndoBounds;
+use App\Files\Infrastructure\Scheduler\UnnamedBytesBounds;
 use App\Identity\Infrastructure\Mfa\PendingSecondFactorBounds;
 use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
@@ -77,6 +78,8 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame('PT24H', $parameters['app.signup.valid_for']);
         self::assertSame('PT24H', $parameters['app.records.undoable_for']);
         self::assertSame('PT24H', $parameters['app.erasure.undoable_for']);
+        // Far past what any write takes between its bytes and its row, the worker's included, which no request bound holds.
+        self::assertSame('PT24H', $parameters['app.files.unnamed_removed_after']);
         // The 30 minutes idle and 12 hours in all authentication was ruled with, the lockout's fifteen minutes, the company
         // proof's 30 minutes and 12 hours, the demo visitor's two hours away, the realtime token's two minutes.
         self::assertSame(1_800, $parameters['app.session.idle_ttl']);
@@ -159,6 +162,8 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a delete taken back within thirty days' => ['app.records.undoable_for', 'P30D'];
         yield 'an erasure taken back within an hour' => ['app.erasure.undoable_for', 'PT1H'];
         yield 'an erasure taken back within a week' => ['app.erasure.undoable_for', 'P7D'];
+        yield 'bytes no row names removed after six hours' => ['app.files.unnamed_removed_after', 'PT6H'];
+        yield 'bytes no row names removed after thirty days' => ['app.files.unnamed_removed_after', 'P30D'];
         yield 'a session idle for five minutes' => ['app.session.idle_ttl', 300];
         yield 'a session idle for thirty minutes' => ['app.session.idle_ttl', 1_800];
         // A demo visitor is away no longer than any session lasts, so an hour in all asks the demo's hour too.
@@ -278,6 +283,9 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'an erasure taken back within 59 minutes' => ['app.erasure.undoable_for', 'PT59M'];
         yield 'an erasure taken back within eight days' => ['app.erasure.undoable_for', 'P8D'];
         yield 'an erasure taken back by no duration' => ['app.erasure.undoable_for', 'PT24'];
+        yield 'bytes no row names removed after five hours' => ['app.files.unnamed_removed_after', 'PT5H'];
+        yield 'bytes no row names removed after 31 days' => ['app.files.unnamed_removed_after', 'P31D'];
+        yield 'bytes no row names removed after no duration' => ['app.files.unnamed_removed_after', 'a day'];
         yield 'a session idle for 299 seconds' => ['app.session.idle_ttl', 299];
         yield 'a session idle for 1,801 seconds' => ['app.session.idle_ttl', 1_801];
         yield 'a session idle as text' => ['app.session.idle_ttl', '1800'];
@@ -403,7 +411,7 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new UnnamedBytesBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
     }
 
     /**
@@ -430,7 +438,7 @@ final class OperatorParameterBoundsTest extends TestCase
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures', 'app.auth.account_lock_after_failures'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures', 'app.auth.account_lock_after_failures', 'app.files.unnamed_removed_after'];
         $names = [...$names, ...array_values(array_filter(array_map('strval', array_keys($file['parameters'])), static fn (string $name): bool => str_starts_with($name, 'app.rate_limit.')))];
         $shipped = [];
         foreach ($names as $name) {
