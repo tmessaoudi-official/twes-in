@@ -159,6 +159,9 @@ tries=$(($(cat "$TMPDIR/docker.tries" 2>/dev/null || echo 0) + 1)); echo "$tries
 [[ "${DOCKER_LATE:-0}" != never ]] && ((tries > ${DOCKER_LATE:-0})) || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
 [[ "$*" != *--format* ]] || echo "${DOCKER_OS:-Ubuntu 24.04.1 LTS}"
 EOF
+# gpg: the real one, but failing to write the file SEAL_FAILS names, as a full disk would, or to open anything when
+# OPEN_FAILS is set, as an archive changed under it would.
+printf '#!/usr/bin/env bash\n[[ -z "${SEAL_FAILS:-}" || "$*" != *"$SEAL_FAILS"* ]] || exit 2\n[[ -z "${OPEN_FAILS:-}" || "$*" != *--decrypt* ]] || exit 2\nexec %q "$@"\n' "$(command -v gpg)" > "$TMPDIR/bin/gpg"
 # sudo and systemctl: what they were asked is written down; systemctl fails when SYSTEMCTL_EXIT says so.
 printf '#!/usr/bin/env bash\necho "sudo $*" >> "$TMPDIR/systemd.calls"\nexec "$@"\n' > "$TMPDIR/bin/sudo"
 printf '#!/usr/bin/env bash\necho "systemctl $*" >> "$TMPDIR/systemd.calls"\nexit "${SYSTEMCTL_EXIT:-0}"\n' > "$TMPDIR/bin/systemctl"
@@ -994,6 +997,8 @@ check "  the hold given back, nothing left in the folder" 0 0 "[$( [[ -f "$d/etc
 out=$(printf '%s\n%s\n' "$PASS" "$PASS" | BACKUP_TAR_FAILS=1 exported "$d" export "$o"); check "  a backup folder unread refused" $? 1 "$out" "the backup folder could not be read: nothing exported"
 check "  and leaves no part behind" 0 0 "[$( [[ -f "$d/etc/state/hold" ]] && echo held)$(ls -A "$o")]" "[]"
 out=$(printf '%s\n%s\n' "$PASS" "$PASS" | INVENTORY_EXIT=1 exported "$d" export "$o"); check "  a database that cannot be counted refused" $? 1 "$out" "could not be counted (app:fiscal:inventory exited 1)"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | SEAL_FAILS=ca.tar.gpg EDGE_CA=$TMPDIR/edge-ca exported "$d" export "$o"); check "  an authority gpg could not seal refused" $? 1 "$out" "gpg could not seal the authority: nothing exported"
+check "  its plain copy gone from TMPDIR, nothing left in the folder" 0 0 "[$(compgen -G "$TMPDIR/twes-export-ca.*")$(ls -A "$o")]" "[]"
 out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o/none"); check "  a folder that is not there refused" $? 1 "$out" "is not a folder this account can write"
 twes "$d" hold on >/dev/null; out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o"); check "  on hold refused" $? 1 "$out" "no export until twes hold off"
 twes "$d" hold off >/dev/null; sed -i 's/^APP_MFA_KEY=.*/APP_MFA_KEY=/' "$d/etc/install.env"
@@ -1050,6 +1055,8 @@ out=$(printf 'twes-in\nop@shop.test\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | resetti
 d=$(installed); echo op@shop.test > "$d/etc/state/operator"; tree=$(mktemp -d)
 out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | BACKUP_LABEL='' resetting "$d" reset); check "  an export that fails stops it before anything went" $? 1 "$out" "the final backup was not made"
 check "  the hold given back, nothing stopped" 0 0 "[$(held "$d")$(steps | grep -o down)]" "[]"
+out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | OPEN_FAILS=1 resetting "$d" reset); check "  an export that does not read back stops it before anything went" $? 1 "$out" "the passphrase does not open the MANIFEST"
+check "  the hold given back, nothing emptied or stopped, nothing logged" 0 0 "[$(held "$d")$(steps | grep -oE 'down|app:platform:reset')$(cat "$d/etc/resets.log" 2>/dev/null)]" "[]"
 twes "$d" hold on > /dev/null
 out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | resetting "$d" reset); check "  on hold refused" $? 1 "$out" "no reset until twes hold off"
 twes "$d" hold off > /dev/null
