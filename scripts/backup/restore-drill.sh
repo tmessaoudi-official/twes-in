@@ -224,6 +224,7 @@ if [[ "$mode" == local ]]; then
   restore_into twes-drill-pg-u "--set=$label" --type=immediate --target-action=promote
   DRILL_PG_DATA=twes-drill-pg-u dc run -d --no-deps --name twes-drill-update postgres postgres -c archive_mode=off >/dev/null
   for _ in $(seq 1 60); do docker exec twes-drill-update pg_isready -q -U twes -d twes 2>/dev/null && break; sleep 1; done
+  promoted docker exec twes-drill-update psql -U twes -d twes
   got=$(docker exec twes-drill-update psql -U twes -d twes -v ON_ERROR_STOP=1 -tAc "SELECT coalesce(string_agg(n::text, ',' ORDER BY n), '') FROM restore_drill")
   got_figures=$(figures_of docker exec -i twes-drill-update psql -U twes -d twes)
   docker rm -f twes-drill-update >/dev/null

@@ -703,6 +703,9 @@ out=$(OUTCOME_DIR=$TMPDIR/outcome twes "$d" tick); check "  its age read on the 
 d=$(installed); echo "$(($(date +%s) - 600)) ran" > "$TMPDIR/outcome/due"
 out=$(AT=$((NOON - 86400)) OUTCOME_DIR=$TMPDIR/outcome twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]
 check "  and a host clock a day behind reads a fresh schedule as fresh" $? 0 "$(told)" ""
+# The month's restore check is read from the service's folder as every other step: one that failed is told.
+d=$(installed); rm -f "$TMPDIR/outcome/due"; echo "2026-10-21T01:00:00Z failed restore-check exited 2" > "$TMPDIR/outcome/restore-check"
+out=$(OUTCOME_DIR=$TMPDIR/outcome twes "$d" tick); check "a monthly restore check that failed is told to the operators" $? 0 "$(told)" "installation.backup_failed step=restore-check"
 rm -rf "$TMPDIR/outcome"
 # A clock set back after it ran ahead leaves the schedule's last word dated after now, its age below zero: the schedule
 # is silent from the moment a tick first reads it so, not never.
