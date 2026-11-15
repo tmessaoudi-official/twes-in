@@ -315,3 +315,7 @@ test in `gate-scripts.md` (`scripts/gates/**`, `scripts/tests/**`). Here: what a
   `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
   their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,
   read `git log master..<branch>` of every builder: rows 199, 200 and 213 were built twice the same day.
+- `make gate-licences` stops at its first red, so the gates after it never ran: four snapshot gates in a row went red on
+  a new licence gate each for S1.7. After a red, run the remaining `in-gate-licences` lines directly (from the Makefile,
+  through `make tools`), never `make -i`: the flag reaches the gate tests' own `make reset` and fakes 19 reds. Builders'
+  suites beside a gate timed a 5-second web case out at load 17: they hold every suite while the main gate runs (2026-11-15).

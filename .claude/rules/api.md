@@ -288,3 +288,7 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   refused the 33 PDFs renumbering dropped, and the VACUUM never ran. Its test passed because that check leaves bytes younger
   than the longest request, and a test's always are: assert a company's stored keys against its rows through
   `FileStorage::keysUnder`, never through the check (2026-11-12, `ScaleGeneratorTest`).
+- A change to `api/tests/bootstrap.php` or to a database trigger needs `make stress`, which CI's api job runs and the gate
+  does not: `prepare.php` reads the bootstrap before it makes `twes_test_stress`, and the racers read it at once against one
+  database, where two `CREATE OR REPLACE FUNCTION` collide (« tuple concurrently updated »). S1.7's test doors reddened
+  master's api job on both; the bootstrap now skips them for `prepare.php` and makes them under a lock (2026-11-15).
