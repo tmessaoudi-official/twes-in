@@ -15,6 +15,7 @@ use App\ImportExport\Application\UnknownImportSubject;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -39,6 +40,7 @@ final readonly class ImportTemplateController
         private ImportCatalogue $catalogue,
         private SpreadsheetWriter $writer,
         private CompanyGuard $guard,
+        private ScratchFiles $scratch,
     ) {
     }
 
@@ -56,10 +58,7 @@ final readonly class ImportTemplateController
 
         $spreadsheet = SpreadsheetFormat::from($format);
         // The writer's contract is a path, because a .xlsx is a zip archive and a zip has to be seekable.
-        $path = tempnam(sys_get_temp_dir(), 'twes-template-');
-        if (false === $path) {
-            throw new ServiceUnavailableHttpException(30, 'The template could not be prepared; try again shortly.');
-        }
+        $path = $this->scratch->path('twes-template-');
 
         try {
             // A code's column is formatted as Text, so that what a person types there is kept as typed.
@@ -67,7 +66,7 @@ final readonly class ImportTemplateController
             $this->writer->write($path, $spreadsheet, [array_map(static fn (ImportColumn $column): string => $column->key, $columns)], $codes);
             $contents = file_get_contents($path);
         } catch (UnwritableSpreadsheet $failure) {
-            throw new ServiceUnavailableHttpException(30, 'The template could not be prepared; try again shortly.', $failure);
+            throw $this->scratch->unprepared($failure);
         } finally {
             @unlink($path);
         }

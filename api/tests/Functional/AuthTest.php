@@ -110,11 +110,15 @@ final class AuthTest extends ApiTestCase
         self::assertSame($wrongPassword, $this->json());
         self::assertSame(['error' => 'invalid_credentials'], $wrongPassword);
 
-        $failed = $this->em()->getRepository(AuditLog::class)->findBy(['action' => LoginAudit::LOGIN_FAILED], ['at' => 'ASC']);
+        // Both are journalled, by names only: the address typed is a person's, kept out as the journal keeps every one.
+        // Read as a set, since two entries in one second tie on their moment.
+        $failed = $this->em()->getRepository(AuditLog::class)->findBy(['action' => LoginAudit::LOGIN_FAILED]);
         self::assertCount(2, $failed);
-        self::assertSame('nobody@example.test', $failed[1]->getChanges()['email']);
-        self::assertNull($failed[1]->getEntityId(), 'no such account, no entity to point at');
-        self::assertArrayNotHasKey('password', $failed[1]->getChanges());
+        foreach ($failed as $entry) {
+            self::assertArrayNotHasKey('email', $entry->getChanges());
+            self::assertArrayNotHasKey('password', $entry->getChanges());
+        }
+        self::assertCount(1, array_filter($failed, static fn (AuditLog $entry): bool => null === $entry->getEntityId()), 'no such account, no entity to point at');
     }
 
     public function testAMalformedLoginBodyIsABadRequest(): void

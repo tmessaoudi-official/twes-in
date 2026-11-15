@@ -102,7 +102,8 @@ export class ListExport<F extends string = ExportFormat> {
       }
       if (fetched === 'saved') this.saved.emit(address);
       else if (typeof fetched === 'object') this.sayRefused(fetched);
-      else if (fetched !== DEMO_REFUSED) this.feedback.failure('export.failed');
+      else if (fetched !== DEMO_REFUSED && fetched !== 'said')
+        this.feedback.failure('export.failed');
     } finally {
       this.busy.set(false);
     }
@@ -118,7 +119,7 @@ export class ListExport<F extends string = ExportFormat> {
 
   private async fetch(
     address: string,
-  ): Promise<'saved' | 'step_up' | typeof DEMO_REFUSED | ExportRefused | 'failed'> {
+  ): Promise<'saved' | 'step_up' | typeof DEMO_REFUSED | 'said' | ExportRefused | 'failed'> {
     const file = await this.api.file(address);
     if (typeof file === 'string' || !(file instanceof Blob)) return file;
     // A list's address ends with the file's name, which is also the API's own; a screen whose address does not names it.

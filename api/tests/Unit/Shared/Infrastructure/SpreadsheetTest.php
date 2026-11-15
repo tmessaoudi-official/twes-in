@@ -13,10 +13,12 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Application\Storage\StorageFull;
 use App\Shared\Infrastructure\Spreadsheet\CsvSniffer;
 use App\Shared\Infrastructure\Spreadsheet\CsvTranscoder;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutReader;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
@@ -122,7 +124,7 @@ final class SpreadsheetTest extends TestCase
 
         self::assertSame(
             ['123456789012345', '123456789012345.67', '19.99'],
-            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1],
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx))[1],
         );
     }
 
@@ -141,7 +143,7 @@ final class SpreadsheetTest extends TestCase
         $zip->addFromString('xl/worksheets/sheet1.xml', str_replace('<f>A1*1.19</f>', '<f>A1*1.19</f><v>14.875000000000002</v>', $sheet));
         $zip->close();
 
-        self::assertSame(['12.5', '14.875000000000002'], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1]);
+        self::assertSame(['12.5', '14.875000000000002'], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx))[1]);
     }
 
     /**
@@ -177,7 +179,7 @@ final class SpreadsheetTest extends TestCase
 
         self::assertSame(
             [1 => ['5%', '7.5%', '12.5%', '5', '0.05', 'cinq', '100%'], 2 => ['0.05', '5%', '', '', '', '', '']],
-            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)),
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx)),
         );
     }
 
@@ -214,7 +216,7 @@ final class SpreadsheetTest extends TestCase
         foreach ($columns[2] as $style) {
             self::assertSame('49', $all[1][(int) $style], 'the column is formatted as Text');
         }
-        self::assertSame([1 => $keys], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
+        self::assertSame([1 => $keys], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx)));
     }
 
     /** A CSV carries no format, so a column asked for as Text changes nothing in it. */
@@ -233,7 +235,7 @@ final class SpreadsheetTest extends TestCase
     {
         $path = $this->typed([[new \DateTimeImmutable('2026-09-18 14:30:00')]]);
 
-        self::assertSame('2026-09-18', iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx))[1][0]);
+        self::assertSame('2026-09-18', iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx))[1][0]);
     }
 
     /**
@@ -248,7 +250,7 @@ final class SpreadsheetTest extends TestCase
 
         self::assertSame(
             [1 => ['reference', 'name'], 2 => ['ART-001', 'Écran café']],
-            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Csv)),
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Csv)),
         );
     }
 
@@ -274,7 +276,7 @@ final class SpreadsheetTest extends TestCase
         $bytes = 'CP1256' === $encoding ? iconv('UTF-8', 'CP1256', $text) : mb_convert_encoding($text, $encoding, 'UTF-8');
         file_put_contents($path, $bytes);
 
-        $rows = iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Csv));
+        $rows = iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Csv));
 
         self::assertSame(array_map(static fn (string $line): array => explode(';', $line), explode("\n", rtrim($text, "\n"))), array_values($rows));
     }
@@ -287,13 +289,29 @@ final class SpreadsheetTest extends TestCase
         file_put_contents($utf8, $text);
         $utf16 = $this->path('csv');
         file_put_contents($utf16, "\xFF\xFE".mb_convert_encoding($text, 'UTF-16LE', 'UTF-8'));
-        $reader = new OpenSpoutReader(self::MAX_INFLATED_BYTES);
+        $reader = new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0));
 
         foreach ([$utf8, $utf16] as $path) {
             $rows = iterator_to_array($reader->rows($path, SpreadsheetFormat::Csv));
             self::assertCount(30001, $rows);
             self::assertSame([], array_filter($rows, static fn (array $row): bool => $row !== ['name'] && $row !== ['é😀ج']));
         }
+    }
+
+    /**
+     * A copy the disk has no room for stops the reading in words: left unchecked, the reading went on over a copy cut
+     * short, and the rows past the cut were never imported, with nothing said.
+     */
+    public function testACopyTheDiskHasNoRoomForIsSaidAsStorageFull(): void
+    {
+        $from = $this->path('csv');
+        file_put_contents($from, mb_convert_encoding("name\nSociété\n", 'Windows-1252', 'UTF-8'));
+        $to = $this->path('csv');
+        @unlink($to);
+        self::assertTrue(symlink('/dev/full', $to), 'a file whose every write finds no room');
+
+        $this->expectException(StorageFull::class);
+        CsvTranscoder::toUtf8($from, $to, TextEncoding::Windows1252);
     }
 
     /** The copy holds the text alone: a byte-order mark is no letter, and kept it would open the first column's name. */
@@ -317,7 +335,7 @@ final class SpreadsheetTest extends TestCase
         mkdir($copies);
         $path = $this->path('csv');
         file_put_contents($path, mb_convert_encoding("name\nSociété\nCafé\n", 'Windows-1252', 'UTF-8'));
-        $reader = new OpenSpoutReader(self::MAX_INFLATED_BYTES, $copies);
+        $reader = new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0), $copies);
 
         $rows = $reader->rows($path, SpreadsheetFormat::Csv);
         foreach ($rows as $row) {
@@ -348,7 +366,7 @@ final class SpreadsheetTest extends TestCase
         self::assertLessThan(self::MAX_INFLATED_BYTES / 10, (int) filesize($path), 'the file itself is small');
 
         $this->expectException(UnreadableSpreadsheet::class);
-        iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx));
+        iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx));
     }
 
     public function testAWorkbookWithinTheLimitIsRead(): void
@@ -356,7 +374,7 @@ final class SpreadsheetTest extends TestCase
         $path = $this->path('xlsx');
         (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name'], ['A-1', 'Alpha']]);
 
-        self::assertSame([1 => ['number', 'name'], 2 => ['A-1', 'Alpha']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
+        self::assertSame([1 => ['number', 'name'], 2 => ['A-1', 'Alpha']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx)));
     }
 
     /**
@@ -375,7 +393,7 @@ final class SpreadsheetTest extends TestCase
         $zip->close();
 
         try {
-            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx));
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx));
             self::fail('a part declaring a document type was read');
         } catch (UnreadableSpreadsheet $refused) {
             self::assertSame(UnreadableSpreadsheet::DOCUMENT_TYPE, $refused->reason);
@@ -405,7 +423,7 @@ final class SpreadsheetTest extends TestCase
         $path = $this->path('xlsx');
         (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name'], ['A-1', '<!DOCTYPE html> typed in a cell']]);
 
-        self::assertSame([1 => ['number', 'name'], 2 => ['A-1', '<!DOCTYPE html> typed in a cell']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
+        self::assertSame([1 => ['number', 'name'], 2 => ['A-1', '<!DOCTYPE html> typed in a cell']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx)));
     }
 
     public function testAFileThatIsNotASpreadsheetIsRefusedByName(): void
@@ -415,7 +433,7 @@ final class SpreadsheetTest extends TestCase
         file_put_contents($path, 'this is not a workbook');
 
         $this->expectException(UnreadableSpreadsheet::class);
-        iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx));
+        iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, SpreadsheetFormat::Xlsx));
     }
 
     /**
@@ -463,7 +481,7 @@ final class SpreadsheetTest extends TestCase
         $path = $this->path($format->extension());
         (new OpenSpoutWriter())->write($path, $format, $rows);
 
-        return (new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, $format);
+        return (new OpenSpoutReader(self::MAX_INFLATED_BYTES, new ScratchFiles(0)))->rows($path, $format);
     }
 
     /**

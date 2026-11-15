@@ -26,6 +26,7 @@ use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Domain\Exception\InvalidFilter;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -36,7 +37,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -58,6 +58,7 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
         private Security $security,
         private ConfirmStepUp $stepUp,
         private AuditTrail $audit,
+        private ScratchFiles $scratch,
     ) {
     }
 
@@ -85,10 +86,7 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
 
         $spreadsheet = SpreadsheetFormat::from($format);
         // The writer's contract is a path, because a .xlsx is a zip archive and a zip has to be seekable.
-        $path = tempnam(sys_get_temp_dir(), 'twes-export-');
-        if (false === $path) {
-            throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.');
-        }
+        $path = $this->scratch->path('twes-export-');
 
         try {
             $query = new ExportQuery($request->query->all());
@@ -103,7 +101,7 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
             if ($failure->getPrevious() instanceof InvalidFilter) {
                 throw self::refused($failure->getPrevious());
             }
-            throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.', $failure);
+            throw $this->scratch->unprepared($failure);
         } catch (InvalidFilter $refused) {
             @unlink($path);
             throw self::refused($refused);

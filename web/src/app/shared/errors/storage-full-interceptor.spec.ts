@@ -55,6 +55,24 @@ describe('storageFullInterceptor', () => {
     expect(saidAlready(seen.failure)).toBe(true);
   });
 
+  it('says a full disk on a file asked for as bytes, whose answer it cannot read as words', async () => {
+    const seen: { failure: unknown } = { failure: null };
+    TestBed.inject(HttpClient)
+      .get('/api/companies/c1/exports/invoices.csv', { responseType: 'blob' })
+      .subscribe({ error: (error: unknown) => (seen.failure = error) });
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c1/exports/invoices.csv')
+      .flush(new Blob([JSON.stringify(FULL_BODY)]), {
+        status: 507,
+        statusText: 'Insufficient Storage',
+      });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(failureToasts()).toEqual(['storage_full.said']);
+    expect(saidAlready(seen.failure)).toBe(true);
+  });
+
   it('leaves any other server error to the screen', async () => {
     const seen = send();
     TestBed.inject(HttpTestingController)

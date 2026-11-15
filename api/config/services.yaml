@@ -258,6 +258,10 @@ parameters:
     # the data check reports them once the task should have taken them. Checked when the container is built
     # (UnnamedBytesBounds): PT6H to P30D.
     app.files.unnamed_removed_after: 'PT24H'
+    # Under how many bytes left a disk on which a file the request prepares (a download, an import's working copy) could
+    # not be written is read as out of room, and said so (ScratchFiles): the writers say only that they could not write,
+    # and the largest file a request prepares, a full export, stays under this.
+    app.files.scratch_room_minimum: 67108864
     # What /api/health/deep fails on (docs/START.md § 15): a message due for the worker and waiting longer than this, and
     # less than this share of the disk under the stored files left free. The wait is checked when the container is built
     # (HealthBounds): 60 to 3,600.

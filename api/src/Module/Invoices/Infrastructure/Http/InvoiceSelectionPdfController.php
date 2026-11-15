@@ -25,6 +25,7 @@ use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
 use App\Shared\Infrastructure\Http\LongRequest;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -54,6 +55,7 @@ final readonly class InvoiceSelectionPdfController implements BulkFile, Declares
         private ConfirmStepUp $stepUp,
         private AuditTrail $audit,
         private LongRequest $time,
+        private ScratchFiles $scratch,
     ) {
     }
 
@@ -112,14 +114,11 @@ final readonly class InvoiceSelectionPdfController implements BulkFile, Declares
      */
     private function zip(array $printed): BinaryFileResponse
     {
-        $path = tempnam(sys_get_temp_dir(), 'twes-invoices-');
-        if (false === $path) {
-            throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.');
-        }
+        $path = $this->scratch->path('twes-invoices-');
         $zip = new \ZipArchive();
         if (true !== $zip->open($path, \ZipArchive::OVERWRITE)) {
             @unlink($path);
-            throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.');
+            throw $this->scratch->unprepared(null);
         }
         $names = [];
         foreach ($printed as $invoice) {
@@ -131,7 +130,11 @@ final readonly class InvoiceSelectionPdfController implements BulkFile, Declares
             $names[$name] = true;
             $zip->addFromString($name, $invoice->contents);
         }
-        $zip->close();
+        // The archive is written as it closes: one the disk had no room for would be handed over cut short, or empty.
+        if (!$zip->close()) {
+            @unlink($path);
+            throw $this->scratch->unprepared(null);
+        }
 
         $response = new BinaryFileResponse($path, Response::HTTP_OK, ['Content-Type' => 'application/zip']);
         $response->deleteFileAfterSend();

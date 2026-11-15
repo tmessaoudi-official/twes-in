@@ -405,10 +405,11 @@ Two doors to close, the network's first, then the application's.
 ## The disk fills
 
 Untried. The deep health turns red under 20 % free on the files volume (`app.health.disk_free_minimum`), and Gatus's
-« Traitements » line alerts. Once it is full, a write the database or the files' storage has no room for answers 507
-`/problems/storage-full`: the person sees « Le disque de l’installation est plein : rien n’a été enregistré », nothing of
-that request is kept, and the api logs `The installation's disk is full` at critical, with which disk. The same request
-goes through once room is made.
+« Traitements » line alerts. Once it is full, a write the database or the files' storage has no room for, a file a
+download or an import prepares on the server, and a file sent that PHP had no room to keep answer 507
+`/problems/storage-full`: the person sees « Le disque de l’installation est plein : cela n’a pas pu être fait, et rien
+n’a été enregistré », nothing of that request is kept, and the api logs `The installation's disk is full` at critical,
+with which disk. The same request goes through once room is made.
 
 1. `df -h` and `docker system df` on the machine.
 2. Logs cannot be it for long: every service rotates at 10 MB × 5 (`compose-log-rotation.sh` holds it).

@@ -13,6 +13,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetReader;
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Cell\FormulaCell;
 use OpenSpout\Common\Entity\Row;
@@ -41,6 +42,7 @@ final class OpenSpoutReader implements SpreadsheetReader
      */
     public function __construct(
         #[Autowire(param: 'app.import.max_inflated_bytes')] private readonly int $maxInflatedBytes,
+        private readonly ScratchFiles $scratch,
         private readonly string $copies = '',
     ) {
     }
@@ -62,10 +64,8 @@ final class OpenSpoutReader implements SpreadsheetReader
             return;
         }
 
-        $copy = tempnam('' === $this->copies ? sys_get_temp_dir() : $this->copies, 'twes-csv-');
-        if (false === $copy) {
-            throw new UnreadableSpreadsheet(\sprintf('"%s" could not be read.', basename($path)));
-        }
+        // A copy that could not be made is the server's disk, never the person's file.
+        $copy = $this->scratch->path('twes-csv-', $this->copies);
         // Removed however the reading ends: finished, refused, or left halfway by a caller that stopped asking.
         try {
             CsvTranscoder::toUtf8($path, $copy, $encoding);

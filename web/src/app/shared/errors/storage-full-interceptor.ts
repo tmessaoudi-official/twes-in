@@ -35,9 +35,13 @@ export const storageFullInterceptor: HttpInterceptorFn = (request, next) => {
   );
 };
 
-/** Whether an error is the API's answer that the installation's disk is full. */
+/**
+ * Whether an error is the API's answer that the installation's disk is full. A file asked for as bytes (a download)
+ * brings its answer as bytes too, unread here: its 507, a status the API gives nothing else, says it alone.
+ */
 export function isStorageFull(error: unknown): boolean {
   if (!(error instanceof HttpErrorResponse) || error.status !== 507) return false;
   const body: unknown = error.error;
+  if (body instanceof Blob) return true;
   return typeof body === 'object' && body !== null && 'type' in body && body.type === STORAGE_FULL;
 }

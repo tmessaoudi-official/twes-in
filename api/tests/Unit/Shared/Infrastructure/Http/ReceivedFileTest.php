@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure\Http;
 
 use ApiPlatform\Validator\Exception\ValidationException;
+use App\Shared\Application\Storage\StorageFull;
 use App\Shared\Infrastructure\Http\ReceivedFile;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -38,7 +39,24 @@ final class ReceivedFileTest extends TestCase
         yield 'above what the form said' => [\UPLOAD_ERR_FORM_SIZE, 'file_too_large', ['bytes' => ReceivedFile::phpLimit()]];
         yield 'cut short on the way' => [\UPLOAD_ERR_PARTIAL, 'file_not_received', []];
         yield 'nothing chosen' => [\UPLOAD_ERR_NO_FILE, 'value_required', []];
-        yield 'no room to keep it' => [\UPLOAD_ERR_CANT_WRITE, 'file_not_received', []];
+    }
+
+    /** The server had no room to keep what arrived: its disk is full, which the person is told, never their file. */
+    public function testAFileTheServerHadNoRoomToKeepIsSaidAsStorageFull(): void
+    {
+        $file = new UploadedFile(__FILE__, 'receipt.pdf', null, \UPLOAD_ERR_CANT_WRITE, true);
+
+        $this->expectException(StorageFull::class);
+        ReceivedFile::of(new Request(files: ['file' => $file]));
+    }
+
+    public function testAPartTheServerHadNoRoomToKeepIsSaidAsStorageFullWhereverItIsRead(): void
+    {
+        ReceivedFile::refuseUnwritten(new UploadedFile(__FILE__, 'photo.jpg', null, \UPLOAD_ERR_OK, true));
+        ReceivedFile::refuseUnwritten(null);
+
+        $this->expectException(StorageFull::class);
+        ReceivedFile::refuseUnwritten(new UploadedFile(__FILE__, 'photo.jpg', null, \UPLOAD_ERR_CANT_WRITE, true));
     }
 
     /** @param array<string, int> $params */

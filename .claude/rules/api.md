@@ -282,6 +282,8 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   stock's own lock is held: race a delivery note against an invoice (two series) to prove it (2026-11-01, S1.2).
 - A container compiled without debug is never checked against the source, and `bin/console` reads no test bootstrap:
   the race harness clears its cache with `APP_CACHE_DIR` passed in, or racers boot the last run's container (2026-11-01).
+  The suite's own debug-off cases met the same: `tests/bootstrap.php` now removes `App_KernelTestContainer.php` at every
+  run, after the snapshot gate's worktree booted one from its previous run and answered 500 at sign-in (2026-11-15).
 - A late answer undoes a newer state: Symfony's session listener deletes the session cookie whenever a request came with
   one and its session reads empty, and the browser deletes by NAME, so a read sent before a sign-in and answered after it
   signed the person out (CI-only, the trace's cookies showed it; `KeepSessionCookieListener` now drops every deletion).

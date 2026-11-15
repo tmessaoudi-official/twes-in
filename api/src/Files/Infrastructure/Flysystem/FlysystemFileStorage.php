@@ -35,7 +35,7 @@ final readonly class FlysystemFileStorage implements FileStorage
         } catch (FilesystemException $failed) {
             // A local adapter carries the system's own words: ENOSPC on a write that wrote nothing, PHP's « possibly out
             // of free disk space » on one cut short.
-            if (1 === preg_match('/errno=28 |No space left on device|out of free disk space/', $failed->getMessage())) {
+            if (StorageFull::saidIn($failed->getMessage())) {
                 throw new StorageFull(\sprintf('The storage has no room left for %s.', $key), 0, $failed);
             }
             throw $failed;

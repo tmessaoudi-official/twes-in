@@ -15,4 +15,9 @@ namespace App\Shared\Application\Storage;
  */
 final class StorageFull extends \RuntimeException
 {
+    /** Whether a failed write's message is the system saying it had no room: ENOSPC, or PHP's short write. */
+    public static function saidIn(string $message): bool
+    {
+        return 1 === preg_match('/errno=28 |No space left on device|out of free disk space/', $message);
+    }
 }

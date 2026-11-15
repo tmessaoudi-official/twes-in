@@ -18,8 +18,13 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseAmounts;
 use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
 use App\Module\Reports\Application\ReportComparison;
 use App\Module\Reports\Application\ReportPeriod;
+use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
+use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
+use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Connection;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -167,6 +172,39 @@ final class ReportsTest extends ApiTestCase
         $this->client->request('GET', $this->path().'/reports/expenses-by-category/export.xlsx?from=2026-09-01&to=2026-09-30');
         self::assertResponseIsSuccessful();
         self::assertStringStartsWith('PK', $this->client->getInternalResponse()->getContent(), 'a workbook is a zip archive');
+    }
+
+    /** @return iterable<string, array{int, int}> */
+    public static function rooms(): iterable
+    {
+        yield 'the disk out of room: said as the storage full' => [\PHP_INT_MAX, 507];
+        yield 'room left: a moment to wait' => [0, 503];
+    }
+
+    /** A report's file that could not be written answers what kept it, as a list's does. */
+    #[DataProvider('rooms')]
+    public function testAReportFileThatCouldNotBeWrittenSaysWhy(int $roomMinimum, int $status): void
+    {
+        $this->stepUp('password-1234');
+        // A fresh container whose writer fails and whose disk reads as asked, kept for the download.
+        $this->client->getKernel()->shutdown();
+        $this->client->getKernel()->boot();
+        $this->client->disableReboot();
+        static::getContainer()->set(ScratchFiles::class, new ScratchFiles($roomMinimum));
+        static::getContainer()->set(SpreadsheetWriter::class, new class implements SpreadsheetWriter {
+            public function write(string $path, SpreadsheetFormat $format, iterable $rows, array $textColumns = []): void
+            {
+                throw new UnwritableSpreadsheet('No room to write it.');
+            }
+        });
+
+        $this->client->request('GET', $this->path().'/reports/expenses-by-category/export.csv?from=2026-09-01&to=2026-09-30');
+
+        self::assertResponseStatusCodeSame($status);
+        self::assertSame(507 === $status ? '/problems/storage-full' : null, 507 === $status ? ($this->json()['type'] ?? null) : null);
+        if (503 === $status) {
+            self::assertResponseHeaderSame('retry-after', '30');
+        }
     }
 
     public function testAFileIsRefusedWhereTheReportIs(): void

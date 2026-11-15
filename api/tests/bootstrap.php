@@ -35,6 +35,17 @@ if ($_SERVER['APP_DEBUG']) {
     umask(0000);
 }
 
+// A container compiled without debug is never checked against the source again, so a later run booted one built before
+// the code it tested: a debug-off case answered 500 at sign-in in the snapshot gate's worktree, which keeps its caches.
+// Its loader goes at every run, and the first debug-off case compiles it from the tree as it stands.
+(static function (): void {
+    $cache = $_SERVER['APP_CACHE_DIR'] ?? null;
+    $directory = (is_string($cache) && '' !== $cache ? $cache : dirname(__DIR__).'/var/cache').'/test';
+    if (is_file($directory.'/App_KernelTestContainer.php')) {
+        unlink($directory.'/App_KernelTestContainer.php');
+    }
+})();
+
 // A test that tampers with an issued invoice on purpose (a data check or the chain must notice it) opens the fiscal guard
 // through this door, PastFiscalGuard::pastFiscalGuard; FiscalGuardTest empties a table as the owner through the second,
 // which the application's role could never do. Both are made here, in this process's test database alone, never by a

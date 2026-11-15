@@ -29,6 +29,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -37,7 +38,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -60,6 +60,7 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
         private Security $security,
         private ConfirmStepUp $stepUp,
         private AuditTrail $audit,
+        private ScratchFiles $scratch,
     ) {
     }
 
@@ -88,15 +89,12 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
 
         $spreadsheet = SpreadsheetFormat::from($format);
         // The writer's contract is a path, because a .xlsx is a zip archive and a zip has to be seekable.
-        $path = tempnam(sys_get_temp_dir(), 'twes-report-');
-        if (false === $path) {
-            throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.');
-        }
+        $path = $this->scratch->path('twes-report-');
         try {
             $this->writer->write($path, $spreadsheet, self::lines($result), self::textColumns($result));
         } catch (UnwritableSpreadsheet $failure) {
             @unlink($path);
-            throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.', $failure);
+            throw $this->scratch->unprepared($failure);
         }
 
         $company = $reading->company;

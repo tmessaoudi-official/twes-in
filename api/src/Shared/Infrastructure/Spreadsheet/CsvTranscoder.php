@@ -11,6 +11,7 @@ namespace App\Shared\Infrastructure\Spreadsheet;
 
 use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use App\Shared\Application\Storage\StorageFull;
 
 /**
  * Writes a CSV out again in UTF-8, a chunk at a time, so the reader only ever splits UTF-8 text. Read as written, a
@@ -21,7 +22,11 @@ use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
  */
 final readonly class CsvTranscoder
 {
-    /** @throws UnreadableSpreadsheet */
+    /**
+     * @throws UnreadableSpreadsheet
+     * @throws StorageFull           when the disk has no room left for the copy
+     * @throws \RuntimeException     when the copy could not be written otherwise
+     */
     public static function toUtf8(string $from, string $to, TextEncoding $encoding): void
     {
         $in = @fopen($from, 'r');
@@ -43,15 +48,34 @@ final readonly class CsvTranscoder
                 if (TextEncoding::Utf16 === $encoding) {
                     [$chunk, $carried] = self::wholeUtf16($chunk, $littleEndian);
                 }
-                fwrite($out, self::converted($chunk, $encoding, $littleEndian));
+                self::written($out, self::converted($chunk, $encoding, $littleEndian), $to);
             }
             if ('' !== $carried) {
-                fwrite($out, self::converted($carried, $encoding, $littleEndian));
+                self::written($out, self::converted($carried, $encoding, $littleEndian), $to);
             }
         } finally {
             fclose($in);
             fclose($out);
         }
+    }
+
+    /**
+     * Every byte written, or the reading stops: a copy cut short would be read as the whole file, and the rows past the
+     * cut never imported, with nothing said. PHP says a failed write in a warning it does not throw in production.
+     *
+     * @param resource $out
+     */
+    private static function written($out, string $bytes, string $to): void
+    {
+        error_clear_last();
+        if (\strlen($bytes) === @fwrite($out, $bytes)) {
+            return;
+        }
+        $said = error_get_last()['message'] ?? '';
+        if (StorageFull::saidIn($said)) {
+            throw new StorageFull(\sprintf('The disk has no room left for a copy of %s.', basename($to)));
+        }
+        throw new \RuntimeException(\sprintf('The copy %s could not be written: %s', basename($to), $said));
     }
 
     /**

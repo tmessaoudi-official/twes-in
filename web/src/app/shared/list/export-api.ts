@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { DEMO_REFUSED, isDemoRefused } from '../demo/demo-refused-interceptor';
 import type { FieldRefusal } from '../form/field-refusals';
 import { formRefusalsIn } from '../form/form-refusals-api';
+import { saidAlready } from '../errors/said-already';
 
 /** What the API refused the file for (a filter it cannot be made under), which fetching it again would meet again. */
 export interface ExportRefused {
@@ -23,15 +24,17 @@ export class ExportApi {
 
   /**
    * The file, `step_up` when the API wants the proof first, `demo_refused` when the demo hands out no such file, which
-   * the interceptor has said already, what it was refused for, or `failed` for anything else.
+   * the interceptor has said already, `said` for any other failure an interceptor has said (a full disk), what it was
+   * refused for, or `failed` for anything else.
    */
   async file(
     address: string,
-  ): Promise<Blob | 'step_up' | typeof DEMO_REFUSED | ExportRefused | 'failed'> {
+  ): Promise<Blob | 'step_up' | typeof DEMO_REFUSED | 'said' | ExportRefused | 'failed'> {
     try {
       return await firstValueFrom(this.http.get(address, { responseType: 'blob' }));
     } catch (error) {
       if (isDemoRefused(error)) return DEMO_REFUSED;
+      if (saidAlready(error)) return 'said';
       if (await stepUpAsked(error)) return 'step_up';
       const refusals = await formRefusalsIn(this.injector, await withJsonBody(error));
       return refusals.length > 0 ? { refusals } : 'failed';

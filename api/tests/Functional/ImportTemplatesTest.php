@@ -16,10 +16,14 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
+use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
+use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutReader;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The empty file a person fills in to import customers (docs/SPEC.md § 7, 2026-09-17). */
@@ -141,6 +145,42 @@ final class ImportTemplatesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /** @return iterable<string, array{int, int}> */
+    public static function rooms(): iterable
+    {
+        yield 'the disk out of room: said as the storage full' => [\PHP_INT_MAX, 507];
+        yield 'room left: a moment to wait' => [0, 503];
+    }
+
+    /**
+     * A file prepared for a download that could not be written answers what kept it: a disk out of room as the storage
+     * full (507, which the screen words from its status), anything else a moment to wait (503, sent again later), never
+     * the person's own mistake. The template is followed as a link, so its answer is Symfony's, not a problem document.
+     */
+    #[DataProvider('rooms')]
+    public function testATemplateThatCouldNotBeWrittenSaysWhy(int $roomMinimum, int $status): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        // A fresh container whose writer fails and whose disk reads as asked, kept for the download.
+        $this->client->getKernel()->shutdown();
+        $this->client->getKernel()->boot();
+        $this->client->disableReboot();
+        static::getContainer()->set(ScratchFiles::class, new ScratchFiles($roomMinimum));
+        static::getContainer()->set(SpreadsheetWriter::class, new class implements SpreadsheetWriter {
+            public function write(string $path, SpreadsheetFormat $format, iterable $rows, array $textColumns = []): void
+            {
+                throw new UnwritableSpreadsheet('No room to write it.');
+            }
+        });
+
+        $this->client->request('GET', $this->path('customers.csv'));
+
+        self::assertResponseStatusCodeSame($status);
+        if (503 === $status) {
+            self::assertResponseHeaderSame('retry-after', '30');
+        }
+    }
+
     /** @param list<string> $permissions */
     private function signedIn(array $permissions): void
     {
@@ -194,7 +234,7 @@ final class ImportTemplatesTest extends ApiTestCase
         $path = (string) tempnam(sys_get_temp_dir(), 'template-test-');
         file_put_contents($path, $contents);
         try {
-            return array_values(array_map(static fn (array $row): array => $row, iterator_to_array((new OpenSpoutReader(64 * 1024 * 1024))->rows($path, $format))));
+            return array_values(array_map(static fn (array $row): array => $row, iterator_to_array((new OpenSpoutReader(64 * 1024 * 1024, new ScratchFiles(0)))->rows($path, $format))));
         } finally {
             unlink($path);
         }

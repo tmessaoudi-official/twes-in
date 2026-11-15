@@ -13,6 +13,7 @@ use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\PhonePhotos;
 use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
 use App\Shared\Infrastructure\Http\ClientAddress;
+use App\Shared\Infrastructure\Http\ReceivedFile;
 use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -99,7 +100,7 @@ final readonly class PairedPhoneController
     }
 
     /** A photo the phone took, as a multipart part named `file` beside its `scan` id, held for the tab to take. */
-    #[Route('/api/scan-pairings/{id}/photos', name: 'api_scan_pairing_photo', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
+    #[Route('/api/scan-pairings/{id}/photos', name: 'api_scan_pairing_photo', requirements: ['id' => Requirement::UUID], defaults: ['_api_respond' => true], methods: ['POST'])]
     public function photo(string $id, Request $request): Response
     {
         $limit = $this->photoLimiter->create(self::budgetOf($id, $request))->consume();
@@ -109,6 +110,7 @@ final readonly class PairedPhoneController
 
         return $this->asThePhone($id, $request, function (Uuid $pairing, string $key) use ($request): Response {
             $file = $request->files->get('file');
+            ReceivedFile::refuseUnwritten($file);
             $bytes = $file instanceof UploadedFile && $file->isValid() ? (string) file_get_contents($file->getPathname()) : '';
             $this->photos->hold($pairing, $key, $request->request->getString('scan'), $bytes);
 

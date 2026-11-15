@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Http;
 
 use ApiPlatform\Validator\Exception\ValidationException;
+use App\Shared\Application\Storage\StorageFull;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,6 +35,7 @@ final class ReceivedFile
         if (!$file instanceof UploadedFile) {
             throw self::refused('Send the file as a multipart part named file.', self::NOT_SENT);
         }
+        self::refuseUnwritten($file);
         if ($file->isValid()) {
             return $file;
         }
@@ -43,6 +45,19 @@ final class ReceivedFile
             \UPLOAD_ERR_NO_FILE => self::refused($file->getErrorMessage(), self::NOT_SENT),
             default => self::refused($file->getErrorMessage(), self::NOT_RECEIVED),
         };
+    }
+
+    /**
+     * A file PHP had no room to keep on the server's disk: the disk is full, which the person is told in words, never
+     * that their file did not arrive or is not what it should be. For a part read without `of()`, as the phone's photo is.
+     *
+     * @throws StorageFull
+     */
+    public static function refuseUnwritten(mixed $file): void
+    {
+        if ($file instanceof UploadedFile && \UPLOAD_ERR_CANT_WRITE === $file->getError()) {
+            throw new StorageFull('The server had no room to keep a file it was sent.');
+        }
     }
 
     /** The most a file holds in bytes as PHP takes it: Symfony says a float only past what an int holds. */

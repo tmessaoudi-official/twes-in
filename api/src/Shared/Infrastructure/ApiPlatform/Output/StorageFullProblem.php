@@ -23,7 +23,7 @@ final class StorageFullProblem extends HttpException implements ProblemException
 
     public function __construct(?\Throwable $previous = null)
     {
-        parent::__construct(507, "The installation's disk is full: this was not saved. Tell whoever runs the installation, then send it again.", $previous);
+        parent::__construct(507, "The installation's disk is full: this could not be done, and nothing was saved. Tell whoever runs the installation, then try again.", $previous);
     }
 
     public function getType(): string

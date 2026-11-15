@@ -76,7 +76,7 @@ final class StorageFullAnswerTest extends ApiTestCase
         self::assertSame(507, $answer['status'] ?? null);
         // Off debug, API Platform puts the status's own words in a 5xx's detail, as a server error's message may say what
         // it should not: the screen says it from the type, its own texts.
-        self::assertSame($debug ? "The installation's disk is full: this was not saved. Tell whoever runs the installation, then send it again." : 'Internal Server Error', $answer['detail'] ?? null);
+        self::assertSame($debug ? "The installation's disk is full: this could not be done, and nothing was saved. Tell whoever runs the installation, then try again." : 'Internal Server Error', $answer['detail'] ?? null);
         self::assertStringNotContainsString('companies/', (string) $this->client->getResponse()->getContent(), 'the path stays out of the answer');
     }
 }

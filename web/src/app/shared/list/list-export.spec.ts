@@ -183,6 +183,22 @@ describe('ListExport', () => {
     ]);
   });
 
+  it('leaves a full disk to what said it already, and says no failure of its own on top', async () => {
+    const fixture = create((format) => `/exports/things.${format}`);
+
+    button(fixture, 'csv').click();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/exports/things.csv')
+      .flush(new Blob(['{"type":"/problems/storage-full","status":507}']), {
+        status: 507,
+        statusText: 'Insufficient Storage',
+      });
+    await settle();
+
+    expect(saved).toEqual([]);
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+  });
+
   it('says a filter the API refuses as the refusal it is, never as a failure to try again', async () => {
     const fixture = create((format) => `/exports/things.${format}?from=2026-09-30&to=2026-09-01`);
     TestBed.inject(TranslateService).setTranslation(

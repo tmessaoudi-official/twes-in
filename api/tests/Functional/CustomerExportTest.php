@@ -15,7 +15,12 @@ use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
+use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
+use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Infrastructure\Storage\ScratchFiles;
 use App\Tenancy\Domain\Model\Company;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 
 /** A customers list exported as a file, with the search, filters and order the screen shows (docs/SPEC.md § 7, row 60). */
@@ -106,6 +111,41 @@ final class CustomerExportTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $report = $this->json();
         self::assertSame([[], [2, 3], [], []], [$report['updated'] ?? null, $report['unchanged'] ?? null, $report['changes'] ?? null, $report['rejected'] ?? null]);
+    }
+
+    /** @return iterable<string, array{int, int}> */
+    public static function rooms(): iterable
+    {
+        yield 'the disk out of room: said as the storage full' => [\PHP_INT_MAX, 507];
+        yield 'room left: a moment to wait' => [0, 503];
+    }
+
+    /**
+     * A list's file that could not be written answers what kept it: a disk out of room as the storage full, anything else
+     * a moment to wait, each a problem the screen words, never the person's own mistake.
+     */
+    #[DataProvider('rooms')]
+    public function testAnExportThatCouldNotBeWrittenSaysWhy(int $roomMinimum, int $status): void
+    {
+        // A fresh container whose writer fails and whose disk reads as asked, kept for the download.
+        $this->client->getKernel()->shutdown();
+        $this->client->getKernel()->boot();
+        $this->client->disableReboot();
+        static::getContainer()->set(ScratchFiles::class, new ScratchFiles($roomMinimum));
+        static::getContainer()->set(SpreadsheetWriter::class, new class implements SpreadsheetWriter {
+            public function write(string $path, SpreadsheetFormat $format, iterable $rows, array $textColumns = []): void
+            {
+                throw new UnwritableSpreadsheet('No room to write it.');
+            }
+        });
+
+        $this->client->request('GET', $this->path().'/exports/customers.csv');
+
+        self::assertResponseStatusCodeSame($status);
+        self::assertSame(507 === $status ? '/problems/storage-full' : null, 507 === $status ? ($this->json()['type'] ?? null) : null);
+        if (503 === $status) {
+            self::assertResponseHeaderSame('retry-after', '30');
+        }
     }
 
     public function testTheSearchTheFiltersAndTheOrderOfTheScreenNarrowAndSortTheFile(): void
