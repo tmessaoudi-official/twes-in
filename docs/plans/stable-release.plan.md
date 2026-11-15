@@ -368,7 +368,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S2.22 | Host drift checks and install.ps1 -Upgrade | M | todo | - | scripts/onprem/install.ps1, infra/powershell/**, scripts/onprem/twes, scripts/tests/twes.test.sh |
 | S2.23 | Monitor machine set up with the developer (developer) | S | todo | - | docs/START.md, infra/monitor/* |
 | S2.E | P2 phase-end lens and legs | S | todo | - | - |
-| S3.1 | twes export with manifest and sealed values; certified by twes.test.sh (467/0 in the gate), never run on a real shop's computer yet (the shop tests come last) | L | done | e150a3ed5, 0fd566921 | scripts/onprem/twes, scripts/onprem/lib/export.sh, scripts/tests/twes.test.sh |
+| S3.1 | twes export with manifest and sealed values; certified by twes.test.sh (467/0 in the gate) with real gpg sealing and opening, against a faked compose, backup container and deployment; make onprem-check runs no export, so it has never run on a real installation (the shop tests come last); the plain authority copy left in TMPDIR when a seal fails goes to b4 | L | done | e150a3ed5, 0fd566921 | scripts/onprem/twes, scripts/onprem/lib/export.sh, scripts/tests/twes.test.sh |
 | S3.2 | twes import with version refusal and verification | L | todo | - | scripts/onprem/twes, scripts/onprem/lib/import.sh, infra/api/migrate.sh, scripts/tests/twes.test.sh |
 | S3.3 | Move check and weekly onprem-check in CI | M | todo | - | scripts/onprem/move-check.sh, Makefile, .github/workflows/move-check.yml, .github/workflows/onprem-check.yml |
 | S3.4 | Verifiable escrow | M | todo | - | scripts/onprem/twes, scripts/tests/twes.test.sh |
@@ -494,7 +494,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S9.3 | Panel round 1 and workflow hunt | M | todo | - | - |
 | S9.4 | Panel fixes until a clean round | L | todo | - | - |
 | S9.5 | RC, stress and load | M | todo | - | - |
-| S9.6 | Update rehearsal on the shop's real data with rollback leg, twes rehearse; the rollback leg runs the release before on the new schema and issues, settles and credits an invoice there (S1.7's fiscal guard and every `// contract:` line since the last tag claim it works) | M | todo | - | - |
+| S9.6 | Update rehearsal on the shop's real data with rollback leg, twes rehearse; the rollback leg runs the release before on the new schema and issues, settles and credits an invoice there (S1.7's fiscal guard and every `// contract:` line since the last tag claim it works), and expects the two removals the guard refuses on the release before, a closed company past its keeping time (RemoveClosedCompanies) and a demo sandbox (RemoveSandboxes), to be refused there with the company kept, never half deleted | M | todo | - | - |
 | S9.7 | Move to a fresh Windows PC and human restore drill | M | todo | - | docs/RUNBOOK.md, TODO.md |
 | S9.8 | Pre-tag external scan | M | todo | - | - |
 | S9.9 | Signed tag and shop update | S | todo | - | - |
