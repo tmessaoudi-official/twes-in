@@ -365,7 +365,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S2.17 | W6 per-company signing key with escrowed master key: next release (ruled 2026-11-01) | L | deferred | - | api/src/Module/Invoices/**, api/src/Fiscal/**, api/migrations/* |
 | S2.18 | IPv6 exposure closed | M | todo | - | compose.onprem.yaml, scripts/onprem/install.ps1, scripts/onprem/twes, scripts/gates/onprem-overlay.sh |
 | S2.19 | Outside-in liveness heartbeat | M | todo | - | scripts/onprem/twes, infra/monitor/gatus.yaml, scripts/gates/monitor-config.sh, scripts/monitor/monitor-check.sh |
-| S2.20 | Staff devices and sessions | M | todo | - | api/src/Identity/**, web/src/app/company/**, web/src/app/account/**, web/e2e/sessions.spec.ts, docs/RUNBOOK.md |
+| S2.20 | Staff devices and sessions: the owner's « Appareils connectés » on a member's row (358229042, b2) and its browser scenario `web/e2e/sessions.spec.ts` (a phone signed out, refused at its next request, the member mailed), run green on the live stack; the outside-LAN session lifetime waits on the desk's q-lanlife and S2.18, and ending a member's sessions used elsewhere on q-endall | M | doing | 358229042 | api/src/Identity/**, web/src/app/company/**, web/src/app/account/**, web/e2e/sessions.spec.ts, docs/RUNBOOK.md |
 | S2.21 | Tailnet ACL and developer SSH | S | todo | - | infra/onprem/tailnet-policy.hujson, docs/START.md, scripts/onprem/twes |
 | S2.22 | Host drift checks and install.ps1 -Upgrade | M | todo | - | scripts/onprem/install.ps1, infra/powershell/**, scripts/onprem/twes, scripts/tests/twes.test.sh |
 | S2.23 | Monitor machine set up with the developer (developer) | S | todo | - | docs/START.md, infra/monitor/* |
