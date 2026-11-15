@@ -84,6 +84,7 @@ final class SourceLayoutTest extends TestCase
         'App\Identity\Infrastructure\Mail\SecurityNoticeToMail',
         'App\Identity\Infrastructure\Password\PasswordResetAsked',
         'App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight',
+        'App\Identity\Infrastructure\Scheduler\RemoveExpiredSessionsEveryHour',
         'App\Identity\Infrastructure\Security\SecurityUser',
         'App\Inbox\Infrastructure\Mail\NotificationToMail',
         'App\Licensing\Infrastructure\Scheduler\TellLapsingSubscriptionsEveryHour',

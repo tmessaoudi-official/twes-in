@@ -18,6 +18,7 @@ use App\Files\Infrastructure\Scheduler\RemoveUnnamedBytesEveryHour;
 use App\Identity\Infrastructure\Mail\SecurityNoticeToMailHandler;
 use App\Identity\Infrastructure\Password\PasswordResetAskedHandler;
 use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
+use App\Identity\Infrastructure\Scheduler\RemoveExpiredSessionsEveryHour;
 use App\Inbox\Infrastructure\Mail\NotificationToMailHandler;
 use App\Licensing\Infrastructure\Scheduler\TellLapsingSubscriptionsEveryHour;
 use App\Module\Customers\Infrastructure\Scheduler\MarkKeptCustomerContactsEveryNight;
@@ -57,6 +58,7 @@ final class BackgroundWorkScopeTest extends TestCase
         RemoveUnnamedBytesEveryHour::class => 'each company\'s folder in turn, read against that company\'s file rows alone',
         EndRemovalsEveryQuarterHour::class => 'each due delete, locked by its own id and its company, ends in that company',
         FinalizeAccountDeletionsEveryNight::class => 'each due account, locked by its own id, no company: an account belongs to none, and its memberships go with it',
+        RemoveExpiredSessionsEveryHour::class => 'every session at once, on purpose: a session goes by its expiry alone, and it names no company in a column',
         InvitationToMailHandler::class => 'the invitation by its id, and the company that invitation names',
         NotificationToMailHandler::class => 'the person and the company the message names, both by id',
         PasswordResetAskedHandler::class => 'an address, no company: a password belongs to the account',
