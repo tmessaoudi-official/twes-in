@@ -9,7 +9,8 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 # The backup's tools answer with STEP_STATUS; curl writes down how it was called and answers with CURL_STATUS.
 mkdir -p "$TMPDIR/bin"
 # STEP_SLEEP makes each call hang that long first, as a network gone mid-upload does.
-for tool in gosu restic; do printf '#!/usr/bin/env bash\n[[ -z "${STEP_SLEEP:-}" ]] || sleep "$STEP_SLEEP"\nexit "${STEP_STATUS:-0}"\n' > "$TMPDIR/bin/$tool"; done
+for tool in gosu restic; do printf '#!/usr/bin/env bash\n[[ -z "${STEP_SLEEP:-}" ]] || sleep "$STEP_SLEEP"\n%s\nexit "${STEP_STATUS:-0}"\n' \
+  "[[ \" \$* \" != *' backup --json '* ]] || echo '{\"message_type\":\"summary\",\"snapshot_id\":\"5a1\"}'" > "$TMPDIR/bin/$tool"; done
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/curl.args"\nexit "${CURL_STATUS:-0}"\n' "$TMPDIR" > "$TMPDIR/bin/curl"
 chmod +x "$TMPDIR/bin/"*
 # Bounded itself: a step that is not bounded must read red here, never hang the suite.
@@ -61,7 +62,8 @@ sleep 1.5; marker=$(cat "$TMPDIR/outcome/due" 2>/dev/null); wait
 check "the schedule says it is alive while a step runs" 0 0 "$marker" " running full"
 check "  and that it ran, once done" 0 0 "$(cat "$TMPDIR/outcome/due")" " ran"
 check "  every step bounded, each failure written down" 0 0 "$(cat "$TMPDIR/outcome/copy" "$TMPDIR/outcome/verify" 2>/dev/null | tr '\n' '|')" "failed copy stopped after its time limit of 2 s|"
-rm -rf "$TMPDIR/outcome"; started=$SECONDS
+# The month's restore check done just now: its stand-in tools are not these.
+rm -rf "$TMPDIR/outcome"; mkdir -p "$TMPDIR/outcome"; date +%s > "$TMPDIR/outcome/restore-check.ok"; started=$SECONDS
 out=$(STEP=due run DUE_BEAT=300); status=$?
 ((status == 0 && SECONDS - started < 20)); check "the schedule's run hands its output back once done, its keeper gone with it" $? 0 "exit $status in $((SECONDS - started)) s" ""
 

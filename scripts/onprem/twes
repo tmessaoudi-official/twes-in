@@ -805,7 +805,7 @@ offsite() {
 # schedule's own line is `due-age <seconds since it last ran> <what it does>`, the age counted on the service's clock,
 # where it was written: Docker Desktop's virtual machine may keep another time than this computer after a sleep.
 backup_outcomes() {
-  compose exec -T backup sh -c 'cd /var/lib/twes-backup/outcome || exit 0; for f in full diff copy verify offsite; do [ -f "$f" ] && echo "$f $(cat "$f")"; done; if [ -f due ]; then read -r t rest < due; case "$t" in *[!0-9]*|"") ;; *) echo "due-age $(($(date +%s) - t)) $rest" ;; esac; fi; true'
+  compose exec -T backup sh -c 'cd /var/lib/twes-backup/outcome || exit 0; for f in full diff copy verify restore-check offsite; do [ -f "$f" ] && echo "$f $(cat "$f")"; done; if [ -f due ]; then read -r t rest < due; case "$t" in *[!0-9]*|"") ;; *) echo "due-age $(($(date +%s) - t)) $rest" ;; esac; fi; true'
 }
 # Since when this computer has been awake: its last start, or its last waking, which a tick finds when the tick before
 # it is long past (the ticks come every quarter hour while it is on).

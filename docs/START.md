@@ -718,9 +718,10 @@ on (§ 16). Without a destination the layer archives nowhere, so every command b
   database still sends within five minutes (`archive_timeout=300`), so a lost machine loses at most that.
 - The `backup` service takes the base backups the WAL replays from (full on Sunday, differential the other nights, at
   01:00 UTC), and at 01:30 the night's `pg_dump` and the files volume (logos, issued PDFs, attachments) through restic,
-  encrypted, into the same bucket under its own prefix. Whatever is older than 14 days is removed by each tool. Once a
+  encrypted, into the same bucket under its own prefix, in one snapshot holding every file the dump names (a file
+  removed between the dump and the files has both taken again). Whatever is older than 14 days is removed by each tool. Once a
   week both read their repository back whole. Its schedule is `infra/postgres/backup/crontab`; every step is
-  `twes-backup <step>` (`run`, `init`, `full`, `diff`, `copy`, `verify`), which runs by hand the same way:
+  `twes-backup <step>` (`run`, `init`, `full`, `diff`, `copy`, `verify`, and a shop's monthly `restore-check`, § 16), which runs by hand the same way:
   `docker compose exec backup twes-backup full`.
 - A deployment storing files in a bucket (`FILES_STORAGE=s3`) has an empty files volume: its files rest on that
   bucket's own versioning and replication, which its provider configures.
@@ -759,11 +760,15 @@ replacing it is the runbook's step, not this page's. The nightly dump comes back
 /var/lib/twes-backup/dump`, for `pg_restore`.
 
 **The drill.** `make backup-drill` does all of it on its own: the production images with this layer, a stand-in bucket
-(SeaweedFS, behind a certificate authority made for the run), a backup, a row written, then the moment noted from the
-database's clock, a second row, the night's differential, both repositories verified; then two restores from the bucket
-alone into empty volumes, through the `restore` service and the commands above. To the moment only the first
-row may come back, to the latest both. On the second the API must answer healthy and `app:data:check` find nothing, and
-restic must give back the files and the dump unchanged. It prints each step's time, runs as the compose project
+(SeaweedFS, behind a certificate authority made for the run), two demo companies built as a visitor's « Essayer » builds
+them (issued invoices with their PDFs, stock), a backup, a row written, every company's figures read
+(`scripts/backup/figures.sql`: issued invoices, their total, each chain's head, the stock movements' sum, the files'
+sha256), then the moment noted from the database's clock, a second row and a third company, the night's differential,
+both repositories verified; then two restores from the bucket alone into empty volumes, through the `restore` service
+and the commands above. To the moment only the first row and the figures read before it may come back, to the latest
+both rows and the figures read last. On the second the API must answer healthy and `app:data:check` find nothing, every
+file the database names must come back with the sha256 its row records, and restic must give back the dump. Every file
+the drill writes comes before the night's copy: a restore to the latest gives the files back only as that copy held them. It prints each step's time, runs as the compose project
 `twes-drill` beside your own stack, refuses any other, and removes its containers and volumes at the end. CI runs it
 weekly, by hand, and on every push that changes the backups (`.github/workflows/restore-drill.yml`).
 
@@ -1095,7 +1100,10 @@ progress (`deploy.sh --release` pulls without `-q`, on stderr).
 
 **Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
 last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
-read-back weekly, the off-site copy hourly), the outcomes kept in a volume of their own. Every step ends within its
+read-back weekly, the off-site copy hourly, and monthly a restore check: the latest backup restored into a folder of
+its own beside the server, never over it, started with archiving off, every table and index checked by `pg_amcheck`
+and every row read, then removed; it needs a quarter more free room than the database's size and says so when it
+lacks it, and one that failed runs again the next day), the outcomes kept in a volume of their own. Every step ends within its
 time, the wait for another step included (`BACKUP_STEP_LIMIT`, 14,400 s by default; `BACKUP_OFFSITE_LIMIT`, 43,200 s,
 as the first off-site copy sends the whole folder): a step past it is stopped and fails, which `twes tick` mails, and
 the schedule tries it again at its next half hour. While a step runs, the schedule says every five minutes that it is

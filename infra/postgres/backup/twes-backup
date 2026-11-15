@@ -7,6 +7,8 @@
 #   twes-backup full|diff     a base backup of the database (pgBackRest expires what is past retention after it)
 #   twes-backup copy          the nightly pg_dump and the files volume into restic, then what is past 14 days pruned
 #   twes-backup verify        both repositories read back whole
+#   twes-backup restore-check the latest restored into a folder of its own, every table and index checked and every row
+#                             read, then removed: a shop's monthly proof that its backups restore
 #   twes-backup offsite       a shop's whole local folder copied off site, when compose.backup-offsite.yaml is on
 #   twes-backup prune-offsite what is past 14 days pruned off site, run by the developer with a key the shop never holds
 #   twes-backup before-update an incremental base backup, the dump and the files, and the base backup's label, which
@@ -30,6 +32,8 @@ DUMP_DIR=/var/lib/twes-backup/dump
 FILES_DIR=/files
 KEEP=14d
 OUTCOME_DIRECTORY=${OUTCOME_DIRECTORY:-/var/lib/twes-backup/outcome}
+CHECK_DIR=${CHECK_DIR:-/var/lib/twes-backup/restore-check}
+CHECK_PORT=5499
 BACKUP_LOCK=${BACKUP_LOCK:-/tmp/twes-backup.lock}
 
 say() { printf '%s twes-backup %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
@@ -100,13 +104,40 @@ base_backup() {
   say "$1 backup done"
 }
 
+# The storage keys of the files the dump names, read from the dump itself: its `file` table's rows, by the column named
+# storage_key in the COPY line, wherever later migrations put it.
+dump_keys() {
+  gosu postgres pg_restore --data-only --table=file --file=- "$DUMP_DIR/twes.dump" | awk -F '\t' '
+    !copying && /^COPY public\.file \(/ {
+      columns = $0; sub(/^COPY public\.file \(/, "", columns); sub(/\) FROM stdin;$/, "", columns)
+      n = split(columns, names, ", "); for (i = 1; i <= n; i++) if (names[i] == "storage_key") key = i
+      copying = 1; next
+    }
+    copying && $0 == "\\." { exit }
+    copying && key { print $key }'
+}
+
+# The dump and the files in one restic snapshot, from one point: a removal ends a file's row, then deletes its bytes, so
+# a file the dump names may be gone by the time restic reads the files, and would come back named and missing. Every
+# file the dump names is looked for in the snapshot; one missing was removed in between, and a dump taken again no
+# longer names it. Removals are rare and quick, so three tries settle it; a fourth would mean files vanishing that no
+# removal explains, which is said rather than copied over.
 copy() {
-  local tag=${1:-nightly}
+  local tag=${1:-nightly} attempt snapshot named held missing=0
   wait_for_database
-  # Written beside, then moved: a dump cut short by a crash never replaces last night's whole one.
-  gosu postgres pg_dump -h /var/run/postgresql -U twes -d twes --format=custom --file="$DUMP_DIR/twes.dump.part"
-  gosu postgres mv "$DUMP_DIR/twes.dump.part" "$DUMP_DIR/twes.dump"
-  rst backup --tag "$tag" --host twes "$DUMP_DIR" "$FILES_DIR"
+  for attempt in 1 2 3; do
+    # Written beside, then moved: a dump cut short by a crash never replaces last night's whole one.
+    gosu postgres pg_dump -h /var/run/postgresql -U twes -d twes --format=custom --file="$DUMP_DIR/twes.dump.part"
+    gosu postgres mv "$DUMP_DIR/twes.dump.part" "$DUMP_DIR/twes.dump"
+    snapshot=$(rst backup --json --tag "$tag" --host twes "$DUMP_DIR" "$FILES_DIR" | sed -n 's/^{"message_type":"summary".*"snapshot_id":"\([0-9a-f]*\)".*/\1/p')
+    [[ -n "$snapshot" ]] || { say "restic named no snapshot for the copy"; return 1; }
+    named=$(dump_keys | sort -u)
+    held=$(rst ls --recursive "$snapshot" "$FILES_DIR" | sed -n "s#^$FILES_DIR/##p" | sort -u)
+    missing=$(comm -23 <(printf '%s\n' "$named") <(printf '%s\n' "$held") | awk 'NF' | wc -l)
+    ((missing > 0)) || break
+    ((attempt == 3)) || say "$missing file the dump names was removed before the files were read: copied again"
+  done
+  ((missing == 0)) || { say "$missing file the dump names is still missing from the files after 3 copies"; return 1; }
   rst forget --host twes --keep-within "$KEEP" --prune
   say "dump and files copied ($tag), kept $KEEP"
 }
@@ -157,10 +188,50 @@ verify() {
   say "both repositories read back whole"
 }
 
+# The month's restore check, what verify cannot prove: that the backups give a database back. The latest is restored
+# into a folder of its own, never the server's, and started with archiving off: promoted, it begins a timeline of its
+# own, which must never reach the repository the next restore reads. Once it has left recovery, pg_amcheck checks every
+# table and index and pg_dump reads every row; the server is then stopped and the folder removed, whatever happened
+# (main's exit trap). The application's data check, which needs the api, is not run on it here.
+restore_check() {
+  put restore-check-tried.ok "$(date +%s)"
+  check_down
+  wait_for_database
+  # The restore takes about the cluster's size, and the WAL it replays some more: a quarter's room above it.
+  local size room need
+  size=$(gosu postgres psql -h /var/run/postgresql -U twes -d twes -tAc 'SELECT sum(pg_database_size(datname)) FROM pg_database')
+  [[ "$size" =~ ^[0-9]+$ ]] || { say "the database named no size ($size): the restore check not run"; return 1; }
+  room=$(df --output=avail -B1 "$(dirname "$CHECK_DIR")" | tail -n 1 | tr -d ' ')
+  need=$((size * 5 / 4))
+  ((room >= need)) || { say "the restore check needs $need bytes beside $CHECK_DIR, $room are free: not run"; return 1; }
+  # The socket's folder too: the server makes its lock file there and does not make the folder.
+  install -d -o postgres -g postgres -m 0700 "$CHECK_DIR" "$CHECK_DIR.socket"
+  pgbr --pg1-path="$CHECK_DIR" --archive-mode=off --spool-path=/tmp restore
+  # Its log is said when it does not start, as the folder holding it goes with the check.
+  gosu postgres pg_ctl -D "$CHECK_DIR" -l "$CHECK_DIR.log" -w -t 3600 \
+    -o "-c archive_mode=off -c listen_addresses= -c port=$CHECK_PORT -c unix_socket_directories=$CHECK_DIR.socket" start \
+    || { tail -n 20 "$CHECK_DIR.log"; say "the restored database did not start"; return 1; }
+  # A server answers while it still replays towards the latest: what it holds is read once it has promoted. The step's
+  # own time limit ends a replay that never does.
+  until [[ "$(gosu postgres psql -h "$CHECK_DIR.socket" -p "$CHECK_PORT" -U twes -d twes -tAc 'SELECT pg_is_in_recovery()')" == f ]]; do sleep 1; done
+  gosu postgres pg_amcheck -h "$CHECK_DIR.socket" -p "$CHECK_PORT" -U twes --all --heapallindexed --install-missing
+  gosu postgres pg_dump -h "$CHECK_DIR.socket" -p "$CHECK_PORT" -U twes -d twes --format=custom --no-sync --file=/dev/null
+  say "the latest backup restored, every table and index checked, every row read"
+}
+
+# The check's server stopped and its folder removed: after a check, and before one, as a check stopped at its time
+# limit and killed a minute later leaves both behind.
+check_down() {
+  if [[ -f "$CHECK_DIR/postmaster.pid" ]]; then
+    gosu postgres pg_ctl -D "$CHECK_DIR" -m fast -w stop || say "the restore check's server was not running: its folder removed"
+  fi
+  rm -rf "$CHECK_DIR" "$CHECK_DIR.log" "$CHECK_DIR.socket"
+}
+
 # The step's heartbeat, whichever way it ended: sent from the exit trap, so the step runs under `set -e` unchanged and
 # a failure is reported with the status it exited on.
-heartbeat() {
-  local status=$? endpoint=$1 success=true reason=''
+heartbeat() { # endpoint step [status, when the trap ran something after the step]
+  local status=${3:-$?} endpoint=$1 success=true reason=''
   ((status == 0)) || { success=false; reason="$2 exited $status"; }
   # The step's own status is what it exits with: an outcome that cannot be written is said, and due runs the step again.
   if if ((status == 0)); then
@@ -168,7 +239,8 @@ heartbeat() {
   else
     put "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $reason"
   fi; then :; else say "the outcome of $2 could not be written under $OUTCOME_DIRECTORY"; fi
-  if [[ -n "${MONITOR_URL:-}" ]]; then
+  # A step a server never schedules (endpoint -) has no line on the monitor to tell.
+  if [[ -n "${MONITOR_URL:-}" && "$endpoint" != - ]]; then
     curl -fsS --max-time 15 -o /dev/null -X POST -H "Authorization: Bearer ${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN with MONITOR_URL}" \
       --data-urlencode "success=$success" --data-urlencode "error=$reason" -G \
       "$MONITOR_URL/api/v1/endpoints/Sauvegardes_$endpoint/external" \
@@ -193,7 +265,7 @@ since() {
 due() {
   # The off-site copy's period: what a lost computer loses (docs/START.md § 16). Fifty minutes, since the schedule runs
   # every half hour and an hour's period read a second early would wait the next half hour.
-  local failed=0 day=$((20 * 3600)) week=$((7 * 86400)) every=${OFFSITE_EVERY:-3000} keeper
+  local failed=0 day=$((20 * 3600)) week=$((7 * 86400)) month=$((30 * 86400)) every=${OFFSITE_EVERY:-3000} keeper
   [[ "$every" =~ ^[0-9]+$ ]] || { say "OFFSITE_EVERY=$every: a number of seconds"; return 1; }
   # That the schedule is alive, whatever ran: a shop's twes tick alerts when this goes quiet while the application runs.
   # While a step runs (the first off-site copy may take hours) it says so every five minutes, naming the step; each step
@@ -221,6 +293,8 @@ due() {
   (($(since copy) < day)) || due_step copy || failed=1
   if [[ -n "${OFFSITE_REPOSITORY:-}" ]] && (($(since offsite) >= every)); then due_step offsite || failed=1; fi
   (($(since verify) < week)) || due_step verify || failed=1
+  # Keyed on the last try as well as the last success: a check that fails runs again the next day, not every half hour.
+  if (($(since restore-check) >= month && $(since restore-check-tried) >= day)); then due_step restore-check || failed=1; fi
   kill "$keeper"
   wait "$keeper" || true # the keeper ends on the signal just sent; its status says only that
   put due "$(date +%s) ran"
@@ -278,13 +352,15 @@ main() {
     # Every step bounded, the lock's wait included; once bounded, the step itself, which a stop sent at its limit ends as
     # a failure: left to bash, the exit trap would read the status 0 and write the step down, and tell the monitor, as
     # done, and the schedule would not run it again for a day.
-    full|diff|copy|verify|offsite|before-update)
+    full|diff|copy|verify|restore-check|offsite|before-update)
       if [[ -n "${TWES_BACKUP_BOUNDED:-}" ]]; then trap 'exit 143' TERM; else bounded "$1"; fi ;;&
     # Each name is the step's line on the public status page (infra/monitor/gatus.yaml), unaccented: Gatus takes no
     # heartbeat for a name with an accent.
     full|diff) hold; trap "heartbeat Base $1" EXIT; base_backup "$1" ;;
     copy) hold; trap 'heartbeat Copie copy' EXIT; copy ;;
     verify) hold; trap 'heartbeat Relecture verify' EXIT; verify ;;
+    # Its server stopped first, whichever way it ended; the heartbeat then reads the check's own status.
+    restore-check) hold; trap 'ended=$?; check_down; heartbeat - restore-check "$ended"' EXIT; restore_check ;;
     # Off, the step never ran: a monitor that never expects it hears nothing.
     offsite) hold; [[ -z "${OFFSITE_REPOSITORY:-}" ]] || trap 'heartbeat Hors_site offsite' EXIT; offsite ;;
     before-update) hold; before_update ;;
@@ -298,7 +374,7 @@ main() {
         variable=$(basename "$path" | tr 'a-z' 'A-Z')
         if [[ -n "${!variable:-}" ]]; then echo "secrets read: $variable"; else echo "secret not read: $variable"; fi
       done ;;
-    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|prune-offsite|before-update|due|secrets" >&2; exit 64 ;;
+    *) echo "usage: twes-backup run|init|full|diff|copy|verify|restore-check|offsite|prune-offsite|before-update|due|secrets" >&2; exit 64 ;;
   esac
 }
 

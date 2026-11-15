@@ -241,6 +241,13 @@ Then read which it was:
 Whichever it was, a step that failed is mailed on its own (« Sauvegarde en échec : <step> »); `… exec backup twes-backup
 due` runs what is due at once.
 
+**« Sauvegarde en échec : restore-check ».** The month's restore check could not give the latest backup back, or found
+it damaged. Its log says which: `… logs backup` around the alert. « needs N bytes … not run »: free room on the computer's
+disk, then `… exec backup twes-backup restore-check`. A pgBackRest error during the restore, or a `pg_amcheck` line
+naming a table or index: the backups themselves are in doubt; take a full backup now (`… exec backup twes-backup full`),
+run the check again, and if it still fails, keep the folder as it is and call the developer before anything is
+removed. It tries again by itself the next day. Untried on a real shop.
+
 ## Restore a shop
 
 Tried on the check stack (`make onprem-check`: a release with one migration more rolled back, then these commands run as

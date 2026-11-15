@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # The restore drill (docs/SPEC.md § 7, 2026-10-12 00:23; docs/START.md § 13): the production images with the backup
-# overlay, a stand-in bucket, and the whole round trip, from the bucket alone into empty volumes. It backs the database
-# up, writes a row, notes the moment from the database's own clock, writes a second row, then restores twice:
-#   to that moment       only the first row may come back (the target is honoured, not merely "the latest")
-#   to the latest        both rows come back (the WAL written after the base backup reached the bucket)
+# overlay, a stand-in bucket, and the whole round trip, from the bucket alone into empty volumes. Two demo companies are
+# built first, as a visitor's « Essayer » builds them (issued invoices with their PDFs, stock, files), so the restores
+# have something to lose. It backs the database up, writes a row, reads every company's figures (scripts/backup/figures.sql),
+# notes the moment from the database's own clock, writes a second row and builds a third company, then restores twice:
+#   to that moment       only the first row and the figures read before the moment come back (the target is honoured)
+#   to the latest        both rows and the figures read last come back (the WAL after the base backup reached the bucket)
 # On the second it starts the API, which must answer healthy, and runs the data check, which must find nothing; restic
-# gives back the files volume and the nightly dump, compared byte for byte. Each step's time is printed.
+# gives back the files volume, every file matching the sha256 its row records, and the nightly dump. Each step's time is printed.
 # `local` drills a shop's backups instead (compose.backup-local.yaml, docs/START.md § 16): the repositories in a folder,
 # copied off site to the stand-in bucket (compose.backup-offsite.yaml), the copy an update takes first restored by its
 # label, and the latest restored after the folder itself is lost, from the off-site copy alone.
@@ -40,6 +42,31 @@ fail() { echo "restore-drill: FAIL — $*" >&2; exit 1; }
 dc() { (cd "$root" && docker compose "$@"); }
 # psql against whichever server the compose postgres service runs now.
 sql() { dc exec -T postgres psql -U twes -d twes -v ON_ERROR_STOP=1 -tAc "$1"; }
+# Every company's figures, as figures.sql reads them, from the server the given command reaches.
+figures_of() { "$@" -v ON_ERROR_STOP=1 -tA -f - < "$root/scripts/backup/figures.sql"; }
+figures() { figures_of dc exec -T postgres psql -U twes -d twes; }
+same_figures() { # what was read before, what the restore holds, where
+  [[ "$2" == "$1" ]] || fail "restored $3, the figures differ (< before, > restored):
+$(diff <(printf '%s\n' "$1") <(printf '%s\n' "$2"))"
+}
+# A visitor's « Essayer » on the API, which hands them the ready Tunisian demo company and has the pool build what
+# replaces it; says the HTTP status. The header and origin are what the browser sends.
+demo_entry() {
+  dc exec -T api php -r '$c = stream_context_create(["http" => ["method" => "POST", "ignore_errors" => true, "content" => "{\"country\":\"TN\"}",
+    "header" => "content-type: application/json\r\ncsrf-token: restore-drill-0123456789abcdef01234567\r\norigin: http://localhost\r\n"]]);
+    file_get_contents("http://localhost/api/auth/demo", false, $c); echo explode(" ", $http_response_header[0])[1];'
+}
+# The workers have built every sandbox queued and handled every message due: what the demo wrote is all in. A message
+# set aside as failed is a build that did not finish, which fails the drill.
+settled() {
+  local waited=0
+  until [[ "$(sql "SELECT (SELECT count(*) FROM demo_sandbox WHERE state IN ('queued', 'building')) + (SELECT count(*) FROM messenger_messages WHERE queue_name <> 'failed' AND available_at <= now())")" == 0 ]]; do
+    ((waited < 300)) || fail "the demo companies were not built in 300 s"
+    sleep 2; waited=$((waited + 2))
+  done
+  [[ "$(sql "SELECT count(*) FROM messenger_messages WHERE queue_name = 'failed'")" == 0 ]] || fail "a message failed while the demo companies were built"
+  [[ "$(sql "SELECT count(*) FROM demo_sandbox WHERE state = 'ready'")" == 2 ]] || fail "the demo pool holds no ready company per country"
+}
 
 # The shop's folder emptied by root in the backup image, which wrote it; the stack's containers are gone by then.
 empty_folder() {
@@ -74,19 +101,30 @@ stand_in_bucket_keys
 step "images built, keys and certificate made"
 
 stand_in_bucket_up
-dc up -d --build --wait postgres gotenberg api backup
-step "stack up: production api, archiving database, backup service ready"
+dc up -d --build --wait postgres gotenberg api backup worker demo-worker centrifugo mailpit
+step "stack up: production api and workers, archiving database, backup service ready"
+
+[[ "$(demo_entry)" == 503 ]] || fail "the first demo visitor was let in before any demo company was built"
+settled
+[[ "$(sql "SELECT (SELECT count(*) FROM invoice WHERE issued_at IS NOT NULL) > 0 AND (SELECT count(*) FROM stock_movement) > 0 AND (SELECT count(*) FROM file) > 0")" == t ]] \
+  || fail "the demo companies hold no issued invoice, stock movement or file: comparing figures would prove nothing"
+# Stopped while figures are read: nothing writes them then but the drill.
+dc stop worker demo-worker >/dev/null
+step "two demo companies built: issued invoices, PDFs, stock"
 
 if [[ "$mode" == local ]]; then
-  # A shop's schedule (twes-backup due) on a new install: nothing done yet, so it takes the full backup, the copy and the
-  # read-back by itself, each under the lock and written down in the outcome volume, and the next run finds nothing due.
+  # A shop's schedule (twes-backup due) on a new install: nothing done yet, so it takes the full backup, the copy, the
+  # read-back and the month's restore check by itself, each under the lock and written down in the outcome volume, and
+  # the next run finds nothing due. The check's promoted copy must leave no timeline in the folder: the restores below
+  # follow the newest one they find there.
   dc exec -T backup twes-backup due
-  for done_step in full copy verify; do
+  for done_step in full copy verify restore-check; do
     dc exec -T backup test -s "/var/lib/twes-backup/outcome/$done_step.ok" || fail "due wrote down no success for $done_step"
   done
   again=$(dc exec -T backup twes-backup due 2>&1)
   [[ -z "$again" ]] || fail "due ran again what it had just done: $again"
-  step "due on a new shop: full backup, copy, read-back, each written down"
+  dc exec -T backup test ! -e /var/lib/twes-backup/restore-check || fail "the restore check left its folder behind"
+  step "due on a new shop: full backup, copy, read-back, restore check, each written down"
 else
   dc exec -T backup twes-backup full
   step "full base backup"
@@ -99,15 +137,23 @@ step "archiving cut no connection"
 
 # What a pilot writes after last night's backup: it must come back from the WAL alone.
 sql "CREATE TABLE restore_drill (n int PRIMARY KEY); INSERT INTO restore_drill VALUES (1)" >/dev/null
+before=$(figures)
 sleep 2
 target=$(sql "SELECT now()")
 sleep 2
-sql "INSERT INTO restore_drill VALUES (2); SELECT pg_switch_wal()" >/dev/null
+sql "INSERT INTO restore_drill VALUES (2)" >/dev/null
+# A visitor takes the Tunisian company and the pool builds its replacement: a whole company after the moment.
+[[ "$(demo_entry)" == 200 ]] || fail "the second demo visitor was not let in"
+dc up -d --wait worker demo-worker >/dev/null
+settled
+dc stop worker demo-worker >/dev/null
+after=$(figures)
+[[ "$after" != "$before" ]] || fail "the figures did not move after $target: a restore to it could not be told from the latest"
+sql "SELECT pg_switch_wal()" >/dev/null
 dc exec -T backup twes-secrets gosu postgres pgbackrest --stanza=twes check >/dev/null
 # The nightly differential over Sunday's full: the latest restore goes through both, then the WAL after them.
 dc exec -T backup twes-backup diff
-companies_before=$(sql "SELECT count(*) FROM company")
-step "rows written either side of $target, WAL archived"
+step "rows and a demo company written either side of $target, WAL archived"
 
 if [[ "$mode" == local ]]; then
   # What an update takes first (scripts/onprem/twes): the label it names is what a restore goes back to.
@@ -117,6 +163,8 @@ if [[ "$mode" == local ]]; then
   step "the copy before an update made: $label; a third row written after it"
 fi
 
+# Every file the drill writes comes before the copy: a restore to the latest gives the database back to its last WAL
+# but the files only as the last copy held them.
 dc exec -T api sh -c 'head -c 65536 /dev/urandom > /app/var/files/restore-drill.bin && sha256sum /app/var/files/restore-drill.bin' > "$DRILL_DIR/files.sha256"
 dc exec -T backup twes-backup copy
 # What the weekly check runs: both repositories read back whole.
@@ -164,9 +212,11 @@ if ! got=$(docker exec twes-drill-pitr psql -U twes -d twes -v ON_ERROR_STOP=1 -
   docker rm -f twes-drill-pitr >/dev/null
   fail "the server restored to $target could not be read"
 fi
+got_figures=$(figures_of docker exec -i twes-drill-pitr psql -U twes -d twes)
 docker rm -f twes-drill-pitr >/dev/null
 [[ "$got" == "1" ]] || fail "restored to $target, the table holds [$got], wanted [1]"
-step "restored to the moment between the rows: [1]"
+same_figures "$before" "$got_figures" "to $target"
+step "restored to the moment between the rows: [1], the figures read before it"
 
 latest=1,2
 if [[ "$mode" == local ]]; then
@@ -175,8 +225,10 @@ if [[ "$mode" == local ]]; then
   DRILL_PG_DATA=twes-drill-pg-u dc run -d --no-deps --name twes-drill-update postgres postgres -c archive_mode=off >/dev/null
   for _ in $(seq 1 60); do docker exec twes-drill-update pg_isready -q -U twes -d twes 2>/dev/null && break; sleep 1; done
   got=$(docker exec twes-drill-update psql -U twes -d twes -v ON_ERROR_STOP=1 -tAc "SELECT coalesce(string_agg(n::text, ',' ORDER BY n), '') FROM restore_drill")
+  got_figures=$(figures_of docker exec -i twes-drill-update psql -U twes -d twes)
   docker rm -f twes-drill-update >/dev/null
   [[ "$got" == "1,2" ]] || fail "restored to the copy before an update, the table holds [$got], wanted [1,2]"
+  same_figures "$after" "$got_figures" "to the copy before an update"
   step "restored to the copy taken before an update: [1,2]"
 
   # The machine's folder is lost: it comes back from the off-site copy alone, then the database from it.
@@ -187,8 +239,8 @@ fi
 restore_into twes-drill-pg-b --type=default
 got=$(rows_in twes-drill-pg-b)
 [[ "$got" == "$latest" ]] || fail "restored to the latest, the table holds [$got], wanted [$latest]"
-[[ "$(sql "SELECT count(*) FROM company")" == "$companies_before" ]] || fail "the restored database lost companies"
-step "restored to the latest: [$latest]"
+same_figures "$after" "$(figures)" "to the latest"
+step "restored to the latest: [$latest], the figures read last"
 
 # The files as docs/START.md § 13 brings them back, over the volume the api reads, before the api starts on it.
 DRILL_PG_DATA=twes-drill-pg-b dc run --rm --no-deps -T restore restic restore latest --host twes --include /files --target / >/dev/null
@@ -200,13 +252,17 @@ step "API healthy and data check clean on the restored database"
 
 dc exec -T api sha256sum /app/var/files/restore-drill.bin > "$DRILL_DIR/back.sha256" || fail "restic gave back no files volume"
 [[ "$(cut -d' ' -f1 "$DRILL_DIR/files.sha256")" == "$(cut -d' ' -f1 "$DRILL_DIR/back.sha256")" ]] || fail "the file restic gave back differs from the one copied"
+# Every file the restored database names, back with the bytes its row records.
+sql "SELECT sha256 || '  ' || storage_key FROM file ORDER BY storage_key" > "$DRILL_DIR/files.recorded"
+dc exec -T api sh -c 'cd /app/var/files && sha256sum --check --quiet' < "$DRILL_DIR/files.recorded" \
+  || fail "a file the restored database names is missing or differs from the sha256 its row records"
 DRILL_PG_DATA=twes-drill-pg-b dc up -d --wait backup >/dev/null
 # Under the steps' lock (twes-backup's BACKUP_LOCK): the service just started prepares its repositories, and its half-hourly
 # schedule may start a step whose prune takes restic's repository for itself.
 dc exec -T backup flock /tmp/twes-backup.lock twes-secrets restic restore latest --host twes --include /var/lib/twes-backup/dump --target /tmp/back >/dev/null
 dc exec -T backup sh -c 'pg_restore --list /tmp/back/var/lib/twes-backup/dump/twes.dump | grep -q "TABLE DATA public restore_drill"' \
   || fail "the nightly dump does not hold the database"
-step "files and nightly dump restored from restic, identical"
+step "files ($(wc -l < "$DRILL_DIR/files.recorded") named) and nightly dump restored from restic, identical"
 
 if [[ "$mode" == local ]]; then whence="the off-site copy alone"; else whence="the bucket alone"; fi
 printf 'restore-drill: OK (%s) — restored from %s in %ss in all\n' "$mode" "$whence" "$(($(date +%s) - started))"
