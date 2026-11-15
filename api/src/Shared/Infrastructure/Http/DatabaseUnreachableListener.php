@@ -11,6 +11,8 @@ namespace App\Shared\Infrastructure\Http;
 
 use App\Shared\Infrastructure\ApiPlatform\Output\DatabaseUnreachableProblem;
 use App\Shared\Infrastructure\Doctrine\CommittedWork;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver\AbstractException;
 use Doctrine\DBAL\Exception\ConnectionException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -24,12 +26,14 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * server out of reach and lets the person send again, never the 500 an unknown failure is read as, and never the
  * driver's words (they name the host). A critical line tells the people who look after the installation. A request
  * that already committed a unit of work is left the error it is, as `BusyListener` leaves it: sent again, what committed
- * would be made twice. Before Symfony logs the exception (0) and API Platform renders it (-96).
+ * would be made twice. The session store runs on a PDO connection of its own and throws PDO's exception, which the
+ * application's driver reads as DBAL reads its own, so a database gone while a session opens is said the same way.
+ * Before Symfony logs the exception (0) and API Platform renders it (-96).
  */
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: 16)]
 final readonly class DatabaseUnreachableListener
 {
-    public function __construct(private LoggerInterface $logger, private CommittedWork $committed)
+    public function __construct(private LoggerInterface $logger, private CommittedWork $committed, private Connection $connection)
     {
     }
 
@@ -39,7 +43,7 @@ final readonly class DatabaseUnreachableListener
             return;
         }
         for ($seen = $event->getThrowable(); null !== $seen; $seen = $seen->getPrevious()) {
-            if ($seen instanceof ConnectionException) {
+            if ($seen instanceof ConnectionException || ($seen instanceof \PDOException && $this->lostConnection($seen))) {
                 $this->logger->critical('The database did not answer; answered unreachable: {kind} on {path}', [
                     'kind' => (new \ReflectionClass($seen))->getShortName(),
                     'path' => RoutedPath::of($event->getRequest()),
@@ -49,5 +53,19 @@ final readonly class DatabaseUnreachableListener
                 return;
             }
         }
+    }
+
+    /** Whether the application's own driver reads this PDO failure as no connection, opened or kept. */
+    private function lostConnection(\PDOException $failure): bool
+    {
+        $state = $failure->errorInfo[0] ?? $failure->getCode();
+        $driverError = new class($failure->getMessage(), \is_string($state) ? $state : null, $failure) extends AbstractException {
+            public function __construct(string $message, ?string $state, \PDOException $previous)
+            {
+                parent::__construct($message, $state, 0, $previous);
+            }
+        };
+
+        return $this->connection->getDriver()->getExceptionConverter()->convert($driverError, null) instanceof ConnectionException;
     }
 }

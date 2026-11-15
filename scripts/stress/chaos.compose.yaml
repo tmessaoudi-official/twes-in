@@ -1,0 +1,45 @@
+# The chaos harness's own layer (scripts/stress/chaos.sh), over compose.yaml, under the compose project `twes-stress`
+# only. Nothing publishes a port, so it runs beside a development stack whose ports it would otherwise take; the driver
+# reaches the api on the project's own network. The api, the migration and the workers share one image built once.
+services:
+  postgres:
+    ports: !reset []
+  api:
+    image: twes-stress-api
+    ports: !reset []
+    environment:
+      # No LAN door here: mailed links and the origin the API checks a write against are this computer's own.
+      DEFAULT_URI: http://localhost:8090
+  migrate:
+    image: twes-stress-api
+  worker:
+    image: twes-stress-api
+  demo-worker:
+    image: twes-stress-api
+  web:
+    ports: !reset []
+  lan:
+    ports: !reset []
+  gotenberg:
+    ports: !reset []
+  mailpit:
+    ports: !reset []
+
+  # Sells in a loop while the faults land (scripts/stress/chaos-driver.sh), writing what it asked and what came back to
+  # the ledger the oracle reads. The toolchain's image: curl, jq, python3. It runs as a job and exits.
+  chaos-driver:
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    restart: "no"  # a job: it sells, writes its ledger and exits
+    image: twes-in-tools
+    profiles: [chaos]
+    user: "${CHAOS_UID:-1000}:${CHAOS_GID:-1000}"
+    working_dir: /src
+    entrypoint: ["bash"]
+    volumes:
+      # Relative paths resolve from the project's folder, compose.yaml's: the checkout's root.
+      - .:/src:ro
+      - ${CHAOS_OUT:?the ledger's folder}:/out

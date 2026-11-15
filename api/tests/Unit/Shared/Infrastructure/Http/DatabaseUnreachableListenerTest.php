@@ -12,7 +12,9 @@ namespace App\Tests\Unit\Shared\Infrastructure\Http;
 use App\Shared\Infrastructure\ApiPlatform\Output\DatabaseUnreachableProblem;
 use App\Shared\Infrastructure\Doctrine\CommittedWork;
 use App\Shared\Infrastructure\Http\DatabaseUnreachableListener;
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\AbstractException;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception\ConnectionException;
 use Doctrine\DBAL\Exception\ConnectionLost;
 use Doctrine\DBAL\Exception\DriverException;
@@ -36,6 +38,9 @@ final class DatabaseUnreachableListenerTest extends TestCase
         yield 'no connection could be opened' => [new ConnectionException(self::driverError('08006', 'connection to server failed: Connection refused'), null)];
         yield 'the connection was cut' => [new ConnectionLost(self::driverError('57P01', 'terminating connection due to administrator command'), null)];
         yield 'either, under the use case that met it' => [new \RuntimeException('The invoice could not be issued.', 0, new ConnectionLost(self::driverError('57P01', 'server closed the connection unexpectedly'), null))];
+        // The session store runs on a PDO connection of its own, beside DBAL's, and throws PDO's own exception.
+        yield 'the session store\'s connection was cut' => [self::pdoError('HY000', 'General error: 7 server closed the connection unexpectedly')];
+        yield 'the session store could not connect' => [self::pdoError('08006', '[7] could not translate host name "postgres" to address')];
     }
 
     #[DataProvider('unreachable')]
@@ -43,7 +48,7 @@ final class DatabaseUnreachableListenerTest extends TestCase
     {
         $logged = self::logger();
         $event = self::event($down);
-        (new DatabaseUnreachableListener($logged, new CommittedWork()))($event);
+        (new DatabaseUnreachableListener($logged, new CommittedWork(), self::connection()))($event);
 
         $answer = $event->getThrowable();
         self::assertInstanceOf(DatabaseUnreachableProblem::class, $answer);
@@ -55,11 +60,18 @@ final class DatabaseUnreachableListenerTest extends TestCase
         self::assertSame(['critical'], $logged->levels, 'logged once, at the level that reaches the monitor');
     }
 
-    public function testAnyOtherDatabaseFailureIsLeftAnError(): void
+    /** @return iterable<string, array{\Throwable}> */
+    public static function otherFailures(): iterable
     {
-        $other = new DriverException(self::driverError('42P01', 'relation does not exist'), null);
+        yield 'through DBAL' => [new DriverException(self::driverError('42P01', 'relation does not exist'), null)];
+        yield 'on the session store\'s connection' => [self::pdoError('42P01', 'relation "sessions" does not exist')];
+    }
+
+    #[DataProvider('otherFailures')]
+    public function testAnyOtherDatabaseFailureIsLeftAnError(\Throwable $other): void
+    {
         $event = self::event($other);
-        (new DatabaseUnreachableListener(self::logger(), new CommittedWork()))($event);
+        (new DatabaseUnreachableListener(self::logger(), new CommittedWork(), self::connection()))($event);
 
         self::assertSame($other, $event->getThrowable());
     }
@@ -72,7 +84,7 @@ final class DatabaseUnreachableListenerTest extends TestCase
         $committed->commit();
         $lost = new ConnectionLost(self::driverError('57P01', 'terminating connection'), null);
         $event = self::event($lost);
-        (new DatabaseUnreachableListener(self::logger(), $committed))($event);
+        (new DatabaseUnreachableListener(self::logger(), $committed, self::connection()))($event);
 
         self::assertSame($lost, $event->getThrowable());
     }
@@ -99,6 +111,27 @@ final class DatabaseUnreachableListenerTest extends TestCase
                 throw new \LogicException('Not handled in this test.');
             }
         }, Request::create('/api/companies/x/invoices', 'POST'), HttpKernelInterface::MAIN_REQUEST, $thrown);
+    }
+
+    /** The application's driver, never connected: only its exception converter is read. */
+    private static function connection(): Connection
+    {
+        return DriverManager::getConnection(['driver' => 'pdo_pgsql']);
+    }
+
+    /** As pdo_pgsql throws it: the SQLSTATE in the code, and in errorInfo once a statement ran. */
+    private static function pdoError(string $state, string $message): \PDOException
+    {
+        $error = new class('SQLSTATE['.$state.']: '.$message) extends \PDOException {
+            public function withState(string $state): self
+            {
+                $this->code = $state;
+
+                return $this;
+            }
+        };
+
+        return $error->withState($state);
     }
 
     private static function driverError(string $state, string $message): AbstractException

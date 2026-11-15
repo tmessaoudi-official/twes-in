@@ -46,7 +46,7 @@ WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile 
 WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: rc-lane rc-tools-image stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
+.PHONY: rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -325,6 +325,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/count-lines.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/rc-lane.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/chaos.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
@@ -468,6 +469,14 @@ stress: tools-image
 	docker compose up -d --wait --no-recreate postgres
 	( flock -n 9 || { echo "make stress: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
 	  $(TOOLS) sh -c 'cd api && php tests/Concurrency/Support/prepare.php && vendor/bin/phpunit -c phpunit.stress.xml' ) 9>/tmp/twes-in-gate.lock
+
+# The chaos harness (scripts/stress/chaos.sh): a stack of its own, compose project twes-stress, no port published,
+# the api, the worker and the database killed under sellers issuing and paying; the judge holds the database to what
+# they asked. It builds the api image and loads the demo dataset, about ten minutes, so it takes the gate's lock.
+chaos:         ## kill the api, the worker and postgres mid-sale on a stack of its own and judge what was kept; SABOTAGE=1 must go red
+chaos: tools-image
+	( flock -n 9 || { echo "make chaos: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
+	  bash scripts/stress/chaos.sh $(if $(SABOTAGE),--sabotage) ) 9>/tmp/twes-in-gate.lock
 
 rc-tools-image: ## build the RC lane's toolchain: the tools image on PHP's next release candidate (infra/api/rc.Dockerfile)
 	docker build -q --load $(EXTRA_CA_SECRET) -f infra/api/rc.Dockerfile -t twes-in-tools-rc . >/dev/null
