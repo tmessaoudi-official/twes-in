@@ -28,6 +28,15 @@ case "$1" in
   pull) echo "${@: -1}" >> "$TMPDIR/docker.pulled"; [[ "$*" == *" -q"* ]] || echo "${@: -1}: Pull complete" ;;
   image) [[ -z "${IMAGE_MISSING:-}" ]] || { echo "Error: No such image: ${@: -1}" >&2; exit 1; }; printf '%s\n' "${LABEL_REV:-}" ;;
   compose)
+    # --reset: the counts (SUMMARY, exiting 3 when it names a fiscal record), the backup's label (BACKUP_LABEL), the
+    # emptying (EMPTY_EXIT) and the operator, each call and what it was given written down.
+    echo "$*" >> "$TMPDIR/compose.calls"
+    case "$*" in
+      *"app:fiscal:inventory --summary"*) echo "${SUMMARY:-fiscal-records=0 fiscal-companies=0 companies=2}"; [[ "${SUMMARY:-}" != fiscal-records=[1-9]* ]] || exit 3; exit 0 ;;
+      *"twes-backup before-update"*) [[ -z "${BACKUP_LABEL:-}" ]] || { echo "x before-update: $BACKUP_LABEL"; exit 0; } ;;
+      *"app:platform:reset"*) { echo "$*"; cat; } > "$TMPDIR/emptied"; echo '{"tables":40}'; exit "${EMPTY_EXIT:-0}" ;;
+      *"app:seed"*) { echo "$*"; cat; } > "$TMPDIR/seeded"; exit 0 ;;
+    esac
     # The merged configuration deploy.sh reads the secrets from: those SECRETS names, each from its variable.
     if [[ " $* " == *" config"* ]]; then
       # And the paths MOUNTS names, bind-mounted by one service, in the long syntax compose writes them out in.
@@ -289,6 +298,30 @@ out=$(SECRETS="BLANK_SECRET" run "$d" --compose "$e" --profile restore run --rm 
 d=$(repo); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
 out=$(run "$d" --compose "$e" ps); check "a command on a release never deployed here is refused" $? 1 "$out" "never deployed here"
 out=$(run "$d" --compose "$e"); check "  and a command must be given" $? 2 "$out" "Usage"
+
+# --reset: a server emptied in place, counted first, its name typed, a labelled backup before, the record kept outside
+# the volumes; never one holding issued documents, never a shop's.
+LABEL=20261020-101500F_20261021-120000I
+resetting() { rm -f "$TMPDIR/compose.calls" "$TMPDIR/emptied" "$TMPDIR/seeded"; BACKUP_LABEL=${BACKUP_LABEL-$LABEL} run "$@"; }
+steps() { [[ -f "$TMPDIR/compose.calls" ]] && sed -n 's/.*\(app:fiscal:inventory\|before-update\|app:platform:reset\|app:seed\).*/\1/p' "$TMPDIR/compose.calls" | tr '\n' ' '; }
+d=$(repo); e=$(envfile); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"; run "$d" --release "$e" > /dev/null
+out=$(printf 'twes-in\nop@example.test\nnew password\nnew password\n' | resetting "$d" --reset "$e"); check "--reset: a server emptied in place" $? 0 "$out" "deploy: emptied in place"
+check "  counted, backed up, emptied, the operator made again, in that order" 0 0 "$(steps)" "app:fiscal:inventory before-update app:platform:reset app:seed "
+check "  by app:platform:reset in the migrate service, the name typed back to it" 0 0 "$(tr '\n' '|' < "$TMPDIR/emptied")" "run -T --rm --no-deps migrate bin/console app:platform:reset --force --installation=twes-in --by=$(id -un) --json|twes-in|"
+check "  the operator with the password typed" 0 0 "$(tr '\n' '|' < "$TMPDIR/seeded")" "--operator-email=op@example.test --operator-password-stdin --without-company|new password|"
+check "  the record outside the volumes, begun and done, naming the backup" 0 0 "$(cut -d' ' -f2 "$(dirname "$e")/releases/resets.log" | tr '\n' ' ')$(grep -c "\"backupLabel\":\"$LABEL\"" "$(dirname "$e")/releases/resets.log")" "began done 2"
+out=$(printf 'twes-in\nop@example.test\npw\npw\n' | SUMMARY='fiscal-records=5 fiscal-companies=1 companies=2' resetting "$d" --reset "$e"); check "  issued documents refused" $? 1 "$out" "holds 5 fiscal records in 1 of 2 companies"
+check "  before any backup or emptying" 0 0 "$(steps)" "app:fiscal:inventory "
+out=$(printf 'twes\n' | resetting "$d" --reset "$e"); check "  another name typed refused" $? 1 "$out" "the name typed is not twes-in: nothing reset"
+out=$(printf 'twes-in\nop@example.test\none\ntwo\n' | resetting "$d" --reset "$e"); check "  two passwords differing refused" $? 1 "$out" "the two passwords differ"
+check "  nothing done" 0 0 "$(steps)" "app:fiscal:inventory "
+out=$(printf 'twes-in\nop@example.test\npw\npw\n' | BACKUP_LABEL='' resetting "$d" --reset "$e"); check "  no backup before it, nothing reset" $? 1 "$out" "the backup before the reset was not made"
+check "  nothing emptied" 0 0 "[$(cat "$TMPDIR/emptied" 2>/dev/null)]" "[]"
+out=$(printf 'twes-in\nop@example.test\npw\npw\n' | EMPTY_EXIT=1 resetting "$d" --reset "$e"); check "  an emptying that fails refused, naming the backup" $? 1 "$out" "the backup $LABEL takes it back"
+check "  its record begun and never done" 0 0 "$(tail -n 1 "$(dirname "$e")/releases/resets.log" | cut -d' ' -f2)" "began"
+d=$(repo); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"; run "$d" --release "$e" > /dev/null
+out=$(printf 'twes-in\n' | resetting "$d" --reset "$e"); check "  a shop's values refused: twes reset is the shop's" $? 1 "$out" "scripts/onprem/twes reset resets it"
+check "  nothing counted" 0 0 "[$(steps)]" "[]"
 
 # DEPLOY_EXTRA_FILES: make staging-check's own layers, taken under its compose project with --staging alone.
 d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; release_lines "$(git -C "$d" rev-parse HEAD)" > "$r"

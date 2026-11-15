@@ -14,6 +14,10 @@
 #   --compose <values> <arguments> any compose command on the release running here, over its files and the images its
 #                                  record names, saying nothing of its own and writing nothing down: what the shop's
 #                                  script runs a backup and reads the services through.
+#   --reset <values>               a server's installation emptied in place, its operator made again: what it holds
+#                                  counted first, its name typed back, a labelled backup taken (the bucket keeps it), the
+#                                  record written to releases/resets.log as it begins and when it is done. One holding
+#                                  issued documents is refused: a shop's computer resets with scripts/onprem/twes reset.
 # The values say which installation it is: a server (the default), its backups in a bucket behind compose.deploy.yaml's
 # edge, or TWES_INSTALL=onprem, a shop's machine (docs/START.md § 16), its backups in its own folder, copied off site
 # when BACKUP_OFFSITE=on, behind compose.onprem.yaml's edge; a shop is never staging.
@@ -25,12 +29,12 @@
 set -euo pipefail
 usage() {
   echo "Usage: deploy.sh --release <values file> | --staging <values file> <release file> | --build <values file> | --again <values file>" >&2
-  echo "       deploy.sh --compose <values file> <compose arguments>" >&2
+  echo "       deploy.sh --compose <values file> <compose arguments> | --reset <values file>" >&2
   exit 2
 }
 mode=${1:-}
 case "$mode" in
-  --release | --build | --again) [[ $# -eq 2 ]] || usage; values=$2 ;;
+  --release | --build | --again | --reset) [[ $# -eq 2 ]] || usage; values=$2 ;;
   --staging) [[ $# -eq 3 ]] || usage; values=$2 release=$3 ;;
   --compose) [[ $# -ge 3 ]] || usage; values=$2; shift 2 ;;
   *) usage ;;
@@ -192,7 +196,7 @@ read_release() {
   done
 }
 records="$(dirname "$values")/releases"
-if [[ "$mode" == --again || "$mode" == --compose ]]; then
+if [[ "$mode" == --again || "$mode" == --compose || "$mode" == --reset ]]; then
   [[ -f "$records/$commit.env" ]] || refuse "$commit was never deployed here (no $records/$commit.env): deploy its release with --release"
   read_release < "$records/$commit.env"
   source_name="$records/$commit.env"
@@ -221,6 +225,47 @@ if [[ "$mode" == --compose ]]; then
   export TWES_DATABASE_IMAGE=${release_value[TWES_DATABASE_IMAGE]}
   cd "$root"
   exec docker compose --env-file "$values" "${files[@]}" -f compose.release.yaml "$@"
+fi
+
+# A server's reset (scripts/onprem/twes reset is a shop's): emptied in place by app:platform:reset, run in the migrate
+# service, which alone holds the owner's address. Issued documents are never emptied in place, and removing a server's
+# volumes would start a new database under a bucket whose Object Lock keeps the old one's stanza: refused here.
+if [[ "$mode" == --reset ]]; then
+  [[ "$(value TWES_INSTALL)" != onprem ]] || refuse "$values are a shop's: scripts/onprem/twes reset resets it"
+  export TWES_API_IMAGE=${release_value[TWES_API_IMAGE]} TWES_WEB_IMAGE=${release_value[TWES_WEB_IMAGE]}
+  export TWES_DATABASE_IMAGE=${release_value[TWES_DATABASE_IMAGE]}
+  cd "$root"
+  dc() { docker compose --env-file "$values" "${files[@]}" -f compose.release.yaml "$@"; }
+  code=0
+  summary=$(dc exec -T api bin/console app:fiscal:inventory --summary --no-interaction) || code=$?
+  ((code == 0 || code == 3)) && [[ "$summary" =~ fiscal-records=([0-9]+)\ fiscal-companies=([0-9]+)\ companies=([0-9]+) ]] \
+    || refuse "what the installation holds could not be counted (app:fiscal:inventory exited $code): nothing reset"
+  counted=${BASH_REMATCH[1]} fiscal=${BASH_REMATCH[2]} companies=${BASH_REMATCH[3]}
+  ((code == 0)) || refuse "the installation holds $counted fiscal records in $fiscal of $companies companies (issued documents and their ledger, which the law keeps): a server holding them is never reset; nothing reset"
+  project=${COMPOSE_PROJECT_NAME:-twes-in}
+  echo "deploy: $companies companies here, none holding a fiscal record"
+  printf "Type the installation's name, %s, to reset it: " "$project" >&2; IFS= read -r typed || typed=''
+  [[ "$typed" == "$project" ]] || refuse "the name typed is not $project: nothing reset"
+  printf "The platform operator's mail address: " >&2; IFS= read -r email || email=''
+  [[ "$email" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || refuse "not a mail address: $email"
+  printf 'Their password: ' >&2; IFS= read -rs first || first=''; echo >&2
+  printf 'Again: ' >&2; IFS= read -rs second || second=''; echo >&2
+  [[ -n "$first" && "$first" == "$second" ]] || refuse "the two passwords differ: nothing reset"
+  label=$(dc exec -T backup twes-backup before-update | sed -n 's/.*before-update: //p' | tail -n 1) || label=''
+  [[ "$label" =~ ^[0-9]{8}-[0-9]{6}F(_[0-9]{8}-[0-9]{6}[DI])?$ ]] || refuse "the backup before the reset was not made: nothing reset"
+  at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  record=$(printf '{"scope":"installation","mode":"in-place","installation":"%s","by":"%s","at":"%s","companies":%d,"fiscalCompanies":0,"fiscalRecords":0,"backupLabel":"%s"}' \
+    "$project" "$(id -un)" "$at" "$companies" "$label")
+  umask 077; mkdir -p "$records"
+  echo "$at began $record" >> "$records/resets.log"
+  emptied=$(printf '%s\n' "$project" | dc run -T --rm --no-deps migrate bin/console app:platform:reset --force \
+    "--installation=$project" "--by=$(id -un)" --json) \
+    || refuse "app:platform:reset did not empty the installation: read its answer above; the backup $label takes it back"
+  printf '%s\n' "$first" | dc exec -T api bin/console app:seed --no-interaction "--operator-email=$email" \
+    --operator-password-stdin --without-company >&2 || refuse "the application did not make the operator: read its answer above"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) done $record" >> "$records/resets.log"
+  echo "deploy: emptied in place $emptied; the operator $email made again; the backup $label holds what was there"
+  exit 0
 fi
 
 # Each image says which commit it was built from (scripts/release/publish.compose.yaml): one that disagrees with its

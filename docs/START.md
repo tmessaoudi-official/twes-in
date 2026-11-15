@@ -857,6 +857,13 @@ Sign in at `https://<name>/` and enrol the authenticator: until then an operator
 the legal pages print them. On `/platform`, the support card's « Page d’état du service » takes the status page's
 address, which the footer of every page then links to.
 
+**Resetting a server.** `bash scripts/deploy/deploy.sh --reset /etc/twes-in/deploy.env` empties the installation in
+place and makes the operator again: what it holds is counted first (`app:fiscal:inventory --summary`), the
+installation's name (`twes-in`, or `$COMPOSE_PROJECT_NAME`) typed back, the operator's address and password asked, a
+labelled backup taken (`twes-backup before-update`; the bucket keeps it), the record written to `releases/resets.log`
+beside the values as it begins and when it is done, then `app:platform:reset` in the `migrate` service and `app:seed`.
+A server holding issued documents or their ledger is refused, and so are a shop's values (`twes reset`, § 16).
+
 **The deploy check.** `make deploy-check` boots the same four files from values `new-instance.sh` wrote, given through
 `--env-file`, with the edge's own certificate authority (`EDGE_TLS=internal`), the restore drill's layer (its stand-in
 bucket, and its authority mounted into the database and backup services) and a layer of its own (the edge publishing
