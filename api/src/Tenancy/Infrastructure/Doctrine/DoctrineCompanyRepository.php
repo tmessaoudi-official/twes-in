@@ -105,9 +105,13 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
      * unit of work is cleared after it: a membership or a document of the company it still held would point at a row
      * that is gone, and the next flush would fail on it or write it back.
      */
-    public function removeWhole(Company $company): void
+    public function removeWhole(Company $company, \DateTimeImmutable $today): void
     {
-        $this->entityManager->getConnection()->executeStatement('DELETE FROM company WHERE id = ?', [$company->getId()->toRfc4122()]);
+        $connection = $this->entityManager->getConnection();
+        $id = $company->getId()->toRfc4122();
+        // The fiscal guard lets an issued invoice go only with a release the database writes itself, for this transaction.
+        $connection->executeStatement('SELECT fiscal_release_company(CAST(? AS uuid), CAST(? AS date))', [$id, $today->format('Y-m-d')]);
+        $connection->executeStatement('DELETE FROM company WHERE id = ?', [$id]);
         $this->entityManager->clear();
     }
 

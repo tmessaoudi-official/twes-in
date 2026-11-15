@@ -61,7 +61,7 @@ final class DemoHiddenFromOperatorsTest extends ApiTestCase
         static::getContainer()->get(BuildSandbox::class)->handle($sandbox->getId());
         $company = $this->row('SELECT company_id FROM demo_sandbox WHERE id = ?', [$sandbox->getId()->toRfc4122()])['company_id'];
         self::assertIsString($company);
-        $this->em()->getConnection()->executeStatement(
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice in the sandbox',
             "UPDATE invoice SET total_gross = total_gross + 1 WHERE id = (SELECT id FROM invoice WHERE company_id = ? AND status NOT IN ('draft', 'cancelled') LIMIT 1)",
             [$company],
         );

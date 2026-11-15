@@ -45,9 +45,9 @@ final readonly class RemoveClosedCompanies implements DeclaresAuditActions
         $removed = 0;
         foreach ($this->companies->closedDownKeptUntilBefore($today) as $company) {
             $companyId = $company->getId();
-            $keys = $this->transactions->run(function () use ($company, $companyId): array {
+            $keys = $this->transactions->run(function () use ($company, $companyId, $today): array {
                 $keys = $this->files->storageKeysOf($companyId);
-                $this->companies->removeWhole($company);
+                $this->companies->removeWhole($company, $today);
                 $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $companyId, self::REMOVED, null));
 
                 return $keys;

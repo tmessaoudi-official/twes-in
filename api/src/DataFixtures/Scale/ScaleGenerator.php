@@ -77,6 +77,7 @@ final class ScaleGenerator
         'expense_line_tax' => 'expenses: a follow-up slice',
         'expense_tax' => 'expenses: a follow-up slice',
         'file' => 'stored files, PDFs included: a clone has none and renders on first request',
+        'fiscal_release' => 'a transaction\'s release of the fiscal guard, read only within that transaction: a clone has none',
         'goods_receipt' => 'orders to vendors: a follow-up slice, with the stock they moved',
         'goods_receipt_line' => 'orders to vendors: a follow-up slice, with the stock they moved',
         'import_run' => 'the files a company imported: a clone imported none',
@@ -227,6 +228,7 @@ final class ScaleGenerator
             }
             $end = min($done + $chunkCopies, $wanted);
             $this->connection->transactional(function () use ($company, $done, $end, $wanted, $years, $seed): void {
+                $this->releaseFiscalGuard();
                 $this->cloneChunk($company, $done, $end, $years, $seed);
                 $this->connection->executeStatement(
                     'UPDATE scale.run SET copies_done = ?, phase = ? WHERE company_id = ?',
@@ -428,6 +430,7 @@ final class ScaleGenerator
         $phase = $this->connection->fetchOne('SELECT phase FROM scale.run WHERE company_id = ?', [$company]);
         if ('numbering' !== $phase) {
             $this->connection->transactional(function () use ($company): void {
+                $this->releaseFiscalGuard();
                 $this->connection->executeStatement("UPDATE invoice SET number = '~' || id::text WHERE company_id = ? AND number IS NOT NULL AND number NOT LIKE '~%'", [$company]);
                 // A hash covers the number: the whole company is chained again once it is numbered.
                 $this->connection->executeStatement('UPDATE invoice SET chain_position = NULL, chain_previous = NULL, chain_hash = NULL, chain_version = NULL WHERE company_id = ? AND chain_hash IS NOT NULL', [$company]);
@@ -467,6 +470,7 @@ final class ScaleGenerator
                     break;
                 }
                 $this->connection->transactional(function () use ($rows, $seriesId): void {
+                    $this->releaseFiscalGuard();
                     $this->entityManager->clear();
                     $series = $this->entityManager->find(NumberingSeries::class, Uuid::fromString($seriesId)) ?? throw new \LogicException('The series vanished.');
                     $now = $this->clock->now();
@@ -500,6 +504,21 @@ final class ScaleGenerator
         // In the order just numbered: the chain's backlog is read by day, then number, which is how these were given.
         $this->chains->all();
         $this->connection->executeStatement("UPDATE scale.run SET phase = 'numbered' WHERE company_id = ?", [$company]);
+    }
+
+    /**
+     * The database keeps an issued invoice as issued, and a clone is written issued, then numbered again: the generator
+     * releases its own transaction, which only the database's owner may write (make scale-data runs as it) or, in a
+     * test database, the suite's door, the application's role being the test's.
+     */
+    private function releaseFiscalGuard(): void
+    {
+        if (true === $this->connection->fetchOne("SELECT to_regprocedure('public.fiscal_guard_test_release(boolean)') IS NOT NULL")) {
+            $this->connection->executeStatement('SELECT fiscal_guard_test_release(true)');
+
+            return;
+        }
+        $this->connection->executeStatement("INSERT INTO fiscal_release (transaction_id, company_id, reason, at) VALUES (pg_current_xact_id(), NULL, 'scale data', ?)", [$this->clock->now()->format('Y-m-d H:i:s')]);
     }
 
     private function invoices(string $company): int

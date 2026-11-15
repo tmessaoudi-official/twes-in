@@ -26,6 +26,9 @@ final class ApplicationRoleTest extends KernelTestCase
     /** Only rows are written, never rewritten: what happened stays what was recorded. */
     private const string JOURNAL = 'audit_log';
 
+    /** Read only: a company's release from the fiscal guard is written by the owner's fiscal_release_company alone. */
+    private const string RELEASES = 'fiscal_release';
+
     public function testTheApplicationIsItsOwnRoleAndNoSuperuser(): void
     {
         $role = $this->connection()->fetchAssociative('SELECT current_user AS name, rolsuper, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = current_user');
@@ -41,7 +44,9 @@ final class ApplicationRoleTest extends KernelTestCase
 
         $wrong = [];
         foreach ($tables as $table) {
-            $expected = ['SELECT' => true, 'INSERT' => true, 'UPDATE' => self::JOURNAL !== $table, 'DELETE' => self::JOURNAL !== $table, 'TRUNCATE' => false];
+            $written = self::RELEASES !== $table;
+            $rewritten = $written && self::JOURNAL !== $table;
+            $expected = ['SELECT' => true, 'INSERT' => $written, 'UPDATE' => $rewritten, 'DELETE' => $rewritten, 'TRUNCATE' => false];
             foreach ($expected as $privilege => $held) {
                 if ($held !== $this->connection()->fetchOne('SELECT has_table_privilege(current_user, ?, ?)', [$table, $privilege])) {
                     $wrong[] = \sprintf('%s %s %s', $table, $held ? 'lacks' : 'holds', $privilege);

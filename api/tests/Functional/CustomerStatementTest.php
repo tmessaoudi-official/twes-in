@@ -117,7 +117,7 @@ final class CustomerStatementTest extends ApiTestCase
         $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $this->setLimit('1000', Uuid::fromString($this->customerId));
         $january = $this->issue('1300');
-        $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $january]);
+        $this->pastFiscalGuard('places an issued invoice on the day the statement reads', "UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $january]);
         $this->onAccount('100', '2026-01-20');
         $today = self::dayOf($this->company);
         $this->onAccount('500', $today);
@@ -136,9 +136,9 @@ final class CustomerStatementTest extends ApiTestCase
         $this->pay($old, '30');
         $recent = $this->issue('20');
         $connection = $this->em()->getConnection();
-        $connection->executeStatement("UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $old]);
+        $this->pastFiscalGuard('places an issued invoice on the day the statement reads', "UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $old]);
         $connection->executeStatement("UPDATE payment SET payment_date = '2026-01-20' WHERE invoice_id = :id", ['id' => $old]);
-        $connection->executeStatement("UPDATE invoice SET issue_date = '2026-03-05' WHERE id = :id", ['id' => $recent]);
+        $this->pastFiscalGuard('places an issued invoice on the day the statement reads', "UPDATE invoice SET issue_date = '2026-03-05' WHERE id = :id", ['id' => $recent]);
 
         $this->getJson($this->path().'?from=2026-02-01&to=2026-12-31');
 
@@ -302,7 +302,7 @@ final class CustomerStatementTest extends ApiTestCase
         $dueToday = $this->issue('40');
         $othersLate = $this->issue('500', $other);
         foreach ([[$late, '-3 days'], [$older, '-10 days'], [$dueToday, 'today'], [$othersLate, '-20 days']] as [$id, $shift]) {
-            $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = :day WHERE id = :id', ['day' => $today->modify($shift)->format('Y-m-d'), 'id' => $id]);
+            $this->pastFiscalGuard('places an issued invoice on the day the statement reads', 'UPDATE invoice SET due_date = :day WHERE id = :id', ['day' => $today->modify($shift)->format('Y-m-d'), 'id' => $id]);
         }
         $this->onAccount('15', $today->format('Y-m-d'));
 
@@ -400,7 +400,7 @@ final class CustomerStatementTest extends ApiTestCase
     private function onAccount(string $amount, string $day): void
     {
         $id = $this->issue('10');
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET issue_date = :day WHERE id = :id', ['day' => $day, 'id' => $id]);
+        $this->pastFiscalGuard('places an issued invoice on the day the statement reads', 'UPDATE invoice SET issue_date = :day WHERE id = :id', ['day' => $day, 'id' => $id]);
         $this->getJson($this->companyPath().'/invoices/'.$id);
         $this->postJson($this->companyPath().'/invoices/'.$id.'/payments', ['date' => $day, 'amount' => $this->stringAt($this->json(), 'amountDue'), 'method' => 'transfer']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);

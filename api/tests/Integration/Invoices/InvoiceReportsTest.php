@@ -60,6 +60,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tests\Support\KeptNames;
+use App\Tests\Support\PastFiscalGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -70,6 +71,8 @@ use Symfony\Component\Clock\MockClock;
  */
 final class InvoiceReportsTest extends KernelTestCase
 {
+    use PastFiscalGuard;
+
     private MockClock $clock;
     private Company $company;
     private Company $globex;
@@ -507,7 +510,7 @@ final class InvoiceReportsTest extends KernelTestCase
     /** What one unit cost when the line at that position was issued, frozen at issue; set here as these products have none. */
     private function costed(Invoice $invoice, int $position, string $unitCost): void
     {
-        $this->em()->getConnection()->executeStatement('UPDATE invoice_line SET unit_cost = :cost WHERE invoice_id = :invoice AND position = :position', ['cost' => $unitCost, 'invoice' => $invoice->getId()->toRfc4122(), 'position' => $position]);
+        $this->pastFiscalGuard('gives an issued invoice the cost or savings the report reads', 'UPDATE invoice_line SET unit_cost = :cost WHERE invoice_id = :invoice AND position = :position', ['cost' => $unitCost, 'invoice' => $invoice->getId()->toRfc4122(), 'position' => $position]);
     }
 
     private function pay(Invoice $invoice, string $day, string $amount, PaymentMethod $method = PaymentMethod::Transfer): Payment
@@ -573,7 +576,7 @@ final class InvoiceReportsTest extends KernelTestCase
     /** What the discounts took off, as issuing keeps it; set here as these documents are issued from figures given whole. */
     private function saved(Invoice $invoice, string $savings): void
     {
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET savings = :savings WHERE id = :invoice', ['savings' => $savings, 'invoice' => $invoice->getId()->toRfc4122()]);
+        $this->pastFiscalGuard('gives an issued invoice the cost or savings the report reads', 'UPDATE invoice SET savings = :savings WHERE id = :invoice', ['savings' => $savings, 'invoice' => $invoice->getId()->toRfc4122()]);
     }
 
     private function unit(string $code, ?Company $company = null): Unit

@@ -86,7 +86,7 @@ final class WatchTest extends ApiTestCase
         // A customer 40 days late on one invoice, and VIS sold on it (so VIS is not "unsold").
         $invoiceId = $this->issuedInvoice('VIS');
         $amountDue = $this->stringAt($this->json(), 'amountDue');
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
+        $this->pastFiscalGuard('places an issued invoice\'s due day in the past, where the watch reads it', 'UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
 
         // VIS at its reorder point: 5 on hand, a point of 5. The invoice above already took one out, so six come in.
         $this->receive('VIS', '6');
@@ -366,7 +366,7 @@ final class WatchTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings', 'invoice.read', 'invoice.write', 'invoice.issue', 'product.read', 'stock.read', 'stock.write']);
         $invoiceId = $this->issuedInvoice('VIS');
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
+        $this->pastFiscalGuard('places an issued invoice\'s due day in the past, where the watch reads it', 'UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
         $this->track('COLLE');
         $this->receive('COLLE', '3', 'L-LATER', '+60 days');
         $this->receive('GANT', '10');
@@ -388,7 +388,7 @@ final class WatchTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'stock.read', 'stock.write'], 'writer@twes.local');
         $invoiceId = $this->issuedInvoice('VIS');
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
+        $this->pastFiscalGuard('places an issued invoice\'s due day in the past, where the watch reads it', 'UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
         $this->track('COLLE');
         $this->receive('COLLE', '3', 'L-SOON', '+10 days');
         $this->sendJson('POST', '/api/auth/logout');

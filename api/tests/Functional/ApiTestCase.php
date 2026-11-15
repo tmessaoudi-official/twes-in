@@ -27,6 +27,7 @@ use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tenancy\Domain\ValueObject\Permission;
+use App\Tests\Support\PastFiscalGuard;
 use Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -50,6 +51,7 @@ use Symfony\Component\Uid\Uuid;
 abstract class ApiTestCase extends WebTestCase
 {
     use ClockSensitiveTrait;
+    use PastFiscalGuard;
 
     /** The authenticator createUser enrols; .env.test's key encrypts it. */
     protected const string AUTHENTICATOR_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';

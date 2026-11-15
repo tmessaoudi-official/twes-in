@@ -99,7 +99,7 @@ final class InMemoryCompanies implements CompanyRepository
         $this->removalTold[] = $company;
     }
 
-    public function removeWhole(Company $company): void
+    public function removeWhole(Company $company, \DateTimeImmutable $today): void
     {
         $this->companies = array_values(array_filter($this->companies, static fn (Company $kept): bool => $kept !== $company));
     }

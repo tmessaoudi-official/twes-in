@@ -575,8 +575,8 @@ final class ProductMergeTest extends ApiTestCase
         $invoice = $this->anInvoice($merged, issued: true);
         // The report reads what issuing writes; issuing for real is the invoices' own tests.
         $connection = $this->em()->getConnection();
-        $connection->executeStatement('UPDATE invoice SET issue_date = ?, total_net = 12, amount_due = 12 WHERE id = ?', [self::dayOf($this->company), $invoice]);
-        $connection->executeStatement('UPDATE invoice_line SET line_net = 12 WHERE invoice_id = ?', [$invoice]);
+        $this->pastFiscalGuard('places an issued invoice on the day and figures the product reports read', 'UPDATE invoice SET issue_date = ?, total_net = 12, amount_due = 12 WHERE id = ?', [self::dayOf($this->company), $invoice]);
+        $this->pastFiscalGuard('places an issued invoice on the day and figures the product reports read', 'UPDATE invoice_line SET line_net = 12 WHERE invoice_id = ?', [$invoice]);
         $this->merged($kept, [$merged]);
 
         $today = self::dayOf($this->company);
@@ -737,7 +737,7 @@ final class ProductMergeTest extends ApiTestCase
         $invoice = $this->anInvoice($product, issued: true);
         $connection = $this->em()->getConnection();
         $connection->executeStatement('UPDATE product SET created_at = ? WHERE company_id = ?', [self::apiNow('-120 days'), $this->companyId()]);
-        $connection->executeStatement('UPDATE invoice SET issue_date = CAST(? AS date) WHERE id = ?', [self::dayOf($this->company, "-$days days"), $invoice]);
+        $this->pastFiscalGuard('places an issued invoice on the day and figures the product reports read', 'UPDATE invoice SET issue_date = CAST(? AS date) WHERE id = ?', [self::dayOf($this->company, "-$days days"), $invoice]);
     }
 
     /** @return array<string, mixed> */

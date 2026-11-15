@@ -71,7 +71,7 @@ final class DataCheckTest extends ApiTestCase
         $this->issue($this->draft('100'));
         $id = $this->draft('200');
         $this->issue($id);
-        $this->connection()->executeStatement('UPDATE invoice SET total_gross = total_gross + 1 WHERE id = ?', [$id]);
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice', 'UPDATE invoice SET total_gross = total_gross + 1 WHERE id = ?', [$id]);
 
         self::assertContains('invoices.chain', $this->checksFound());
         $arithmetic = array_values(array_filter($this->findings(), static fn (DataFinding $finding): bool => 'invoices.arithmetic' === $finding->check));
@@ -106,9 +106,9 @@ final class DataCheckTest extends ApiTestCase
         $newest = $this->draft('300');
         $this->issue($newest);
         // What the chain alone cannot show: a shorter chain whose every link holds.
-        $this->connection()->executeStatement('DELETE FROM invoice_line_tax WHERE line_id IN (SELECT id FROM invoice_line WHERE invoice_id = ?)', [$newest]);
-        $this->connection()->executeStatement('DELETE FROM invoice_line WHERE invoice_id = ?', [$newest]);
-        $this->connection()->executeStatement('DELETE FROM invoice WHERE id = ?', [$newest]);
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice', 'DELETE FROM invoice_line_tax WHERE line_id IN (SELECT id FROM invoice_line WHERE invoice_id = ?)', [$newest]);
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice', 'DELETE FROM invoice_line WHERE invoice_id = ?', [$newest]);
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice', 'DELETE FROM invoice WHERE id = ?', [$newest]);
 
         self::assertContains('invoices.chain', $this->checksFound());
     }
@@ -118,7 +118,7 @@ final class DataCheckTest extends ApiTestCase
         $this->issue($this->draft('100'));
         $second = $this->draft('200');
         $this->issue($second);
-        $this->connection()->executeStatement("UPDATE invoice SET number = regexp_replace(number, '[0-9]+$', '00009') WHERE id = ?", [$second]);
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice', "UPDATE invoice SET number = regexp_replace(number, '[0-9]+$', '00009') WHERE id = ?", [$second]);
 
         self::assertContains('invoices.numbering', $this->checksFound());
     }
@@ -176,7 +176,7 @@ final class DataCheckTest extends ApiTestCase
         $this->issue($id);
         $elsewhere = $this->createCompany('Elsewhere');
         static::getContainer()->get(ProvisionCompany::class)->handle($elsewhere);
-        $this->connection()->executeStatement('UPDATE invoice SET customer_id = ? WHERE id = ?', [$this->customerOf($elsewhere, 'Globex'), $id]);
+        $this->pastFiscalGuard('a state no use case makes, which the data check must notice', 'UPDATE invoice SET customer_id = ? WHERE id = ?', [$this->customerOf($elsewhere, 'Globex'), $id]);
 
         self::assertContains('references.company', $this->checksFound());
     }
@@ -345,7 +345,7 @@ final class DataCheckTest extends ApiTestCase
     private function renumber(array $ids, array $days): void
     {
         foreach ($ids as $n => $id) {
-            $this->connection()->executeStatement('UPDATE invoice SET issue_date = ?, number = ? WHERE id = ?', [$days[$n][0], $days[$n][1], $id]);
+            $this->pastFiscalGuard('a state no use case makes, which the data check must notice', 'UPDATE invoice SET issue_date = ?, number = ? WHERE id = ?', [$days[$n][0], $days[$n][1], $id]);
         }
     }
 

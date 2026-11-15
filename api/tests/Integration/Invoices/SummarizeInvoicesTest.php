@@ -38,6 +38,7 @@ use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tests\Support\KeptNames;
+use App\Tests\Support\PastFiscalGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -48,6 +49,8 @@ use Symfony\Component\Clock\MockClock;
  */
 final class SummarizeInvoicesTest extends KernelTestCase
 {
+    use PastFiscalGuard;
+
     private MockClock $clock;
     private Company $company;
     private Company $globex;
@@ -331,7 +334,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     /** What one unit cost when the line was issued: frozen at issue from the product, set here since these lines have none. */
     private function costed(Invoice $invoice, string $unitCost): void
     {
-        $this->em()->getConnection()->executeStatement('UPDATE invoice_line SET unit_cost = :cost WHERE invoice_id = :invoice', ['cost' => $unitCost, 'invoice' => $invoice->getId()->toRfc4122()]);
+        $this->pastFiscalGuard('gives an issued invoice\'s lines the cost the margin reads', 'UPDATE invoice_line SET unit_cost = :cost WHERE invoice_id = :invoice', ['cost' => $unitCost, 'invoice' => $invoice->getId()->toRfc4122()]);
     }
 
     private function pay(Invoice $invoice, string $day, string $amount, PaymentMethod $method = PaymentMethod::Transfer): Payment

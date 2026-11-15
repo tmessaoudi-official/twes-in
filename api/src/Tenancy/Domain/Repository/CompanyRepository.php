@@ -48,6 +48,10 @@ interface CompanyRepository
     /** Keeps that its owners were told it is soon removed, without touching the company or its version. */
     public function removalTold(Company $company, \DateTimeImmutable $now): void;
 
-    /** Deletes the company and every row that is its own, in one statement the database's cascades carry through. */
-    public function removeWhole(Company $company): void;
+    /**
+     * Deletes the company and every row that is its own, in one statement the database's cascades carry through. The
+     * database keeps issued invoices but for a company it releases: one closed down whose keeping time ended before
+     * $today, or a demo sandbox's; any other is refused there and nothing is removed.
+     */
+    public function removeWhole(Company $company, \DateTimeImmutable $today): void;
 }

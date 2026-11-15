@@ -228,7 +228,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $other = $this->createCompany('Globex');
         static::getContainer()->get(ProvisionCompany::class)->handle($other);
         $theirs = $this->issued();
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET company_id = ? WHERE id = ?', [$other->getId()->toRfc4122(), $theirs]);
+        $this->pastFiscalGuard('an issued invoice moved into another company, which the deliveries must refuse', 'UPDATE invoice SET company_id = ? WHERE id = ?', [$other->getId()->toRfc4122(), $theirs]);
         $this->postJson($this->deliver($theirs), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM delivery_note'), 'and a refusal drafts nothing');

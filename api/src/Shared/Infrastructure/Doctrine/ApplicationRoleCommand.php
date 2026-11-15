@@ -30,6 +30,7 @@ final class ApplicationRoleCommand extends Command
 
     /** Recorded once, never rewritten: the role adds to it and reads it. */
     private const string JOURNAL = 'audit_log';
+    private const string FISCAL_RELEASE = 'fiscal_release';
 
     /** The development password api/.env and compose.yaml commit, which production must not run on. */
     private const string COMMITTED = 'twes-app';
@@ -65,10 +66,13 @@ final class ApplicationRoleCommand extends Command
         $this->owner->executeStatement(($exists ? 'ALTER ROLE ' : 'CREATE ROLE ').$role.' '.$attributes);
 
         $journal = $this->owner->quoteSingleIdentifier(self::JOURNAL);
+        // The way past the fiscal guard is written by fiscal_release_company alone, run as the owner.
+        $release = $this->owner->quoteSingleIdentifier(self::FISCAL_RELEASE);
         foreach ([
             "GRANT USAGE ON SCHEMA public TO $role",
             "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $role",
             "REVOKE UPDATE, DELETE, TRUNCATE ON $journal FROM $role",
+            "REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON $release FROM $role",
             "GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO $role",
             "GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO $role",
         ] as $statement) {

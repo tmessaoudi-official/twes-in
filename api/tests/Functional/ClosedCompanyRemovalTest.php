@@ -35,6 +35,7 @@ final class ClosedCompanyRemovalTest extends ApiTestCase
         $kept = $this->idOf(self::KEPT);
         $keys = $this->connection()->fetchFirstColumn('SELECT storage_key FROM file WHERE company_id = ?', [$gone]);
         self::assertNotEmpty($keys, 'the demo stores files');
+        self::assertGreaterThan(0, $this->connection()->fetchOne('SELECT COUNT(*) FROM invoice WHERE company_id = ? AND issued_at IS NOT NULL', [$gone]), 'the demo issues invoices, which the fiscal guard lets go only with the company released');
         $tables = $this->tablesWithACompany();
         $before = $this->rowsOf($kept, $tables);
         $this->closed($gone, '-1 day');

@@ -205,7 +205,7 @@ final class AccountingExportTest extends ApiTestCase
     /** An issued document moved to a day, as if it had been issued then. */
     private function dated(string $id, string $day): void
     {
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET issue_date = :day WHERE id = :id', ['day' => $day, 'id' => $id]);
+        $this->pastFiscalGuard('places an issued invoice on a day of the period the journals read', 'UPDATE invoice SET issue_date = :day WHERE id = :id', ['day' => $day, 'id' => $id]);
     }
 
     /**

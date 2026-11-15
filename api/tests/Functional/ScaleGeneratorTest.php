@@ -47,7 +47,7 @@ final class ScaleGeneratorTest extends ApiTestCase
     {
         $this->baseThenGenerate(60);
         $foreign = $this->text('SELECT c.id FROM customer c JOIN company o ON o.id = c.company_id WHERE o.name <> ? ORDER BY c.id LIMIT 1', [self::COMPANY]);
-        $this->connection()->executeStatement('UPDATE invoice SET customer_id = ? WHERE id = (SELECT id FROM invoice WHERE company_id = (SELECT id FROM company WHERE name = ?) LIMIT 1)', [$foreign, self::COMPANY]);
+        $this->pastFiscalGuard('a reference into another company, which the detector must notice', 'UPDATE invoice SET customer_id = ? WHERE id = (SELECT id FROM invoice WHERE company_id = (SELECT id FROM company WHERE name = ?) LIMIT 1)', [$foreign, self::COMPANY]);
 
         $found = static::getContainer()->get(CompanyReferences::class)->crossCompanyReferences();
 

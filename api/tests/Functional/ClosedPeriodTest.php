@@ -223,7 +223,7 @@ final class ClosedPeriodTest extends ApiTestCase
         $id = $this->draft($net);
         $this->postJson($this->invoicePath($id).'/issue', null);
         self::assertResponseIsSuccessful();
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET issue_date = :day, due_date = :day WHERE id = :id', ['day' => $this->day(-$days), 'id' => $id]);
+        $this->pastFiscalGuard('places an issued invoice on a day the closed period holds', 'UPDATE invoice SET issue_date = :day, due_date = :day WHERE id = :id', ['day' => $this->day(-$days), 'id' => $id]);
 
         return $id;
     }

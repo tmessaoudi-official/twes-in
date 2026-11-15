@@ -752,7 +752,7 @@ final class CustomerMergeTest extends ApiTestCase
     private function anIssuedLateInvoice(string $customer): string
     {
         $id = $this->anInvoice($customer, issued: true);
-        $this->em()->getConnection()->executeStatement(
+        $this->pastFiscalGuard('gives the invoice the number, days and figures the customer reports read, without an issue these customers cannot make',
             'UPDATE invoice SET number = ?, issue_date = ?, due_date = ?, total_net = 12, total_gross = 12, amount_due = 12, savings = 1.000, withholding_amount = 1.000 WHERE id = ?',
             ['FAC-'.substr($id, -12), self::dayOf($this->company), self::dayOf($this->company, '-40 days'), $id],
         );

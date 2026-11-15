@@ -122,7 +122,8 @@ final class DataCheckMembersTest extends ApiTestCase
             try {
                 foreach ($statements as $statement) {
                     foreach (array_filter(array_map('trim', explode(';', $statement))) as $sql) {
-                        if (0 === $db->executeStatement($sql, ['c' => $this->company] + (str_contains($sql, ':now') ? ['now' => self::apiNow()] : []))) {
+                        $written = $this->pastFiscalGuard('each break is a state no use case makes, which its check must notice', $sql, ['c' => $this->company] + (str_contains($sql, ':now') ? ['now' => self::apiNow()] : []));
+                        if (0 === $written || '0' === $written) {
                             $missed[] = "$break: the demo has nothing to break, $sql";
                             continue 3;
                         }

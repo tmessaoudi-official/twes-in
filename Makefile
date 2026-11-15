@@ -290,6 +290,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/fiscal-test-door.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/build-extra-ca.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/sort-directions.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/order-ties.test.sh
@@ -399,6 +400,7 @@ in-gate-licences:
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
+	bash scripts/gates/fiscal-test-door.sh
 	bash scripts/gates/build-extra-ca.sh
 	bash scripts/gates/sort-directions.sh
 	bash scripts/gates/order-ties.sh

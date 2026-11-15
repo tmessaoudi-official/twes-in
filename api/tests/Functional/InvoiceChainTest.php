@@ -93,8 +93,8 @@ final class InvoiceChainTest extends ApiTestCase
         $this->issue($first);
         $this->issue($second);
 
-        $this->connection()->executeStatement('UPDATE invoice SET total_gross = total_gross + 1 WHERE id = ?', [$first]);
-        $this->connection()->executeStatement("UPDATE invoice_line SET description = 'Autre chose' WHERE invoice_id = ?", [$second]);
+        $this->pastFiscalGuard('a change after issue the chain must show', 'UPDATE invoice SET total_gross = total_gross + 1 WHERE id = ?', [$first]);
+        $this->pastFiscalGuard('a change after issue the chain must show', "UPDATE invoice_line SET description = 'Autre chose' WHERE invoice_id = ?", [$second]);
 
         $breaks = $this->breaks();
         self::assertSame([ChainBreak::HASH, ChainBreak::HASH], array_map(static fn (ChainBreak $break): string => $break->reason, $breaks));
@@ -111,7 +111,7 @@ final class InvoiceChainTest extends ApiTestCase
         $this->issue($third);
 
         // The second one's place, emptied: the third one no longer follows what is before it.
-        $this->connection()->executeStatement('UPDATE invoice SET chain_position = 99 WHERE id = ?', [$second]);
+        $this->pastFiscalGuard('a change after issue the chain must show', 'UPDATE invoice SET chain_position = 99 WHERE id = ?', [$second]);
 
         $reasons = array_map(static fn (ChainBreak $break): string => $break->reason, $this->breaks());
         self::assertContains(ChainBreak::POSITION, $reasons);
@@ -128,7 +128,7 @@ final class InvoiceChainTest extends ApiTestCase
         $connection = $this->connection();
         $connection->beginTransaction();
         try {
-            $connection->executeStatement('UPDATE invoice SET chain_position = 1, chain_previous = NULL WHERE id = ?', [$second]);
+            $this->pastFiscalGuard('a change after issue the chain must show', 'UPDATE invoice SET chain_position = 1, chain_previous = NULL WHERE id = ?', [$second]);
             self::fail('A second document took the first place of the series.');
         } catch (UniqueConstraintViolationException) {
             $this->addToAssertionCount(1);
@@ -173,7 +173,7 @@ final class InvoiceChainTest extends ApiTestCase
     /** As the release before the chain left them, and nothing of them kept in memory. */
     private function unseal(): void
     {
-        $this->connection()->executeStatement('UPDATE invoice SET chain_position = NULL, chain_previous = NULL, chain_hash = NULL, chain_version = NULL WHERE company_id = ?', [$this->company->getId()->toRfc4122()]);
+        $this->pastFiscalGuard('a change after issue the chain must show', 'UPDATE invoice SET chain_position = NULL, chain_previous = NULL, chain_hash = NULL, chain_version = NULL WHERE company_id = ?', [$this->company->getId()->toRfc4122()]);
         $this->em()->clear();
     }
 

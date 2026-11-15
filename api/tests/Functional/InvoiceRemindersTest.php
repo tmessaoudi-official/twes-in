@@ -354,7 +354,7 @@ final class InvoiceRemindersTest extends ApiTestCase
     private function dueDaysAgo(string $invoiceId, int $days): void
     {
         $day = self::dayAsDate($this->company)->modify(\sprintf('-%d days', $days));
-        $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = :day WHERE id = :id', ['day' => $day->format('Y-m-d'), 'id' => $invoiceId]);
+        $this->pastFiscalGuard('places an issued invoice\'s due day in the past, where the reminders read it', 'UPDATE invoice SET due_date = :day WHERE id = :id', ['day' => $day->format('Y-m-d'), 'id' => $invoiceId]);
     }
 
     private function set(string $key, mixed $value, ?Uuid $customerId): void

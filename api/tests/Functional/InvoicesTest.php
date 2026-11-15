@@ -380,7 +380,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertIsString($changes);
         self::assertSame(['number' => $number(1)], json_decode($changes, true));
 
-        $this->em()->getConnection()->executeStatement('UPDATE invoice_line SET unit_price_net = 1 WHERE invoice_id = ?', [$id]);
+        $this->pastFiscalGuard('an issued invoice\'s stored line changed behind its back, which the API must never recompute', 'UPDATE invoice_line SET unit_price_net = 1 WHERE invoice_id = ?', [$id]);
         $this->getJson($this->path($id));
         self::assertSame([$draft['total'], $draft['amountDue'], $draft['taxes']], [$this->json()['total'], $this->json()['amountDue'], $this->json()['taxes']], 'an issued invoice is never recomputed');
         self::assertSame(array_column($this->arrayAt($draft, 'lines'), 'net'), array_column($this->arrayAt($this->json(), 'lines'), 'net'));
@@ -1471,7 +1471,7 @@ final class InvoicesTest extends ApiTestCase
         $second = $this->stringAt($this->json(), 'number');
         // Issuing dates from the company's own day, so the one row that must read as overdue is made so in the
         // database: a due day in the past is exactly what the list asks about.
-        $this->em()->getConnection()->executeStatement(
+        $this->pastFiscalGuard('places an issued invoice\'s due day in the past, where the list reads it',
             'UPDATE invoice SET due_date = :due WHERE id = :id',
             ['due' => self::dayOf($this->company, '-3 days'), 'id' => $overdueId],
         );
@@ -1546,7 +1546,7 @@ final class InvoicesTest extends ApiTestCase
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
         $this->issuedInvoice();
         $overdueId = $this->issuedInvoice();
-        $this->em()->getConnection()->executeStatement(
+        $this->pastFiscalGuard('places an issued invoice\'s due day in the past, where the list reads it',
             'UPDATE invoice SET due_date = :due WHERE id = :id',
             ['due' => self::dayOf($this->company, '-3 days'), 'id' => $overdueId],
         );

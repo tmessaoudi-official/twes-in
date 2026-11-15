@@ -199,7 +199,7 @@ final class FacturXTest extends ApiTestCase
         $first = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
         $second = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
         // The invoice that kept its PDF made the oldest, so the batch reaches it first.
-        $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = issue_date - INTERVAL '1 day' WHERE id = ?", [$older]);
+        $this->pastFiscalGuard('orders two issued invoices by day without waiting a day between them', "UPDATE invoice SET issue_date = issue_date - INTERVAL '1 day' WHERE id = ?", [$older]);
         $column = fn (string $name, string $invoice): mixed => $this->em()->getConnection()->fetchOne(\sprintf('SELECT %s FROM invoice WHERE id = ?', $name), [$invoice]);
         $print = static::getContainer()->get(PrintInvoice::class);
 

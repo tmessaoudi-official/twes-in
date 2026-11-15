@@ -92,11 +92,14 @@ final readonly class RemoveSandboxes implements DeclaresAuditActions
             $companyId = $sandbox->getCompanyId();
             $ownerId = $sandbox->getOwnerId();
             $keys = [];
-            $this->sandboxes->remove($sandbox);
-            if (null !== $companyId) {
+            if (null === $companyId) {
+                $this->sandboxes->remove($sandbox);
+            } else {
+                // The company goes first, while its sandbox still says it is one, which is what lets the database release
+                // its issued invoices; the sandbox's row goes with the company.
                 $company = $this->companies->ofId($companyId) ?? throw new \LogicException('A sandbox\'s company is removed with it.');
                 $keys = $this->files->storageKeysOf($companyId);
-                $this->companies->removeWhole($company);
+                $this->companies->removeWhole($company, new \DateTimeImmutable($this->clock->now()->format('Y-m-d')));
                 $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $companyId, self::REMOVED, null));
             }
             if (null !== $ownerId) {
