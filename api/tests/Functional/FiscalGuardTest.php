@@ -148,6 +148,37 @@ final class FiscalGuardTest extends ApiTestCase
         }
     }
 
+    /** @return iterable<string, array{string}> every table a TRUNCATE could empty an issued invoice from, none of whose rows sees it */
+    public static function emptied(): iterable
+    {
+        yield 'the invoices' => ['invoice'];
+        yield 'their lines' => ['invoice_line'];
+        yield 'their lines\' taxes' => ['invoice_line_tax'];
+        yield 'their taxes' => ['invoice_tax'];
+        yield 'the companies, which take them along' => ['company'];
+    }
+
+    /** The application's role holds no TRUNCATE; the owner's, which fires no row's guard, is refused by the table's. */
+    #[DataProvider('emptied')]
+    public function testNoTableOfAnIssuedInvoiceIsEmptiedWhileOneIsKept(string $table): void
+    {
+        $id = $this->issued('100');
+        $before = $this->rows($id);
+
+        $refused = $this->refusal('SELECT fiscal_guard_test_truncate(CAST(:table AS regclass))', $id, ['table' => $table], select: true);
+
+        self::assertStringContainsString('fiscal guard', $refused ?? "the owner emptied $table");
+        self::assertSame($before, $this->rows($id));
+    }
+
+    #[DataProvider('emptied')]
+    public function testTablesHoldingOnlyDraftsAreEmptied(string $table): void
+    {
+        $id = $this->draft('100');
+
+        self::assertNull($this->refusal('SELECT fiscal_guard_test_truncate(CAST(:table AS regclass))', $id, ['table' => $table], select: true));
+    }
+
     /** A company whose keeping time has run out goes whole, its issued invoices with it, through the one release. */
     public function testACompanyThatMayGoIsReleasedThenRemoved(): void
     {

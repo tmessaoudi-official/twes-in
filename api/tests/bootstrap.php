@@ -36,9 +36,15 @@ if ($_SERVER['APP_DEBUG']) {
 }
 
 // A test that tampers with an issued invoice on purpose (a data check or the chain must notice it) opens the fiscal guard
-// through this door, ApiTestCase::openFiscalGuard. It is made here, in this process's test database alone, never by a
-// migration, and refuses to run in any database not named for the tests (scripts/gates/fiscal-test-door.sh).
+// through this door, PastFiscalGuard::pastFiscalGuard; FiscalGuardTest empties a table as the owner through the second,
+// which the application's role could never do. Both are made here, in this process's test database alone, never by a
+// migration, and each refuses to run in any database not named for the tests (scripts/gates/fiscal-test-door.sh).
 (static function (): void {
+    // make stress's preparation reads this file for its directories before it makes its database; the racers' own run
+    // comes back here once it exists.
+    if (defined('TWES_TEST_DATABASE_MADE_AFTER_BOOTSTRAP')) {
+        return;
+    }
     $url = $_SERVER['DATABASE_MIGRATION_URL'] ?? null;
     if (!is_string($url) || '' === $url) {
         throw new LogicException('DATABASE_MIGRATION_URL names no owner to make the fiscal guard\'s test door with.');
@@ -48,6 +54,10 @@ if ($_SERVER['APP_DEBUG']) {
     $token = $_SERVER['TEST_TOKEN'] ?? '';
     $owner['dbname'] = ($owner['dbname'] ?? 'twes').'_test'.(is_string($token) ? $token : '');
     $connection = DriverManager::getConnection($owner);
+    // The race tests' racers each read this file against one database at once, and two processes replacing one function
+    // collide (« tuple concurrently updated »): one at a time, under a lock the transaction lets go.
+    $connection->beginTransaction();
+    $connection->executeStatement("SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('fiscal_guard_test_doors'))");
     $connection->executeStatement(<<<'SQL'
         CREATE OR REPLACE FUNCTION public.fiscal_guard_test_release(open boolean) RETURNS void
             LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp
@@ -65,5 +75,18 @@ if ($_SERVER['APP_DEBUG']) {
         END
         $$
         SQL);
+    $connection->executeStatement(<<<'SQL'
+        CREATE OR REPLACE FUNCTION public.fiscal_guard_test_truncate(target regclass) RETURNS void
+            LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp
+            AS $$
+        BEGIN
+            IF pg_catalog.current_database() !~ '^twes_test' THEN
+                RAISE EXCEPTION 'the fiscal guard''s test door opens in a test database alone, not in %', pg_catalog.current_database();
+            END IF;
+            EXECUTE pg_catalog.format('TRUNCATE %s CASCADE', target);
+        END
+        $$
+        SQL);
+    $connection->commit();
     $connection->close();
 })();

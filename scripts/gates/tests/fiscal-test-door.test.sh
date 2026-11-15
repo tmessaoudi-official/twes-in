@@ -49,6 +49,29 @@ out=$(run "$d"); check "the door made a second time elsewhere in the tests is re
 d=$(tree); sed -i '/current_database/,+2d' "$d/api/tests/bootstrap.php"
 out=$(run "$d"); check "a bootstrap making the door without refusing other databases is refused" $? 1 "$out" "without refusing"
 
+second_door() { # a second door in the bootstrap, $2 = its refusal of other databases, or nothing
+  cat >> "$1/api/tests/bootstrap.php" <<PHP
+\$connection->executeStatement(<<<'SQL'
+    CREATE OR REPLACE FUNCTION public.fiscal_guard_test_truncate(target regclass) RETURNS void
+        AS \$\$
+    BEGIN
+        $2
+        EXECUTE 'TRUNCATE ' || target;
+    END
+    \$\$
+    SQL);
+PHP
+}
+
+d=$(tree); second_door "$d" "IF pg_catalog.current_database() !~ '^twes_test' THEN RAISE EXCEPTION 'no'; END IF;"
+out=$(run "$d"); check "a second door made in the bootstrap with its own refusal passes" $? 0 "$out" "OK"
+
+d=$(tree); second_door "$d" ""
+out=$(run "$d"); check "a second door made without its own refusal of other databases is refused" $? 1 "$out" "without refusing"
+
+d=$(tree); printf '<?php\n$c->executeStatement("SELECT fiscal_guard_test_truncate(\x27invoice\x27)");\n' > "$d/api/src/Tenancy/Empty.php"
+out=$(run "$d"); check "an application source naming any other door is refused" $? 1 "$out" "api/src/Tenancy/Empty.php:2"
+
 d=$(tree); rm "$d/api/tests/bootstrap.php"
 out=$(run "$d"); check "a door made nowhere is refused, not skipped" $? 1 "$out" "found: nowhere"
 

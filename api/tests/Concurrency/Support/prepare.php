@@ -18,6 +18,8 @@ use Doctrine\DBAL\DriverManager;
 // Before the bootstrap, which reads the token for the cache and share directories; StressDatabase checks it after.
 putenv('TEST_TOKEN=_stress');
 $_SERVER['TEST_TOKEN'] = $_ENV['TEST_TOKEN'] = '_stress';
+// The database the bootstrap would make the fiscal guard's test doors in is made below: the racers' own bootstrap makes them.
+define('TWES_TEST_DATABASE_MADE_AFTER_BOOTSTRAP', true);
 require dirname(__DIR__, 2).'/bootstrap.php';
 
 $root = dirname(__DIR__, 3);
