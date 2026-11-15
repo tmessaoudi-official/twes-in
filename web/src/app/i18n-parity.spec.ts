@@ -80,6 +80,9 @@ import frEffects from '../../public/i18n/effects/fr.json';
 import arSpentBudget from '../../public/i18n/spent-budget/ar.json';
 import enSpentBudget from '../../public/i18n/spent-budget/en.json';
 import frSpentBudget from '../../public/i18n/spent-budget/fr.json';
+import arStorageFull from '../../public/i18n/storage-full/ar.json';
+import enStorageFull from '../../public/i18n/storage-full/en.json';
+import frStorageFull from '../../public/i18n/storage-full/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
@@ -165,6 +168,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'mfa-lockout': { fr: frMfaLockout, en: enMfaLockout, ar: arMfaLockout },
   'passkeys-moved': { fr: frPasskeysMoved, en: enPasskeysMoved, ar: arPasskeysMoved },
   'spent-budget': { fr: frSpentBudget, en: enSpentBudget, ar: arSpentBudget },
+  'storage-full': { fr: frStorageFull, en: enStorageFull, ar: arStorageFull },
   effects: { fr: frEffects, en: enEffects, ar: arEffects },
   'not-allowed': { fr: frNotAllowed, en: enNotAllowed, ar: arNotAllowed },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },

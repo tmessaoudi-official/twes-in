@@ -4,6 +4,7 @@ import { isDemoRefused } from '../demo/demo-refused-interceptor';
 import { submissionProblemOf } from '../submissions/submission-interceptor';
 import { isBusy } from './busy-interceptor';
 import { isNumberingRefused } from './numbering-refused-interceptor';
+import { isStorageFull } from './storage-full-interceptor';
 
 /**
  * The API's answer each feature refusal was built from. Kept beside the refusal rather than as its `Error.cause`: a
@@ -22,8 +23,8 @@ export function refusedFor<R extends Error>(answer: unknown, refusal: R): R {
 }
 
 /**
- * Whether an interceptor has already said this failure in words, wherever it was asked from: the demo's refusal, and a
- * write still being made or made with its answer lost. A screen then shows no error of its own, which would say it a
+ * Whether an interceptor has already said this failure in words, wherever it was asked from: the demo's refusal, a
+ * write still being made or made with its answer lost, and a full disk. A screen then shows no error of its own, which would say it a
  * second time or, worse, say something else (a 409 read as « someone changed this »). Read through the answers a
  * refusal was built from.
  */
@@ -33,7 +34,8 @@ export function saidAlready(error: unknown): boolean {
       isDemoRefused(seen) ||
       submissionProblemOf(seen) !== null ||
       isBusy(seen) ||
-      isNumberingRefused(seen),
+      isNumberingRefused(seen) ||
+      isStorageFull(seen),
   );
 }
 

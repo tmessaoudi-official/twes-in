@@ -14,6 +14,16 @@ the end of § Lessons here.
   fetched anew into the toolchain's temporary directory and pinned (`xsd-sources.tsv`: a git folder's tree id, the TEJ zip's
   SHA-256), never kept here; `make gate-api`, `gate-api-tests` and `test-api` run the suite through it (`WITH_FISCAL_XSD`).
   A source that does not answer is « not run » (a warning on GitHub) and its tests skip; a changed schema stops the run.
+- The fiscal inventory: a context declares its issued documents, their ledger and what is kept beside them with
+  `DeclaresFiscalRecords` in its own `Infrastructure/FiscalInventory/`; `app:fiscal:inventory` (`--company`, `--json`,
+  `--summary`) counts them per company, exit 3 when anything fiscal is there; `FiscalInventoryCoverage` reds on a table
+  with an issued state, a link to a counted table or a `pdf_file_id` column that no member counts and no reason excuses.
+  `app:platform:reset` (`Tenancy/Infrastructure/Console`, on the owner connection, run as the migrate service is) empties
+  an installation in place, its schema kept, and refuses with exit 3 anything fiscal: that goes volume-level
+  (`twes reset`, `deploy.sh --reset`); `make reset-empty` runs it on development.
+- Stored bytes no file row names (a write cut short) are removed by `Files/Infrastructure/Scheduler/RemoveUnnamedBytesEveryHour`
+  once older than `app.files.unnamed_removed_after`; `Files/Infrastructure/Doctrine/StoredBytes` reads a company's folder
+  against its rows for it and for the `files.stored` data check.
 - `api/src/Shared/Infrastructure/Scheduler/Schedule.php` — the worker's one Symfony Scheduler schedule (`default`,
   consumed as `scheduler_default` beside `async`); a module adds a task with `#[AsPeriodicTask]` or `#[AsCronTask]` on its
   own service (the reminder run: `Module/Invoices/Infrastructure/Scheduler/`). Every task is idempotent, as one worker is

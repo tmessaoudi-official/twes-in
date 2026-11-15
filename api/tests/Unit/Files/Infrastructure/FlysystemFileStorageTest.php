@@ -11,7 +11,9 @@ namespace App\Tests\Unit\Files\Infrastructure;
 
 use App\Files\Application\StoredFileMissing;
 use App\Files\Infrastructure\Flysystem\FlysystemFileStorage;
+use App\Shared\Application\Storage\StorageFull;
 use League\Flysystem\Filesystem;
+use League\Flysystem\FilesystemException;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem as LocalFiles;
@@ -59,5 +61,31 @@ final class FlysystemFileStorageTest extends TestCase
             self::assertStringContainsString('companies/c1/f1 already holds a file', $kept->getMessage());
         }
         self::assertSame('first', $this->storage->read('companies/c1/f1'));
+    }
+
+    /**
+     * /dev/full answers every write as a full disk does (ENOSPC), so a key linked to it is a disk that filled: the write
+     * is said as storage full, which the request answers in words, never as an unknown failure.
+     */
+    public function testAWriteTheDiskHasNoRoomForIsSaidAsStorageFull(): void
+    {
+        new LocalFiles()->mkdir($this->directory.'/companies/c1');
+        symlink('/dev/full', $this->directory.'/companies/c1/f1');
+
+        try {
+            $this->storage->write('companies/c1/f1', 'bytes');
+            self::fail('a write the disk had no room for went through');
+        } catch (StorageFull $full) {
+            self::assertStringContainsString('companies/c1/f1', $full->getMessage());
+        }
+    }
+
+    public function testAWriteFailingForAnyOtherReasonStaysThatFailure(): void
+    {
+        new LocalFiles()->mkdir($this->directory.'/companies');
+        new LocalFiles()->dumpFile($this->directory.'/companies/c1', 'a file where the folder goes');
+
+        $this->expectException(FilesystemException::class);
+        $this->storage->write('companies/c1/f1', 'bytes');
     }
 }

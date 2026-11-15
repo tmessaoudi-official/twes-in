@@ -11,7 +11,9 @@ namespace App\Files\Infrastructure\Flysystem;
 
 use App\Files\Application\FileStorage;
 use App\Files\Application\StoredFileMissing;
+use App\Shared\Application\Storage\StorageFull;
 use League\Flysystem\FileAttributes;
+use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\FilesystemReader;
 use League\Flysystem\UnableToReadFile;
@@ -28,7 +30,16 @@ final readonly class FlysystemFileStorage implements FileStorage
         if ($this->filesystem->fileExists($key)) {
             throw new \LogicException(\sprintf('%s already holds a file, and a stored file is never replaced.', $key));
         }
-        $this->filesystem->write($key, $contents);
+        try {
+            $this->filesystem->write($key, $contents);
+        } catch (FilesystemException $failed) {
+            // A local adapter carries the system's own words: ENOSPC on a write that wrote nothing, PHP's « possibly out
+            // of free disk space » on one cut short.
+            if (1 === preg_match('/errno=28 |No space left on device|out of free disk space/', $failed->getMessage())) {
+                throw new StorageFull(\sprintf('The storage has no room left for %s.', $key), 0, $failed);
+            }
+            throw $failed;
+        }
     }
 
     public function read(string $key): string

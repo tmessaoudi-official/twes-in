@@ -49,9 +49,11 @@ async function removeExpense(page: Page, id: string): Promise<void> {
   await page.evaluate(
     async ([csrf, expenseId]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const gone = await fetch(`/api/companies/${me.company.id}/expenses/${expenseId}`, {
-        method: 'DELETE',
-        headers: { 'csrf-token': csrf },
+      // Through the bin, as the screen deletes it: an expense has no delete route of its own.
+      const gone = await fetch(`/api/companies/${me.company.id}/record-removals`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ subject: 'expense', ids: [expenseId] }),
       });
       if (!gone.ok && gone.status !== 404) {
         throw new Error(`deleting the expense answered ${gone.status}`);

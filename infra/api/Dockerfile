@@ -17,6 +17,8 @@ WORKDIR /app
 
 # bcmath: the money calculator works on BcMath\Number (api/src/Fiscal/Domain/Calculation). gd and exif: a product's
 # photos are cut into thumbnails on the server, turned upright first as the phone that took them says.
+# pcntl: the workers hear the signal Docker stops a container with, finish the message they hold and leave, instead of
+# being killed in the middle of it once the grace runs out (WorkerStopsOnSignalTest).
 # Behind a proxy that re-terminates TLS (a cloud session), the build is handed its CA as the optional secret extra_ca
 # (compose.extra-ca.yaml), added to the system bundle for this step only (SSL_CERT_FILE, read by curl and Composer) on a
 # tmpfs, so it is in no layer; without it the step runs as it always did. TLS checks stay on.
@@ -24,7 +26,7 @@ RUN --mount=type=secret,id=extra_ca --mount=type=tmpfs,target=/run/extra-ca \
     if [ -s /run/secrets/extra_ca ]; then { if [ -f /etc/ssl/certs/ca-certificates.crt ]; then cat /etc/ssl/certs/ca-certificates.crt; fi; \
       cat /run/secrets/extra_ca; } > /run/extra-ca/all.pem \
       && export SSL_CERT_FILE=/run/extra-ca/all.pem; fi \
- && install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif
+ && install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif pcntl
 COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
 
 COPY --from=composer:2.11.2 /usr/bin/composer /usr/bin/composer

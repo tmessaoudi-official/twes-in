@@ -53,9 +53,11 @@ async function tidy(page: Page, expenseId: string): Promise<void> {
         });
         left.push(deleted.status);
       }
-      const gone = await fetch(`${base}/expenses/${id}`, {
-        method: 'DELETE',
-        headers: { 'csrf-token': csrf },
+      // Through the bin, as the screen deletes it: an expense has no delete route of its own.
+      const gone = await fetch(`${base}/record-removals`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ subject: 'expense', ids: [id] }),
       });
       return [...left, gone.status];
     },

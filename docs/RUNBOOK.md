@@ -405,7 +405,10 @@ Two doors to close, the network's first, then the application's.
 ## The disk fills
 
 Untried. The deep health turns red under 20 % free on the files volume (`app.health.disk_free_minimum`), and Gatus's
-« Traitements » line alerts.
+« Traitements » line alerts. Once it is full, a write the database or the files' storage has no room for answers 507
+`/problems/storage-full`: the person sees « Le disque de l’installation est plein : rien n’a été enregistré », nothing of
+that request is kept, and the api logs `The installation's disk is full` at critical, with which disk. The same request
+goes through once room is made.
 
 1. `df -h` and `docker system df` on the machine.
 2. Logs cannot be it for long: every service rotates at 10 MB × 5 (`compose-log-rotation.sh` holds it).
@@ -442,6 +445,19 @@ again there (`before_last_period`). Nothing is lost; nothing new is numbered unt
 6. Backups need nothing: a step whose last success is dated after now is read as never done, so the next half-hourly
    run takes a full backup, the copy and the read-back again; `twes tick` counts the schedule's silence from the tick
    that first read its last word dated ahead, and alerts after an hour and a half of it as usual.
+
+## The database does not answer
+
+Untried. While PostgreSQL is stopped, restarting or out of reach, a request needing it answers 503
+`/problems/database-unreachable` with `Retry-After: 5`: the screen says the server cannot be reached (« Le serveur est
+injoignable »), nothing of that request is kept, and the api logs `The database did not answer` at critical, with
+whether no connection opened or one was cut. The same request goes through once it answers. A request that had already
+kept something before the connection went keeps its own error: sent again, it would be made twice.
+
+1. `docker compose … ps postgres` and `… logs --tail 100 postgres`: stopped, restarting, or refusing (a full disk:
+   « The disk fills » above).
+2. Restarted on its own after a crash: wait for `healthy`; the workers and the api reconnect by themselves.
+3. Still down: `docker compose … up -d postgres`. Do not remove its volume.
 
 ## The queue is stuck
 

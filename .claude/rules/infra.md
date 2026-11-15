@@ -54,7 +54,7 @@ the end of § Lessons here.
   `compose.backup-local.yaml` (backups in its own folder, run when due, `BACKUP_SCHEDULE=due`) and
   `compose.backup-offsite.yaml`; values from `scripts/deploy/new-instance.sh --onprem`, `TWES_INSTALL=onprem`. Everything
   runs through `scripts/onprem/twes` (install, start, update with its backup and rollback, policy, offsite, tick, status,
-  restore-commands, pin-key, schedule: Linux's systemd units; test `scripts/tests/twes.test.sh`), which reaches the stack
+  restore-commands, pin-key, export and verify-export (`scripts/onprem/lib/export.sh`), reset (`lib/reset.sh`), schedule: Linux's systemd units; test `scripts/tests/twes.test.sh`), which reaches the stack
   through `deploy.sh --compose`. A release is taken only from a tag `scripts/release/tag-release.sh` signed, verified
   against the key pinned at install (`infra/onprem/release-key.asc`, the developer's public key, pinned once its
   fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, then `-Engine Desktop`, Docker Desktop and the

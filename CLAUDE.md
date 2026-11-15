@@ -175,7 +175,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (both halves' static checks first, `composer gate:static` and `npm run gate:static`, so a style or type error
   reds in about two minutes; then `composer test`, `npm run gate:tests` and the licences, each in its toolchain container, below; CI runs
   the same checks as `composer gate` and `npm run gate`; `npm run gate` starts by regenerating the types, and type-checks `e2e*/` and the Playwright configs through `tsconfig.e2e.json`, which Playwright itself never does; `composer test` migrates the test database first),
-  `make e2e` (Playwright against the running stack; a scenario tagged `@phone` runs on WebKit, Safari's engine, as well as Chromium), `make fixtures` (the demo companies, appended after `seed`).
+  `make e2e` (Playwright against the running stack; a scenario tagged `@phone` runs on WebKit, Safari's engine, as well as Chromium), `make fixtures` (the demo companies, appended after `seed`), `make reset-empty` (`app:platform:reset`: an installation emptied in place, its schema kept, refused while anything fiscal is there).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.
 - **No PHP, Composer or Node runs on the host** (developer ruling, 2026-10-02: every project but `/stack` runs its

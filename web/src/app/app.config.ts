@@ -41,6 +41,7 @@ import { demoRefusedInterceptor } from './shared/demo/demo-refused-interceptor';
 import { spentBudgetInterceptor } from './shared/errors/spent-budget-interceptor';
 import { csrfInterceptor } from './auth/csrf-interceptor';
 import { busyInterceptor } from './shared/errors/busy-interceptor';
+import { storageFullInterceptor } from './shared/errors/storage-full-interceptor';
 import { numberingRefusedInterceptor } from './shared/errors/numbering-refused-interceptor';
 import { PasskeyClient } from './auth/passkey-client';
 import { ApiSettings } from './shared/settings/api-settings';
@@ -71,6 +72,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([
         csrfInterceptor,
         busyInterceptor,
+        storageFullInterceptor,
         numberingRefusedInterceptor,
         tabInterceptor,
         submissionInterceptor,
