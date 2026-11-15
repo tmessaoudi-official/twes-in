@@ -567,7 +567,17 @@ start() {
 
 # A restore stops every container and outlasts a quarter hour: held, tick would otherwise start the installation again in
 # its middle, on a database being restored, and the start at boot after a power cut too.
-on_hold() { [[ -f "$state/hold" ]]; }
+# A hold an export took (scripts/onprem/lib/export.sh) and could not give back, the computer switched off or the process
+# killed under it, is given back here: its mark names a boot this is not, or a process gone.
+on_hold() {
+  local boot pid
+  if [[ -f "$state/hold" && -f "$state/export-hold" ]] && read -r boot pid < "$state/export-hold" \
+    && { [[ "$boot" != "$(cat /proc/sys/kernel/random/boot_id)" ]] || ! kill -0 "$pid" 2>/dev/null; }; then
+    rm -f "$state/hold" "$state/export-hold"
+    say "hold given back: the export that took it was cut short (a .twes-export folder or a .part file it left in its folder is no archive); twes export again" >&2
+  fi
+  [[ -f "$state/hold" ]]
+}
 hold_said() { echo "held for a restore since $(shop_day "$(recall hold)") $(shop_time "$(recall hold)")"; }
 hold() {
   case "$1" in

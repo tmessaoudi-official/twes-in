@@ -14,7 +14,7 @@
 export_members=(counts.json values.env.gpg backup.tar releases.tar state.tar release-keys.tar)
 export_optional=(ca.tar.gpg images.tar)
 # Read by the EXIT trap, after the function's own variables are gone.
-export_work='' export_held=''
+export_work='' export_held='' export_plain=''
 
 # A passphrase reaches gpg through a file of mode 600 and a keyring of its own, never the command line nor the person's
 # own keyring; the file and the keyring go with the call.
@@ -61,10 +61,13 @@ export_installation() { # folder, --with-images or nothing
   work=$(mktemp -d "$folder/.twes-export.XXXXXX")
   export_work=$work
   # Held while it reads, so neither tick nor an update restarts or moves the installation under it; the hold is given
-  # back however the export ends, and anything recorded after the final backup stays here.
-  trap 'rm -rf "$export_work"; [[ -z "$export_held" ]] || hold off >/dev/null' EXIT
+  # back however the export ends, and anything recorded after the final backup stays here. An export cut short (the
+  # computer switched off, the process killed) leaves its mark, this boot and this process, by which on_hold gives the
+  # hold back rather than keep the shop shut.
+  trap 'rm -rf "$export_work" "$export_plain"; [[ -z "$export_held" ]] || { rm -f "$state/export-hold"; hold off >/dev/null; }' EXIT
   hold on >/dev/null
   export_held=yes
+  printf '%s %s\n' "$(cat /proc/sys/kernel/random/boot_id)" "$$" > "$state/export-hold"
 
   say "export: a final backup first"
   label=$(compose exec -T backup twes-backup before-update | sed -n 's/.*before-update: //p' | tail -n 1) || label=''
@@ -79,17 +82,20 @@ export_installation() { # folder, --with-images or nothing
   printf '%s\n' "$counts" > "$work/counts.json"
 
   compose exec -T backup tar -C /backup -cf - . > "$work/backup.tar" || refuse "the backup folder could not be read: nothing exported"
-  cp "$values" "$work/values.env"
-  export_seal "$passphrase" "$work/values.env" "$work/values.env.gpg" || refuse "gpg could not seal the values: nothing exported"
-  rm -f "$work/values.env"
+  # Nothing secret is ever written plain where the archive goes, a USB stick as often as not, where neither a mode nor
+  # a delete keeps the bytes: the values are sealed from their own file, the authority from this computer's TMPDIR.
+  export_seal "$passphrase" "$values" "$work/values.env.gpg" || refuse "gpg could not seal the values: nothing exported"
   tar -C "$records" -cf "$work/releases.tar" .
-  tar -C "$state" --exclude='./*.lock' -cf "$work/state.tar" .
+  # The export's own hold stays here: a computer given this state would otherwise start held.
+  tar -C "$state" --exclude='./*.lock' --exclude=./hold --exclude=./export-hold -cf "$work/state.tar" .
   tar -C "$keys" --exclude='./S.*' -cf "$work/release-keys.tar" .
   # The edge's local authority, which the shop's phones trust: carried, sealed, so they keep trusting the new computer.
-  if compose exec -T edge tar -C /data/caddy/pki/authorities -cf - local > "$work/ca.tar" 2>/dev/null && [[ -s "$work/ca.tar" ]]; then
-    export_seal "$passphrase" "$work/ca.tar" "$work/ca.tar.gpg" || refuse "gpg could not seal the authority: nothing exported"
+  # An edge that never made one answers tar's « No such file », said nowhere: there is no authority to carry then.
+  export_plain=$(mktemp -t twes-export-ca.XXXXXX)
+  if compose exec -T edge tar -C /data/caddy/pki/authorities -cf - local > "$export_plain" 2>/dev/null && [[ -s "$export_plain" ]]; then
+    export_seal "$passphrase" "$export_plain" "$work/ca.tar.gpg" || refuse "gpg could not seal the authority: nothing exported"
   fi
-  rm -f "$work/ca.tar"
+  rm -f "$export_plain"
   if [[ "$images" == --with-images ]]; then
     mapfile -t list < <(compose config --images)
     ((${#list[@]})) || refuse "the release's images could not be listed: nothing exported"
@@ -121,30 +127,32 @@ export_installation() { # folder, --with-images or nothing
 }
 
 # The archive read back: its MANIFEST unsealed with the passphrase and equal to the one beside it, every member it
-# names present with its sha256, every required member there, and nothing it does not name.
+# names present with its sha256, every required member there, and nothing it does not name. Only the two MANIFESTs are
+# unpacked; each member is read through sha256sum where it lies, as a shop's backups may be larger than TMPDIR.
 verify_export() { # archive
-  local archive=$1 work passphrase member name sum listed=() problems=()
+  local archive=$1 work passphrase member name sum inside=() listed=() problems=()
   [[ -f "$archive" ]] || refuse "$archive is not a file"
+  mapfile -t inside < <(tar -tf "$archive") && ((${#inside[@]})) || refuse "$archive is not an archive tar reads"
+  [[ " ${inside[*]} " == *" MANIFEST "* && " ${inside[*]} " == *" MANIFEST.gpg "* ]] || refuse "$archive holds no sealed MANIFEST: not a twes export"
   work=$(mktemp -d -t twes-verify.XXXXXX)
   export_work=$work
   trap 'rm -rf "$export_work"' EXIT
-  tar -C "$work" -xf "$archive" || refuse "$archive is not an archive tar reads"
-  [[ -f "$work/MANIFEST" && -f "$work/MANIFEST.gpg" ]] || refuse "$archive holds no sealed MANIFEST: not a twes export"
+  tar -C "$work" -xf "$archive" MANIFEST MANIFEST.gpg || refuse "the MANIFEST of $archive could not be read"
   passphrase=$(ask "The export's passphrase:" secret) || exit 1
   export_open "$passphrase" "$work/MANIFEST.gpg" "$work/MANIFEST.opened" || refuse "the passphrase does not open the MANIFEST: a wrong passphrase, or an archive changed"
   cmp -s "$work/MANIFEST" "$work/MANIFEST.opened" || problems+=("the MANIFEST was changed after it was sealed")
   while read -r sum name; do
     [[ -n "$name" ]] || continue
     listed+=("$name")
-    if [[ ! -f "$work/$name" ]]; then problems+=("$name is named by the MANIFEST and missing")
-    elif [[ "$(sha256sum "$work/$name" | cut -d' ' -f1)" != "$sum" ]]; then problems+=("$name was changed after the MANIFEST")
+    if [[ " ${inside[*]} " != *" $name "* ]]; then problems+=("$name is named by the MANIFEST and missing")
+    elif [[ "$(tar -xOf "$archive" "$name" | sha256sum | cut -d' ' -f1)" != "$sum" ]]; then problems+=("$name was changed after the MANIFEST")
     fi
   done < <(awk '$1 == "sha256" { print $2, $3 }' "$work/MANIFEST.opened")
   for member in "${export_members[@]}"; do
     [[ " ${listed[*]} " == *" $member "* ]] || problems+=("$member is missing from the MANIFEST")
   done
-  for member in $(cd "$work" && ls -A); do
-    case "$member" in MANIFEST | MANIFEST.gpg | MANIFEST.opened) continue ;; esac
+  for member in "${inside[@]}"; do
+    case "$member" in MANIFEST | MANIFEST.gpg) continue ;; esac
     [[ " ${listed[*]} " == *" $member "* ]] || problems+=("$member is in the archive and not in the MANIFEST")
   done
   if ((${#problems[@]})); then

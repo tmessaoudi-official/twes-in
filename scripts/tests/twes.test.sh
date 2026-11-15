@@ -75,7 +75,7 @@ case "$mode" in
       "exec -T api bin/console doctrine:migrations:current"*) echo 'DoctrineMigrations\Version20261114183314' ;;
       "exec -T api bin/console app:fiscal:inventory --json"*) echo '{"fiscal":true,"companies":[{"name":"Shop","fiscal":true}],"platform":[]}'; exit "${INVENTORY_EXIT:-3}" ;;
       "exec -T edge tar -C /data/caddy/pki/authorities -cf - local") [[ -n "${EDGE_CA:-}" ]] || exit 1; tar -C "$EDGE_CA" -cf - local ;;
-      "config --images") printf 'ghcr.io/x/api@sha256:aa\nghcr.io/x/web@sha256:bb\n' ;;
+      "config --images") [[ -z "${EXPORT_FOLDER:-}" ]] || find "$EXPORT_FOLDER" -type f -printf '%f\n' > "$TMPDIR/folder-seen"; printf 'ghcr.io/x/api@sha256:aa\nghcr.io/x/web@sha256:bb\n' ;;
       "exec -T backup sh -c"*)
         [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1
         # OUTCOME_DIR: twes's own script run against that folder, on the clock of whatever runs it, as the container does.
@@ -915,7 +915,7 @@ sealed() { # file, sealed file: what one holding the passphrase writes
   GNUPGHOME=$g gpgconf --kill all 2>/dev/null; rm -rf "$g"; return "$s"
 }
 repacked() { # archive, then what to do in its unpacked folder: the archive written again from that folder
-  local a=$1 u; u=$(mktemp -d); shift; tar -C "$u" -xf "$a"; (cd "$u" && eval "$*"); tar -C "$u" -cf "$a" .; rm -rf "$u"
+  local a=$1 u; u=$(mktemp -d); shift; tar -C "$u" -xf "$a"; (cd "$u" && eval "$*" && tar -cf "$a" $(ls -A)); rm -rf "$u"
 }
 d=$(installed); o=$(mktemp -d)
 out=$(printf '%s\n%s\n' "$PASS" "$PASS" | EDGE_CA=$TMPDIR/edge-ca exported "$d" export "$o"); check "export: one archive written" $? 0 "$out" "exported to $o/twes-export-"
@@ -932,6 +932,7 @@ unsealed "$u/values.env.gpg" "$u/values.env"; check "  the values open with the 
 check "  the backup folder whole" 0 0 "$(tar -xOf "$u/backup.tar" ./pgbackrest/archive)" wal
 check "  held while the backups were read, the hold given back after" 0 0 "$(cat "$TMPDIR/held-while-read" 2>&1)$( [[ -f "$d/etc/state/hold" ]] || echo ' released')" "held released"
 check "  backed up first" 0 0 "$(deployed)" "--compose exec -T backup twes-backup before-update|"
+check "  the state carried without the export's own hold" 0 0 "[$(tar -tf "$u/state.tar" | grep -c hold)]" "[0]"
 check "  nothing left behind in the folder" 0 0 "[$(cd "$o" && ls -A | tr '\n' ' ')]" "[$(basename "$a") $(basename "$a").sha256 ]"
 rm -rf "$u"; rm -f "$TMPDIR/held-while-read"
 out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$a"); check "verify-export: the archive as sealed" $? 0 "$out" "verified: $a, 7 members as sealed"
@@ -950,9 +951,20 @@ out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/forged.tar"); check " 
 cp "$a" "$o/unlisted.tar"; repacked "$o/unlisted.tar" 'grep -v " state.tar$" MANIFEST > m; mv m MANIFEST; rm state.tar MANIFEST.gpg; sealed MANIFEST MANIFEST.gpg'
 out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$o/unlisted.tar"); check "  a required member missing from the MANIFEST refused" $? 1 "$out" "state.tar is missing from the MANIFEST"
 d=$(installed); o=$(mktemp -d)
-out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o" --with-images); check "export --with-images: the release's images saved" $? 0 "$(tar -tf "$(archive_in "$o")")$(cat "$TMPDIR/docker.save")" "images.tar"
+out=$(printf '%s\n%s\n' "$PASS" "$PASS" | EXPORT_FOLDER=$o EDGE_CA=$TMPDIR/edge-ca exported "$d" export "$o" --with-images); check "export --with-images: the release's images saved" $? 0 "$(tar -tf "$(archive_in "$o")")$(cat "$TMPDIR/docker.save")" "images.tar"
 check "  by the digests compose names" 0 0 "$(cat "$TMPDIR/docker.save")" "save -o"
-check "  no authority where the edge has none" 0 0 "[$(tar -tf "$(archive_in "$o")" | grep -c ca.tar.gpg)]" "[0]"
+check "  nothing secret ever plain where the archive goes" 0 0 "[$(grep -cxE 'values\.env|ca\.tar|twes-export-ca\..*' "$TMPDIR/folder-seen")]$(grep -cx values.env.gpg "$TMPDIR/folder-seen")" "[0]1"
+d=$(installed); o=$(mktemp -d); out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o")
+check "  no authority where the edge has none" $? 0 "[$(tar -tf "$(archive_in "$o")" | grep -c ca.tar.gpg)]" "[0]"
+# An export cut short (the computer switched off mid-copy) leaves its hold: given back at the next start or tick, but
+# never while the export that took it still runs.
+d=$(installed); twes "$d" hold on >/dev/null; printf '%s %s\n' "$(cat /proc/sys/kernel/random/boot_id)" "$$" > "$d/etc/state/export-hold"
+check "export cut short: a hold whose export still runs is kept" 0 0 "$(twes "$d" status)" "held:     for a restore"
+pid=$(bash -c 'echo $$'); printf '%s %s\n' "$(cat /proc/sys/kernel/random/boot_id)" "$pid" > "$d/etc/state/export-hold"
+out=$(twes "$d" status); check "  one whose export is gone given back" 0 0 "[$( [[ "$out" == *"held:"* || -f "$d/etc/state/hold" ]] && echo held)]" "[]"
+check "  and said" 0 0 "$out" "hold given back: the export that took it was cut short"
+twes "$d" hold on >/dev/null; echo "another-boot 1" > "$d/etc/state/export-hold"
+out=$(twes "$d" start); code=$?; check "  one from before the computer started again given back, the start goes on" $code 0 "[$( [[ -f "$d/etc/state/hold" ]] && echo held)]$out" "[]"
 d=$(installed); o=$(mktemp -d)
 out=$(printf 'too short\ntoo short\n' | exported "$d" export "$o"); check "export: a short passphrase refused" $? 1 "$out" "a passphrase of 12 characters at least: nothing exported"
 out=$(printf '%s\n%s\n' "$PASS" "another passphrase" | exported "$d" export "$o"); check "  two passphrases differing refused" $? 1 "$out" "the two passphrases differ"
