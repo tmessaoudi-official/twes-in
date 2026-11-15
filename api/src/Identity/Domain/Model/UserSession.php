@@ -17,7 +17,9 @@ use Symfony\Component\Uid\Uuid;
  * One browser signed in to an account, as the person sees it on their security page: where from, on what, and when
  * last. Only the SHA-256 of the session id is kept, so a copy of this table cannot be replayed as a cookie. Ending a
  * session marks it revoked and the next request carrying it is refused; the row stays until it is older than the
- * absolute session limit, so a revoked cookie cannot come back to life by its row being gone.
+ * absolute session limit, so a revoked cookie cannot come back to life by its row being gone. It also keeps which
+ * companies it entered, as a sign-in proves itself for each, so a company's owner is shown only the sessions that have
+ * been inside it: another company's use of the same account is none of theirs.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'user_session')]
@@ -50,6 +52,15 @@ class UserSession
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $revokedAt = null;
+
+    /**
+     * The companies this session has entered, by id; only ever added to while it lives, since a proof lapsing inside it
+     * does not make what it reached unreached.
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['jsonb' => true, 'default' => '[]'])]
+    private array $companies = [];
 
     public function __construct(User $user, string $sessionId, string $device, string $address, \DateTimeImmutable $now)
     {
@@ -115,6 +126,28 @@ class UserSession
     public function touch(\DateTimeImmutable $now): void
     {
         $this->lastSeenAt = $now;
+    }
+
+    /**
+     * Notes the companies the session holds a proof for now; whether any was new, which is when the row needs storing.
+     *
+     * @param list<Uuid> $companyIds
+     */
+    public function entered(array $companyIds): bool
+    {
+        $before = \count($this->companies);
+        foreach ($companyIds as $companyId) {
+            if (!\in_array($companyId->toRfc4122(), $this->companies, true)) {
+                $this->companies[] = $companyId->toRfc4122();
+            }
+        }
+
+        return \count($this->companies) !== $before;
+    }
+
+    public function hasEntered(Uuid $companyId): bool
+    {
+        return \in_array($companyId->toRfc4122(), $this->companies, true);
     }
 
     public function revoke(\DateTimeImmutable $now): void

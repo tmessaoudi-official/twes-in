@@ -50,6 +50,8 @@ enum SecurityChange: string
     case OperatorReactivated = 'operator_reactivated';
     /** An operator ended every session of the account. */
     case OperatorEndedSessions = 'operator_ended_sessions';
+    /** An owner of a company the account belongs to signed out one or more of its sessions there. */
+    case SessionsEndedByOwner = 'sessions_ended_by_owner';
     /** An owner of a company the account belongs to lifted the lock wrong guesses had set on its password. */
     case LockLiftedByOwner = 'lock_lifted_by_owner';
     /** An operator lifted the lock wrong guesses had set on the password of a company owner. */
@@ -67,6 +69,6 @@ enum SecurityChange: string
      */
     public function byTheInstallation(): bool
     {
-        return \in_array($this, [self::FactorsReplaced, self::PasskeysMoved, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions, self::LockLiftedByOwner, self::LockLiftedByOperator], true);
+        return \in_array($this, [self::FactorsReplaced, self::PasskeysMoved, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions, self::SessionsEndedByOwner, self::LockLiftedByOwner, self::LockLiftedByOperator], true);
     }
 }

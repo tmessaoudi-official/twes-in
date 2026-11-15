@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -470,6 +470,40 @@ describe('MembersPage', () => {
     actor.set({ role: 'admin', permissions: ['user.read', 'user.write'] });
     fixture.detectChanges();
     expect(await menuEntry('u2', 'unlock')).toBeNull();
+  });
+
+  it('offers a member’s devices to the owner alone, on another member who joined, and opens them', async () => {
+    const clerk: MemberRow = {
+      ...owner,
+      userId: 'u2',
+      email: 'clerk@example.test',
+      displayName: 'Nadia',
+      role: 'member',
+    };
+    signedIn = 'u1';
+    rows.set([owner, clerk, invited]);
+    fixture.detectChanges();
+
+    // Their own devices are « Mon compte »'s; an invitation has signed in nowhere yet.
+    expect(await menuEntry('u1', 'devices')).toBeNull();
+    expect(await menuEntry('invited:invited@example.test', 'devices')).toBeNull();
+    (await menuEntry('u2', 'devices'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    TestBed.inject(HttpTestingController)
+      .expectOne({ method: 'GET', url: '/api/companies/c1/members/u2/sessions' })
+      .flush([]);
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="member-devices-title"]')).not.toBeNull(),
+    );
+    document.querySelector<HTMLElement>('[data-testid="member-devices-close"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    actor.set({ role: 'admin', permissions: ['user.read', 'user.write'] });
+    fixture.detectChanges();
+    expect(await menuEntry('u2', 'devices')).toBeNull();
   });
 
   it('sends an invitation again at the same role, saying the old link stopped', async () => {

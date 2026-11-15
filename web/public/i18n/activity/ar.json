@@ -6,7 +6,8 @@
         "logout": "سجّل الخروج"
       },
       "account": {
-        "lock_lifted": "فتح قفل كلمة مرور أحد الأعضاء"
+        "lock_lifted": "فتح قفل كلمة مرور أحد الأعضاء",
+        "sessions_ended_by_owner": "قطع اتّصال أجهزة أحد الأعضاء"
       },
       "company": {
         "profile_revised": "عدّل ملفّ الشركة",

@@ -62,6 +62,13 @@ final readonly class SessionCompanyProofs implements CompanyProofs
         $this->session()?->remove(self::KEY);
     }
 
+    public function companies(): array
+    {
+        $ids = array_filter(array_keys($this->all()), static fn (string $id): bool => Uuid::isValid($id));
+
+        return array_values(array_map(static fn (string $id): Uuid => Uuid::fromString($id), $ids));
+    }
+
     /**
      * A request with no session has no sign-in to hold a proof for: a console command or a worker acting for a company
      * proves nothing, so a member of several companies is refused there rather than let in.

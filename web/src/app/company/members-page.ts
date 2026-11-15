@@ -34,6 +34,7 @@ import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
+import { MemberDevicesDialog, type MemberDevicesOf } from './member-devices/member-devices-dialog';
 import { type Actor, mayGrant, mayRemove } from './role-bounds';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
@@ -206,6 +207,19 @@ export class MembersPage implements OnInit {
           row.userId !== this.auth.me()?.user.id,
       },
       {
+        // A phone lost or a till left open: the owner sees where a member is signed in here and signs them out.
+        id: 'devices',
+        rare: true,
+        label: 'members.devices.open',
+        icon: 'smartphone',
+        run: (row) => void this.showDevices(row),
+        shown: (row) =>
+          this.isOwner() &&
+          this.mayManage() &&
+          row.status === 'joined' &&
+          row.userId !== this.auth.me()?.user.id,
+      },
+      {
         id: 'resend',
         // Occasional: behind « ⋮ », so the list keeps the width it had.
         rare: true,
@@ -362,6 +376,19 @@ export class MembersPage implements OnInit {
       return;
     }
     void this.chooseRole(row);
+  }
+
+  private async showDevices(row: MemberRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    await firstValueFrom(
+      this.dialog
+        .open<MemberDevicesDialog, MemberDevicesOf, void>(MemberDevicesDialog, {
+          data: { companyId, userId: row.userId, name: row.displayName },
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
+    );
   }
 
   private async chooseRole(row: MemberRow): Promise<void> {

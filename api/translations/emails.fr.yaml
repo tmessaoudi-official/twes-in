@@ -245,6 +245,9 @@ security_notice:
     operator_ended_sessions:
         heading: 'Sessions fermées'
         body: 'La personne qui gère votre installation a fermé toutes vos sessions : reconnectez-vous pour continuer.'
+    sessions_ended_by_owner:
+        heading: 'Appareil déconnecté par votre entreprise'
+        body: 'Le propriétaire d’une entreprise dont vous êtes membre a déconnecté une ou plusieurs de vos sessions, sur un appareil perdu ou resté connecté : reconnectez-vous sur cet appareil pour continuer. Si vous pensez que quelqu’un d’autre connaît votre mot de passe, changez-le dans « Mon compte ».'
     lock_lifted_by_owner:
         heading: 'Mot de passe déverrouillé par votre entreprise'
         body: 'Le propriétaire d’une entreprise dont vous êtes membre a levé le verrou que des essais erronés avaient mis sur votre mot de passe : vous pouvez de nouveau vous connecter avec lui. Si vous ne lui avez rien demandé, changez votre mot de passe dans « Mon compte ».'

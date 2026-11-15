@@ -47,6 +47,30 @@
     "role_changed": "{{name}} is now {{role}}.",
     "password_locked_until": "Password locked until {{moment}}",
     "unlock": "Unlock the password",
-    "unlocked": "{{name}}’s password is unlocked."
+    "unlocked": "{{name}}’s password is unlocked.",
+    "devices": {
+      "open": "Connected devices",
+      "title": "{{name}}’s devices",
+      "intro": "The browsers {{name}} is signed in to this company on. Sign out a lost phone or a till left open: it will have to sign in again, and {{name}} is told by email.",
+      "none": "{{name}} is not signed in to this company on any device.",
+      "unknown": "Unknown device",
+      "seen": "{{address}} · last seen {{when}}",
+      "end": "Sign out",
+      "end_all": "Sign out everywhere",
+      "end_all_title": "Sign out of all these devices?",
+      "end_all_message": "Each of these devices will have to sign in again, and {{name}} is told by email. If someone else knows their password, {{name}} must change it: only that keeps them out.",
+      "keep": "Change nothing",
+      "ended": "{{name}} is signed out of {{device}}.",
+      "all_ended": "{{name}}’s devices signed out: {{count}}.",
+      "close": "Close",
+      "errors": {
+        "network": "The server cannot be reached.",
+        "owner_only": "Only the company’s owner sees and signs out a member’s devices.",
+        "own_sessions": "Your own devices are managed in “My account”.",
+        "member_not_found": "This person no longer belongs to the company.",
+        "session_not_found": "This device is already signed out.",
+        "step_up_required": "Nothing changed: confirm it is you to sign out a device."
+      }
+    }
   }
 }

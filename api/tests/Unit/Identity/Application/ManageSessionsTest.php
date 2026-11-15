@@ -19,6 +19,7 @@ use App\Tests\Support\InMemorySessions;
 use App\Tests\Support\InMemoryUsers;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class ManageSessionsTest extends TestCase
 {
@@ -68,6 +69,32 @@ final class ManageSessionsTest extends TestCase
         $this->manage()->seen($this->user->getId(), 'session-a', $this->sessions->ofSessionId('session-a'), 'Firefox', '203.0.113.7');
         self::assertGreaterThan($first, $this->sessions->all[0]->getLastSeenAt());
         self::assertCount(1, $this->sessions->all);
+    }
+
+    /**
+     * A company the sign-in proved itself for is noted on its record, written at once rather than at the next touch, and
+     * kept once the proof lapses; a request entering nothing new writes nothing.
+     */
+    public function testTheCompaniesASessionEntersAreNotedAsTheyAreEnteredAndKept(): void
+    {
+        $acme = Uuid::v7();
+        $globex = Uuid::v7();
+        $this->manage()->seen($this->user->getId(), 'session-a', null, 'Firefox', '203.0.113.7', [$acme]);
+        $session = $this->sessions->all[0];
+        self::assertTrue($session->hasEntered($acme));
+        self::assertFalse($session->hasEntered($globex));
+        $saves = $this->sessions->saves;
+
+        $this->clock->modify('+1 minute');
+        $this->manage()->seen($this->user->getId(), 'session-a', $session, 'Firefox', '203.0.113.7', [$acme]);
+        self::assertSame($saves, $this->sessions->saves, 'nothing new entered, nothing written');
+
+        $this->manage()->seen($this->user->getId(), 'session-a', $session, 'Firefox', '203.0.113.7', [$acme, $globex]);
+        self::assertSame($saves + 1, $this->sessions->saves, 'a company entered is written at once');
+        self::assertTrue($session->hasEntered($globex));
+
+        $this->manage()->seen($this->user->getId(), 'session-a', $session, 'Firefox', '203.0.113.7', []);
+        self::assertTrue($session->hasEntered($acme), 'a lapsed proof does not unmake what it reached');
     }
 
     /** The operator's app.session.touch_every: how closely a record knows its session's last use. */

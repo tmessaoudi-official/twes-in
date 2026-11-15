@@ -78,6 +78,9 @@ final class DemoAccountGuardTest extends ApiTestCase
         'api_me_notifications_read_all',
         'api_me_notifications_unread_by_company',
         'api_me_realtime_token',
+        'api_member_sessions',
+        'api_member_sessions_end',
+        'api_member_sessions_end_all',
         'api_support_access_end',
         'api_support_access_read',
     ];

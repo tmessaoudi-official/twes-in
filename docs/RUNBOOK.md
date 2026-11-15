@@ -373,6 +373,25 @@ operator can reset another's, so whoever runs the installation does it from the 
 3. They sign in with their password and are held at the set-up until they enrol a new authenticator or passkey; the new
    recovery codes come with it. Tell them to add a passkey too, so one lost phone no longer locks them out.
 
+## A staff phone or computer is lost
+
+Two doors to close, the network's first, then the application's.
+
+1. The network. When the device reached the shop through Tailscale, whoever administers the shop's tailnet removes it
+   from the tailnet in Tailscale's admin console (the « Machines » page, that device's menu): it no longer reaches the
+   shop at all, signed in or not. Untried here: this step is Tailscale's, not the application's.
+2. The application. The company's owner opens « Membres », the member's « ⋮ », « Appareils connectés »: each browser
+   the member is signed in on that entered this company, by browser, address and last use. « Déconnecter » ends one,
+   « Tout déconnecter » all of them, after the owner proves it is them. The session ends at its next request and its
+   live connection closes; the member is told by mail, and the company's « Activité » records it
+   (`MemberSessionsTest`). A session the person used only in another company is not listed: that company's owner ends
+   it, or the person does from « Mon compte › Appareils connectés ».
+3. The password. Ending a session does not stop someone who knows the password: the member changes it in « Mon compte »
+   and ends every other session there with « Déconnecter tous les autres ». Until they can, the owner may remove them
+   from « Membres » and invite them again afterwards.
+4. The owner's own device is ended from « Mon compte › Appareils connectés » on another one. When the lost phone held an
+   authenticator, follow « Replace a lost authenticator » above.
+
 ## The disk fills
 
 Untried. The deep health turns red under 20 % free on the files volume (`app.health.disk_free_minimum`), and Gatus's

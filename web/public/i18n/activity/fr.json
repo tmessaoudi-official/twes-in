@@ -6,7 +6,8 @@
         "logout": "s’est déconnecté"
       },
       "account": {
-        "lock_lifted": "a déverrouillé le mot de passe d’un membre"
+        "lock_lifted": "a déverrouillé le mot de passe d’un membre",
+        "sessions_ended_by_owner": "a déconnecté les appareils d’un membre"
       },
       "company": {
         "profile_revised": "a modifié le profil de la société",

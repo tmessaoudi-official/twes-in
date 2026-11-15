@@ -47,6 +47,30 @@
     "role_changed": "{{name}} est maintenant {{role}}.",
     "password_locked_until": "Mot de passe verrouillé jusqu’au {{moment}}",
     "unlock": "Déverrouiller le mot de passe",
-    "unlocked": "Le mot de passe de {{name}} est déverrouillé."
+    "unlocked": "Le mot de passe de {{name}} est déverrouillé.",
+    "devices": {
+      "open": "Appareils connectés",
+      "title": "Appareils de {{name}}",
+      "intro": "Les navigateurs où {{name}} est connecté à cette entreprise. Déconnectez un téléphone perdu ou un poste resté ouvert : il devra se reconnecter, et {{name}} en est prévenu par e-mail.",
+      "none": "{{name}} n’est connecté à cette entreprise sur aucun appareil.",
+      "unknown": "Appareil inconnu",
+      "seen": "{{address}} · vu {{when}}",
+      "end": "Déconnecter",
+      "end_all": "Tout déconnecter",
+      "end_all_title": "Déconnecter tous ces appareils ?",
+      "end_all_message": "Chacun de ces appareils devra se reconnecter, et {{name}} en est prévenu par e-mail. Si quelqu’un d’autre connaît son mot de passe, {{name}} doit le changer : lui seul l’empêche de revenir.",
+      "keep": "Ne rien changer",
+      "ended": "{{name}} est déconnecté de {{device}}.",
+      "all_ended": "Appareils de {{name}} déconnectés : {{count}}.",
+      "close": "Fermer",
+      "errors": {
+        "network": "Impossible de joindre le serveur.",
+        "owner_only": "Seul le propriétaire de l’entreprise voit et déconnecte les appareils d’un membre.",
+        "own_sessions": "Vos propres appareils se gèrent dans « Mon compte ».",
+        "member_not_found": "Cette personne ne fait plus partie de l’entreprise.",
+        "session_not_found": "Cet appareil est déjà déconnecté.",
+        "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour déconnecter un appareil."
+      }
+    }
   }
 }

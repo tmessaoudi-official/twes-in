@@ -54,8 +54,12 @@ final readonly class ManageSessions implements DeclaresAuditActions
         return $this->sessions->ofSessionId($sessionId);
     }
 
-    /** @param ?UserSession $known what `recorded` answered for this session, so a request reads it once */
-    public function seen(Uuid $userId, string $sessionId, ?UserSession $known, string $device, string $address): SessionStanding
+    /**
+     * @param ?UserSession $known     what `recorded` answered for this session, so a request reads it once
+     * @param list<Uuid>   $companies the companies the sign-in holds a proof for, noted on the record as it enters
+     *                                each, so a company proved during a request is noted from the next one on
+     */
+    public function seen(Uuid $userId, string $sessionId, ?UserSession $known, string $device, string $address, array $companies = []): SessionStanding
     {
         $now = $this->clock->now();
         if (null === $known) {
@@ -65,15 +69,22 @@ final readonly class ManageSessions implements DeclaresAuditActions
                 return SessionStanding::Revoked;
             }
             $this->sessions->removeOlderThan($user, $now->sub($this->limit()));
-            $this->sessions->save(new UserSession($user, $sessionId, $device, $address, $now));
+            $session = new UserSession($user, $sessionId, $device, $address, $now);
+            $session->entered($companies);
+            $this->sessions->save($session);
 
             return SessionStanding::Active;
         }
         if ($known->isRevoked()) {
             return SessionStanding::Revoked;
         }
-        if ($known->getLastSeenAt() <= $now->sub(new \DateInterval($this->touchEvery))) {
+        // Written only when a company is new to it or its last use is old enough to note, never on every request.
+        $entered = $known->entered($companies);
+        $due = $known->getLastSeenAt() <= $now->sub(new \DateInterval($this->touchEvery));
+        if ($due) {
             $known->touch($now);
+        }
+        if ($entered || $due) {
             $this->sessions->save($known);
         }
 

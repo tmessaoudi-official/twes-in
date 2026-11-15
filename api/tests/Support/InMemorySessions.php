@@ -48,8 +48,12 @@ final class InMemorySessions implements UserSessionRepository
         }
     }
 
+    /** How many times a session was stored, so a case tells a write from a record merely changed in memory. */
+    public int $saves = 0;
+
     public function save(UserSession $session): void
     {
+        ++$this->saves;
         if (!\in_array($session, $this->all, true)) {
             $this->all[] = $session;
         }

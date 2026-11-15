@@ -27,4 +27,12 @@ interface CompanyProofs
     public function forget(Uuid $companyId): void;
 
     public function forgetAll(): void;
+
+    /**
+     * Every company a proof is held for, lapsed or not: what the sign-in has entered, which the record of its session
+     * keeps for the companies' owners.
+     *
+     * @return list<Uuid>
+     */
+    public function companies(): array;
 }

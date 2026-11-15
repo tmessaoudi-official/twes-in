@@ -6,7 +6,8 @@
         "logout": "signed out"
       },
       "account": {
-        "lock_lifted": "unlocked a member’s password"
+        "lock_lifted": "unlocked a member’s password",
+        "sessions_ended_by_owner": "signed a member out of their devices"
       },
       "company": {
         "profile_revised": "changed the company profile",

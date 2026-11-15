@@ -66,6 +66,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'auth.login',
   'auth.logout',
   'account.lock_lifted',
+  'account.sessions_ended_by_owner',
   'company.profile_revised',
   'company.logo_changed',
   'company.logo_removed',

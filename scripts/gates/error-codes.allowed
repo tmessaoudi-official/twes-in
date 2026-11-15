@@ -42,6 +42,8 @@ invalid_code act the code typed at sign-in, for a company's proof or a step-up i
 # Companies, support and the demo
 company_closed act the company is closed: read-only to its members
 owner_only act only an owner may do this
+member_not_found act the person named is not a member of the company
+own_sessions act an owner's own sessions are ended from « Mon compte », never as a member's
 not_closed_down act the company to reopen is not closed
 reopen_period_over act the company's reopening window is over
 support_read_only act support access only reads

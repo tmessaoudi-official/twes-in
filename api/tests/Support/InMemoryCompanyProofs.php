@@ -43,4 +43,9 @@ final class InMemoryCompanyProofs implements CompanyProofs
     {
         $this->proofs = [];
     }
+
+    public function companies(): array
+    {
+        return array_map(static fn (string $id): Uuid => Uuid::fromString($id), array_keys($this->proofs));
+    }
 }
