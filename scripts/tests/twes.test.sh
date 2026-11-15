@@ -76,6 +76,16 @@ case "$mode" in
       "exec -T api bin/console app:fiscal:inventory --json"*) echo '{"fiscal":true,"companies":[{"name":"Shop","fiscal":true}],"platform":[]}'; exit "${INVENTORY_EXIT:-3}" ;;
       "exec -T edge tar -C /data/caddy/pki/authorities -cf - local") [[ -n "${EDGE_CA:-}" ]] || exit 1; tar -C "$EDGE_CA" -cf - local ;;
       "config --images") [[ -z "${EXPORT_FOLDER:-}" ]] || find "$EXPORT_FOLDER" -type f -printf '%f\n' > "$TMPDIR/folder-seen"; printf 'ghcr.io/x/api@sha256:aa\nghcr.io/x/web@sha256:bb\n' ;;
+      # twes reset: the counts (SUMMARY, exiting 3 when it names a fiscal record), the project, the emptying in place
+      # (what it was given kept, EMPTY_EXIT), the backups moved aside in BACKUP_TREE as the container would, the new
+      # stanza (INIT_EXIT).
+      "exec -T api bin/console app:fiscal:inventory --summary"*)
+        echo "${SUMMARY:-fiscal-records=0 fiscal-companies=0 companies=1}"; [[ "${SUMMARY:-}" != fiscal-records=[1-9]* ]] || exit 3 ;;
+      "config --no-interpolate") printf 'name: twes-in\nservices:\n' ;;
+      "run -T --rm --no-deps migrate bin/console app:platform:reset"*) { echo "$*"; cat; } > "$TMPDIR/emptied"
+        [[ "${EMPTY_EXIT:-0}" != 0 ]] || echo '{"scope":"installation","mode":"in-place","tables":40,"files":3}'; exit "${EMPTY_EXIT:-0}" ;;
+      "run -T --rm --no-deps restore sh -c"*) script=${*: -1}; sh -c "${script//\/backup/$BACKUP_TREE}" ;;
+      "exec -T backup twes-backup init") exit "${INIT_EXIT:-0}" ;;
       "exec -T backup sh -c"*)
         [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1
         # OUTCOME_DIR: twes's own script run against that folder, on the clock of whatever runs it, as the container does.
@@ -136,6 +146,14 @@ EOF
 cat > "$TMPDIR/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$1" == save ]]; then echo "$*" > "$TMPDIR/docker.save"; echo images > "$3"; exit "${SAVE_EXIT:-0}"; fi
+# Its volumes: each of VOLUMES there, removed one by one as asked (written down).
+if [[ "$1" == volume ]]; then
+  case "$2" in
+    inspect) [[ " ${VOLUMES:-} " == *" $3 "* ]] && ! grep -qxF -e "$3" "$TMPDIR/volumes.removed" 2>/dev/null ;;
+    rm) echo "$3" >> "$TMPDIR/volumes.removed" ;;
+  esac
+  exit
+fi
 [[ "$1" == info ]] || exit 0
 tries=$(($(cat "$TMPDIR/docker.tries" 2>/dev/null || echo 0) + 1)); echo "$tries" > "$TMPDIR/docker.tries"
 [[ "${DOCKER_LATE:-0}" != never ]] && ((tries > ${DOCKER_LATE:-0})) || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
@@ -983,6 +1001,64 @@ out=$(printf '%s\n%s\n' "$PASS" "$PASS" | exported "$d" export "$o"); check "  n
 check "  none of them wrote anything" 0 0 "[$(ls -A "$o")]" "[]"
 out=$(twes "$d" export); check "  no folder named: its usage" $? 2 "$out" "export <folder> [--with-images]"
 out=$(twes "$d" export "$o" --with-everything); check "  an unknown option: its usage" $? 2 "$out" "verify-export <archive>"
+
+# twes reset: counted, held, an export kept aside and read back, then emptied in place (nothing fiscal) or its volumes
+# removed (issued documents, only knowingly), the backups moved aside, a new stanza and a first backup, the operator again.
+FISCAL='fiscal-records=12 fiscal-companies=1 companies=2' SENTENCE='erase 12 fiscal records in 1 of 2 companies of twes-in'
+ALL_VOLUMES='twes-in_postgres-data twes-in_api-files twes-in_api-share twes-in_pgbackrest-spool twes-in_backup-dump twes-in_edge-data twes-in_edge-config twes-in_backup-local twes-in_backup-outcome'
+resetting() { # shop folder, then reset's arguments: over the backups' folder $tree, its backups made if none are there
+  mkdir -p "$tree/pgbackrest" "$tree/restic"; [[ -f "$tree/pgbackrest/archive" ]] || echo wal > "$tree/pgbackrest/archive"
+  echo id > "$tree/twes-in-backups.id"; rm -f "$TMPDIR/emptied" "$TMPDIR/volumes.removed"
+  BACKUP_TREE=$tree BACKUP_LABEL=${BACKUP_LABEL-$LABEL} VOLUMES=$ALL_VOLUMES twes "$@"
+}
+steps() { deployed | tr '|' '\n' | sed -n 's/.*\(before-update\|app:platform:reset\|--compose down\|restore sh\|--again\|app:seed\|twes-backup init\).*/\1/p' | tr '\n' ' '; }
+held() { [[ -f "$1/etc/state/hold" ]] && echo held; }
+d=$(installed); echo op@shop.test > "$d/etc/state/operator"; tree=$(mktemp -d)
+out=$(printf 'twes-in\nnew password\nnew password\n%s\n%s\n' "$PASS" "$PASS" | resetting "$d" reset)
+check "reset, nothing fiscal: a new installation" $? 0 "$out" "reset: twes-in is a new installation, its operator op@shop.test"
+check "  exported and read back, emptied in place, stopped, backups aside, started, operator, stanza, first backup, in that order" 0 0 "$(steps)" \
+  "before-update app:platform:reset --compose down restore sh --again app:seed twes-backup init before-update "
+check "  the export read back before anything went" 0 0 "$out" "reset: the export kept aside reads back whole: $d/etc/kept-aside/twes-export-"
+check "  emptied by app:platform:reset, the name typed back to it" 0 0 "$(tr '\n' '|' < "$TMPDIR/emptied")" "app:platform:reset --force --installation=twes-in --by=$(id -un) --json|twes-in|"
+check "  no volume removed" 0 0 "[$(cat "$TMPDIR/volumes.removed" 2>/dev/null)]" "[]"
+check "  the backups moved aside in their folder, never deleted" 0 0 "$(cat "$tree/before-reset-20261021-123000/pgbackrest/archive")[$(ls "$tree" | tr '\n' ' ')]" "wal[before-reset-20261021-123000 twes-in-backups.id ]"
+check "  the operator made again with the password typed" 0 0 "$(tr '\n' '|' < "$TMPDIR/seeded")" "--operator-email=op@shop.test --operator-password-stdin --without-company|new password|"
+check "  the hold given back" 0 0 "[$(held "$d")]" "[]"
+a=$(compgen -G "$d/etc/kept-aside/twes-export-*.tar" | head -n 1)
+check "  the record inside the export" 0 0 "$(tar -xOf "$a" reset-record.json)" "{\"scope\":\"installation\",\"mode\":\"in-place\",\"installation\":\"twes-in\",\"by\":\"$(id -un)\",\"at\":\"2026-10-21T12:30:00Z\",\"companies\":1,\"fiscalCompanies\":0,\"fiscalRecords\":0,\"backupsAside\":\"before-reset-20261021-123000\",\"volumesRemoved\":[]}"
+check "  and as two lines outside the volumes, begun and done" 0 0 "$(cut -d' ' -f2 "$d/etc/resets.log" | tr '\n' ' ')$(grep -c '"mode":"in-place"' "$d/etc/resets.log")" "began done 2"
+out=$(printf '%s\n' "$PASS" | twes "$d" verify-export "$a"); check "  the export verifies, its record a member the MANIFEST names" $? 0 "$out" "7 members as sealed"
+d=$(installed); tree=$(mktemp -d)
+out=$(SUMMARY=$FISCAL resetting "$d" reset < /dev/null); check "reset: issued documents refused without --with-issued-documents" $? 1 "$out" "the installation holds 12 fiscal records in 1 of 2 companies"
+check "  nothing done, no export, no hold" 0 0 "[$(steps)$(ls -A "$d/etc/kept-aside")$(held "$d")]" "[]"
+out=$(printf 'twes-in\nerase them all\n' | SUMMARY=$FISCAL resetting "$d" reset --with-issued-documents); check "  the counts typed wrong refused" $? 1 "$out" "the sentence typed was not « $SENTENCE »: nothing reset"
+check "  nothing done" 0 0 "[$(steps)$(ls -A "$d/etc/kept-aside")$(held "$d")]" "[]"
+d=$(installed); echo op@shop.test > "$d/etc/state/operator"; tree=$(mktemp -d)
+out=$(printf 'twes-in\n%s\nnew password\nnew password\n%s\n%s\n' "$SENTENCE" "$PASS" "$PASS" | SUMMARY=$FISCAL resetting "$d" reset --with-issued-documents)
+check "reset --with-issued-documents, the counts typed: a new installation" $? 0 "$out" "reset: twes-in is a new installation"
+check "  never emptied in place: its volumes removed after the export and the backups aside" 0 0 "$(steps)" "before-update --compose down restore sh --again app:seed twes-backup init before-update "
+check "  the database, files, share, spool and dump volumes, nothing else" 0 0 "$(tr '\n' ' ' < "$TMPDIR/volumes.removed")" "twes-in_postgres-data twes-in_api-files twes-in_api-share twes-in_pgbackrest-spool twes-in_backup-dump "
+check "  the edge's authority and the backups' folder kept" 0 0 "[$(grep -cE 'edge|backup-local|backup-outcome' "$TMPDIR/volumes.removed")]" "[0]"
+check "  no app:platform:reset" 0 0 "[$(cat "$TMPDIR/emptied" 2>/dev/null)]" "[]"
+check "  the record names them" 0 0 "$(tar -xOf "$(compgen -G "$d/etc/kept-aside/twes-export-*.tar" | head -n 1)" reset-record.json)" "\"mode\":\"volumes\",\"installation\":\"twes-in\",\"by\":\"$(id -un)\",\"at\":\"2026-10-21T12:30:00Z\",\"companies\":2,\"fiscalCompanies\":1,\"fiscalRecords\":12,\"backupsAside\":\"before-reset-20261021-123000\",\"volumesRemoved\":[\"postgres-data\",\"api-files\",\"api-share\",\"pgbackrest-spool\",\"backup-dump\"]"
+d=$(installed); tree=$(mktemp -d)
+out=$(printf 'twes\n' | resetting "$d" reset); check "reset: another name typed refused" $? 1 "$out" "the name typed is not twes-in: nothing reset"
+out=$(printf 'twes-in\nnobody\n' | resetting "$d" reset); check "  an operator address that is none refused" $? 1 "$out" "not a mail address"
+out=$(printf 'twes-in\nop@shop.test\none\ntwo\n' | resetting "$d" reset); check "  two passwords differing refused" $? 1 "$out" "the two passwords differ: nothing reset"
+check "  none of them did anything" 0 0 "[$(steps)$(ls -A "$d/etc/kept-aside")$(held "$d")]" "[]"
+out=$(printf 'twes-in\nop@shop.test\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | resetting "$d" reset); check "  the operator's address asked when none is known" $? 0 "$(tr '\n' '|' < "$TMPDIR/seeded")" "--operator-email=op@shop.test"
+d=$(installed); echo op@shop.test > "$d/etc/state/operator"; tree=$(mktemp -d)
+out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | BACKUP_LABEL='' resetting "$d" reset); check "  an export that fails stops it before anything went" $? 1 "$out" "the final backup was not made"
+check "  the hold given back, nothing stopped" 0 0 "[$(held "$d")$(steps | grep -o down)]" "[]"
+twes "$d" hold on > /dev/null
+out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | resetting "$d" reset); check "  on hold refused" $? 1 "$out" "no reset until twes hold off"
+twes "$d" hold off > /dev/null
+out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | INIT_EXIT=1 resetting "$d" reset); check "  cut after it began: refused, said" $? 1 "$out" "the reset stopped after it began: the installation stays held"
+check "  the hold kept, its log begun and never done" 0 0 "[$(held "$d")]$(cut -d' ' -f2 "$d/etc/resets.log" | tr '\n' ' ')" "[held]began "
+d=$(installed); echo op@shop.test > "$d/etc/state/operator"; tree=$(mktemp -d)
+out=$(printf 'twes-in\npw\npw\n%s\n%s\n' "$PASS" "$PASS" | EMPTY_EXIT=3 resetting "$d" reset); check "  app:platform:reset refusing stops it, held" $? 1 "$out" "app:platform:reset did not empty the installation"
+check "  nothing stopped after it" 0 0 "[$(held "$d")$(steps | grep -o down)]" "[held]"
+out=$(twes "$d" reset --everything); check "  an unknown option: its usage" $? 2 "$out" "reset [--with-issued-documents]"
 
 echo "twes: $pass passed, $fail failed"
 ((fail == 0))

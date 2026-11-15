@@ -56,14 +56,8 @@ final class PlatformResetCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $companies = $this->inventory->companies();
-        $fiscalCompanies = 0;
-        $fiscalRecords = 0;
-        foreach ($companies as $company) {
-            $fiscalCompanies += $company['fiscal'] ? 1 : 0;
-            foreach ($company['records'] as $line) {
-                $fiscalRecords += 'fiscal' === $line['kind'] ? $line['count'] : 0;
-            }
-        }
+        $fiscalCompanies = \count(array_filter($companies, static fn (array $company): bool => $company['fiscal']));
+        $fiscalRecords = DbalFiscalInventory::fiscalRecords($companies);
         if ($fiscalCompanies > 0) {
             $io->error(\sprintf('%d fiscal records in %d of %d companies: an installation holding them is never emptied in place. It is reset whole, its volumes removed once its export and backups are set aside: twes reset, deploy.sh reset or make reset. Nothing emptied.', $fiscalRecords, $fiscalCompanies, \count($companies)));
 

@@ -32,6 +32,10 @@
 #                                  passphrase asked twice, the release keys, its record and state, the authority, the
 #                                  images if asked; held while it reads (scripts/onprem/lib/export.sh)
 #   twes verify-export <archive>   the archive read back with its passphrase: every member as the MANIFEST sealed it
+#   twes reset [--with-issued-documents]  the installation taken back to a new one, its operator made again: held, an
+#                                  export kept aside and read back first, the backups moved aside and never deleted;
+#                                  issued documents only with the flag, the name and their counts typed, its volumes
+#                                  removed then (scripts/onprem/lib/reset.sh)
 # The values are the file scripts/deploy/new-instance.sh --onprem wrote, TWES_VALUES, by default ~/.twes-in/install.env;
 # beside it, releases/ (deploy.sh's record) and state/ (this script's). Alerts are mailed through the shop's own account
 # to ALERT_EMAIL, so a mail leaves while the application is down, and recorded in the application, held under state/
@@ -40,7 +44,7 @@
 # checkout carries, which whoever forged a tag could change too.
 set -euo pipefail
 usage() {
-  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule | doctor --network | export <folder> [--with-images] | verify-export <archive>" >&2
+  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule | doctor --network | export <folder> [--with-images] | verify-export <archive> | reset [--with-issued-documents]" >&2
   exit 2
 }
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -1223,5 +1227,7 @@ case "${1:-}" in
   doctor) [[ $# -eq 2 && "$2" == --network ]] || usage; doctor_network ;;
   export) [[ $# -eq 2 || ($# -eq 3 && "$3" == --with-images) ]] || usage; source "$root/scripts/onprem/lib/export.sh"; export_installation "$2" "${3:-}" ;;
   verify-export) [[ $# -eq 2 ]] || usage; source "$root/scripts/onprem/lib/export.sh"; verify_export "$2" ;;
+  reset) [[ $# -eq 1 || ($# -eq 2 && "$2" == --with-issued-documents) ]] || usage
+    source "$root/scripts/onprem/lib/export.sh"; source "$root/scripts/onprem/lib/reset.sh"; reset_installation "${2:-}" ;;
   *) usage ;;
 esac

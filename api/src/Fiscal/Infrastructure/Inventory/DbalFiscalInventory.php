@@ -30,6 +30,23 @@ final readonly class DbalFiscalInventory
     }
 
     /**
+     * How many fiscal records the companies hold together, the number a wipe's typed sentence names.
+     *
+     * @param list<CompanyInventory> $companies
+     */
+    public static function fiscalRecords(array $companies): int
+    {
+        $records = 0;
+        foreach ($companies as $company) {
+            foreach ($company['records'] as $line) {
+                $records += FiscalRecordKind::Fiscal->value === $line['kind'] ? $line['count'] : 0;
+            }
+        }
+
+        return $records;
+    }
+
+    /**
      * @return list<CompanyInventory> every company, or only the one named, by name
      */
     public function companies(?string $only = null): array

@@ -38,7 +38,9 @@ final class FiscalInventoryCommand extends Command
     {
         $this
             ->addOption('company', null, InputOption::VALUE_REQUIRED, 'Only this company (its id)')
-            ->addOption('json', null, InputOption::VALUE_NONE, 'Print the inventory as JSON');
+            ->addOption('json', null, InputOption::VALUE_NONE, 'Print the inventory as JSON')
+            // A shop's computer reads it with the shell alone, no JSON parser there (scripts/onprem/lib/reset.sh).
+            ->addOption('summary', null, InputOption::VALUE_NONE, 'Print one line: fiscal-records=N fiscal-companies=M companies=K');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -59,6 +61,12 @@ final class FiscalInventoryCommand extends Command
         }
         $fiscal = [] !== array_filter($companies, static fn (array $company): bool => $company['fiscal']);
         $platform = $this->inventory->platform();
+
+        if (true === $input->getOption('summary')) {
+            $output->writeln(\sprintf('fiscal-records=%d fiscal-companies=%d companies=%d', DbalFiscalInventory::fiscalRecords($companies), \count(array_filter($companies, static fn (array $company): bool => $company['fiscal'])), \count($companies)));
+
+            return $fiscal ? self::FISCAL : Command::SUCCESS;
+        }
 
         if (true === $input->getOption('json')) {
             $output->writeln(json_encode(['fiscal' => $fiscal, 'companies' => $companies, 'platform' => $platform], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES));

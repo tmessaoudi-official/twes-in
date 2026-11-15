@@ -12,7 +12,7 @@
 
 # What every archive holds; ca.tar.gpg and images.tar only when there is a local authority, or when asked for.
 export_members=(counts.json values.env.gpg backup.tar releases.tar state.tar release-keys.tar)
-export_optional=(ca.tar.gpg images.tar)
+export_optional=(ca.tar.gpg images.tar reset-record.json)
 # Read by the EXIT trap, after the function's own variables are gone.
 export_work='' export_held='' export_plain=''
 
@@ -46,20 +46,9 @@ export_key_slots() {
 }
 
 export_installation() { # folder, --with-images or nothing
-  local folder=$1 images=${2:-} present=() list=() why commit tag label major migration counts code slots stamp work archive passphrase member
-  [[ -d "$folder" && -w "$folder" ]] || refuse "$folder is not a folder this account can write: nothing exported"
-  commit=$(running)
-  [[ -n "$commit" ]] || refuse "nothing is deployed here: there is nothing to export"
-  ! on_hold || refuse "$(hold_said): no export until twes hold off"
-  why=$(backup_folder_ready) || refuse "$why: no export without it, as an export backs up first"
-  slots=$(export_key_slots)
-  [[ " $slots " == *" APP_MFA_KEY "* ]] || refuse "the values hold no APP_MFA_KEY: an export without it loses every authenticator"
+  local folder=$1 images=${2:-} passphrase
+  export_ready "$folder" "no export"
   passphrase=$(export_passphrase) || exit 1
-  tag=$(tag_of "$commit")
-  stamp=$(date -u -d "@$(now)" +%Y%m%d-%H%M%S)
-  umask 077
-  work=$(mktemp -d "$folder/.twes-export.XXXXXX")
-  export_work=$work
   # Held while it reads, so neither tick nor an update restarts or moves the installation under it; the hold is given
   # back however the export ends, and anything recorded after the final backup stays here. An export cut short (the
   # computer switched off, the process killed) leaves its mark, this boot and this process, by which on_hold gives the
@@ -68,6 +57,32 @@ export_installation() { # folder, --with-images or nothing
   hold on >/dev/null
   export_held=yes
   printf '%s %s\n' "$(cat /proc/sys/kernel/random/boot_id)" "$$" > "$state/export-hold"
+  export_write "$folder" "$images" "$passphrase" ''
+}
+
+# What an export needs before it asks anything: a folder to write, a release running, no hold, the backups' folder,
+# APP_MFA_KEY among the values. A caller holding the installation itself (twes reset) asks this before its own hold.
+export_ready() { # folder, what is refused (« no export », « no reset »)
+  local why
+  [[ -d "$1" && -w "$1" ]] || refuse "$1 is not a folder this account can write: $2"
+  [[ -n "$(running)" ]] || refuse "nothing is deployed here: $2"
+  ! on_hold || refuse "$(hold_said): $2 until twes hold off"
+  why=$(backup_folder_ready) || refuse "$why: $2 without it, as an export backs up first"
+  [[ " $(export_key_slots) " == *" APP_MFA_KEY "* ]] || refuse "the values hold no APP_MFA_KEY: an export without it loses every authenticator: $2"
+}
+
+# The archive written under a hold its caller took: its path is left in export_archive. A reset carries its own record
+# (reset-record.json) as one more member the MANIFEST names.
+export_archive=''
+export_write() { # folder, --with-images or nothing, passphrase, a record to carry or nothing
+  local folder=$1 images=$2 passphrase=$3 record=${4:-} present=() list=() commit tag label major migration counts code slots stamp work archive member
+  commit=$(running)
+  tag=$(tag_of "$commit")
+  slots=$(export_key_slots)
+  stamp=$(date -u -d "@$(now)" +%Y%m%d-%H%M%S)
+  umask 077
+  work=$(mktemp -d "$folder/.twes-export.XXXXXX")
+  export_work=$work
 
   say "export: a final backup first"
   label=$(compose exec -T backup twes-backup before-update | sed -n 's/.*before-update: //p' | tail -n 1) || label=''
@@ -101,6 +116,7 @@ export_installation() { # folder, --with-images or nothing
     ((${#list[@]})) || refuse "the release's images could not be listed: nothing exported"
     docker save -o "$work/images.tar" "${list[@]}" || refuse "docker could not save the images: nothing exported"
   fi
+  [[ -z "$record" ]] || cp "$record" "$work/reset-record.json"
 
   {
     echo "format twes-export 1"
@@ -123,6 +139,8 @@ export_installation() { # folder, --with-images or nothing
   tar -C "$work" -cf "$archive.part" MANIFEST MANIFEST.gpg "${present[@]}"
   mv -f "$archive.part" "$archive"
   (cd "$folder" && sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")
+  rm -rf "$work"
+  export_work='' export_archive=$archive
   say "exported to $archive (sha256 in $(basename "$archive").sha256): the backup $label, release ${tag:-$commit}, PostgreSQL $major; keep the passphrase apart from the archive, the new computer asks it"
 }
 
@@ -130,15 +148,26 @@ export_installation() { # folder, --with-images or nothing
 # names present with its sha256, every required member there, and nothing it does not name. Only the two MANIFESTs are
 # unpacked; each member is read through sha256sum where it lies, as a shop's backups may be larger than TMPDIR.
 verify_export() { # archive
-  local archive=$1 work passphrase member name sum inside=() listed=() problems=()
-  [[ -f "$archive" ]] || refuse "$archive is not a file"
+  local passphrase
+  export_readable "$1"
+  trap 'rm -rf "$export_check_work"' EXIT
+  passphrase=$(ask "The export's passphrase:" secret) || exit 1
+  export_check "$1" "$passphrase"
+}
+export_readable() { # archive
+  [[ -f "$1" ]] || refuse "$1 is not a file"
+  tar -tf "$1" > /dev/null 2>&1 || refuse "$1 is not an archive tar reads"
+}
+# Read back by whoever holds the passphrase already, as twes reset does with the archive it just wrote; its folder in
+# TMPDIR is in export_check_work for its caller's EXIT trap, as a refusal ends the script.
+export_check_work=''
+export_check() { # archive, passphrase
+  local archive=$1 passphrase=$2 work member name sum inside=() listed=() problems=()
   mapfile -t inside < <(tar -tf "$archive") && ((${#inside[@]})) || refuse "$archive is not an archive tar reads"
   [[ " ${inside[*]} " == *" MANIFEST "* && " ${inside[*]} " == *" MANIFEST.gpg "* ]] || refuse "$archive holds no sealed MANIFEST: not a twes export"
   work=$(mktemp -d -t twes-verify.XXXXXX)
-  export_work=$work
-  trap 'rm -rf "$export_work"' EXIT
+  export_check_work=$work
   tar -C "$work" -xf "$archive" MANIFEST MANIFEST.gpg || refuse "the MANIFEST of $archive could not be read"
-  passphrase=$(ask "The export's passphrase:" secret) || exit 1
   export_open "$passphrase" "$work/MANIFEST.gpg" "$work/MANIFEST.opened" || refuse "the passphrase does not open the MANIFEST: a wrong passphrase, or an archive changed"
   cmp -s "$work/MANIFEST" "$work/MANIFEST.opened" || problems+=("the MANIFEST was changed after it was sealed")
   while read -r sum name; do
@@ -160,5 +189,7 @@ verify_export() { # archive
     refuse "$archive does not verify: ${#problems[@]} problem(s) above"
   fi
   grep -v '^sha256 ' "$work/MANIFEST.opened"
+  rm -rf "$work"
+  export_check_work=''
   say "verified: $archive, ${#listed[@]} members as sealed"
 }

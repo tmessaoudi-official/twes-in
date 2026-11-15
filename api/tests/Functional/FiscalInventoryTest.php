@@ -94,6 +94,34 @@ final class FiscalInventoryTest extends ApiTestCase
         self::assertSame(0, $alone->getStatusCode(), $alone->getDisplay());
         self::assertCount(1, $this->decoded($alone)['companies']);
         self::assertSame(3, $this->inventory(['--company' => $id])->getStatusCode());
+
+        // The summary a shell reads with no JSON parser (twes reset's sentence): the same counts as the JSON's.
+        $fiscal = 0;
+        $fiscalCompanies = 0;
+        foreach ($this->decoded($this->inventory(['--json' => true]))['companies'] as $company) {
+            self::assertIsArray($company);
+            self::assertIsList($company['records'] ?? null);
+            $fiscalCompanies += true === $company['fiscal'] ? 1 : 0;
+            foreach ($company['records'] as $record) {
+                self::assertIsArray($record);
+                $fiscal += 'fiscal' === $record['kind'] ? $this->int($record['count']) : 0;
+            }
+        }
+        $summary = $this->inventory(['--summary' => true]);
+        self::assertSame(3, $summary->getStatusCode());
+        $companies = $this->int($this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM company'));
+        self::assertGreaterThan(0, $fiscalCompanies);
+        self::assertSame(\sprintf("fiscal-records=%d fiscal-companies=%d companies=%d\n", $fiscal, $fiscalCompanies, $companies), $summary->getDisplay());
+    }
+
+    public function testTheSummaryOfAnInstallationHoldingNothingFiscal(): void
+    {
+        $this->createCompany('Vide');
+
+        $summary = $this->inventory(['--summary' => true]);
+
+        self::assertSame(0, $summary->getStatusCode());
+        self::assertSame("fiscal-records=0 fiscal-companies=0 companies=1\n", $summary->getDisplay());
     }
 
     public function testTheTableSaysEachCompanyAndWhatItHolds(): void
