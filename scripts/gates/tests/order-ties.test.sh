@@ -45,6 +45,12 @@ out=$(run "$d"); check "a day column is a moment too: two documents share it" $?
 d=$(tree); printf "<?php\n\$sql = 'SELECT a, (SELECT name FROM c ORDER BY c.at LIMIT 1) FROM a ORDER BY a.id';\n" > "$d/api/src/Things/Inner.php"
 out=$(run "$d"); check "an inner query's order is read on its own, inside its parentheses" $? 1 "$out" "Inner.php:2"
 
+d=$(tree); printf "<?php\nfinal class Order\n{\n    #[ORM\\\\OrderBy(['receivedOn' => \\\\SortDirection::Ascending, 'createdAt' => \\\\SortDirection::Ascending])]\n    private \$receipts;\n}\n" > "$d/api/src/Things/Mapped.php"
+out=$(run "$d"); check "a collection's mapped order ending on a moment is refused: Doctrine loads it in that order" $? 1 "$out" "Mapped.php:4"
+
+d=$(tree); printf "<?php\nfinal class Order\n{\n    #[ORM\\\\OrderBy(['receivedOn' => \\\\SortDirection::Ascending, 'id' => \\\\SortDirection::Ascending])]\n    private \$receipts;\n}\n" > "$d/api/src/Things/Mapped.php"
+out=$(run "$d"); check "a mapped order tied by its id passes" $? 0 "$out" "OK"
+
 d=$(tree); printf "<?php\n// order-tie: one row a day, the query groups by it\n\$sql = 'SELECT day, SUM(x) FROM t GROUP BY day ORDER BY day';\n" > "$d/api/src/Things/Said.php"
 out=$(run "$d"); check "an order that says why its moment ties nothing, on the line above, passes" $? 0 "$out" "OK"
 

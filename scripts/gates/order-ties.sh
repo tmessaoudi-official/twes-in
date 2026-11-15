@@ -3,8 +3,8 @@
 # An order whose last key is a moment ties: two rows written in one second, two documents of one day, come back in
 # either order, so a list pages them twice or not at all and a test reading the first of them passes one run in four
 # (InvoicesFromDeliveryNotesTest). Every order in api/src whose last key is a moment (`createdAt`, `ends_at`, `at`,
-# `issue_date`, `day`) is refused: the query builder chain's last orderBy/addOrderBy, and each ORDER BY written in a
-# SQL or DQL string, an inner query's on its own. Its id goes last, or the line or the one above says why the moment ties
+# `issue_date`, `day`) is refused: the query builder chain's last orderBy/addOrderBy, each ORDER BY written in a
+# SQL or DQL string, an inner query's on its own, and a collection's #[ORM\OrderBy] mapping. Its id goes last, or the line or the one above says why the moment ties
 # nothing: `// order-tie: <why>` (a query grouping by the day it orders by). A floor of orders read reds a gate gone blind.
 # Usage: order-ties.sh [--root DIR]
 set -uo pipefail
@@ -91,6 +91,14 @@ for directory, _, names in os.walk(os.path.join(root, 'api/src')):
             read += 1
             if MOMENT.search(m.group(2).strip()):
                 refuse(m.start(), m.group(2).strip())
+        # A collection's mapped order: Doctrine loads it in the order its #[ORM\OrderBy] names, last key last.
+        for m in re.finditer(r'#\[ORM\\OrderBy\(\[(.*?)\]\)\]', src, re.S):
+            keys = re.findall(r'([\'"])([^\'"]+)\1\s*=>', m.group(1))
+            if not keys:
+                continue
+            read += 1
+            if MOMENT.search(keys[-1][1]):
+                refuse(m.start(), keys[-1][1])
 
 if read < floor:
     problems.append(f'read {read} orders in api/src, under the floor of {floor}: the orders moved somewhere this gate does not read')

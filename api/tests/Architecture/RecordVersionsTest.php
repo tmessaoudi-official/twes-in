@@ -113,7 +113,6 @@ final class RecordVersionsTest extends KernelTestCase
     private const array DELETES_NOT_YET = [
         '/companies/{companyId}/customer-groups/{groupId}',
         '/companies/{companyId}/customers/{customerId}/contacts/{contactId}',
-        '/companies/{companyId}/expenses/{expenseId}',
         '/companies/{companyId}/settings/{key}',
         '/companies/{companyId}/stock-drawings/{drawingId}',
         '/companies/{companyId}/stock-floors/{floorId}',

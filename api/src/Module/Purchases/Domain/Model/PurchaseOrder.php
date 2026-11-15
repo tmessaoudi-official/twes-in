@@ -106,9 +106,13 @@ class PurchaseOrder implements CompanyOwned
     #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $lines;
 
-    /** @var Collection<int, GoodsReceipt> */
+    /**
+     * Two receipts recorded in one second share their moment: the id, made in the order they were, keeps them in it.
+     *
+     * @var Collection<int, GoodsReceipt>
+     */
     #[ORM\OneToMany(targetEntity: GoodsReceipt::class, mappedBy: 'order', cascade: ['persist'])]
-    #[ORM\OrderBy(['receivedOn' => \SortDirection::Ascending, 'createdAt' => \SortDirection::Ascending])]
+    #[ORM\OrderBy(['receivedOn' => \SortDirection::Ascending, 'createdAt' => \SortDirection::Ascending, 'id' => \SortDirection::Ascending])]
     private Collection $receipts;
 
     /**
