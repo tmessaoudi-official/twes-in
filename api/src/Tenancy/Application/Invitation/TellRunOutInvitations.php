@@ -61,7 +61,7 @@ final readonly class TellRunOutInvitations implements DeclaresAuditActions
                     $invitation->getId(),
                     self::EXPIRED,
                     null,
-                    ['email' => $invitation->getEmail()->value, 'role' => $invitation->getRoleName()],
+                    ['role' => $invitation->getRoleName()],
                     $company->getId(),
                 ));
                 $sender = $invitation->getInvitedBy();

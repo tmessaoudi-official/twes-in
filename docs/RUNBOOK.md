@@ -503,7 +503,8 @@ ask the lawyer before the pilot what is owed and to whom [unverified: not resear
 1. Write down what you saw and when, before touching anything.
 2. Contain: if the machine itself is suspect, take a snapshot at the provider first (evidence), then stop the edge
    (`docker compose … stop edge`): the instance stops answering.
-3. Every session ends: `docker compose … exec postgres psql -U twes -d twes -c 'TRUNCATE sessions'`.
+3. Every session ends: `docker compose … exec api bin/console app:sessions:end-all --force < /dev/null`. Each
+   account is told by mail and signs in again; the journal records it against each account, with no one as its actor.
 4. Rotate every secret (above), the bucket keys, the mail relay's password, and your own accounts (GitHub, the
    provider, the registry). An attacker on the machine had the values file.
 5. Read the audit log for what was done and by whom: `SELECT at, company_id, entity_type, entity_id, action, actor_user_id, ip FROM

@@ -80,7 +80,7 @@ final readonly class ManageTaxComponents implements DeclaresAuditActions
                 $this->languageNames->checked($draft->names) ?? [],
             );
             $this->components->save($component);
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::CREATED, $actorUserId, self::snapshot($component), $company->getId()));
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::CREATED, $actorUserId, ['fields' => array_keys(self::snapshot($component))], $company->getId()));
 
             return $component;
         });
@@ -102,6 +102,7 @@ final readonly class ManageTaxComponents implements DeclaresAuditActions
                 $this->versions->expect($component, $version);
             }
 
+            $before = self::snapshot($component);
             $changed = $component->revise(
                 $changes->name,
                 $changes->rate,
@@ -118,11 +119,25 @@ final readonly class ManageTaxComponents implements DeclaresAuditActions
             );
             if ($changed) {
                 $this->components->save($component);
-                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::REVISED, $actorUserId, self::snapshot($component), $company->getId()));
+                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::REVISED, $actorUserId, ['fields' => self::changed($before, self::snapshot($component))], $company->getId()));
             }
 
             return $component;
         });
+    }
+
+    /**
+     * The names of what a revision changed, read from the snapshots on either side of it: the journal names, never
+     * holds the values, which the record itself keeps.
+     *
+     * @param array<string, mixed> $before
+     * @param array<string, mixed> $after
+     *
+     * @return list<string>
+     */
+    private static function changed(array $before, array $after): array
+    {
+        return array_keys(array_filter($after, static fn (mixed $value, string $field): bool => ($before[$field] ?? null) !== $value, \ARRAY_FILTER_USE_BOTH));
     }
 
     /** @return array<string, mixed> */
@@ -139,6 +154,8 @@ final readonly class ManageTaxComponents implements DeclaresAuditActions
             'enters_vat_base' => $component->entersVatBase(),
             'is_default' => $component->isDefault(),
             'is_active' => $component->isActive(),
+            'exemption_mention' => $component->getExemptionMention(),
+            'sort_order' => $component->getSortOrder(),
         ];
     }
 

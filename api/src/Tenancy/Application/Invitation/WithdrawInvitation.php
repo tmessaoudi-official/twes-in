@@ -79,7 +79,7 @@ final readonly class WithdrawInvitation implements DeclaresAuditActions
                 $invitation->getId(),
                 self::WITHDRAWN,
                 $actorUserId,
-                ['email' => $invitation->getEmail()->value, 'role' => $invitation->getRoleName()],
+                ['role' => $invitation->getRoleName()],
                 $companyId,
             ));
         });

@@ -54,7 +54,10 @@ final class ManageTaxComponentsTest extends TestCase
         self::assertSame('tax_component.created', $this->audit->entries[0]->action);
         self::assertSame($actor, $this->audit->entries[0]->actorUserId);
         self::assertTrue($this->company->getId()->equals($this->audit->entries[0]->companyId));
-        self::assertSame('12.000', $this->audit->entries[0]->changes['rate']);
+        self::assertArrayNotHasKey('rate', $this->audit->entries[0]->changes, 'the journal names what changed, never the rate');
+        $fields = $this->audit->entries[0]->changes['fields'] ?? null;
+        self::assertIsArray($fields);
+        self::assertContains('rate', $fields);
     }
 
     public function testTwoTaxesOfOneCompanyCannotShareACode(): void
@@ -102,6 +105,7 @@ final class ManageTaxComponentsTest extends TestCase
         $this->manage->revise($this->company, $component->getId(), self::changes('12.5'), null);
         self::assertCount(2, $this->audit->entries);
         self::assertSame('tax_component.revised', $this->audit->entries[1]->action);
+        self::assertSame(['fields' => ['rate']], $this->audit->entries[1]->changes, 'the journal names what changed, never the old or new rate');
         self::assertSame('12.500', $component->getRate());
     }
 

@@ -72,7 +72,7 @@ final class RecordFailedLoginTest extends TestCase
         self::assertSame(LoginAudit::LOGIN_FAILED, $entry->action);
         self::assertTrue($this->user->getId()->equals($entry->entityId ?? throw new \LogicException()));
         self::assertNull($entry->actorUserId, 'nobody is authenticated when a login fails');
-        self::assertSame(['email' => 'u@example.test', 'reason' => 'BadCredentialsException', 'failed_login_count' => 1, 'locked' => false], $entry->changes);
+        self::assertSame(['reason' => 'BadCredentialsException', 'failed_login_count' => 1, 'locked' => false], $entry->changes, 'the journal names the account by its id, never by the address typed');
     }
 
     public function testTheFifthWrongPasswordLocksThePasswordFromThatAddressAlone(): void
@@ -166,7 +166,7 @@ final class RecordFailedLoginTest extends TestCase
 
         self::assertSame(0, $this->user->getFailedLoginCount());
         self::assertSame([], $this->locks->rows);
-        self::assertSame(['email' => 'u@example.test', 'reason' => 'CustomUserMessageAccountStatusException'], $this->audit->entries[0]->changes);
+        self::assertSame(['reason' => 'CustomUserMessageAccountStatusException'], $this->audit->entries[0]->changes);
     }
 
     public function testAnUnknownAccountIsAuditedWithNothingToPointAt(): void
@@ -175,7 +175,7 @@ final class RecordFailedLoginTest extends TestCase
 
         $entry = $this->audit->entries[0];
         self::assertNull($entry->entityId);
-        self::assertSame(['email' => 'nobody@example.test', 'reason' => 'BadCredentialsException'], $entry->changes);
+        self::assertSame(['reason' => 'BadCredentialsException'], $entry->changes, 'an address no account holds is nobody\'s to keep');
         self::assertSame([], $this->locks->rows);
     }
 

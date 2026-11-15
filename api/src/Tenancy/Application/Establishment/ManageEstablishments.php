@@ -113,7 +113,7 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
                 }
                 $this->series->save(NumberingSeries::create($company, $establishment, $documentType, new NumberFormat($format), $reset, true, $now));
             }
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::CREATED, $actorUserId, ['code' => $establishment->getCode(), 'name' => $establishment->getName(), 'is_default' => $establishment->isDefault()], $company->getId()));
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::CREATED, $actorUserId, ['fields' => ['code', 'name', 'isDefault']], $company->getId()));
 
             return $establishment;
         });

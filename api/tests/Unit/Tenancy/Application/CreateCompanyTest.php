@@ -154,7 +154,7 @@ final class CreateCompanyTest extends TestCase
         self::assertNotNull($entry->entityId);
         self::assertTrue($company->getId()->equals($entry->entityId));
         self::assertSame($actor, $entry->actorUserId);
-        self::assertSame('TN', $entry->changes['fiscal_preset']);
+        self::assertSame(['fields' => ['name', 'status', 'fiscal_preset']], $entry->changes, 'the journal names what was set, never the company\'s name');
     }
 
     private static function request(): NewCompany

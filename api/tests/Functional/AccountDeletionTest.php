@@ -14,6 +14,7 @@ use App\Identity\Domain\Model\User;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -179,17 +180,23 @@ final class AccountDeletionTest extends ApiTestCase
     {
         $this->askToGo();
         $before = $this->journalRows();
-        self::assertContains(self::LEAVING, array_column($before, 'email'));
+        self::assertNotContains(self::LEAVING, array_column($before, 'email'), 'the journal names the account by its id, never by its address');
+        // An entry written before the journal held names only, as the oldest installations keep them.
+        $legacy = $this->em()->getConnection()->fetchOne(
+            "INSERT INTO audit_log (id, company_id, entity_type, entity_id, action, actor_user_id, changes, at, ip) VALUES (gen_random_uuid(), NULL, 'user', NULL, 'auth.login_failed', NULL, ?, ?, NULL) RETURNING id",
+            [json_encode(['email' => self::LEAVING, 'reason' => 'BadCredentialsException'], \JSON_THROW_ON_ERROR), self::apiNow('-1 day')],
+        );
 
         $this->moveClock('+8 days');
         $this->finalize();
 
         $after = $this->journalRows();
-        self::assertNotContains(self::LEAVING, array_column($after, 'email'));
         self::assertSame(array_column($before, 'action'), \array_slice(array_column($after, 'action'), 0, \count($before)), 'every entry kept, in its place');
-        foreach ($after as $row) {
-            self::assertContains($row['email'], [null, 'erased']);
-        }
+        self::assertSame(
+            ['email' => 'erased', 'reason' => 'BadCredentialsException'],
+            json_decode(Rows::text($this->em()->getConnection()->fetchOne('SELECT changes FROM audit_log WHERE id = ?', [$legacy])), true, 512, \JSON_THROW_ON_ERROR),
+            'an older entry naming the address loses it and keeps the rest',
+        );
     }
 
     public function testTheDaysAreThePlatformsToSet(): void

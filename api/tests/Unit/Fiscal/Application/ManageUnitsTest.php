@@ -65,6 +65,7 @@ final class ManageUnitsTest extends TestCase
 
         self::assertCount(2, $this->audit->entries);
         self::assertSame('unit.revised', $this->audit->entries[1]->action);
+        self::assertSame(['fields' => ['is_active']], $this->audit->entries[1]->changes, 'the journal names what changed');
         self::assertFalse($unit->isActive());
     }
 

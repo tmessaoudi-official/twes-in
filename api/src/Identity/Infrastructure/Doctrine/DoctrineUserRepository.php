@@ -62,6 +62,15 @@ final readonly class DoctrineUserRepository implements UserRepository
         return $operators;
     }
 
+    public function everyId(): array
+    {
+        $ids = $this->entityManager->createQueryBuilder()->select('u.id')->from(User::class, 'u')
+            ->orderBy('u.createdAt', \SortDirection::Ascending)->addOrderBy('u.id', \SortDirection::Ascending)
+            ->getQuery()->getSingleColumnResult();
+
+        return array_values(array_map(static fn (mixed $id): Uuid => $id instanceof Uuid ? $id : Uuid::fromString(\is_string($id) ? $id : throw new \UnexpectedValueException('An account id read as neither a Uuid nor a string.')), $ids));
+    }
+
     public function withTotpSecret(): array
     {
         /** @var list<User> $users */

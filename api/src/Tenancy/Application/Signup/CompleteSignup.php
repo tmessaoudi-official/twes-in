@@ -115,7 +115,7 @@ final readonly class CompleteSignup implements DeclaresAuditActions
                 $signup->getId(),
                 self::COMPLETED,
                 $user->getId(),
-                ['email' => $user->getEmail()->value, 'company' => $company->getName(), 'status' => $company->getStatus()],
+                ['status' => $company->getStatus()],
                 $company->getId(),
             ));
             if (null === $breached) {
@@ -124,7 +124,7 @@ final readonly class CompleteSignup implements DeclaresAuditActions
                     $signup->getId(),
                     AcceptInvitation::BREACH_CHECK_SKIPPED,
                     $user->getId(),
-                    ['email' => $user->getEmail()->value, 'reason' => 'the breach service could not be reached'],
+                    ['reason' => 'the breach service could not be reached'],
                     $company->getId(),
                 ));
             }

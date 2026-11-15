@@ -79,7 +79,7 @@ final readonly class OpenSandboxCompany implements DeclaresAuditActions
                 $company->getId(),
                 CreateCompany::CREATED,
                 null,
-                ['name' => $company->getName(), 'status' => $company->getStatus(), 'fiscal_preset' => $company->getFiscalPreset()],
+                ['fields' => ['name', 'status', 'fiscal_preset']],
                 $company->getId(),
             ));
 

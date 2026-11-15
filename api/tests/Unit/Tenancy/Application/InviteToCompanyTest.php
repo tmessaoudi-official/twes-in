@@ -250,7 +250,7 @@ final class InviteToCompanyTest extends TestCase
 
         self::assertNotNull($entry, 'the invitation was not audited');
         self::assertSame($actor, $entry->actorUserId);
-        self::assertSame('stranger@twes.local', $entry->changes['email'] ?? null);
+        self::assertArrayNotHasKey('email', $entry->changes, 'the invitation holds the address; the journal names it by its id');
     }
 
     public function testTheAuditNeverCarriesTheToken(): void

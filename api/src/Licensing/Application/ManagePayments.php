@@ -217,13 +217,8 @@ final readonly class ManagePayments implements DeclaresAuditActions
             $declaration->getId(),
             $action,
             $actorId,
-            [
-                'amount' => $declaration->getAmount(),
-                'currency' => $declaration->getCurrency(),
-                'method' => $declaration->getMethod()->value,
-                'paidOn' => $declaration->getPaidOn()->format('Y-m-d'),
-                'status' => $declaration->getStatus()->value,
-            ],
+            // The declaration holds the amount, currency and day; the journal names them, never their values.
+            ['fields' => ['amount', 'currency', 'method', 'paidOn'], 'status' => $declaration->getStatus()->value],
             $declaration->getCompany()->getId(),
         ));
     }

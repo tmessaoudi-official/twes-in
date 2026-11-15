@@ -43,6 +43,13 @@ interface UserRepository
     public function platformOperators(): array;
 
     /**
+     * The id of every account, in creation order: what ending every session after a breach walks, an account at a time.
+     *
+     * @return list<Uuid>
+     */
+    public function everyId(): array;
+
+    /**
      * Every account holding an authenticator secret, pending or in force: what a key rotation reseals.
      *
      * @return list<User>

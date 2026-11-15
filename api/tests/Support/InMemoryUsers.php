@@ -45,6 +45,11 @@ final class InMemoryUsers implements UserRepository
         return $operators;
     }
 
+    public function everyId(): array
+    {
+        return array_values(array_map(static fn (User $user): Uuid => $user->getId(), $this->users));
+    }
+
     public function withTotpSecret(): array
     {
         return array_values(array_filter($this->users, static fn (User $user): bool => null !== $user->getTotpSecret()));

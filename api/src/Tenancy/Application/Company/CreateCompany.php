@@ -86,7 +86,7 @@ final readonly class CreateCompany implements DeclaresAuditActions
                 $company->getId(),
                 self::CREATED,
                 $actorUserId,
-                ['name' => $company->getName(), 'status' => $company->getStatus(), 'fiscal_preset' => $company->getFiscalPreset()],
+                ['fields' => ['name', 'status', 'fiscal_preset']],
                 $company->getId(),
             ));
 

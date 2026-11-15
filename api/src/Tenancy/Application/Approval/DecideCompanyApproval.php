@@ -145,7 +145,7 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
             $company->getId(),
             $action,
             $operatorId,
-            ['name' => $company->getName(), 'from' => $from, 'status' => $company->getStatus()],
+            ['from' => $from, 'status' => $company->getStatus()],
             $company->getId(),
         ));
     }

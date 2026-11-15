@@ -12,6 +12,7 @@ namespace App\Audit\Infrastructure;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\AuditVocabulary;
+use App\Audit\Application\NamesOnly;
 use App\Audit\Domain\Model\AuditLog;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
@@ -49,7 +50,7 @@ final readonly class DoctrineAuditTrail implements AuditTrail
     public function record(AuditEntry $entry): void
     {
         $this->assertDeclared($entry);
-        $row = new AuditLog($entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $this->clock->now(), $this->requestStack->getCurrentRequest()?->getClientIp(), $entry->companyId);
+        $row = new AuditLog($entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $this->namesOnly($entry), $this->clock->now(), $this->requestStack->getCurrentRequest()?->getClientIp(), $entry->companyId);
         $this->entityManager->persist($row);
         $this->entityManager->flush();
         // Append-only and never read back in the request: managed, it would be walked by every later flush, and a
@@ -58,6 +59,28 @@ final readonly class DoctrineAuditTrail implements AuditTrail
         if ($this->vocabulary->heard($entry->action)) {
             $this->liveChanges->stage(new LiveChange($entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->companyId));
         }
+    }
+
+    /**
+     * The entry's changes, holding no way to reach or name a person or a business (`NamesOnly`). A writer putting one
+     * there is refused while debugging; in production the action is recorded without it, and the log names the key,
+     * never its value.
+     *
+     * @return array<string, mixed>
+     */
+    private function namesOnly(AuditEntry $entry): array
+    {
+        $found = NamesOnly::found($entry->changes);
+        if ([] === $found) {
+            return $entry->changes;
+        }
+        $said = \sprintf('The audit action "%s" holds %s, which the journal names by id only: record the field names instead.', $entry->action, implode(', ', $found));
+        if ($this->debug) {
+            throw new JournalHoldsNamesOnly($said);
+        }
+        $this->logger->warning($said, ['action' => $entry->action]);
+
+        return NamesOnly::without($entry->changes);
     }
 
     private function assertDeclared(AuditEntry $entry): void

@@ -113,7 +113,7 @@ final readonly class InviteToCompany implements DeclaresAuditActions
                 $invitation->getId(),
                 self::SENT,
                 $actorUserId,
-                ['email' => $email->value, 'role' => $request->roleName, 'expires_at' => $invitation->getExpiresAt()->format(\DATE_ATOM)],
+                ['role' => $request->roleName, 'expires_at' => $invitation->getExpiresAt()->format(\DATE_ATOM)],
                 $company->getId(),
             ));
 

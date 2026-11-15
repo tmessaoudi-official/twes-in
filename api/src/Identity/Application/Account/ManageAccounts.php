@@ -97,6 +97,32 @@ final readonly class ManageAccounts implements DeclaresAuditActions
         });
     }
 
+    /**
+     * After a suspected breach, every account's sessions end at once, each in its own transaction with its mail, as an
+     * operator ends one account's: whoever runs it holds the server, so no account is its actor. The number ended.
+     */
+    public function endEverySession(): int
+    {
+        $ended = 0;
+        foreach ($this->users->everyId() as $userId) {
+            $ended += $this->transactions->run(function () use ($userId): int {
+                $user = $this->users->ofId($userId);
+                if (null === $user) {
+                    // Deleted since the ids were read: it holds no session left to end.
+                    return 0;
+                }
+                $user->rotateSecurityStamp($this->clock->now());
+                $this->users->save($user);
+                $this->record($user, self::SESSIONS_ENDED, null);
+                $this->notices->tell($user->getId(), SecurityChange::OperatorEndedSessions);
+
+                return 1;
+            });
+        }
+
+        return $ended;
+    }
+
     /** @throws AccountNotFound|OwnAccount */
     public function deactivate(Uuid $userId, Uuid $operatorId): AccountView
     {
@@ -141,9 +167,10 @@ final readonly class ManageAccounts implements DeclaresAuditActions
         return $this->users->ofId($userId) ?? throw new AccountNotFound(\sprintf('No account %s.', $userId->toRfc4122()));
     }
 
-    private function record(User $user, string $action, Uuid $operatorId): void
+    /** The entry names the account by its id, never by its address: the journal records names, not values. */
+    private function record(User $user, string $action, ?Uuid $operatorId): void
     {
-        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $user->getId(), $action, $operatorId, ['email' => $user->getEmail()->value]));
+        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $user->getId(), $action, $operatorId, []));
     }
 
     public function auditActions(): array

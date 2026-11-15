@@ -73,7 +73,8 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
     private function record(FailedLoginAttempt $attempt): void
     {
         $user = null === $attempt->userId ? null : $this->users->ofId($attempt->userId);
-        $changes = ['email' => $attempt->email, 'reason' => $attempt->reason];
+        // The account is named by its id, and an address no account holds is nobody's to keep: the journal names, never holds values.
+        $changes = ['reason' => $attempt->reason];
 
         if (null !== $user && $attempt->wrongCredential) {
             $now = $this->clock->now();

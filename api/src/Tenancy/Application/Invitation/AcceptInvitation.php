@@ -113,7 +113,7 @@ final readonly class AcceptInvitation implements DeclaresAuditActions
                 $invitation->getId(),
                 self::ACCEPTED,
                 $user->getId(),
-                ['email' => $invitation->getEmail()->value, 'role' => $role->getName(), 'password_set' => $passwordSet],
+                ['role' => $role->getName(), 'password_set' => $passwordSet],
                 $company->getId(),
             ));
 
@@ -169,7 +169,7 @@ final readonly class AcceptInvitation implements DeclaresAuditActions
                 $invitation->getId(),
                 self::BREACH_CHECK_SKIPPED,
                 null,
-                ['email' => $invitation->getEmail()->value, 'reason' => 'the breach service could not be reached'],
+                ['reason' => 'the breach service could not be reached'],
                 $invitation->getCompany()->getId(),
             ));
         }

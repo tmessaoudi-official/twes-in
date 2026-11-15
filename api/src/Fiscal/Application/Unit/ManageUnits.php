@@ -60,7 +60,7 @@ final readonly class ManageUnits implements DeclaresAuditActions
             }
             $unit = Unit::create($company, $draft->code, $draft->name, $draft->decimals, $draft->sortOrder, $this->clock->now(), $this->languageNames->checked($draft->names) ?? []);
             $this->units->save($unit);
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::CREATED, $actorUserId, self::snapshot($unit), $company->getId()));
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::CREATED, $actorUserId, ['fields' => array_keys(self::snapshot($unit))], $company->getId()));
 
             return $unit;
         });
@@ -80,19 +80,34 @@ final readonly class ManageUnits implements DeclaresAuditActions
             if (null !== $version) {
                 $this->versions->expect($unit, $version);
             }
+            $before = self::snapshot($unit);
             if ($unit->revise($changes->name, $changes->decimals, $changes->isActive, $changes->sortOrder, $this->clock->now(), $this->languageNames->checked($changes->names))) {
                 $this->units->save($unit);
-                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::REVISED, $actorUserId, self::snapshot($unit), $company->getId()));
+                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::REVISED, $actorUserId, ['fields' => self::changed($before, self::snapshot($unit))], $company->getId()));
             }
 
             return $unit;
         });
     }
 
+    /**
+     * The names of what a revision changed, read from the snapshots on either side of it: the journal names, never
+     * holds the values, which the record itself keeps.
+     *
+     * @param array<string, mixed> $before
+     * @param array<string, mixed> $after
+     *
+     * @return list<string>
+     */
+    private static function changed(array $before, array $after): array
+    {
+        return array_keys(array_filter($after, static fn (mixed $value, string $field): bool => ($before[$field] ?? null) !== $value, \ARRAY_FILTER_USE_BOTH));
+    }
+
     /** @return array<string, mixed> */
     private static function snapshot(Unit $unit): array
     {
-        return ['code' => $unit->getCode(), 'name' => $unit->getName(), 'names' => $unit->getNames(), 'decimals' => $unit->getDecimals(), 'is_active' => $unit->isActive()];
+        return ['code' => $unit->getCode(), 'name' => $unit->getName(), 'names' => $unit->getNames(), 'decimals' => $unit->getDecimals(), 'is_active' => $unit->isActive(), 'sort_order' => $unit->getSortOrder()];
     }
 
     public function auditActions(): array

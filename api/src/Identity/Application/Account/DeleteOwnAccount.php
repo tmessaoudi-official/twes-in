@@ -71,7 +71,7 @@ final readonly class DeleteOwnAccount implements DeclaresAuditActions
             $now = $this->clock->now();
             $user->requestDeletion($now);
             $this->users->save($user);
-            $this->audit->record(new AuditEntry(ManageAccounts::ENTITY_TYPE, $userId, self::REQUESTED, $userId, ['email' => $user->getEmail()->value]));
+            $this->audit->record(new AuditEntry(ManageAccounts::ENTITY_TYPE, $userId, self::REQUESTED, $userId, []));
 
             return [$user, $now->modify(\sprintf('+%d days', $days))];
         });
