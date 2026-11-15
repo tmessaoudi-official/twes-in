@@ -53,6 +53,4 @@ interface ExpenseRepository
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Expense;
 
     public function save(Expense $expense): void;
-
-    public function remove(Expense $expense): void;
 }

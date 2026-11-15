@@ -270,7 +270,6 @@ final class ExpenseTest extends TestCase
         self::assertSame('expense_recorded_already', $this->reasonOf(fn () => $expense->record($this->now)), 'recorded twice');
         self::assertSame('expense_not_draft_changed', $this->reasonOf(fn () => $expense->revise($this->details(), ExpenseAmounts::one('30', 3, null), null, $this->fuel, 3, RoundingPoint::PerRateGroup, $this->now)), 'a recorded one revised');
         self::assertSame('expense_not_draft_changed', $this->reasonOf(static fn () => $expense->askAmountChecked()), 'a recorded one flagged');
-        self::assertSame('expense_not_draft_deleted', $this->reasonOf(static fn () => $expense->assertDraft('deleted', deleting: true)), 'a recorded one deleted');
         self::assertSame('expense_not_paid_classified', $this->reasonOf(fn () => $expense->classifyWithholding(null, $this->now)), 'a recorded one classified');
         $paid($expense);
         self::assertSame('expense_paid_already', $this->reasonOf(static fn () => $paid($expense)), 'paid twice');

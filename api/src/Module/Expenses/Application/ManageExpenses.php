@@ -64,7 +64,6 @@ final readonly class ManageExpenses implements DeclaresAuditActions
     public const string RECORDED = 'expense.recorded';
     public const string PAID = 'expense.paid';
     public const string WITHHOLDING_CLASSIFIED = 'expense.withholding_classified';
-    public const string DELETED = 'expense.deleted';
     public const string ATTACHMENT_ADDED = 'expense.attachment_added';
     public const string ATTACHMENT_REMOVED = 'expense.attachment_removed';
     public const string ATTACHMENT_RESTORED = 'expense.attachment_restored';
@@ -295,21 +294,6 @@ final readonly class ManageExpenses implements DeclaresAuditActions
     }
 
     /**
-     * @throws ExpenseNotFound
-     * @throws ExpenseTransitionRefused
-     */
-    public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
-    {
-        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
-            $expense = $this->get($company, $id);
-            $expense->assertDraft('deleted', deleting: true);
-            $this->attachments->detachAll($company, self::ENTITY_TYPE, $id);
-            $this->expenses->remove($expense);
-            $this->record($company, $id, self::DELETED, [], $actorUserId);
-        });
-    }
-
-    /**
      * @return list<Attachment>
      *
      * @throws ExpenseNotFound
@@ -482,7 +466,6 @@ final readonly class ManageExpenses implements DeclaresAuditActions
             self::ATTACHMENT_REMOVED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
             self::ATTACHMENT_RESTORED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
             self::CREATED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
-            self::DELETED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
             self::PAID => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
             self::RECORDED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
             self::REVISED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),

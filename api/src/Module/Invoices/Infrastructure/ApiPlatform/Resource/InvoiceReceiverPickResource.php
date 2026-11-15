@@ -17,9 +17,9 @@ use App\Shared\Application\Receivers\ReceiverContact;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * The customer's contacts an invoice offers to name who received the goods it hands over, under the invoice's own
- * permission: a person who writes invoices may name a contact without reading the customer's file. Names only, never a
- * contact's phone or address.
+ * The customer's contacts an invoice offers to name who received the goods it hands over, under the right that names
+ * one, the invoice's write right: a person who writes invoices may name a contact without reading the customer's file,
+ * and one who only reads invoices is offered none. Names only, never a contact's phone or address.
  */
 #[ApiResource(
     shortName: 'InvoiceReceiverPick',

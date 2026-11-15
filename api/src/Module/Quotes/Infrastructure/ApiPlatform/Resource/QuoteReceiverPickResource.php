@@ -17,8 +17,9 @@ use App\Shared\Application\Receivers\ReceiverContact;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * The customer's contacts a quote offers to name who answered it, under the quote's own permission: a person who answers
- * quotes may name a contact without reading the customer's file. Names only, never a contact's phone or address.
+ * The customer's contacts a quote offers to name who answered it, under the right that names one, the quote's write
+ * right: a person who answers quotes may name a contact without reading the customer's file, and one who only reads
+ * quotes is offered none. Names only, never a contact's phone or address.
  */
 #[ApiResource(
     shortName: 'QuoteReceiverPick',

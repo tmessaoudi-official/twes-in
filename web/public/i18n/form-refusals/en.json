@@ -219,7 +219,6 @@
       "expense_paid_already": "This expense is paid already.",
       "expense_not_paid_classified": "This expense is not paid yet: its operation is said once the expense is marked as paid.",
       "expense_recorded_already": "This expense is recorded in the books already.",
-      "expense_not_draft_deleted": "This expense is recorded in the books: it is no longer deleted.",
       "expense_not_draft_changed": "This expense is recorded in the books: only a draft is changed.",
       "company_closed_down": "Its owner closed this company down: only they can reopen it, within the days allowed.",
       "company_has_owners": "This company already has an owner, who invites the next ones.",

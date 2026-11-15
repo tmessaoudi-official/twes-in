@@ -1,6 +1,7 @@
 # The « À vérifier » note an import leaves on a record whose doubtful cells it set aside (docs/SPEC.md § 7, 2026-10-22 18:09).
 set_aside:
     line: '%label% du fichier : « %value% », mis de côté : %why%.'
+    line_withheld: '%label% du fichier, mis de côté : %why%.'
     with_example: '%why% (exemple : %example%)'
     why:
         identifier_shape: 'sa forme ne correspond pas'

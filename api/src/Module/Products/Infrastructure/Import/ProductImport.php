@@ -665,13 +665,14 @@ final readonly class ProductImport implements DeclaresImport
 
     /**
      * « À vérifier » as the row writes it: its note sets the mark with that note; a blank cell keeps the mark as it is,
-     * and a price of nothing meant stays as the product holds it. A code set aside marks it, with what the file held.
+     * and a price of nothing meant stays as the product holds it. A code set aside marks it, with what the file held,
+     * but a supplier's code, which every reader of products would read there while only a cost reader may.
      *
      * @throws RowRejected
      */
     private function check(ImportRecord $record, ?Product $current, SetAside $aside): ?ProductCheckInput
     {
-        $mark = $this->marks->marked($aside, ImportCells::checkMark($record, 'to_check'), $current?->getCheckMark(), ['barcode' => $this->marks->label('barcode'), 'pack_barcode' => $this->marks->label('pack_barcode'), 'supplier_code' => $this->marks->label('supplier_code')]);
+        $mark = $this->marks->marked($aside, ImportCells::checkMark($record, 'to_check'), $current?->getCheckMark(), ['barcode' => $this->marks->label('barcode'), 'pack_barcode' => $this->marks->label('pack_barcode'), 'supplier_code' => $this->marks->label('supplier_code')], ['supplier_code']);
         if (null === $mark) {
             return null;
         }

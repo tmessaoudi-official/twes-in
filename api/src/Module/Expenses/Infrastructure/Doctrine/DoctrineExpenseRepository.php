@@ -204,10 +204,4 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         $this->entityManager->persist($expense);
         $this->entityManager->flush();
     }
-
-    public function remove(Expense $expense): void
-    {
-        $this->entityManager->remove($expense);
-        $this->entityManager->flush();
-    }
 }

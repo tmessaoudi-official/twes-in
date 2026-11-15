@@ -32,7 +32,7 @@ final readonly class QuoteReceiverPickProvider implements ProviderInterface
     /** @return list<QuoteReceiverPickResource> */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), QuotePermission::READ);
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), QuotePermission::WRITE);
 
         return array_map(QuoteReceiverPickResource::of(...), $this->contacts->contactsOf($company, CompanyPath::identifier($uriVariables, 'customerId')));
     }

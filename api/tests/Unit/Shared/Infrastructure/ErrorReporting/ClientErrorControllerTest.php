@@ -38,6 +38,31 @@ final class ClientErrorControllerTest extends TestCase
         self::assertSame([], $this->logged);
     }
 
+    /** A body announcing more than the size is refused on its announcement: not a byte of it is read. */
+    public function testABodyAnnouncingMoreThanTheSizeIsRefusedBeforeAnyOfItIsRead(): void
+    {
+        $body = $this->stream(json_encode(['message' => 'boom', 'page' => '/invoices'], \JSON_THROW_ON_ERROR));
+        $request = Request::create('/api/client-errors', 'POST', server: ['CONTENT_TYPE' => 'application/json', 'CONTENT_LENGTH' => '2048'], content: $body);
+
+        $answer = $this->controller(maxBody: 1_024)($request);
+
+        self::assertSame(Response::HTTP_REQUEST_ENTITY_TOO_LARGE, $answer->getStatusCode());
+        self::assertSame(0, ftell($body), 'nothing read');
+        self::assertSame([], $this->logged);
+    }
+
+    /** A body sent without its length (chunked) is read no further than one byte past the size. */
+    public function testABodyWithoutItsLengthIsReadNoFurtherThanTheSize(): void
+    {
+        $body = $this->stream(str_repeat('m', 1_000_000));
+        $request = Request::create('/api/client-errors', 'POST', server: ['CONTENT_TYPE' => 'application/json'], content: $body);
+
+        $answer = $this->controller(maxBody: 1_024)($request);
+
+        self::assertSame(Response::HTTP_REQUEST_ENTITY_TOO_LARGE, $answer->getStatusCode());
+        self::assertLessThanOrEqual(1_025, ftell($body));
+    }
+
     public function testABodyWithinTheOperatorsSizeIsRead(): void
     {
         $controller = $this->controller(maxBody: 65_536);
@@ -89,6 +114,17 @@ final class ClientErrorControllerTest extends TestCase
         $limiter = new RateLimiterFactory(['id' => 'client_errors', 'policy' => 'no_limit'], new InMemoryStorage());
 
         return new ClientErrorController($logger, $limiter, new ScrubPersonalData(), $maxBody, $maxMessage, $maxStack, $perPage);
+    }
+
+    /** @return resource a body as the server hands it over, whose read position says how much was read */
+    private function stream(string $content)
+    {
+        $stream = fopen('php://memory', 'r+');
+        self::assertIsResource($stream);
+        fwrite($stream, $content);
+        rewind($stream);
+
+        return $stream;
     }
 
     /** @param array<string, string> $body */

@@ -1074,6 +1074,19 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /**
+     * The contacts offered to name who received are offered to whoever may name one, the note's write right: a reader of
+     * documents learns no contact's name they could not read in the customer's file (Q23).
+     */
+    public function testTheReceiversAreOfferedToWhoeverMayNameOneOnly(): void
+    {
+        $this->signedIn(['delivery_note.read']);
+
+        $this->getJson($this->companyPath().'/delivery-note-options/customers/'.$this->customerId.'/receivers');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader of notes is refused as for any right missing');
+    }
+
     /** @param list<string> $permissions */
     private function signedIn(array $permissions): void
     {

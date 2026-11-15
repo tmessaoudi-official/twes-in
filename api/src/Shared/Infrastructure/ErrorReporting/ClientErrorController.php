@@ -57,11 +57,12 @@ final readonly class ClientErrorController
         if (!$limit->isAccepted()) {
             return SpentBudget::answer($limit);
         }
-        if (\strlen($request->getContent()) > $this->maxBody) {
+        $content = $this->bounded($request);
+        if (null === $content) {
             return new JsonResponse(['error' => 'report_too_large'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
         }
 
-        $body = json_decode($request->getContent(), true);
+        $body = json_decode($content, true);
         if (!\is_array($body) || !\is_string($body['message'] ?? null) || '' === TypedText::trimmed($body['message'])) {
             return new JsonResponse(['error' => 'invalid_report'], Response::HTTP_BAD_REQUEST);
         }
@@ -78,6 +79,21 @@ final readonly class ClientErrorController
         $this->logger->error($this->scrub->mask($line));
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * The body, or null past the size: one that announces more is refused on its length alone, and one sent without it
+     * (chunked) is read one byte past the size and no further. What the server buffers before PHP runs is post_max_size's.
+     */
+    private function bounded(Request $request): ?string
+    {
+        $announced = $request->headers->get('Content-Length');
+        if (null !== $announced && (!ctype_digit($announced) || (int) $announced > $this->maxBody)) {
+            return null;
+        }
+        $read = stream_get_contents($request->getContent(true), $this->maxBody + 1);
+
+        return false === $read || \strlen($read) > $this->maxBody ? null : $read;
     }
 
     /** @param array<mixed> $body */

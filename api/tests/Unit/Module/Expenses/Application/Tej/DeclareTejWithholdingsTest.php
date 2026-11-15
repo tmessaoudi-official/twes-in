@@ -247,10 +247,6 @@ final class DeclareTejWithholdingsTest extends TestCase
             public function save(Expense $expense): void
             {
             }
-
-            public function remove(Expense $expense): void
-            {
-            }
         };
     }
 }

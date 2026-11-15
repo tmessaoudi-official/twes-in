@@ -2301,7 +2301,7 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['name' => 'Sami']]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'naming who received is writing the invoice: invoice.write');
         $this->getJson($this->companyPath().'/invoice-options/customers/'.$their->getId()->toRfc4122().'/receivers');
-        self::assertSame([], $this->jsonList(), 'another company\'s customer offers no contact');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the contacts are offered with invoice.write, which names them');
         $this->sendJson('PUT', $this->path($theirInvoice), $this->invoice(['version' => 1, 'receivedBy' => ['name' => 'Sami']]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
         $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoice-options/customers/'.$their->getId()->toRfc4122().'/receivers');
@@ -2737,6 +2737,30 @@ final class InvoicesTest extends ApiTestCase
     private function establishmentId(): string
     {
         return static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
+    }
+
+    /**
+     * The contacts offered to name who received are offered to whoever may name one, the invoice's write right: a reader
+     * of documents learns no contact's name they could not read in the customer's file (Q23).
+     */
+    public function testTheReceiversAreOfferedToWhoeverMayNameOneOnly(): void
+    {
+        // Made before any request: a request ends the kernel the entities were made in.
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $their = $this->customer('CLI-0009', 'standard', company: $globex);
+        $this->createUser('writer@twes.local', 'password-1234', $this->company, ['invoice.read', 'invoice.write'], 'writer');
+        $this->signedIn(['invoice.read']);
+
+        $this->getJson($this->companyPath().'/invoice-options/customers/'.$this->customerId.'/receivers');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader of invoices is refused as for any right missing');
+
+        $this->login('writer@twes.local', 'password-1234');
+        $this->getJson($this->companyPath().'/invoice-options/customers/'.$this->customerId.'/receivers');
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->companyPath().'/invoice-options/customers/'.$their->getId()->toRfc4122().'/receivers');
+        self::assertSame([], $this->jsonList(), 'another company\'s customer offers no contact');
     }
 
     /** @param list<string> $permissions */

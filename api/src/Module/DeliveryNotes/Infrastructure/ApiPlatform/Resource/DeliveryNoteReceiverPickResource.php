@@ -17,9 +17,9 @@ use App\Shared\Application\Receivers\ReceiverContact;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * The customer's contacts a delivery note offers to name who received its goods, under the note's own permission: a
- * person who writes notes may name a contact without reading the customer's file. Names only, never a contact's
- * phone or address.
+ * The customer's contacts a delivery note offers to name who received its goods, under the right that names one, the
+ * note's write right: a person who writes notes may name a contact without reading the customer's file, and one who
+ * only reads notes is offered none. Names only, never a contact's phone or address.
  */
 #[ApiResource(
     shortName: 'DeliveryNoteReceiverPick',

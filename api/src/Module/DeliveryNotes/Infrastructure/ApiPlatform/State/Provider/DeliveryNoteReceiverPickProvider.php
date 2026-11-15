@@ -32,7 +32,7 @@ final readonly class DeliveryNoteReceiverPickProvider implements ProviderInterfa
     /** @return list<DeliveryNoteReceiverPickResource> */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::READ);
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::WRITE);
 
         return array_map(DeliveryNoteReceiverPickResource::of(...), $this->contacts->contactsOf($company, CompanyPath::identifier($uriVariables, 'customerId')));
     }

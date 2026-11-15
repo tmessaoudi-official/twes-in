@@ -193,17 +193,35 @@ final class RecurringExpensesTest extends ApiTestCase
         self::assertSame(3, $this->storedVersion('recurring_expense', $recurring), 'a revision changing nothing leaves it');
     }
 
+    public function testAModelIsKeptWhileItsScheduleCopiesItAndGoesOnceTheScheduleHasGone(): void
+    {
+        $model = $this->expense();
+        $recurring = $this->recurring($model, ['unit' => 'week', 'every' => 1]);
+
+        $this->sendJson('DELETE', $this->path().'/expenses/'.$model);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED, 'one way to delete: the records\' own');
+        $this->postJson($this->path().'/record-removals', ['subject' => 'expense', 'ids' => [$model]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'the model a schedule copies is in use');
+        $this->getJson($this->path().'/expenses/'.$model);
+        self::assertResponseIsSuccessful('and stays');
+
+        $this->postJson($this->path().'/record-removals', ['subject' => 'recurring_expense', 'ids' => [$recurring]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path().'/record-removals', ['subject' => 'expense', 'ids' => [$model]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'nothing copies it any more');
+    }
+
     public function testAModelThatCanNoLongerBeCopiedPausesItAndSaysSoOnce(): void
     {
-        $deleted = $this->expense();
-        $gone = $this->recurring($deleted, ['unit' => 'week', 'every' => 1]);
-        $this->sendJson('DELETE', $this->path().'/expenses/'.$deleted);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $stopped = $this->recurring($this->expense(), ['unit' => 'week', 'every' => 1]);
+        // Orders to vendors need the vendors module, so they go first; a new expense then names no vendor.
+        $this->switchModule('purchases', false);
+        $this->switchModule('vendors', false);
 
         $this->passEachDay(8);
 
-        self::assertSame([], $this->draftsOf($gone), 'nothing is copied from an expense deleted since');
-        $this->getJson($this->path().'/recurring-expenses/'.$gone);
+        self::assertSame([], $this->draftsOf($stopped), 'nothing is copied from a model naming what may no longer be named');
+        $this->getJson($this->path().'/recurring-expenses/'.$stopped);
         self::assertTrue($this->json()['paused'], 'it is paused rather than tried again every hour');
         self::assertSame(['expense.recurring_stopped'], $this->told(), 'told once, never left to find it stopped');
     }

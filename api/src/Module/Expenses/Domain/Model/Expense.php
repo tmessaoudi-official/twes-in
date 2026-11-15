@@ -307,15 +307,14 @@ class Expense implements CompanyOwned
 
     /**
      * @param bool $recording whether the move asked is recording it, said as done already
-     * @param bool $deleting  whether it is deleting it, said as no longer possible rather than as a change
      *
      * @throws ExpenseTransitionRefused when the expense is no longer a draft
      */
-    public function assertDraft(string $action, bool $recording = false, bool $deleting = false): void
+    public function assertDraft(string $action, bool $recording = false): void
     {
         if (ExpenseStatus::Draft !== $this->status) {
             throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a draft is %s.', $this->status->value, $action), match (true) {
-                $recording => 'expense_recorded_already', $deleting => 'expense_not_draft_deleted', default => 'expense_not_draft_changed',
+                $recording => 'expense_recorded_already', default => 'expense_not_draft_changed',
             });
         }
     }

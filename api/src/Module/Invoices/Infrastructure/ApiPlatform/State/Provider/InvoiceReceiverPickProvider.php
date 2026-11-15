@@ -32,7 +32,7 @@ final readonly class InvoiceReceiverPickProvider implements ProviderInterface
     /** @return list<InvoiceReceiverPickResource> */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::WRITE);
 
         return array_map(InvoiceReceiverPickResource::of(...), $this->contacts->contactsOf($company, CompanyPath::identifier($uriVariables, 'customerId')));
     }

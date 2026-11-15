@@ -1027,6 +1027,25 @@ Cheville 10 mm,6191234567897
     }
 
     /**
+     * A supplier's code set aside is a cost reader's to see: the report says it to whoever imported, who reads costs, but
+     * the product's « À vérifier », which every reader of products reads, names the column and why, never the code.
+     */
+    public function testASupplierCodeSetAsideIsNotWrittenWhereEveryReaderReadsIt(): void
+    {
+        $this->aVendor('F-001', 'Sotumag');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import("reference,name,unit_code,unit_price_net,supplier_number,supplier_code\nVIS-9,Vis 9,H87,1,F-001,6190000000018\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertContains(['line' => 2, 'column' => 'supplier_code', 'code' => 'set_aside', 'params' => ['value' => '6190000000018', 'reason' => 'invalid_barcode']], $this->arrayAt($this->json(), 'notes'));
+        $this->em()->clear();
+        $note = (string) $this->product('VIS-9')->getCheckMark()->note;
+        self::assertStringNotContainsString('6190000000018', $note);
+        self::assertStringContainsString('mis de côté', $note);
+    }
+
+    /**
      * A unit code whose check digit fails is set aside rather than losing the product: written without it, marked
      * « À vérifier » with the code as the file wrote it, and said on that cell (docs/SPEC.md § 7, 2026-10-22 18:09).
      */

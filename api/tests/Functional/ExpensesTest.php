@@ -376,9 +376,8 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->modify('-2 days')->format('Y-m-d')]);
         self::assertResponseIsSuccessful();
         self::assertSame(['paid', 'transfer', $today->modify('-2 days')->format('Y-m-d')], [$this->json()['status'], $this->json()['paymentMethod'], $this->json()['paidOn']]);
-        $this->sendJson('DELETE', $this->path($id));
-        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only a draft is deleted');
-        self::assertSame(['expense_not_draft_deleted', []], $this->refusedWholeAs(), 'the reason it is said with');
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'expense', 'ids' => [$id]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'only a draft is deleted');
         self::assertSame(['expense.created', 'expense.revised', 'expense.recorded', 'expense.paid'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
     }
 
@@ -700,22 +699,21 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame([['propertyPath' => '', 'reason' => 'too_many_files', 'params' => ['max' => $max]]], $this->refusals(), 'said on the whole request: a restore sends no file');
     }
 
-    public function testADraftIsDeletedWithItsAttachments(): void
+    /**
+     * A draft is deleted the way every record is, through the bin, which refuses one in use and puts it back within the
+     * day: a route of its own beside it deleted a model a recurring expense copies, for good.
+     */
+    public function testADraftIsDeletedOnlyThroughTheBin(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
         $this->postJson($this->path(), $this->expense());
         $id = $this->stringAt($this->json(), 'id');
-        $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
-        $this->uploadFile($this->path($id).'/attachments', 'erreur.pdf', AttachmentsTest::PDF);
-        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$this->stringAt($this->json(), 'id'));
 
         $this->sendJson('DELETE', $this->path($id));
 
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED, 'one way to delete: the records\' own');
         $this->getJson($this->path($id));
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM attachment'));
-        self::assertSame(['expense.created', 'expense.attachment_added', 'expense.attachment_added', 'expense.attachment_removed', 'expense.deleted'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
+        self::assertResponseIsSuccessful('the draft is still there');
     }
 
     public function testADraftGoesToRecentlyDeletedWithItsLinesTaxesAndReceiptsAndComesBackAsItWas(): void
@@ -795,10 +793,12 @@ final class ExpensesTest extends ApiTestCase
         $this->getJson($theirs);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $theirId = $their->getId()->toRfc4122();
-        foreach (['GET' => $this->path($theirId), 'GET ' => $this->path($theirId).'/attachments', 'DELETE' => $this->path($theirId)] as $method => $through) {
+        foreach (['GET' => $this->path($theirId), 'GET ' => $this->path($theirId).'/attachments'] as $method => $through) {
             $this->sendJson(trim($method), $through);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "$method another company's expense through this company");
         }
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'expense', 'ids' => [$theirId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company’s expense deleted through this company');
         $this->postJson($this->path($theirId).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000001']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company’s expense classified through this company');
         $this->uploadFile($this->path($theirId).'/attachments', 'recu.pdf', AttachmentsTest::PDF);

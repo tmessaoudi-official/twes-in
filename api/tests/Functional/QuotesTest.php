@@ -823,6 +823,19 @@ final class QuotesTest extends ApiTestCase
         return $this->tax($code)->getId()->toRfc4122();
     }
 
+    /**
+     * The contacts offered to name who received are offered to whoever may name one, the quote's write right: a reader
+     * of documents learns no contact's name they could not read in the customer's file (Q23).
+     */
+    public function testTheReceiversAreOfferedToWhoeverMayNameOneOnly(): void
+    {
+        $this->signedIn(['quote.read']);
+
+        $this->getJson($this->companyPath().'/quote-options/customers/'.$this->customer->getId()->toRfc4122().'/receivers');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader of quotes is refused as for any right missing');
+    }
+
     /** @param list<string> $permissions */
     private function signedIn(array $permissions): void
     {

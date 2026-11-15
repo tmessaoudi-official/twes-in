@@ -11,7 +11,6 @@ namespace App\Module\Expenses\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
@@ -30,7 +29,6 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
 use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\ClassifyExpenseWithholdingProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\CreateExpenseProcessor;
-use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\DeleteExpenseProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\PayExpenseProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\RecordExpenseProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\ReviseExpenseProcessor;
@@ -45,8 +43,9 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * A company's expenses (docs/SPEC.md § 4 expense). Read with expense.read; drafted, revised, deleted, recorded and paid
- * with expense.write. A draft alone is revised or deleted and a recorded expense alone is paid (409 otherwise). The
+ * A company's expenses (docs/SPEC.md § 4 expense). Read with expense.read; drafted, revised, recorded and paid with
+ * expense.write. A draft alone is revised and a recorded expense alone is paid (409 otherwise); a draft is deleted
+ * through the bin, as every record is, which refuses one in use and puts it back within the day. The
  * shape is checked here, the company's vendors, categories and taxes by the use case. Amounts are decimal strings at
  * the currency's scale; the tax rate keeps its three decimals.
  */
@@ -101,12 +100,6 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
-        ),
-        new Delete(
-            uriTemplate: '/companies/{companyId}/expenses/{expenseId}',
-            processor: DeleteExpenseProcessor::class,
-            security: 'is_granted("ROLE_USER")',
-            read: false,
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/expenses/{expenseId}/record',
