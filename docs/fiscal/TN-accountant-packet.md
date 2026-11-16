@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Objet | Faire valider ou corriger, règle par règle, ce que le logiciel de facturation twes-in applique pour la Tunisie : TVA, FODEC, droit de timbre, retenue à la source, numérotation, mentions obligatoires, avoirs, arrondis. |
+| Objet | Faire valider ou corriger, règle par règle, ce que le logiciel de facturation twes-in applique pour la Tunisie : TVA, FODEC, droit de timbre, retenue à la source, numérotation, mentions obligatoires, avoirs, arrondis, valorisation du stock. |
 | Date | 2026-10-22 (les numéros de ligne cités renvoient à l'état du dépôt à cette date) |
 | Statut | **À valider par l'expert-comptable ; rien ici n'est un avis juridique.** Toutes les règles sont aujourd'hui `unvalidated` (docs/fiscal/TN.md, l. 3-4). |
 | Base | `docs/fiscal/TN.md` (règles sourcées, recherche du 2026-09-13 et suivantes), `api/config/fiscal/TN.yaml` (paramètres appliqués), le code sous `api/src`, `api/templates/pdf/invoice.html.twig`, `docs/spec/pricing-vectors.json` (jeu de cas chiffrés du calculateur). |
@@ -116,6 +116,12 @@ Art. 18-II du Code de la TVA [13] tel que résumé par TN.md l. 160-163 : date ;
 | D6 | Le preset peut aussi arrondir ligne par ligne (`per_line`), ce qui peut différer d'un millime (vecteurs `vat-rounding-order-diverges` 0,005 contre `…-per-line` 0,004) ; la Tunisie utilise l'arrondi par taux (T3). | TN.md l. 216-220 | `TN.yaml:13` ; `DocumentCalculator.php:241-242` | unvalidated | |
 | D7 | Chaque document comptable est conservé 10 ans ; une société fermée est gardée jusqu'au 31 décembre de son année de fermeture plus 10 ans. | Code de l'IRPP et de l'IS art. 62 [19] ; le point de départ n'est pas dit par l'article | `TN.yaml:7-8` | unvalidated | |
 
+## 8 bis. Valorisation du stock
+
+| N° | Règle appliquée par le logiciel | Source citée | Où dans le code | Statut actuel | Réponse de l'expert |
+|---|---|---|---|---|---|
+| V1 | Le stock est valorisé par une seule méthode, le **coût moyen pondéré** : chaque entrée enregistre son coût unitaire, chaque mouvement garde le coût auquel il a eu lieu (4 décimales), et le coût d'une unité est la valeur du stock valorisé divisée par sa quantité. Quand la quantité repasse par zéro, la moyenne repart du coût de la réception suivante ; le stock détenu avant la valorisation a reçu une valeur d'ouverture au prix de revient de la fiche produit. Pas de choix par société (ni PEPS / FIFO, ni autre méthode). | aucun texte tunisien trouvé (docs/fiscal/TN.md ne cite rien sur ce point) ; décision du 2026-09-19 23:48 et du 2026-10-06 02:14 (docs/SPEC.md § 7) | `api/src/Module/Inventory/Domain/Service/WeightedAverageCost.php:26-38` ; `api/src/Module/Inventory/Domain/ValueObject/RunningValue.php` | décision du développeur | |
+
 ## 9. Exemples de factures (montants en TND)
 
 Chaque exemple est un cas de `docs/spec/pricing-vectors.json`, section `document_totals`, nommé par son identifiant. Les chiffres sont ceux que le fichier attend, et le calculateur du logiciel est tenu à ce fichier par `api/tests/Unit/Fiscal/Domain/PricingVectorsTest.php`. Chaque cas a été **recalculé indépendamment** (Python, `decimal`, arrondi au millime demi vers le haut, mêmes règles d'ordre et de répartition) : les 7 cas `tn-*` utilisés concordent tous au millime avec le fichier ; le cas `line-discount-reduces-the-vat-base` (exemple 5) a été vérifié à la main et concorde (150,000 × 10 % = 15,000 ; 135,000 × 19 % = 25,650, sans arrondi). Arrondi par taux (T3), prix saisis HT.
@@ -209,3 +215,4 @@ Chacune reprend un point que `docs/fiscal/TN.md` marque comme non établi, non t
 | Q22 | Un avoir partiel d'une facture finale ne rend aucun acompte (A8) : est-ce correct ? | TN.md l. 56 | |
 | Q23 | Un détaillant qui revend des produits listés (la quincaillerie) facture-t-il la FODEC, ou n'est-elle due qu'au producteur et à l'importateur ? | TN.md l. 67 | |
 | Q24 | Un prix affiché TTC est gardé hors taxes, arrondi au dix-millième (1,001 TTC à 19 % → 0,8412 HT), et la facture recalcule le TTC à partir du HT (T4, D5) : 3 articles à 1,001 font 2,524 HT + 0,480 de TVA = 3,004, quand l'étiquette dit 3 × 1,001 = 3,003. Sur des prix de 1 à 100 TND et des quantités de 1 à 10, 80 % des lignes tombent juste, 15,5 % dépassent d'un millime et 4,5 % sont en dessous d'un millime. Le prix affiché est le prix payé toutes taxes comprises (loi 2015-36, art. 29) : un écart d'un millime est-il acceptable, ou une ligne à un seul taux doit-elle se calculer à partir du prix TTC, la TVA en étant extraite ? | `ProductImport.php` (prix TTC du fichier) ; `DocumentCalculator.php` ; T4, D5 | |
+| Q25 | La valorisation du stock au coût moyen pondéré (V1) est-elle admise pour une PME tunisienne, ou un texte impose-t-il (ou permet-il au choix) une autre méthode, PEPS / FIFO par exemple ? Le recalcul de la moyenne à chaque entrée, et son redémarrage quand la quantité repasse par zéro, conviennent-ils ? | décision du 2026-09-19 23:48, non sourcée pour la Tunisie ; V1 | |
