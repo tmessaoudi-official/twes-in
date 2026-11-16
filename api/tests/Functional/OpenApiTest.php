@@ -70,7 +70,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertIsArray($health['properties'] ?? null);
         $web = $health['properties']['web'] ?? null;
         self::assertIsArray($web);
-        self::assertSame(['errorReportsPerPage', 'submissionRetryMinutes', 'passwordResetSeconds', 'signupSeconds', 'stepUpSeconds', 'recordsUndoableSeconds', 'erasureUndoableSeconds'], $web['required'] ?? null);
+        self::assertSame(['errorReportsPerPage', 'errorReportBytes', 'errorMessageLength', 'errorStackLength', 'submissionRetryMinutes', 'passwordResetSeconds', 'signupSeconds', 'stepUpSeconds', 'recordsUndoableSeconds', 'erasureUndoableSeconds'], $web['required'] ?? null);
 
         // ArrayObjects all the way down: a JSON round trip is the plain view of the schema.
         $me = json_decode(json_encode($schemas['Me'], \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);

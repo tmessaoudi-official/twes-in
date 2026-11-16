@@ -98,6 +98,13 @@ out=$(run "$d" --build "$TMPDIR/none.env"); check "a missing file is refused" $?
 d=$(repo); e=$(staging_values)
 out=$(run "$d" --build "$e"); check "staging's values never deploy a production instance" $? 1 "$out" "staging"
 
+# A bucket's secret key would reach the api as a plain environment value: files stay local until it is a compose secret.
+d=$(repo); e=$(envfile $'FILES_STORAGE=s3\n')
+out=$(run "$d" --build "$e"); check "files in a bucket are refused while its key is no compose secret" $? 1 "$out" "FILES_STORAGE=s3"
+[[ -z "$(called)" ]]; check "and nothing is built" $? 0 "" ""
+d=$(repo); e=$(envfile $'FILES_STORAGE=local\n')
+out=$(run "$d" --build "$e"); check "files on the local volume deploy" $? 0 "$out" "v2026.10.12.1"
+
 # Each secret the installation mounts is filled in the values: compose would start the instance with nothing mounted.
 d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\nMONITOR_TOKEN=\n')
 out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "a secret left empty in the values is refused" $? 1 "$out" "give no value to MONITOR_TOKEN"

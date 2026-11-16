@@ -61,8 +61,8 @@ parameters:
     app.rate_limit.client_errors.limit: 20
     app.rate_limit.client_errors.interval: '15 minutes'
     # A report of an error in someone's browser (POST /api/client-errors, ClientErrorController): the body refused unread past
-    # its bytes, the message and the stack cut to their characters, and the reports one page load sends, which the web reads
-    # from /api/health (0: it sends none, and the API logs none it is sent). The CSRF proof, the page kept without its query
+    # its bytes, the message and the stack cut to their characters, and the reports one page load sends; the web reads all four
+    # from /api/health and cuts a report to them before sending (0 reports: it sends none, and the API logs none it is sent). The CSRF proof, the page kept without its query
     # or fragment and the scrubbing stay code. Checked when the container is built (ClientErrorBounds): 1,024 to 65,536
     # bytes; 100 to 2,000 and 500 to 16,000 characters; 0 to 20 reports.
     app.client_errors.max_body: 16384

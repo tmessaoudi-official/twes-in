@@ -76,6 +76,14 @@ esac
 files=()
 for layer in "${layers[@]}"; do files+=(-f "$layer"); done
 
+# Files in a bucket would hand the api the bucket's secret key as a plain environment value, which every installation's
+# other secrets never are (scripts/gates/secrets-overlay.sh): files stay on the local volume until that key is a compose
+# secret.
+case "$(value FILES_STORAGE)" in
+  '' | local) ;;
+  *) refuse "$values say FILES_STORAGE=$(value FILES_STORAGE): files stay on the local volume (local) until the bucket's key, FILES_S3_SECRET_KEY, is mounted as a compose secret" ;;
+esac
+
 # Where a shop is reached from outside, each empty while off (docs/START.md § 16): compose writes the names into every
 # origin and Host the app answers as they are given, so a scheme, a port or a path in a name would start the shop on
 # origins nothing answers, or an API answering any Host. A shop installed before they existed gives none: off.

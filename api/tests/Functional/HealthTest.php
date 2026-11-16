@@ -22,7 +22,7 @@ final class HealthTest extends WebTestCase
         self::assertResponseHeaderSame('content-type', 'application/json');
         $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         // An image built with no version (here, the test kernel) says so rather than inventing one.
-        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => null, 'commit' => null, 'mode' => 'test'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => 'http://localhost:8090'], 'web' => ['errorReportsPerPage' => 5, 'submissionRetryMinutes' => 15, 'passwordResetSeconds' => 3600, 'signupSeconds' => 86400, 'stepUpSeconds' => 300, 'recordsUndoableSeconds' => 86400, 'erasureUndoableSeconds' => 86400]], $body);
+        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => null, 'commit' => null, 'mode' => 'test'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => 'http://localhost:8090'], 'web' => ['errorReportsPerPage' => 5, 'errorReportBytes' => 16384, 'errorMessageLength' => 500, 'errorStackLength' => 4000, 'submissionRetryMinutes' => 15, 'passwordResetSeconds' => 3600, 'signupSeconds' => 86400, 'stepUpSeconds' => 300, 'recordsUndoableSeconds' => 86400, 'erasureUndoableSeconds' => 86400]], $body);
     }
 
     /**
@@ -57,6 +57,9 @@ final class HealthTest extends WebTestCase
         $container = static::getContainer();
         self::assertSame([
             'errorReportsPerPage' => $container->getParameter('app.client_errors.per_page'),
+            'errorReportBytes' => $container->getParameter('app.client_errors.max_body'),
+            'errorMessageLength' => $container->getParameter('app.client_errors.max_message'),
+            'errorStackLength' => $container->getParameter('app.client_errors.max_stack'),
             'submissionRetryMinutes' => $container->getParameter('app.submissions.retry_minutes'),
             'passwordResetSeconds' => self::seconds($container->getParameter('app.password_reset.valid_for')),
             'signupSeconds' => self::seconds($container->getParameter('app.signup.valid_for')),

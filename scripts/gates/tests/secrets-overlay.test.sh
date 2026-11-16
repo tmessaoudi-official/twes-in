@@ -43,6 +43,9 @@ d=$(project); edit "$d/compose.onprem.yaml" 's|^  SENTRY_DSN: "${SENTRY_DSN:-}"$
 out=$(bash "$GATE" --root "$d" 2>&1); check "a secret handed in an environment is named" $? 1 "$out" "api holds APP_SECRET in its environment"
 check "the value written into the configuration is named" 1 1 "$out" "the value of APP_SECRET is written"
 
+d=$(project); edit "$d/compose.deploy.yaml" 's|^  FILES_S3_SECRET_KEY: "${FILES_S3_SECRET_KEY:-}"$|  FILES_S3_SECRET_KEY: a-bucket-key|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a bucket's key filled in an environment is named" $? 1 "$out" "api holds FILES_S3_SECRET_KEY in its environment"
+
 d=$(project); edit "$d/compose.onprem.yaml" 's|^  FILES_STORAGE: local$|  MAILER_DSN: smtp://mailpit:1025\n&|'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a shop sending to development's catcher is named" $? 1 "$out" "shop: api holds MAILER_DSN in its environment"
 

@@ -98,10 +98,13 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 ],
                 'web' => [
                     'type' => 'object',
-                    'required' => ['errorReportsPerPage', 'submissionRetryMinutes', 'passwordResetSeconds', 'signupSeconds', 'stepUpSeconds', 'recordsUndoableSeconds', 'erasureUndoableSeconds'],
+                    'required' => ['errorReportsPerPage', 'errorReportBytes', 'errorMessageLength', 'errorStackLength', 'submissionRetryMinutes', 'passwordResetSeconds', 'signupSeconds', 'stepUpSeconds', 'recordsUndoableSeconds', 'erasureUndoableSeconds'],
                     'description' => 'What the operator set for the page itself, read as it starts',
                     'properties' => [
                         'errorReportsPerPage' => ['type' => 'integer', 'description' => 'The errors one page load reports to POST /api/client-errors (app.client_errors.per_page); 0 sends none'],
+                        'errorReportBytes' => ['type' => 'integer', 'description' => 'The size in bytes past which POST /api/client-errors refuses a report unread (app.client_errors.max_body)'],
+                        'errorMessageLength' => ['type' => 'integer', 'description' => 'The characters of a report\'s message the API keeps (app.client_errors.max_message)'],
+                        'errorStackLength' => ['type' => 'integer', 'description' => 'The characters of a report\'s stack the API keeps (app.client_errors.max_stack)'],
                         'submissionRetryMinutes' => ['type' => 'integer', 'description' => 'The minutes a write whose answer never came keeps its Idempotency-Key for being sent again (app.submissions.retry_minutes)'],
                         'passwordResetSeconds' => ['type' => 'integer', 'description' => 'How long a password reset link works, in seconds (app.password_reset.valid_for)'],
                         'signupSeconds' => ['type' => 'integer', 'description' => 'How long a signup link works, in seconds (app.signup.valid_for)'],

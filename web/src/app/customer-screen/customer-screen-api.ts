@@ -35,8 +35,9 @@ export class CustomerScreenApi {
   private readonly http = inject(HttpClient);
 
   /**
-   * The establishments the screen may stand at. Reading them takes company.read; somebody without it is answered 404,
-   * which reads as no choice to make, and the screen then says the default establishment's stock.
+   * The establishments the screen may stand at. Reading them takes company.read or the screen's own product.read;
+   * somebody with neither is answered 404, which reads as no choice to make, and the screen then says the default
+   * establishment's stock.
    */
   async places(companyId: string): Promise<ScreenPlace[]> {
     try {

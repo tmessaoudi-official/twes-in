@@ -23,6 +23,7 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNotePrint;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\Event\DomainEvent;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\CompanyOwned;
@@ -571,7 +572,16 @@ class DeliveryNote implements CompanyOwned
     private function linesOfThisCompany(array $lines): array
     {
         $companyId = $this->company->getId();
+        // A serial is one piece: named on two lines it would be handed over twice, and found missing only once the stock is moved.
+        $serials = [];
         foreach ($lines as $index => $line) {
+            if (null !== $line->product && null !== $line->lotCode && ProductTracking::Serial === $line->product->getTracking()) {
+                $serial = $line->product->getId()->toRfc4122().' '.$line->lotCode;
+                if (isset($serials[$serial])) {
+                    throw new InvalidDeliveryNote("lines[$index].lotCode", \sprintf('The serial number %s is already on a line of this note: a serial is one piece.', $line->lotCode), 'serial_named_once', ['serial' => $line->lotCode]);
+                }
+                $serials[$serial] = true;
+            }
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
                 throw new InvalidDeliveryNote("lines[$index].productId", 'A line delivers a product of its own company.', 'unknown_choice');
             }

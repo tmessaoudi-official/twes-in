@@ -4,7 +4,8 @@
 # STAGING_FOLLOW_INTERVAL in /etc/twes-in/staging-follow.env, five minutes when unset. A systemd timer reads no
 # environment, so this writes the value as a drop-in over infra/staging/twes-staging-follow.timer; run it again, then
 # `systemctl daemon-reload`, after changing the value. Below a minute is refused: a run pulls three images and may deploy,
-# and the timer already waits for one run to end before the next. The hold file and the rule that a commit which failed to
+# and the timer already waits for one run to end before the next; above an hour too, so a typo cannot leave staging days
+# behind master. The hold file and the rule that a commit which failed to
 # start is not tried again stay staging-follow.sh's own.
 # Usage: staging-follow-interval.sh <staging-follow.env> <drop-in directory, /etc/systemd/system/twes-staging-follow.timer.d>
 set -euo pipefail
@@ -28,6 +29,11 @@ main() {
   esac
   if ((seconds < 60)); then
     echo "staging-follow-interval: refused — STAGING_FOLLOW_INTERVAL is at least 1min; « $interval » is not" >&2
+    return 1
+  fi
+  # A ceiling too: a typo (« 50h » for « 50min ») would otherwise leave staging days behind master with nothing said.
+  if ((seconds > 3600)); then
+    echo "staging-follow-interval: refused — STAGING_FOLLOW_INTERVAL is at most 1h; « $interval » is not" >&2
     return 1
   fi
 

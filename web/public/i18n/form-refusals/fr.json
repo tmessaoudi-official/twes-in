@@ -23,6 +23,7 @@
       "discount_above_total": "La remise du document dépasse ce que font ses lignes : réduisez-la.",
       "line_discount_above_total": "La remise dépasse ce que fait la ligne : réduisez-la.",
       "lot_not_tracked": "Ce produit n’est suivi ni par lot ni par numéro de série : laissez le lot vide.",
+      "serial_named_once": "Le numéro de série « {{serial}} » est déjà sur une ligne de ce document : un numéro de série est une seule pièce, retirez la ligne en double.",
       "lot_code": "Un lot compte 1 à {{max}} caractères, sans espace ni accent (exemple : L2026-03).",
       "returned_needs_product": "Seule une ligne qui nomme un produit remet des articles en stock : choisissez le produit, ou décochez le retour en stock.",
       "customer_deactivated": "Le client « {{number}} » est désactivé : choisissez-en un autre, ou réactivez-le dans Clients.",

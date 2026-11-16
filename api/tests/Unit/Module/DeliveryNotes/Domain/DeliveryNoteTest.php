@@ -185,6 +185,22 @@ final class DeliveryNoteTest extends TestCase
         ], $validated->lines);
     }
 
+    public function testASerialNumberIsNamedOnceOnANote(): void
+    {
+        // A serial is one piece: named on two lines, it would be handed over twice and found missing only at validation.
+        $serialled = $this->product($this->company);
+        $serialled->track(ProductTracking::Serial, $this->now);
+        $lotted = Product::create($this->company, 'ART-002', new ProductDetails('Colle', null, ProductKind::Goods, '5'), $this->unit('C62'), null, [], $this->now);
+        $lotted->track(ProductTracking::Lot, $this->now);
+        $line = fn (Product $product, ?string $code): DeliveryNoteLineDetails => new DeliveryNoteLineDetails($product, 'Pièce', '1', $this->unit('C62'), '10', [], $code);
+        $create = fn (DeliveryNoteLineDetails ...$lines): DeliveryNote => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), array_values($lines), $this->now);
+
+        $this->assertRefusedFor('lines[1].lotCode', 'serial_named_once', static fn () => $create($line($serialled, 'SN-1'), $line($serialled, 'SN-1')));
+        $note = $create($line($serialled, 'SN-1'), $line($serialled, 'SN-2'), $line($lotted, 'L-1'), $line($lotted, 'L-1'), $line($serialled, null), $line($serialled, null));
+        self::assertCount(6, $note->getLines(), 'two serials, a lot on two lines and lines naming none are kept');
+        $this->assertRefusedFor('lines[1].lotCode', 'serial_named_once', fn () => $note->revise($this->establishment(), $this->customer, new DeliveryNoteHeader(), [$line($serialled, 'SN-2'), $line($serialled, 'SN-2')], $this->now)); // a revision too
+    }
+
     public function testALineCarriesEachOfItsLineTaxesOnce(): void
     {
         $this->assertRefused('taxComponentIds', fn () => new DeliveryNoteLineDetails(null, 'Pièce', '1', $this->unit('C62'), '1', [$this->tax('TIMBRE')]), 'a stamp is charged on the document');

@@ -32,6 +32,7 @@ use App\Module\Invoices\Domain\ValueObject\OperationCategory;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Service\LotCode;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\Event\DomainEvent;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Shared\Domain\Service\TypedText;
@@ -1553,6 +1554,8 @@ class Invoice implements CompanyOwned
     private function linesOfThisCompany(array $lines): array
     {
         $companyId = $this->company->getId();
+        // A serial is one piece: named on two lines it would be sold twice, and found missing only once the stock is moved.
+        $serials = [];
         $sources = [];
         foreach ($lines as $index => $line) {
             if ($line->returned && InvoiceType::CreditNote !== $this->documentType) {
@@ -1566,6 +1569,13 @@ class Invoice implements CompanyOwned
                 throw new InvalidInvoice("lines[$index].sourceDeliveryNoteLineId", 'A document invoices a delivery note line once.', 'line_drawn_once');
             }
             $sources[$source ?? ''] = true;
+            if (null !== $line->product && null !== $line->lotCode && ProductTracking::Serial === $line->product->getTracking()) {
+                $serial = $line->product->getId()->toRfc4122().' '.$line->lotCode;
+                if (isset($serials[$serial])) {
+                    throw new InvalidInvoice("lines[$index].lotCode", \sprintf('The serial number %s is already on a line of this document: a serial is one piece.', $line->lotCode), 'serial_named_once', ['serial' => $line->lotCode]);
+                }
+                $serials[$serial] = true;
+            }
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
                 throw new InvalidInvoice("lines[$index].productId", 'A line sells a product of its own company.', 'unknown_choice');
             }

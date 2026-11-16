@@ -112,3 +112,32 @@ describe('ReportingErrorHandler', () => {
     expect(report).toHaveBeenCalledTimes(1);
   });
 });
+
+// The shipped sender cuts a report to what the operator set (app.client_errors.*), so a long stack still arrives.
+describe('REPORT_CLIENT_ERROR', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('sends the report cut to the bounds the API told', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetch);
+    TestBed.inject(WebParameters).tell({
+      ...WEB_PARAMETERS_UNTIL_TOLD,
+      errorMessageLength: 3,
+      errorStackLength: 2,
+    });
+
+    await TestBed.inject(REPORT_CLIENT_ERROR)({
+      message: 'abcdef',
+      stack: 'xyz',
+      page: '/p',
+      build: null,
+    });
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      message: 'abc',
+      stack: 'xy',
+      page: '/p',
+      build: null,
+    });
+  });
+});

@@ -6,6 +6,12 @@ import { computed, Injectable, signal } from '@angular/core';
 export interface WebParameterValues {
   /** The errors one page load reports; 0 sends none. */
   errorReportsPerPage: number;
+  /** The size in bytes past which the API refuses a report unread (`app.client_errors.max_body`). */
+  errorReportBytes: number;
+  /** The characters of a report's message the API keeps (`app.client_errors.max_message`). */
+  errorMessageLength: number;
+  /** The characters of a report's stack the API keeps (`app.client_errors.max_stack`). */
+  errorStackLength: number;
   /** The minutes a write whose answer never came keeps its key for being sent again. */
   submissionRetryMinutes: number;
   /** How long a password reset link works, in seconds (`app.password_reset.valid_for`). */
@@ -26,6 +32,9 @@ export interface WebParameterValues {
  */
 export const WEB_PARAMETERS_UNTIL_TOLD: WebParameterValues = {
   errorReportsPerPage: 5,
+  errorReportBytes: 16384,
+  errorMessageLength: 500,
+  errorStackLength: 4000,
   submissionRetryMinutes: 15,
   passwordResetSeconds: 3600,
   signupSeconds: 86400,
@@ -47,6 +56,15 @@ export class WebParameters {
   readonly errorReportsPerPage = computed(
     () => (this.told() ?? WEB_PARAMETERS_UNTIL_TOLD).errorReportsPerPage,
   );
+  /** What the API keeps of an error report, which the sender cuts it to before sending. */
+  readonly errorReportBounds = computed(() => {
+    const values = this.values();
+    return {
+      bytes: values.errorReportBytes,
+      messageLength: values.errorMessageLength,
+      stackLength: values.errorStackLength,
+    };
+  });
   /** How long a write whose answer never came keeps its key for being sent again, in milliseconds. */
   readonly submissionRetryMs = computed(
     () => (this.told() ?? WEB_PARAMETERS_UNTIL_TOLD).submissionRetryMinutes * 60 * 1000,

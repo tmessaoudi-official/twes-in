@@ -55,6 +55,9 @@ export class BuildApi {
         ? {
             web: {
               errorReportsPerPage: body.web.errorReportsPerPage,
+              errorReportBytes: body.web.errorReportBytes,
+              errorMessageLength: body.web.errorMessageLength,
+              errorStackLength: body.web.errorStackLength,
               submissionRetryMinutes: body.web.submissionRetryMinutes,
               passwordResetSeconds: body.web.passwordResetSeconds,
               signupSeconds: body.web.signupSeconds,

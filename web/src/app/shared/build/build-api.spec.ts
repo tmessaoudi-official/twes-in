@@ -59,6 +59,9 @@ describe('BuildApi', () => {
         statusUrl: null,
         web: {
           errorReportsPerPage: 0,
+          errorReportBytes: 8192,
+          errorMessageLength: 200,
+          errorStackLength: 1000,
           submissionRetryMinutes: 30,
           passwordResetSeconds: 900,
           signupSeconds: 86400,
@@ -71,6 +74,9 @@ describe('BuildApi', () => {
     );
     expect((await health)?.web).toEqual({
       errorReportsPerPage: 0,
+      errorReportBytes: 8192,
+      errorMessageLength: 200,
+      errorStackLength: 1000,
       submissionRetryMinutes: 30,
       passwordResetSeconds: 900,
       signupSeconds: 86400,

@@ -54,6 +54,10 @@ final readonly class HealthController
         #[Autowire(param: 'app.step_up.valid_for')] private string $stepUpValidFor,
         #[Autowire(param: 'app.records.undoable_for')] private string $recordsUndoableFor,
         #[Autowire(param: 'app.erasure.undoable_for')] private string $erasureUndoableFor,
+        // What the API keeps of a browser's error report, so the page cuts a long stack rather than send one refused whole.
+        #[Autowire(param: ClientErrorBounds::MAX_BODY)] private int $errorReportBytes,
+        #[Autowire(param: ClientErrorBounds::MAX_MESSAGE)] private int $errorMessageLength,
+        #[Autowire(param: ClientErrorBounds::MAX_STACK)] private int $errorStackLength,
     ) {
     }
 
@@ -72,6 +76,9 @@ final readonly class HealthController
                 'passkeys' => ['host' => $this->passkeyHost->current(), 'address' => $this->passkeyHost->address()],
                 'web' => [
                     'errorReportsPerPage' => $this->errorReportsPerPage,
+                    'errorReportBytes' => $this->errorReportBytes,
+                    'errorMessageLength' => $this->errorMessageLength,
+                    'errorStackLength' => $this->errorStackLength,
                     'submissionRetryMinutes' => $this->submissionRetryMinutes,
                     'passwordResetSeconds' => self::seconds($this->passwordResetValidFor),
                     'signupSeconds' => self::seconds($this->signupValidFor),

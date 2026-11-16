@@ -18,12 +18,22 @@ export interface ClientErrorReport {
  */
 export const MAX_REPORTS_PER_PAGE = WEB_PARAMETERS_UNTIL_TOLD.errorReportsPerPage;
 
-/** Sends one report. The sender loads only when a first error happens, so the first page carries none of it. */
+/**
+ * Sends one report, cut to what the API keeps. The sender loads only when a first error happens, so the first page carries
+ * none of it.
+ */
 export const REPORT_CLIENT_ERROR = new InjectionToken<(report: ClientErrorReport) => Promise<void>>(
   'REPORT_CLIENT_ERROR',
   {
     providedIn: 'root',
-    factory: () => async (report) => (await import('./send-client-error')).sendClientError(report),
+    factory: () => {
+      const parameters = inject(WebParameters);
+      return async (report) =>
+        (await import('./send-client-error')).sendClientError(
+          report,
+          parameters.errorReportBounds(),
+        );
+    },
   },
 );
 

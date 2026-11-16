@@ -733,7 +733,9 @@ on (§ 16). Without a destination the layer archives nowhere, so every command b
   `twes-backup <step>` (`run`, `init`, `full`, `diff`, `copy`, `verify`, and a shop's monthly `restore-check`, § 16), which runs by hand the same way:
   `docker compose exec backup twes-backup full`.
 - A deployment storing files in a bucket (`FILES_STORAGE=s3`) has an empty files volume: its files rest on that
-  bucket's own versioning and replication, which its provider configures.
+  bucket's own versioning and replication, which its provider configures. `deploy.sh` refuses `FILES_STORAGE=s3` until
+  the bucket's key, `FILES_S3_SECRET_KEY`, is mounted as a compose secret like every other secret; today files stay on
+  the local volume.
 
 It refuses to start without the bucket and two passphrases. Keep the passphrases somewhere other than the server: a
 backup is unreadable without its passphrase. The passphrases and the bucket's secret key reach pgBackRest and restic as
@@ -894,7 +896,8 @@ if possible: `infra/monitor/compose.yaml`, three services behind a Caddy edge of
 - **GlitchTip** receives the errors. The API reports through Sentry's SDK, and the web posts its own errors to the
   API (`POST /api/client-errors`), which reports them the same way: no script from another site runs in the browser.
   How many one page load sends (`app.client_errors.per_page`, 5; 0 sends none) and the report's sizes (`max_body`,
-  `max_message`, `max_stack`) are operator parameters in `api/config/services.yaml`, held to their bounds when the API starts.
+  `max_message`, `max_stack`) are operator parameters in `api/config/services.yaml`, held to their bounds when the API starts;
+  the web reads all four from `/api/health` and cuts a report to them before sending, so a long stack arrives shortened.
   Addresses, quoted values and long numbers are masked before anything leaves the instance; an error report is kept 30
   days. Nobody signs up: the operator's account is made once, below.
 - Its **PostgreSQL**, for GlitchTip alone.

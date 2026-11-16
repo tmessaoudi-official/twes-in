@@ -18,9 +18,17 @@ use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\EstablishmentResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
-/** @implements ProviderInterface<EstablishmentResource> */
+/**
+ * The establishments, read under the company's own permission or under the customer screen's, product.read: a role made
+ * for the screen holds the second alone and picks its place from this list, which would otherwise answer it as a stranger.
+ *
+ * @implements ProviderInterface<EstablishmentResource>
+ */
 final readonly class EstablishmentCollectionProvider implements ProviderInterface
 {
+    /** The customer screen's own read, named here as the products module grants it (Tenancy imports no module). */
+    private const string SCREEN_PERMISSION = 'product.read';
+
     public function __construct(private ManageEstablishments $manage, private CompanyGuard $guard)
     {
     }
@@ -28,7 +36,7 @@ final readonly class EstablishmentCollectionProvider implements ProviderInterfac
     /** @return list<EstablishmentResource> */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::READ_PERMISSION);
+        $company = $this->guard->companyForActingUnderAny(CompanyPath::identifier($uriVariables, 'companyId'), [CompanyProfileResource::READ_PERMISSION, self::SCREEN_PERMISSION]);
         $pattern = $this->manage->codePattern($company);
 
         return array_map(fn (Establishment $establishment) => EstablishmentResource::of($establishment, $pattern, $this->manage->isCodeLocked($company, $establishment), $this->manage->contactsToCheck($company, $establishment)), $this->manage->list($company));

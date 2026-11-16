@@ -47,8 +47,8 @@ Untried. A small VM, like production's but smaller, at a provider of your choice
    name) and its own Gatus lines, kept off the public status page and alerting you alone.
 6. The timer: `sudo cp /srv/twes-in/infra/staging/twes-staging-follow.{service,timer} /etc/systemd/system/`, then
    `sudo cp /srv/twes-in/infra/staging/staging-follow.env.example /etc/twes-in/staging-follow.env` and edit it if the paths
-   differ (`STAGING_FOLLOW_INTERVAL`, how often it asks the registry: at least `1min`, `5min` when unset), then write
-   that interval over the timer (it refuses one below a minute):
+   differ (`STAGING_FOLLOW_INTERVAL`, how often it asks the registry: from `1min` to `1h`, `5min` when unset), then write
+   that interval over the timer (it refuses one below a minute or above an hour):
 
    ```
    sudo bash /srv/twes-in/scripts/deploy/staging-follow-interval.sh /etc/twes-in/staging-follow.env /etc/systemd/system/twes-staging-follow.timer.d

@@ -23,6 +23,7 @@
       "discount_above_total": "The document’s discount is more than its lines come to: lower it.",
       "line_discount_above_total": "The discount is more than the line comes to: lower it.",
       "lot_not_tracked": "This product is tracked by neither lot nor serial number: leave the lot empty.",
+      "serial_named_once": "Serial number “{{serial}}” is already on a line of this document: a serial number is a single piece, remove the duplicate line.",
       "lot_code": "A lot is 1 to {{max}} characters, without spaces or accents (example: L2026-03).",
       "returned_needs_product": "Only a line naming a product puts goods back in stock: choose the product, or untick the return to stock.",
       "customer_deactivated": "Customer “{{number}}” is deactivated: choose another, or reactivate it in Customers.",

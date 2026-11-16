@@ -30,7 +30,11 @@ out=$(run ''); check "unset is five minutes, as the timer says" $? 0 "$out" $'On
 out=$(run $'STAGING_FOLLOW_INTERVAL=\n'); check "empty is five minutes" $? 0 "$out" $'OnUnitInactiveSec=\nOnUnitInactiveSec=5min'
 out=$(run $'STAGING_FOLLOW_INTERVAL=1min\n'); check "a minute, the floor, is kept" $? 0 "$out" "OnUnitInactiveSec=1min"
 out=$(run $'STAGING_FOLLOW_INTERVAL=60s\n'); check "sixty seconds is a minute, kept" $? 0 "$out" "OnUnitInactiveSec=60s"
-out=$(run $'STAGING_FOLLOW_INTERVAL=2h\n'); check "two hours is kept" $? 0 "$out" "OnUnitInactiveSec=2h"
+out=$(run $'STAGING_FOLLOW_INTERVAL=1h\n'); check "an hour, the ceiling, is kept" $? 0 "$out" "OnUnitInactiveSec=1h"
+out=$(run $'STAGING_FOLLOW_INTERVAL=3600s\n'); check "3600 seconds is an hour, kept" $? 0 "$out" "OnUnitInactiveSec=3600s"
+# A typo (« 50h » for « 50min ») would leave staging days behind master with nothing said.
+out=$(run $'STAGING_FOLLOW_INTERVAL=61min\n'); check "above an hour is refused" $? 1 "$out" "no drop-in"
+out=$(run $'STAGING_FOLLOW_INTERVAL=50h\n'); check "the refusal names the ceiling" $? 1 "$out" "at most 1h"
 out=$(run $'STAGING_FOLLOW_INTERVAL=3min\nSTAGING_FOLLOW_INTERVAL=10min\n'); check "the last line wins, as systemd reads an env file" $? 0 "$out" "OnUnitInactiveSec=10min"
 out=$(run $'STAGING_FOLLOW_INTERVAL=59s\n'); check "below a minute is refused" $? 1 "$out" "no drop-in"
 out=$(run $'STAGING_FOLLOW_INTERVAL=59s\n'); check "the refusal names the floor" $? 1 "$out" "at least 1min"

@@ -43,6 +43,27 @@ final class EstablishmentsTest extends ApiTestCase
         self::assertFalse($rows[0]['codeLocked']);
     }
 
+    public function testTheCustomerScreensOwnPermissionReadsThePlaceList(): void
+    {
+        // A custom role made for the customer screen holds product.read, what the screen itself reads, and not
+        // company.read: its place picker would otherwise stay empty, with nothing said.
+        $this->signedIn(['product.read']);
+
+        $this->getJson($this->path());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Acme'], array_column($this->jsonList(), 'name'));
+    }
+
+    public function testARoleWithoutEitherPermissionIsAnsweredAsAStranger(): void
+    {
+        $this->signedIn(['customer.read']);
+
+        $this->getJson($this->path());
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testAnAdministratorAddsAnEstablishmentThatNumbersItsOwnDocuments(): void
     {
         $this->signedIn(['company.read', 'company.settings']);

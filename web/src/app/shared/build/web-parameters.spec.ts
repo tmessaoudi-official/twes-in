@@ -9,6 +9,9 @@ describe('WebParameters', () => {
 
     expect(WEB_PARAMETERS_UNTIL_TOLD).toEqual({
       errorReportsPerPage: 5,
+      errorReportBytes: 16384,
+      errorMessageLength: 500,
+      errorStackLength: 4000,
       submissionRetryMinutes: 15,
       passwordResetSeconds: 3600,
       signupSeconds: 86400,
@@ -17,6 +20,11 @@ describe('WebParameters', () => {
       erasureUndoableSeconds: 86400,
     });
     expect(parameters.errorReportsPerPage()).toBe(5);
+    expect(parameters.errorReportBounds()).toEqual({
+      bytes: 16384,
+      messageLength: 500,
+      stackLength: 4000,
+    });
     expect(parameters.submissionRetryMs()).toBe(15 * 60 * 1000);
     expect(parameters.passwordResetSeconds()).toBe(3600);
   });
@@ -31,6 +39,9 @@ describe('WebParameters', () => {
     });
     parameters.tell({
       errorReportsPerPage: 12,
+      errorReportBytes: 8192,
+      errorMessageLength: 200,
+      errorStackLength: 1000,
       submissionRetryMinutes: 30,
       passwordResetSeconds: 900,
       signupSeconds: 7200,
@@ -40,6 +51,11 @@ describe('WebParameters', () => {
     });
 
     expect(parameters.errorReportsPerPage()).toBe(12);
+    expect(parameters.errorReportBounds()).toEqual({
+      bytes: 8192,
+      messageLength: 200,
+      stackLength: 1000,
+    });
     expect(parameters.submissionRetryMs()).toBe(30 * 60 * 1000);
     // The durations the screens state are the operator's, never the shipped hour.
     expect(parameters.passwordResetSeconds()).toBe(900);
