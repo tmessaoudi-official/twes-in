@@ -7,7 +7,10 @@ line a search for its symbol found, a dated snapshot: each batch starts by readi
 writing, the test that holds it as the default. Every parameter keeps today's behaviour as its default. The 13:19
 test of SPEC § 7 (does it change what a fiscal document prints or computes, or loosen a ruled refusal or a security
 floor) was applied to every pick: one a ruling already answers gets no parameter, one only the developer can answer
-goes to the decision desk, and the rest carry their bound here.
+goes to the decision desk, and the rest carry their bound here. That reading looked at each pick and its default;
+each batch therefore starts by listing every parameter's other options and applying the same test to them, since an
+option, not the default, is what can loosen a ruling (B14 against the erasure rulings, A75 against the 2026-10-28
+00:13 ruling that lots keep their refusal).
 
 Counts: 61 to build (new 57, an existing setting extended 3, partly built 1); already built 19; merged into another pick's key 5; planned on their own row 2 (C94 row 40, B79 row 132; S0.10i's « 7 already planned » was a key search that named only these two, and a search of the plan by id and by key finds no other); on the desk 6, and A104 both on the desk and in B4, so 7 desk cards (q-w4-*: A41, A2, A54, B13, B35, A104, A49); no reader yet 1; dropped 7 (A48, A73, B80 at triage; C16, C161, C114, A52 because a recorded ruling decides, and A93 keeps only its raise-only half). The estimate of 70 is replaced by 61.
 
