@@ -4,7 +4,7 @@
 # (installing docker-ce makes docker answer), curl, gpg (the key's fingerprint as each case says), dpkg, systemctl,
 # usermod and docker. Each writes down how it was called.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR
 trap 'rm -rf "$TMPDIR"' EXIT
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 pass=0; fail=0

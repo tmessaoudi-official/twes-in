@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/logical-direction.sh
-pass=0; fail=0
+pass=0; fail=0; skipped=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 # A tree shaped like the web's: templates and components under src/app, the global styles beside it.
 tree() {
@@ -75,12 +75,18 @@ printf "export const x = 'pl-4';\n" > "$d/web/src/app/api/types.gen.ts"
 out=$(run "$d"); check "specs and the generated API types are left out" $? 0 "$out" "OK"
 
 d=$(tree); chmod 000 "$d/web/src/app/page.html"
-out=$(run "$d"); status=$?; chmod 644 "$d/web/src/app/page.html"; check "a file that cannot be read is refused, not read as clean" "$status" 1 "$out" "page.html: cannot be read"
+# An account that reads anything (root, as a cloud session runs) cannot be shown a file it may not read: such a case is
+# skipped, said and counted, never passed.
+if [[ -r "$d/web/src/app/page.html" ]]; then skipped=$((skipped+1)); echo "  skip a file that cannot be read (this account reads anything)"
+else out=$(run "$d"); status=$?; check "a file that cannot be read is refused, not read as clean" "$status" 1 "$out" "page.html: cannot be read"; fi
+chmod 644 "$d/web/src/app/page.html"
 
 d=$(tree); mkdir "$d/web/src/app/closed"; chmod 000 "$d/web/src/app/closed"
-out=$(run "$d"); status=$?; chmod 755 "$d/web/src/app/closed"; check "a folder grep cannot enter is refused, not read as clean" "$status" 1 "$out" "could not search"
+if [[ -r "$d/web/src/app/closed" && -x "$d/web/src/app/closed" ]]; then skipped=$((skipped+1)); echo "  skip a folder grep cannot enter (this account enters anything)"
+else out=$(run "$d"); status=$?; check "a folder grep cannot enter is refused, not read as clean" "$status" 1 "$out" "could not search"; fi
+chmod 755 "$d/web/src/app/closed"
 
 d=$(tree); rm -r "$d/web/src/app"
 out=$(run "$d"); check "a missing web/src/app is refused, not skipped" $? 1 "$out" "found no web/src/app"
 
-echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
+echo; echo "$pass passed, $fail failed$( ((skipped)) && echo ", $skipped skipped")"; [[ $fail -eq 0 ]]

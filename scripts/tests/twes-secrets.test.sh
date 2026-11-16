@@ -5,7 +5,7 @@
 # <NAME>_FILE left to its reader; an empty file or a bad name refused by its name, never its value; no directory, the
 # command run as it is. And twes-backup, started by `docker compose exec`, which skips the entrypoint, goes through it.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 SHIM=$ROOT/infra/postgres/twes-secrets
 pass=0; fail=0

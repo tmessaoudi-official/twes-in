@@ -3,6 +3,9 @@
 # extra_ca, which each downloading step mounts for itself (infra/**/Dockerfile) and adds to what it already trusts. TLS
 # checks stay on. The Makefile adds this file to COMPOSE_FILE only when CCS_EXTRA_CA_FILE names a file that exists, so a
 # computer and CI build exactly as before; a secret is in no image layer (scripts/gates/build-extra-ca.sh holds the rest).
+# The toolchain's runs (composer install, npm ci, git) go through the same proxy, so they are handed the same file,
+# mounted read-only, with the variable each tool reads pointed at it: there every connection is the proxy's, whose CA
+# is all they need.
 services:
   api:
     build:
@@ -25,6 +28,21 @@ services:
   tools:
     build:
       secrets: [extra_ca]
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+  web-tools:
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
 secrets:
   extra_ca:
     file: ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}

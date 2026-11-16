@@ -38,26 +38,30 @@ export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
 BUILD_ENV = $(shell bash scripts/build-version.sh --env)
 # A directory of the host's own for the toolchain's temporary files, made here as this user or Docker makes it as root.
 # A worker count handed in (`make test-api PARATEST_PROCESSES=4`) reaches the suite that reads it (api/tests/parallel.php).
-TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T $(if $(PARATEST_PROCESSES),-e PARATEST_PROCESSES=$(PARATEST_PROCESSES)) tools
-WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
+TOOLS_RUN := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T $(if $(PARATEST_PROCESSES),-e PARATEST_PROCESSES=$(PARATEST_PROCESSES))
+WEB_TOOLS_RUN := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T
+TOOLS := $(TOOLS_RUN) tools
+WEB_TOOLS := $(WEB_TOOLS_RUN) web-tools
 # Runs a command with the published fiscal schemas fetched anew into the toolchain's temporary directory, outside the
 # tree, and named by the variables their tests read (scripts/fiscal/fetch-xsd.sh): a source that does not answer is
 # said as not run, a schema changed at its source stops the run. Inside the tools container, where TOOLS_TMP is mounted.
 WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
+.PHONY: bootstrap rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
 
+# CMD reaches the container as a variable of its own, never spliced into the recipe's quotes, so a command quoting
+# with either kind of quote runs as written (scripts/tests/tools-cmd.test.sh); make still reads its `$` first.
 tools:         ## CMD='…' in the PHP toolchain container, from the repo root: what used to run on the host's PHP, e.g. make tools CMD='cd api && bin/console cache:clear'
 tools: tools-image
-	$(TOOLS) sh -c '$(CMD)'
+	$(TOOLS_RUN) -e CMD tools sh -c 'eval "$$CMD"'
 
 web-tools:     ## CMD='…' in the Node toolchain container, from web/: e.g. make web-tools CMD='npm run icons'
 web-tools: web-tools-image
-	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && $(CMD)'
+	$(WEB_TOOLS_RUN) -e CMD web-tools sh -c '$(NPM_INSTALL) && eval "$$CMD"'
 
 tools-image:   ## build the PHP toolchain image (a no-op when nothing under infra/api changed)
 	docker compose --profile tools build -q tools
@@ -135,6 +139,10 @@ in-api-openapi:
 
 api-types: api-openapi web-tools-image   ## regenerate web/src/app/api (types only, gitignored)
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run api:types'
+
+bootstrap:     ## what make check reads and no clone carries, made once after a clone or a dependency change: the API's packages, the web's, the generated API types and the icon font
+bootstrap: api-types
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run icons'
 
 down:          ## stop it, keep the database volume
 	docker compose down
@@ -235,6 +243,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/dependency-licences.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/spdx-headers.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/executable-bits.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-tmpdir.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icon-buttons-named.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/password-eyes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/pastes-kept-whole.test.sh
@@ -326,6 +335,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/count-lines.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/rc-lane.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/chaos.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/tools-cmd.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
@@ -352,6 +362,7 @@ in-gate-licences:
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh
+	bash scripts/gates/test-tmpdir.sh
 	bash scripts/gates/icon-buttons-named.sh
 	bash scripts/gates/password-eyes.sh
 	bash scripts/gates/pastes-kept-whole.sh

@@ -13,7 +13,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 spec="$root/docs/SPEC.md"
 
 if [[ "$(git -C "$root" rev-parse --is-shallow-repository 2>&1)" != "false" ]]; then
-  printf 'decision-stamps: FAIL — a shallow clone cannot say when a line was written: check out the whole history (fetch-depth: 0)\n'
+  printf 'decision-stamps: FAIL — a shallow clone cannot say when a line was written: check out the whole history (fetch-depth: 0 in CI; git fetch --unshallow in a clone made by hand)\n'
   exit 1
 fi
 if [[ ! -f "$spec" ]]; then

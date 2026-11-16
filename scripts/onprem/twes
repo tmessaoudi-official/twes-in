@@ -547,7 +547,9 @@ schedule() {
   rm -rf "$units"
   say "scheduled: twes-in-start.service at boot, twes-in-tick.timer every quarter hour, as user $account"
 }
-as_root() { if [[ "$(id -u)" == 0 ]]; then "$@"; else sudo "$@"; fi; }
+# The command itself, as sudo runs it, never one of this script's functions of the same name: as root, `install` was
+# twes install, which scheduled, which installed again, until bash fell over.
+as_root() { if [[ "$(id -u)" == 0 ]]; then command "$@"; else sudo "$@"; fi; }
 
 start() {
   local address why

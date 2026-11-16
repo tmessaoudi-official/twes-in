@@ -7,7 +7,7 @@
 # something exits 1. The directory is removed either way, once what was in it has been named.
 set -uo pipefail
 [[ $# -ge 1 ]] || { echo "usage: $(basename "$0") <test-script> [args…]" >&2; exit 2; }
-own=$(mktemp -d)
+own=$(mktemp -d) || { echo "no-leftovers: no temporary folder could be made for $1" >&2; exit 2; }
 # None of the machine's own git settings either: a developer's commit.gpgsign would sign a test's fixtures with a real key.
 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 TMPDIR="$own" bash "$@"
 status=$?

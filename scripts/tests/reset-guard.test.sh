@@ -5,9 +5,9 @@
 # of the Makefile in a directory of its own, docker a stand-in writing down what it was asked: nothing here can reach
 # the tree's own volumes or files.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-pass=0; fail=0
+pass=0; fail=0; skipped=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 mkdir -p "$TMPDIR/bin"
 # The stand-in answers as a shop's stack would when asked: SHOP_ENV, a container of the project started with
@@ -72,7 +72,7 @@ out=$(cd "$d" && TWES_VALUES="$TMPDIR/elsewhere.env" HOME="$d/home" PATH="$TMPDI
 check "  values named by TWES_VALUES are read too" $? 2 "$out" "refused"
 
 d=$(tree "TWES_INSTALL=onprem\n"); chmod 000 "$d/home/.twes-in/install.env"
-if [[ -r "$d/home/.twes-in/install.env" ]]; then echo "  skip an unreadable values file (this account reads anything)"
+if [[ -r "$d/home/.twes-in/install.env" ]]; then skipped=$((skipped+1)); echo "  skip an unreadable values file (this account reads anything)"
 else out=$(reset "$d" CONFIRM=yes); check "  a values file it cannot read: refused, not taken for none" $? 2 "$out" "cannot be read"; fi
 
 # Issued documents: the database the volume holds is counted by the application itself before anything goes.
@@ -132,4 +132,4 @@ check "  a shop's computer refused, under its own name" $? 2 "$out" "make reset-
 [[ "$(calls)" != *"compose run"* ]]; check "  and nothing run" $? 0 "$(calls)" ""
 d=$(tree ""); out=$(SHOP_VOLUME=1 emptied "$d"); check "  nor where a shop's backup volume exists" $? 2 "$out" "twes-in_backup-local"
 
-echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
+echo; echo "$pass passed, $fail failed$( ((skipped)) && echo ", $skipped skipped")"; [[ $fail -eq 0 ]]

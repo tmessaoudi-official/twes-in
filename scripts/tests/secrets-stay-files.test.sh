@@ -5,7 +5,7 @@
 # container and the secret, never the value; an empty value is not looked for, since every environment holds it; and
 # it never passes on nothing, with no secret to look for or no container to read. Compose and Docker are stood in for.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }

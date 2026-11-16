@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/build-extra-ca.sh
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
@@ -28,6 +28,13 @@ services:
     <<: *worker
   mailpit:
     image: axllent/mailpit
+  tools:
+    profiles: [tools]
+    build:
+      context: .
+  web-tools:
+    image: twes-in-web-tools
+    profiles: [tools]
 EOF
   cat > "$d/compose.extra-ca.yaml" <<'EOF'
 services:
@@ -40,6 +47,24 @@ services:
   demo-worker:
     build:
       secrets: [extra_ca]
+  tools:
+    build:
+      secrets: [extra_ca]
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+  web-tools:
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
 secrets:
   extra_ca:
     file: ${CCS_EXTRA_CA_FILE:?}
@@ -78,6 +103,16 @@ out=$(run "$d"); check "a live service extending a built one (compose.live.yaml)
 
 d=$(tree); printf 'ps:\n\tdocker build --load -f infra/ps/Dockerfile infra/ps\n' >> "$d/Makefile"
 out=$(run "$d"); check "a docker build in the Makefile without the secret is refused" $? 1 "$out" "Makefile:4"
+
+# What runs in the toolchain (composer install, npm ci, git) reaches the network through the same proxy as a build.
+d=$(tree); python3 -I -c 'import sys,re; p=sys.argv[1]; s=open(p).read(); open(p,"w").write(re.sub(r"  web-tools:\n(    .*\n|      .*\n)+", "", s))' "$d/compose.extra-ca.yaml"
+out=$(run "$d"); check "a toolchain service the overlay leaves without the CA at run time is refused" $? 1 "$out" "web-tools"
+
+d=$(tree); python3 -I -c 'import sys; p=sys.argv[1]; s=open(p).read(); i=s.index("  tools:"); j=s.index("COMPOSER_CAFILE", i); k=s.index("\n", j); open(p,"w").write(s[:s.rindex("\n", 0, j)]+s[k:])' "$d/compose.extra-ca.yaml"
+out=$(run "$d"); check "a toolchain service missing one tool's variable is refused, naming it" $? 1 "$out" "tools: COMPOSER_CAFILE"
+
+d=$(tree); sed -i 's/profiles: \[tools\]/profiles: [other]/' "$d/compose.yaml"
+out=$(run "$d"); check "no toolchain service found is refused, not read as none to check" $? 1 "$out" "no service under the tools profile"
 
 d=$(tree); rm "$d/compose.extra-ca.yaml"
 out=$(run "$d"); check "a missing overlay is refused, not skipped" $? 1 "$out" "compose.extra-ca.yaml"

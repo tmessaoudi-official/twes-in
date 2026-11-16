@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR
 trap 'GNUPGHOME="$TMPDIR/gnupg" gpgconf --kill all 2>/dev/null; rm -rf "$TMPDIR"' EXIT  # every case's fixture goes with it
 # None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1

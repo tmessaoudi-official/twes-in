@@ -9,7 +9,9 @@
 #     --insecure, secure-http false, sslverify false);
 #   - compose.extra-ca.yaml, which the Makefile adds when CCS_EXTRA_CA_FILE names a file, gives the secret to every
 #     service compose.yaml builds;
-#   - every `docker build` the Makefile runs passes $(EXTRA_CA_SECRET).
+#   - every `docker build` the Makefile runs passes $(EXTRA_CA_SECRET);
+#   - every toolchain service (compose.yaml, profile `tools`) is handed the file at run time too, mounted read-only at
+#     /etc/ccs-ca.crt with the variable each tool reads pointed at it, since composer install, npm ci and git run there.
 # Not seen, by design: an `ADD <url>` (infra/postgres's supercronic), which BuildKit fetches itself, outside any RUN, so
 # no secret mount reaches it; that image is built only by the backup overlays, never by make check or make gate.
 # Usage: build-extra-ca.sh [--root DIR]
@@ -110,6 +112,36 @@ else:
             print('compose.extra-ca.yaml gives the service %s, which compose.yaml or compose.live.yaml builds, no extra_ca build secret' % s)
     if not re.search(r'^secrets:\s*\n  extra_ca:\s*\n    file:', text, re.M):
         print('compose.extra-ca.yaml declares no extra_ca secret read from a file')
+    # The toolchain's services, by their profile, and what the overlay says for each, by indentation.
+    toolchain, service = [], None
+    cp = os.path.join(root, 'compose.yaml')
+    for line in (open(cp, encoding='utf-8') if os.path.exists(cp) else []):
+        m = re.match(r'^  ([A-Za-z0-9_-]+):', line)
+        if m:
+            service = m.group(1)
+        elif service and re.match(r'^    profiles:.*\btools\b', line) and service not in toolchain:
+            toolchain.append(service)
+    blocks, service = {}, None
+    for line in text.split('\n'):
+        m = re.match(r'^  ([A-Za-z0-9_-]+):', line)
+        if m:
+            service = m.group(1); blocks[service] = ''
+        elif re.match(r'^\S', line):
+            service = None
+        elif service:
+            blocks[service] += line + '\n'
+    if not toolchain:
+        print('compose.yaml has no service under the tools profile: the toolchain runs could not be checked')
+    for svc in toolchain:
+        block = blocks.get(svc)
+        if block is None:
+            print('compose.extra-ca.yaml hands the toolchain service %s no CA at run time' % svc)
+            continue
+        if not re.search(r'^\s+- \$\{CCS_EXTRA_CA_FILE[^}]*\}:/etc/ccs-ca\.crt:ro\s*$', block, re.M):
+            print('compose.extra-ca.yaml: %s: the CA is not mounted read-only at /etc/ccs-ca.crt' % svc)
+        for var in ('SSL_CERT_FILE', 'NODE_EXTRA_CA_CERTS', 'COMPOSER_CAFILE', 'REQUESTS_CA_BUNDLE'):
+            if not re.search(r'^\s+' + var + r':\s*/etc/ccs-ca\.crt\s*$', block, re.M):
+                print('compose.extra-ca.yaml: %s: %s does not name the mounted CA' % (svc, var))
 
 mp = os.path.join(root, 'Makefile')
 if os.path.exists(mp):
@@ -125,4 +157,4 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'build-extra-ca: OK — every download in a build mounts the optional proxy CA, every built service and docker build is handed it, no TLS check is off\n'
+printf 'build-extra-ca: OK — every download in a build mounts the optional proxy CA, every built service and docker build is handed it, every toolchain run too, no TLS check is off\n'

@@ -94,8 +94,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 
 ## Git
 
-- Autonomous `git add`, `commit` and `push` are authorised for CI-green, self-contained work
-  on **`master`**, the only pushed branch. Plain `git push`, never `-u`. No `--force`, no history
+- On the developer's machine, autonomous `git add`, `commit` and `push` are authorised for CI-green, self-contained
+  work on **`master`**, the only branch pushed from there. Plain `git push`, never `-u`. No `--force`, no history
   rewrite of master, no pull request. Parallel writers (docs/SPEC.md § 7, 2026-10-07 19:34) work on
   local branches in their own worktrees, never pushed, which the main session rebases onto master.
 - Identity, verified including case before the first commit of a session:
@@ -107,10 +107,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `git status --porcelain` in the same command as the commit.
 - **A cloud session** (`CLAUDE_CODE_REMOTE=true`, claude.ai) cannot sign, so it never lands on master: it commits and
   pushes only the branch its harness gave it (`claude/…`, `ccr-…`), which CI runs as it runs master; the
-  `master-signed` ruleset refuses an unsigned commit there anyway. It runs `make check` on each change and `make gate`
-  once before it says the branch is ready (the setup script starts Docker; its builds trust the agent proxy's CA, which
-  `CCS_EXTRA_CA_FILE` names, through the optional BuildKit secret `extra_ca` of `compose.extra-ca.yaml`, never by switching
-  TLS checks off), and ends with the line the developer runs on
+  `master-signed` ruleset refuses an unsigned commit there anyway. It runs `make bootstrap` once, `make check` on each change and `make gate`
+  once before it says the branch is ready (the setup script starts Docker; its builds and toolchain runs trust the agent proxy's CA, which
+  `CCS_EXTRA_CA_FILE` names, through `compose.extra-ca.yaml`: the optional BuildKit secret `extra_ca` for a build, the file
+  mounted into `tools` and `web-tools` for a run, never by switching TLS checks off), and ends with the line the developer runs on
   the PC: `land.sh /stack/projects/twes-in <branch>` (claude-code-setup), which re-signs every commit as the developer,
   strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
   The session must have **claude-code-setup selected as a second repository**: without it nothing installs the framework
@@ -137,6 +137,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   - `dependency-licences.php` (five lists, each a maximum, `--dump-rules`; it also checks each `web/src/third-party/<name>/COMPONENTS.json`, what a shipped wasm compiles in, against the lock)
   - `spdx-headers.sh`
   - `executable-bits.sh`
+  - `test-tmpdir.sh` (every shell test, and the runner they go through, stops when its temporary folder cannot be made: `TMPDIR=$(mktemp -d) || exit 1`; an empty one turned every fixture path and cleanup into one under `/`; a floor of 100 tests)
   - `decision-stamps.sh` (no Decisions Log stamp later than the commit `git blame` names for it, or than now while uncommitted; a late one found afterwards gains « (stamp corrected: written at HH:MM, commit <sha>) »; CI's licence job checks out the whole history for it)
   - `signed-commits.sh` (every commit since the newest release tag carries a good signature by `infra/onprem/release-key.asc`, read into a keyring of its own, as CI holds no other; in the snapshot gate's worktree alone, `.claude/worktrees/gate`, its own unsigned snapshot commit is read as its parent; on a cloud branch or in a cloud session, never on master or `release/*`, the unsigned commits are listed as pending land.sh's re-signing, compose handing the tools container `GITHUB_REF_NAME` and `CLAUDE_CODE_REMOTE`)
   - `docs-run-lines.sh` (every `docker compose … run` in a code span or block of `docs/*.md` and `TODO.md` reads `< /dev/null` or a pipe, or says `<!-- run-input: <why> -->`; a floor of 6)
@@ -209,7 +210,7 @@ those three is needed. Run them through `make`, which hands compose the uid, the
 | `make count-lines` (`REV=…`) | `tools` | counting lines by hand or with a script of the session: what stands at a revision, read from git, and the history's added and removed under the same exclusions, which it holds equal (exit 1 otherwise), written to `var/claude/lines_of_code.txt` |
 | `make audit` | `tools`, `web-tools` | `composer audit`, `npm audit --omit=dev --audit-level=high`; CI's `licences` job runs it |
 | `make php-lint FILE=…` | `tools` | `php -l`, what `.claude/hooks/lint-on-write.sh` runs after every edit |
-| `make tools CMD='…'`, `make web-tools CMD='…'` | `tools`, `web-tools` | any other `composer`, `bin/console`, `npm`, `npx` command |
+| `make tools CMD='…'`, `make web-tools CMD='…'` | `tools`, `web-tools` | any other `composer`, `bin/console`, `npm`, `npx` command; CMD runs as written, quotes of either kind included (make still reads its `$`, so write `$$`) |
 | CI jobs `licences`, `api`, `web`, `e2e` | the same | `setup-php`, `setup-node`, a postgres service container, `apt-get install logrotate` |
 
 Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Makefile and the hook call on their own

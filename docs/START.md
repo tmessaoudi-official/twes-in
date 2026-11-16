@@ -55,6 +55,7 @@ The Makefile is the one entry point:
 | You want | Run | Where it runs |
 |---|---|---|
 | the whole stack | `make up` | the stack's own services |
+| what `make check` reads that a fresh clone lacks (the API's and the web's packages, the API types, the icon font) | `make bootstrap`, once after a clone or a dependency change | `tools` and `web-tools` |
 | every gate | `make gate` (= `gate-licences`, `gate-api`, `gate-web`) | `tools` (PHP 8.5, the gates' own tools, the Docker CLI) and `web-tools` (Node 26, Playwright's system libraries) |
 | one API suite | `make test-api` (starts postgres first; `composer test`: the test database migrated, then the suite on paratest, a copy of it and a cache directory a worker, a worker a processor or `PARATEST_PROCESSES`), or `make tools CMD='cd api && vendor/bin/phpunit tests/Unit'` for one part on one process (start postgres first: `docker compose up -d --wait postgres`) | `tools` |
 | the web unit tests | `make test-web` | `web-tools` |

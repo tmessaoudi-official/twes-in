@@ -29,7 +29,7 @@ the end of § Lessons here.
   the failures — an absent `Tests N passed` line is the tell (2026-09-20).
 - A test's `mktemp -d` with no `trap … EXIT` stays in the toolchain's TMPDIR, which lives on the host's tmpfs across runs: 35,098
   per-case git fixtures (about 22 inodes each) used all of `/tmp`'s inodes and froze every session on the machine (2026-10-09).
-  Every gate test now runs through `scripts/gates/tests/no-leftovers.sh`; a new one starts with the `TMPDIR=$(mktemp -d)` line.
+  Every gate test now runs through `scripts/gates/tests/no-leftovers.sh`; a new one starts with the `TMPDIR=$(mktemp -d) || exit 1` line (`test-tmpdir.sh`).
   A PHP test's `tempnam` is the same leak: `ApiTestCase::uploadFile` left one file per upload, 142 a suite run, until it removed it.
 - A test that makes commits or tags exports `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` (and `no-leftovers.sh`
   does for every gate test): on the host, the developer's global `commit.gpgsign` signed every fixture with the real

@@ -345,6 +345,10 @@ when@test:
         app.password.breach_check_enabled: false
         # Files a test stores stay out of the development volume.
         app.files.directory: '%kernel.project_dir%/var/test-files'
+        # The deep health check measures the machine's real disk, which a test cannot choose (a cloud VM read 0.09): a
+        # share is never below 0, so no case fails on the machine it runs on. The floor's two sides are DeepHealth's
+        # unit test, at a minimum of its own.
+        app.health.disk_free_minimum: 0
     services:
         # Requests reach no Gotenberg either: the fake answers a PDF header followed by the page, which a test can read.
         # FacturXTest's compliant case alone drives the real one, through its adapters built by hand.

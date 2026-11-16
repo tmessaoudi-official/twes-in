@@ -4,7 +4,7 @@
 # deploy.sh (it writes down how it was called and keeps the history as the real one does), curl (the edge's health and
 # the mail relay) and the probes of the network address.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR
 # Every case's fixture is made here and goes with it, each keyring's agents stopped first.
 trap 'for g in "$TMPDIR"/*gnupg "$TMPDIR"/*/etc/release-keys; do [[ -d "$g" ]] && GNUPGHOME=$g gpgconf --kill all 2>/dev/null; done; rm -rf "$TMPDIR"' EXIT
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -165,6 +165,9 @@ printf '#!/usr/bin/env bash\n[[ -z "${SEAL_FAILS:-}" || "$*" != *"$SEAL_FAILS"* 
 # sudo and systemctl: what they were asked is written down; systemctl fails when SYSTEMCTL_EXIT says so.
 printf '#!/usr/bin/env bash\necho "sudo $*" >> "$TMPDIR/systemd.calls"\nexec "$@"\n' > "$TMPDIR/bin/sudo"
 printf '#!/usr/bin/env bash\necho "systemctl $*" >> "$TMPDIR/systemd.calls"\nexit "${SYSTEMCTL_EXIT:-0}"\n' > "$TMPDIR/bin/systemctl"
+# id: the account's number is the case's (AS_UID, else an ordinary account's), so no case reads the account the suite
+# runs as (root, in a cloud session); every other question goes to the real id.
+printf '#!/usr/bin/env bash\n[[ $# -eq 1 && "$1" == -u ]] && { echo "${AS_UID:-4242}"; exit 0; }\nexec %s "$@"\n' "$(command -v id)" > "$TMPDIR/bin/id"
 chmod +x "$TMPDIR/bin/"* "$TMPDIR/stand-ins/deploy.sh"
 
 # An origin with two releases, each carrying this script and the stand-in deploy.sh, and a shop's clone of it at none.
@@ -258,8 +261,8 @@ out=$(twes "$d" start); check "Docker up already: no word about waiting" $? 0 "$
 unit() { cat "$1/units/$2"; }
 systemd_calls() { [[ -f "$TMPDIR/systemd.calls" ]] && tr '\n' '|' < "$TMPDIR/systemd.calls"; }
 d=$(installed)
-out=$(twes "$d" schedule); check "schedule on Linux: done" $? 0 "$out" "scheduled: twes-in-start.service at boot, twes-in-tick.timer every quarter hour, as user $(id -u)"
-check "  start runs as this account" 0 0 "$(unit "$d" twes-in-start.service)" "User=$(id -u)"
+out=$(twes "$d" schedule); check "schedule on Linux: done" $? 0 "$out" "scheduled: twes-in-start.service at boot, twes-in-tick.timer every quarter hour, as user 4242"
+check "  start runs as this account" 0 0 "$(unit "$d" twes-in-start.service)" "User=4242"
 check "  with these values" 0 0 "$(unit "$d" twes-in-start.service)" "Environment=\"TWES_VALUES=$d/etc/install.env\""
 check "  this checkout's twes start" 0 0 "$(unit "$d" twes-in-start.service)" "ExecStart=$(command -v bash) \"$d/twes-in/scripts/onprem/twes\" start"
 check "  once Docker runs" 0 0 "$(unit "$d" twes-in-start.service)" "Requires=docker.service
@@ -270,6 +273,11 @@ check "  every quarter hour" 0 0 "$(unit "$d" twes-in-tick.timer)" "OnCalendar=*
 check "  through sudo: units read again, start enabled, the timer enabled and started" 0 0 "$(systemd_calls)" \
   "sudo systemctl daemon-reload|systemctl daemon-reload|sudo systemctl enable twes-in-start.service|systemctl enable twes-in-start.service|sudo systemctl enable --now twes-in-tick.timer|systemctl enable --now twes-in-tick.timer|"
 [[ "$(stat -c %a "$d/units/twes-in-start.service")" == 644 ]]; check "  units readable by systemd" $? 0 "$(stat -c '%a %n' "$d/units/"*)" ""
+# As root (a computer set up that way, a cloud session): no sudo, and the units copied by install(1), never by the
+# script's own install, which ran the shop's install again from there, and again, until bash fell over.
+d=$(installed); out=$(AS_UID=0 twes "$d" schedule < /dev/null); check "schedule as root: done" $? 0 "$out" "as user 0"
+check "  the units copied, the shop's install not run again" 0 0 "$(unit "$d" twes-in-start.service 2>&1)" "User=0"
+[[ "$(systemd_calls)" != *sudo* ]]; check "  and no sudo asked" $? 0 "$(systemd_calls)" ""
 out=$(PLATFORM=wsl DOCKER_OS='Docker Desktop' twes "$d" schedule); check "schedule under WSL with Docker Desktop: refused, install.ps1 schedules there" $? 1 "$out" "install.ps1"
 out=$(PLATFORM=wsl twes "$d" schedule); check "schedule under WSL with Docker Engine in Ubuntu: systemd's units, as on Linux" $? 0 "$out" "scheduled: twes-in-start.service at boot"
 check "  once Docker runs" 0 0 "$(unit "$d" twes-in-start.service)" "Requires=docker.service"

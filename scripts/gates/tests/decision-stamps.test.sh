@@ -3,7 +3,7 @@
 set -uo pipefail
 # None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/decision-stamps.sh
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
@@ -44,5 +44,6 @@ out=$(run "$d"); check "a SPEC with no Decisions Log is refused, not skipped" $?
 
 s=$(repo '- [2026-10-02 09:00] AGREED: first'); c=$(mktemp -d); rmdir "$c"; git clone -q --depth 1 "file://$s" "$c"
 out=$(run "$c"); check "a shallow clone is refused, since it cannot say when a line was written" $? 1 "$out" "shallow"
+out=$(run "$c"); check "  and says the fix for a clone made by hand, not only CI's" $? 1 "$out" "git fetch --unshallow"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
