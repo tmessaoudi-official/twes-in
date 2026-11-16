@@ -110,9 +110,20 @@ function fold(text: string): string {
       <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
       <span
         [id]="labelId"
-        class="pointer-events-none absolute -top-2 inset-s-3 z-[1] bg-surface px-1 text-xs leading-4 text-on-surface-variant"
+        class="pointer-events-none absolute -top-2 inset-s-3 z-[1] max-w-[calc(100%-1.5rem)] truncate bg-surface px-1 text-xs leading-4 text-on-surface-variant"
         >{{ label() }}</span
       >
+      @if (!compact()) {
+        <!-- The label floats over the edge and takes no room, so this copy, flat and unseen, keeps the box from being
+          narrower than the label where the box may grow; where it may not, the label is cut at the box's width.
+          value-direction: the same text in the screen's language -->
+        <span
+          aria-hidden="true"
+          data-label-sizer
+          class="invisible block h-0 overflow-hidden whitespace-nowrap px-4 text-xs"
+          >{{ label() }}</span
+        >
+      }
     }
     @if (compact(); as small) {
       <button

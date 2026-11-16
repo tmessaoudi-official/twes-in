@@ -11,6 +11,10 @@ d=$(repo); printf '<td class="truncate"><span class="twes-value" dir="auto">{{ r
 out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 0 2>&1); check "a value in its own box passes" $? 0 "$out" "OK — 1 twes-value"
 printf '<span class="grow truncate">{{ shape.name }}</span>\n' > "$d/web/src/app/x/b.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 0 2>&1); check "a typed value cut by truncate is caught, by file and line" $? 1 "$out" "web/src/app/x/b.html:1 {{ shape.name }}"
+d=$(repo); printf '<!-- value-direction: a label in the screen'"'"'s language -->\n<span class="truncate">{{ label() }}</span>\n<span class="truncate">{{ hint() }}</span><!-- value-direction: the screen'"'"'s words -->\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a cut text that says why, above or on its line, passes" $? 0 "$out" "OK"
+printf '<!-- value-direction: a label -->\n<p>x</p>\n<span class="truncate">{{ shape.name }}</span>\n' > "$d/web/src/app/x/b.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a reason two lines up does not cover a cut value" $? 1 "$out" "b.html:3 {{ shape.name }}"
 d=$(repo); printf '\n<span\n  class="block truncate"\n  data-testid="n"\n>{{\n  current.name\n}}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a tag and a value spread over lines are caught at the tag's line" $? 1 "$out" "a.html:2 {{ current.name }}"
 d=$(repo); printf '<span class="truncate">{{ current()?.name ?? (%s | translate) }}</span>\n' "'company.choose'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A

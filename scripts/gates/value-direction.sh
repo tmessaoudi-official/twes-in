@@ -6,7 +6,8 @@
 # (`dir="auto"`) and sits at the start of the box around it. Two rules over templates and inline component templates
 # from the index, specs excluded: every `twes-value` carries `dir="auto"`, and no `truncate` box holds an
 # interpolation alone unless it is a text of the screen's own (`… | translate`, or a refusal said in the screen's words,
-# `… | refusal`), which reads in the screen's direction.
+# `… | refusal`), which reads in the screen's direction, or the line or the one above says why with `value-direction:`
+# (a component's label, handed over already in the screen's words).
 # A third rule holds what is not cut: a value standing alone between two tags (« TVA 19 % », « Livrer au quai 3. »),
 # its trailing sign or full stop being neutral, goes to the wrong end of a Latin value on an Arabic screen. Such a value
 # sits in a `<bdi>` (or a `dir="auto"` box), which reads it its own way and leaves the line's alignment alone. A screen
@@ -71,7 +72,7 @@ result=$(cd "$root" && perl -CSD -0777 -ne '
     my $expression = $1;
     next if $expression =~ /\|\s*(?:translate|refusal)(?:\s*:[^|]*)?$/s;
     $expression =~ s/\s+/ /g;
-    print "CUT $ARGV:$line {{ $expression }}\n";
+    print "CUT $ARGV:$line {{ $expression }}\n" unless said($at);
   }
   # The third rule, over every run of text between two tags that holds a value and nothing to read around it.
   while (/>([^<>]*)</g) {

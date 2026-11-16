@@ -217,6 +217,27 @@ describe('Select', () => {
     );
   });
 
+  it('keeps a label on its edge to one line, and sizes the box to it unseen and unread', async () => {
+    fixture.componentInstance.label.set('Numéro hors des plages');
+    fixture.componentInstance.labelInside.set(true);
+    await settle();
+
+    const host = q('sel')!.parentElement!;
+    const label = host.querySelector('span[id$="-label"]')!;
+    expect(label.classList).toContain('truncate');
+    const sizer = host.querySelector('[data-label-sizer]')!;
+    expect(sizer.textContent?.trim()).toBe('Numéro hors des plages');
+    expect(sizer.getAttribute('aria-hidden')).toBe('true');
+    expect(sizer.id).toBe('');
+    expect(sizer.classList).toContain('invisible');
+    expect(sizer.classList).toContain('h-0');
+    expect(q('sel')!.contains(sizer)).toBe(false);
+
+    fixture.componentInstance.labelInside.set(false);
+    await settle();
+    expect(host.querySelector('[data-label-sizer]')).toBeNull();
+  });
+
   it('marks an option written in another language, as a language picker needs', async () => {
     fixture.componentInstance.options.set([
       { value: 'fr', label: 'Français', lang: 'fr' },
