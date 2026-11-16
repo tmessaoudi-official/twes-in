@@ -21,9 +21,12 @@ FROM postgres:18.6-trixie
 ARG PGBACKREST_VERSION=2.60.0-1.pgdg13+1
 ARG RESTIC_VERSION=0.18.0-1+b4
 ARG CURL_VERSION=8.14.1-2+deb13u7
+# The base image's zlib1g predates Debian's security fix (CVE-2026-76844, CVE-2026-85091), which the weekly image scan
+# fails on; taken here until a rebuild of the postgres image carries it, then this line goes.
+ARG ZLIB_VERSION=1:1.3.dfsg+really1.3.1-1+deb13u1
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends "pgbackrest=${PGBACKREST_VERSION}" "restic=${RESTIC_VERSION}" "curl=${CURL_VERSION}" ca-certificates \
+ && apt-get install -y --no-install-recommends "pgbackrest=${PGBACKREST_VERSION}" "restic=${RESTIC_VERSION}" "curl=${CURL_VERSION}" "zlib1g=${ZLIB_VERSION}" ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
  && install -d -o postgres -g postgres -m 0750 /var/spool/pgbackrest /var/lib/twes-backup /var/lib/twes-backup/dump
 
