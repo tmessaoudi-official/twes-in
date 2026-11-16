@@ -244,7 +244,7 @@ final class ExpenseResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_TAXES, groups: [self::WRITE])]
     public array $documentTaxComponentIds = [];
 
     /**
@@ -267,7 +267,7 @@ final class ExpenseResource
         'amount' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
     ], groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_TAXES, groups: [self::WRITE])]
     public array $printedTaxes = [];
 
     /** What the lines come to excluding taxes. */

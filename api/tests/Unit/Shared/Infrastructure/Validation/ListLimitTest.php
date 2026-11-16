@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\ConstraintValidatorFactory;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * A list a request hands in holds at most what the operator's parameter says (`app.list_limits`), so one request cannot
@@ -61,6 +62,39 @@ final class ListLimitTest extends TestCase
         $this->expectExceptionMessage('app.list_limits gives document.lines a limit of 0: a list holds at least one entry.');
 
         new ParameterListLimits(['document.lines' => 0]);
+    }
+
+    /** Every list family the code names is one the operator's `app.list_limits` ships a limit for, and no other. */
+    public function testEveryListFamilyIsShippedWithALimit(): void
+    {
+        $file = Yaml::parseFile(\dirname(__DIR__, 5).'/config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
+        self::assertIsArray($file);
+        self::assertIsArray($file['parameters'] ?? null);
+        self::assertIsArray($file['parameters']['app.list_limits'] ?? null);
+        $shipped = $file['parameters']['app.list_limits'];
+
+        $families = array_values((new \ReflectionClass(ListLimits::class))->getConstants());
+        sort($families);
+        $names = array_keys($shipped);
+        sort($names);
+        self::assertSame($families, $names);
+        foreach ($shipped as $list => $most) {
+            self::assertIsInt($most, $list);
+            self::assertGreaterThanOrEqual(1, $most, $list);
+        }
+    }
+
+    /** The lists row 83 found unbounded each carry a limit now, or the reason they need none. */
+    public function testNoWrittenListIsLeftNotBoundedYet(): void
+    {
+        $left = [];
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(\dirname(__DIR__, 5).'/src', \FilesystemIterator::SKIP_DOTS)) as $file) {
+            if ($file instanceof \SplFileInfo && 'php' === $file->getExtension() && str_contains((string) file_get_contents($file->getPathname()), 'count: not bounded yet')) {
+                $left[] = $file->getFilename();
+            }
+        }
+
+        self::assertSame([], $left);
     }
 
     /** @param array<string, int> $limits */

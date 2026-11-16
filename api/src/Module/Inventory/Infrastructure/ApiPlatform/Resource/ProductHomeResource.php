@@ -19,7 +19,9 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\ClearProduct
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\ReplaceProductHomesProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\SetProductHomeProcessor;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Provider\ProductHomeCollectionProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -123,7 +125,7 @@ final class ProductHomeResource
     #[Assert\Type('list', groups: [self::ORDER])]
     #[Assert\All([new Assert\Uuid(groups: [self::ORDER])], groups: [self::ORDER])]
     #[Groups([self::ORDER])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::PRODUCT_PLACES, groups: [self::ORDER])]
     public array $locationIds = [];
 
     /**

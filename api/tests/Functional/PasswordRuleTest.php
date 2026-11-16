@@ -9,7 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Application\BreachedPasswordCheck;
+use App\Identity\Application\Password\ChangePassword;
 use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Identity\Application\Password\ResetPassword;
+use App\Tenancy\Application\Invitation\AcceptInvitation;
+use App\Tenancy\Application\Signup\CompleteSignup;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\InvitationResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\SignupResource;
 use Symfony\Component\Validator\Constraints\Length;
@@ -37,6 +42,22 @@ final class PasswordRuleTest extends ApiTestCase
             $length = $lengths[0]->newInstance();
             self::assertSame(NewPasswordPolicy::MIN_LENGTH, $length->min, "$class::\$$property");
             self::assertSame(NewPasswordPolicy::MAX_LENGTH, $length->max, "$class::\$$property");
+        }
+    }
+
+    /**
+     * The length an operator sets (`app.password.min_length`) reaches every way of choosing a password only if each
+     * asks the one policy: a use case calling the breach check itself would keep the floor of twelve.
+     */
+    public function testEveryWayOfChoosingAPasswordAsksTheOnePolicy(): void
+    {
+        foreach ([ChangePassword::class, ResetPassword::class, CompleteSignup::class, AcceptInvitation::class] as $class) {
+            $types = array_map(
+                static fn (\ReflectionParameter $parameter): string => $parameter->getType() instanceof \ReflectionNamedType ? $parameter->getType()->getName() : '',
+                (new \ReflectionMethod($class, '__construct'))->getParameters(),
+            );
+            self::assertContains(NewPasswordPolicy::class, $types, $class);
+            self::assertNotContains(BreachedPasswordCheck::class, $types, $class.' asks the breach check itself');
         }
     }
 

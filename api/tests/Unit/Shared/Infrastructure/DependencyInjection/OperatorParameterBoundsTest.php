@@ -14,9 +14,11 @@ use App\Erasure\Infrastructure\Http\ErasureUndoBounds;
 use App\Files\Infrastructure\Scheduler\UnnamedBytesBounds;
 use App\Identity\Infrastructure\Mfa\PendingSecondFactorBounds;
 use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
+use App\Identity\Infrastructure\Password\PasswordLengthBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
 use App\Identity\Infrastructure\Security\LockoutBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
+use App\Inbox\Infrastructure\Mail\MailStopKeysBounds;
 use App\Kernel;
 use App\Licensing\Infrastructure\Scheduler\LapseNoticeBounds;
 use App\Module\DeliveryNotes\Infrastructure\Watch\DraftWatchBounds;
@@ -63,6 +65,10 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame('PT15M', $parameters['app.support.read_recorded_every']);
         self::assertSame(10, $parameters['app.recovery_codes.per_set']);
         self::assertSame('PT1H', $parameters['app.password_reset.valid_for']);
+        // NewPasswordPolicy::MIN_LENGTH before it was a parameter: the floor no installation goes under.
+        self::assertSame(12, $parameters['app.password.min_length']);
+        // HmacMailStopTokens signed under the application secret alone before its keys were a parameter.
+        self::assertSame(['%kernel.secret%'], $parameters['app.notification.stop_keys']);
         self::assertSame('P7D', $parameters['app.invitation.valid_for']);
         self::assertSame([], $parameters['app.error_reporting.extra_masks']);
         self::assertFalse($parameters['app.step_up.on_restore'], 'a restore asks no proof until the operator says so');
@@ -144,6 +150,10 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'sixteen recovery codes' => ['app.recovery_codes.per_set', 16];
         yield 'a reset link for a quarter hour' => ['app.password_reset.valid_for', 'PT15M'];
         yield 'a reset link for a day' => ['app.password_reset.valid_for', 'PT24H'];
+        yield 'a new password of twelve characters at least' => ['app.password.min_length', 12];
+        yield 'a new password of sixty-four characters at least' => ['app.password.min_length', 64];
+        yield 'stop links signed under a key of its own, the secret still read' => ['app.notification.stop_keys', ['%env(MAIL_STOP_KEY)%', '%kernel.secret%']];
+        yield 'stop links under a written key of thirty-two characters' => ['app.notification.stop_keys', [str_repeat('k', 32)]];
         yield 'an invitation for a day' => ['app.invitation.valid_for', 'P1D'];
         yield 'an invitation for thirty days' => ['app.invitation.valid_for', 'P30D'];
         yield 'a report body of 1 KiB' => ['app.client_errors.max_body', 1_024];
@@ -236,6 +246,14 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'recovery codes as text' => ['app.recovery_codes.per_set', '10'];
         yield 'a reset link for 14 minutes' => ['app.password_reset.valid_for', 'PT14M'];
         yield 'a reset link for 25 hours' => ['app.password_reset.valid_for', 'PT25H'];
+        yield 'a new password shorter than the floor of twelve' => ['app.password.min_length', 11];
+        yield 'a new password of sixty-five characters at least' => ['app.password.min_length', 65];
+        yield 'a password length as text' => ['app.password.min_length', '14'];
+        yield 'stop links with no key' => ['app.notification.stop_keys', []];
+        yield 'a stop key as text, not a list' => ['app.notification.stop_keys', '%kernel.secret%'];
+        yield 'an empty stop key' => ['app.notification.stop_keys', ['']];
+        yield 'a written stop key shorter than thirty-two characters' => ['app.notification.stop_keys', [str_repeat('k', 31)]];
+        yield 'stop keys as a map' => ['app.notification.stop_keys', ['new' => str_repeat('k', 32)]];
         yield 'an invitation for 23 hours' => ['app.invitation.valid_for', 'PT23H'];
         yield 'an invitation for 31 days' => ['app.invitation.valid_for', 'P31D'];
         yield 'a mask that is no regular expression' => ['app.error_reporting.extra_masks', [['pattern' => '/(unclosed/', 'replacement' => 'x']]];
@@ -411,7 +429,7 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new UnnamedBytesBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new PasswordLengthBounds(), new MailStopKeysBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new UnnamedBytesBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
     }
 
     /**
@@ -438,7 +456,7 @@ final class OperatorParameterBoundsTest extends TestCase
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures', 'app.auth.account_lock_after_failures', 'app.files.unnamed_removed_after'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.password.min_length', 'app.notification.stop_keys', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures', 'app.auth.account_lock_after_failures', 'app.files.unnamed_removed_after'];
         $names = [...$names, ...array_values(array_filter(array_map('strval', array_keys($file['parameters'])), static fn (string $name): bool => str_starts_with($name, 'app.rate_limit.')))];
         $shipped = [];
         foreach ($names as $name) {

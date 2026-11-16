@@ -68,6 +68,20 @@ describe('InvitationApi', () => {
     for (const [status, body, code] of [
       [404, {}, 'not_usable'],
       [422, on('password'), 'password_refused'],
+      // Shorter than the length the installation asks: said as such, never as a breach.
+      [
+        422,
+        {
+          violations: [
+            {
+              propertyPath: 'password',
+              message: 'm',
+              payload: { reason: 'password_too_short', params: { min: 16 } },
+            },
+          ],
+        },
+        'password_too_short',
+      ],
       // The role the invitation was sent for has gone since: asking again is the way on.
       [422, on('role'), 'role_gone'],
       // A refusal of anything but the password, a missing name among them, is no refused password.

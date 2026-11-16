@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Application;
 
+use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
@@ -154,6 +156,22 @@ final class AcceptInvitationTest extends TestCase
         self::assertNull($this->invitations->invitations[0]->getAcceptedAt());
     }
 
+    public function testAPasswordShorterThanTheOperatorsLengthIsRefusedAndNothingIsCreated(): void
+    {
+        $token = $this->openInvitation(Role::MEMBER);
+
+        try {
+            $this->accept(minLength: \strlen(self::PASSWORD) + 1)->handle(new AcceptRequest($token->raw, 'New Person', self::PASSWORD));
+            self::fail('expected NewPasswordRefused');
+        } catch (NewPasswordRefused $refused) {
+            self::assertSame(NewPasswordRefused::TOO_SHORT, $refused->reason);
+            self::assertSame(\strlen(self::PASSWORD) + 1, $refused->min);
+        }
+
+        self::assertNull($this->users->ofEmail(Email::fromString('stranger@twes.local')));
+        self::assertNull($this->invitations->invitations[0]->getAcceptedAt());
+    }
+
     public function testAnUnreachableBreachServiceAcceptsThePasswordAndRecordsTheSkip(): void
     {
         $token = $this->openInvitation(Role::MEMBER);
@@ -269,7 +287,7 @@ final class AcceptInvitationTest extends TestCase
         return $token;
     }
 
-    private function accept(string $now = self::NOW, ?bool $breached = false): AcceptInvitation
+    private function accept(string $now = self::NOW, ?bool $breached = false, int $minLength = NewPasswordPolicy::MIN_LENGTH): AcceptInvitation
     {
         $hasher = new class implements PasswordHasher {
             public function hash(string $plainPassword): string
@@ -289,7 +307,7 @@ final class AcceptInvitationTest extends TestCase
             $this->memberships,
             $this->companies,
             $hasher,
-            new FakeBreachedPasswordCheck($breached),
+            new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached), $minLength),
             $this->notifications,
             $this->audit,
             new MockClock($now),

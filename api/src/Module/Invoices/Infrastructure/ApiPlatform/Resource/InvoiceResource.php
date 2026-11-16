@@ -456,7 +456,7 @@ final class InvoiceResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_TAXES, groups: [self::WRITE])]
     public ?array $documentTaxComponentIds = null;
 
     /**

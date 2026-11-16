@@ -25,11 +25,13 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\CreateVendorPr
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Processor\ReviseVendorProcessor;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorCollectionProvider;
 use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ContactRule;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -132,7 +134,7 @@ final class VendorResource
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
     #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 64)], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_IDENTIFIERS, groups: [self::WRITE])]
     public array $identifiers = [];
 
     #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE], onceChanged: true)]

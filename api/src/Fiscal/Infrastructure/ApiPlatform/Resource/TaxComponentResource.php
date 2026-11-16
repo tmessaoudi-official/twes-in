@@ -20,7 +20,9 @@ use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\CreateTaxComponentProcessor;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\ReviseTaxComponentProcessor;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Provider\TaxComponentCollectionProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
@@ -96,7 +98,7 @@ final class TaxComponentResource
      */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string', 'maxLength' => 120]])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_NAMES, groups: [self::WRITE])]
     public ?array $names = null;
 
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [TaxKind::PercentageLine->value, TaxKind::FixedDocument->value, TaxKind::WithholdingTotal->value]])]

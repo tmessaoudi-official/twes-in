@@ -81,7 +81,16 @@ function codeOf(error: unknown): InvitationError | UnknownRefusal {
     // A refusal names its field: only one of the password is a refused password (a missing name is not), and one of
     // the role says the role it was sent for has gone since, which asking again puts right.
     case 422: {
-      const fields = refusalsIn(error.error).map((refusal) => refusal.field);
+      const refusals = refusalsIn(error.error);
+      const fields = refusals.map((refusal) => refusal.field);
+      // Shorter than the length the installation asks (its operator may raise it): said as such, never as a breach.
+      if (
+        refusals.some(
+          (refusal) => refusal.field === 'password' && refusal.reason === 'password_too_short',
+        )
+      ) {
+        return 'password_too_short';
+      }
       if (fields.includes('password')) {
         return 'password_refused';
       }

@@ -15,7 +15,8 @@ use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Identity\Application\BreachedPasswordCheck;
+use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
@@ -62,7 +63,7 @@ final readonly class CompleteSignup implements DeclaresAuditActions
         private FiscalPresets $presets,
         private CreateCompany $createCompany,
         private PasswordHasher $hasher,
-        private BreachedPasswordCheck $breachedPasswords,
+        private NewPasswordPolicy $passwords,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
@@ -70,7 +71,7 @@ final readonly class CompleteSignup implements DeclaresAuditActions
     ) {
     }
 
-    /** @throws SignupNotUsable|InvalidSignup|PasswordBreached|CompanyNameTaken|UnknownRole */
+    /** @throws SignupNotUsable|InvalidSignup|PasswordBreached|NewPasswordRefused|CompanyNameTaken|UnknownRole */
     public function handle(CompleteSignupRequest $request): CompleteSignupOutcome
     {
         $signup = $this->links->usable($request->rawToken) ?? throw new SignupNotUsable('That signup link cannot be used.');
@@ -85,9 +86,11 @@ final readonly class CompleteSignup implements DeclaresAuditActions
             throw new CompanyNameTaken(\sprintf('A company named "%s" already exists.', $request->companyName));
         }
         $owner = $this->roles->builtIn(Role::OWNER) ?? throw new UnknownRole('The owner role is not seeded.');
-        $breached = $this->breachedPasswords->isBreached($request->plainPassword);
-        if (true === $breached) {
-            throw new PasswordBreached('That password has appeared in a data breach; choose another.');
+        // The one policy every way of choosing a password asks, so the length the operator set holds here too.
+        try {
+            $breached = $this->passwords->check($request->plainPassword);
+        } catch (NewPasswordRefused $refused) {
+            throw NewPasswordRefused::BREACHED === $refused->reason ? new PasswordBreached('That password has appeared in a data breach; choose another.', previous: $refused) : $refused;
         }
 
         $preset = $this->presets->get($request->countryCode);

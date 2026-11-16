@@ -17,7 +17,8 @@ final class NewPasswordRefused extends \DomainException
     public const string UNCHANGED = 'unchanged';
     public const string BREACHED = 'breached';
 
-    public function __construct(public readonly string $reason)
+    /** @param int|null $min the length a new password needs, said with a refusal for being too short */
+    public function __construct(public readonly string $reason, public readonly ?int $min = null)
     {
         parent::__construct(\sprintf('The password was not changed: %s.', $reason));
     }

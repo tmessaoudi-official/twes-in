@@ -14,7 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
-use App\Identity\Application\BreachedPasswordCheck;
+use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
@@ -54,7 +55,7 @@ final readonly class AcceptInvitation implements DeclaresAuditActions
         private MembershipRepository $memberships,
         private CompanyRepository $companies,
         private PasswordHasher $hasher,
-        private BreachedPasswordCheck $breachedPasswords,
+        private NewPasswordPolicy $passwords,
         private Notifications $notifications,
         private AuditTrail $audit,
         private ClockInterface $clock,
@@ -156,12 +157,17 @@ final readonly class AcceptInvitation implements DeclaresAuditActions
         return $invitation;
     }
 
-    /** @throws PasswordBreached */
+    /**
+     * Held to the one policy every way of choosing a password asks, so the length the operator set holds here too.
+     *
+     * @throws PasswordBreached|NewPasswordRefused
+     */
     private function refuseABreachedPassword(string $plainPassword, Invitation $invitation): void
     {
-        $breached = $this->breachedPasswords->isBreached($plainPassword);
-        if (true === $breached) {
-            throw new PasswordBreached('That password has appeared in a data breach; choose another.');
+        try {
+            $breached = $this->passwords->check($plainPassword);
+        } catch (NewPasswordRefused $refused) {
+            throw NewPasswordRefused::BREACHED === $refused->reason ? new PasswordBreached('That password has appeared in a data breach; choose another.', previous: $refused) : $refused;
         }
         if (null === $breached) {
             $this->audit->record(new AuditEntry(

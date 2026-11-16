@@ -27,11 +27,13 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\CreateCustom
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseCustomerProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerCollectionProvider;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ContactRule;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
@@ -151,7 +153,7 @@ final class CustomerResource
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
     #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 64)], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_IDENTIFIERS, groups: [self::WRITE])]
     public array $identifiers = [];
 
     #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE], onceChanged: true)]
@@ -210,7 +212,7 @@ final class CustomerResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Uuid()], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_TAXES, groups: [self::WRITE])]
     public array $defaultTaxComponentIds = [];
 
     /** A percentage from 0 to 100, as a decimal string. */
@@ -225,7 +227,7 @@ final class CustomerResource
     /** @var array<string, string|int|float|bool> values by the company's custom field keys (GET .../custom-fields?entity=customer) */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['oneOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean']]]])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_CUSTOM_FIELDS, groups: [self::WRITE])]
     public array $customFields = [];
 
     #[Groups([self::READ, self::WRITE])]

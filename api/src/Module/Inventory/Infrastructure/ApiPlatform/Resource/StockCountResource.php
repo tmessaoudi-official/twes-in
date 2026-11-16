@@ -14,6 +14,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
 use App\Module\Inventory\Domain\Model\StockLot;
 use App\Module\Inventory\Infrastructure\ApiPlatform\State\Processor\RecordStockCountProcessor;
+use App\Shared\Application\ListLimits;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -70,7 +72,7 @@ final class StockCountResource
         groups: [self::WRITE],
     )], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::PRODUCT_PLACES, groups: [self::WRITE])]
     public array $parts = [];
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => StockLot::CODE_MAX])]

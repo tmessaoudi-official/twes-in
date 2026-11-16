@@ -13,8 +13,10 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Put;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ContactRule;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tenancy\Infrastructure\ApiPlatform\Output\CompanyIdentifierField;
 use App\Tenancy\Infrastructure\ApiPlatform\Output\CompanyVatRegimeOption;
@@ -102,7 +104,7 @@ final class CompanyProfileResource
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
     #[Assert\All([new Assert\Type('string', payload: ['reason' => 'invalid_value']), new Assert\Length(max: 64, payload: ['reason' => 'invalid_text', 'params' => ['max' => 64]])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_IDENTIFIERS, groups: [self::WRITE])]
     public array $identifiers = [];
 
     #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]

@@ -58,6 +58,7 @@
       "picture_too_wide": "This picture is over {{pixels}} pixels on a side: make it smaller, then try again.",
       "too_many_files": "There {max, plural, one {is already {{max}} file} other {are already {{max}} files}} here, the most kept: take one off before adding another.",
       "breached": "This password appears in known data breaches: choose another one.",
+      "password_too_short": "The password must be at least {{min}} characters.",
       "company_name_taken": "A company already has this name here: choose another, for example by adding your town.",
       "period_longest": "Period refused: a report reads {{days}} {days, plural, one {day} other {days}} at most. Bring the end closer to the start, or read the period in several parts.",
       "not_by_establishment": "This report is read for the whole company only: choose “The whole company”.",

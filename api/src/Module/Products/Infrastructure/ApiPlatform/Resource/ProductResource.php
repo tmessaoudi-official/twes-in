@@ -31,8 +31,10 @@ use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\CreateProduct
 use App\Module\Products\Infrastructure\ApiPlatform\State\Processor\ReviseProductProcessor;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductCollectionProvider;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -224,7 +226,7 @@ final class ProductResource
     #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Assert\All([new Assert\Uuid(payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_TAXES, groups: [self::WRITE])]
     public array $defaultTaxComponentIds = [];
 
     /**
@@ -238,7 +240,7 @@ final class ProductResource
     #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Assert\All([new Assert\Uuid(payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::PRODUCT_VENDORS, groups: [self::WRITE])]
     public ?array $vendorIds = null;
 
     /**
@@ -253,7 +255,7 @@ final class ProductResource
     /** @var array<string, string|int|float|bool> values by the company's custom field keys (GET .../custom-fields?entity=product) */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['oneOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean']]]])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_CUSTOM_FIELDS, groups: [self::WRITE])]
     public array $customFields = [];
 
     #[Groups([self::READ, self::WRITE])]

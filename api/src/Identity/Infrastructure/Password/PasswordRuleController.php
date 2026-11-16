@@ -20,9 +20,13 @@ use Symfony\Component\Routing\Attribute\Route;
  */
 final readonly class PasswordRuleController
 {
+    public function __construct(private NewPasswordPolicy $policy)
+    {
+    }
+
     #[Route('/api/auth/password/rule', name: 'api_auth_password_rule', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
-        return new JsonResponse(['minLength' => NewPasswordPolicy::MIN_LENGTH, 'maxLength' => NewPasswordPolicy::MAX_LENGTH]);
+        return new JsonResponse(['minLength' => $this->policy->minLength(), 'maxLength' => NewPasswordPolicy::MAX_LENGTH]);
     }
 }

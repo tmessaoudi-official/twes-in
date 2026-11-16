@@ -18,7 +18,9 @@ use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\CreateUnitProcessor;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Processor\ReviseUnitProcessor;
 use App\Fiscal\Infrastructure\ApiPlatform\State\Provider\UnitCollectionProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
@@ -89,7 +91,7 @@ final class UnitResource
      */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string', 'maxLength' => 60]])]
     #[Groups([self::READ, self::WRITE])]
-    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
+    #[ListLimit(ListLimits::RECORD_NAMES, groups: [self::WRITE])]
     public ?array $names = null;
 
     /** How many decimals a quantity in this unit may carry. */

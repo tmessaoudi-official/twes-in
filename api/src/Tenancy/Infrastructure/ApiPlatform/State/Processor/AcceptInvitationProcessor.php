@@ -11,6 +11,8 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Identity\Application\Password\NewPasswordRefused;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\ClientAddress;
 use App\Shared\Infrastructure\Http\SpentBudget;
@@ -59,6 +61,9 @@ final readonly class AcceptInvitationProcessor implements ProcessorInterface
             throw DomainRule::refused(null === $data->displayName ? 'displayName' : 'password', $missing->getMessage(), 'value_required', [], $missing);
         } catch (PasswordBreached $breached) {
             throw DomainRule::refused('password', $breached->getMessage(), 'breached', [], $breached);
+        } catch (NewPasswordRefused $short) {
+            // Shorter than the length the operator set, which the request's own floor of twelve does not know.
+            throw DomainRule::refused('password', 'The password is shorter than this installation asks.', 'password_too_short', ['min' => $short->min ?? NewPasswordPolicy::MIN_LENGTH], $short);
         } catch (UnknownRole $gone) {
             // The role was deleted after the link was sent: the person accepting cannot choose another, so they are
             // told it has gone and to ask again, rather than joining at a role nobody chose.

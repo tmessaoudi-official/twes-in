@@ -14,6 +14,7 @@ use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\Validation\ListLimit;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * A document's lines are at most `ListLimits::DOCUMENT_LINES` (`app.list_limits`), refused before any line is read: a
@@ -63,6 +64,18 @@ final class DocumentLineLimitTest extends ApiTestCase
         $this->postJson($this->companyPath.'/'.$path, ['lines' => array_fill(0, $most, ['description' => 'Vis'])]);
 
         self::assertNotContains(['lines', ListLimit::TOO_MANY, 'too_many_entries'], $this->violations());
+    }
+
+    /** The other written lists hold to their own family's limit the same way (here, the taxes a document names). */
+    public function testADocumentNamingOneTaxMoreThanTheLimitIsRefused(): void
+    {
+        $most = static::getContainer()->get(ListLimits::class)->most(ListLimits::RECORD_TAXES);
+        $taxes = array_map(static fn (): string => Uuid::v7()->toRfc4122(), range(0, $most));
+
+        $this->postJson($this->companyPath.'/invoices', ['lines' => [['description' => 'Vis']], 'documentTaxComponentIds' => $taxes]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertContains(['documentTaxComponentIds', ListLimit::TOO_MANY, 'too_many_entries'], $this->violations());
     }
 
     /** @return list<array{mixed, mixed, mixed}> each violation's path, code and reason */

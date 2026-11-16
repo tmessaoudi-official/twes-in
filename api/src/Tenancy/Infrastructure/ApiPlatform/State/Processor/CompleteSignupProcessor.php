@@ -11,6 +11,8 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Identity\Application\Password\NewPasswordRefused;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\ClientAddress;
@@ -59,6 +61,9 @@ final readonly class CompleteSignupProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), 'invalid_value', [], $refused);
         } catch (PasswordBreached $breached) {
             throw DomainRule::refused('password', $breached->getMessage(), 'breached', [], $breached);
+        } catch (NewPasswordRefused $short) {
+            // Shorter than the length the operator set, which the request's own floor of twelve does not know.
+            throw DomainRule::refused('password', 'The password is shorter than this installation asks.', 'password_too_short', ['min' => $short->min ?? NewPasswordPolicy::MIN_LENGTH], $short);
         } catch (CompanyNameTaken $taken) {
             throw DomainRule::refused('companyName', $taken->getMessage(), 'company_name_taken', [], $taken);
         }
