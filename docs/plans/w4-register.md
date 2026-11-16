@@ -139,7 +139,7 @@ Counts: 61 to build (new 57, an existing setting extended 3, partly built 1); al
 | A95 | exists | already built: built in parameter batch 1 (2026-11-02) |
 | B5 | exists | already built: built in parameter batch 1 (2026-11-02) |
 | B11 | exists | already built: existing operator parameter |
-| C16 | dropped | no parameter, a ruling decides: the Factur-X demo ruling (no machine-readable invoice leaves a demo) names the books files too; the refusal stays code |
+| C16 | dropped | no parameter for now: the refusal stays as built, and whether the books' files (with report files) may leave a demo waits on the desk's h-ie-demo; reading the Factur-X demo ruling as covering them was itself a pick |
 | A87 | exists | already built: built in parameter batch 1 |
 | A94 | exists | already built: built in parameter batch 1 |
 | A98 | exists | already built: built in parameter batch 1 |
