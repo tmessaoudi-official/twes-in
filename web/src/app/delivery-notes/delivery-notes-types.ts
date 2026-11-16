@@ -303,6 +303,8 @@ export interface LineTaxOption {
   family: 'vat' | 'levy';
   rate: string;
   entersVatBase: boolean;
+  /** One of the company's line defaults, which a new line naming no product starts from. */
+  isDefault: boolean;
 }
 
 /**

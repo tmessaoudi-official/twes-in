@@ -3,6 +3,7 @@
 import {
   applyProduct,
   DELIVERY_NOTES_LIST,
+  dropRefusedTaxes,
   deliveryNoteForm,
   deliveryNoteInput,
   deliveryNoteListRows,
@@ -34,8 +35,24 @@ const options: DeliveryNoteOptions = {
     { id: 'u2', code: 'KGM', name: 'Kilogramme', decimals: 3 },
   ],
   taxes: [
-    { id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', rate: '19', entersVatBase: false },
-    { id: 't2', code: 'FODEC', name: 'FODEC 1 %', family: 'levy', rate: '1', entersVatBase: true },
+    {
+      id: 't1',
+      code: 'TVA19',
+      name: 'TVA 19 %',
+      family: 'vat',
+      rate: '19',
+      entersVatBase: false,
+      isDefault: true,
+    },
+    {
+      id: 't2',
+      code: 'FODEC',
+      name: 'FODEC 1 %',
+      family: 'levy',
+      rate: '1',
+      entersVatBase: true,
+      isDefault: false,
+    },
   ],
 };
 
@@ -227,7 +244,7 @@ describe('delivery note forms', () => {
       quantity: '1',
       unitId: 'u1',
       unitPriceNet: '',
-      taxComponentIds: [],
+      taxComponentIds: ['t1'],
       lotCode: '',
       productTracking: '',
       sourceQuoteLineId: '',
@@ -322,6 +339,21 @@ describe('delivery note forms', () => {
     expect(line.controls.description.value).toBe('Tapé à la main');
   });
 
+  it('starts a new line from the company default taxes the customer regime charges, as an invoice line does', () => {
+    expect(lineGroup(null, options).controls.taxComponentIds.value).toEqual(['t1']);
+    expect(lineGroup(null, options, ['vat']).controls.taxComponentIds.value).toEqual([]);
+  });
+
+  it('takes off a line the taxes a customer chosen later refuses, and adds none', () => {
+    const line = lineGroup(null, options);
+    line.controls.taxComponentIds.setValue(['t1', 't2']);
+
+    dropRefusedTaxes(line, options, ['vat']);
+    expect(line.controls.taxComponentIds.value).toEqual(['t2']);
+    dropRefusedTaxes(line, options, []);
+    expect(line.controls.taxComponentIds.value).toEqual(['t2']);
+  });
+
   it('sends the form as the API takes it: trimmed, an empty field as no value', () => {
     const lines = linesArray([], options);
     lines.at(0).patchValue({ description: '  Pièce ', quantity: ' 2 ', unitPriceNet: '10' });
@@ -357,7 +389,7 @@ describe('delivery note forms', () => {
           quantity: '2',
           unitId: 'u1',
           unitPriceNet: '10',
-          taxComponentIds: [],
+          taxComponentIds: ['t1'],
           lotCode: null,
         },
       ],

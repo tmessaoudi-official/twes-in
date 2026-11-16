@@ -78,6 +78,21 @@ final class QuotesTest extends ApiTestCase
         self::assertSame(['10.000', '10.000'], [$this->json()['discountAmount'], $this->json()['documentDiscount']]);
     }
 
+    public function testAFreeLineThatStatesNoTaxesStartsFromTheCompanysDefaultVatAsTheInvoiceWill(): void
+    {
+        // One canon for the document family (C102): the quote is figured as the invoice it becomes will be.
+        $this->signedIn(self::WRITER);
+
+        $this->postJson($this->path(), $this->quote(['lines' => [
+            ['description' => 'Pose', 'quantity' => '1', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '100'],
+            ['description' => 'Débours', 'quantity' => '1', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '100', 'taxComponentIds' => []],
+        ]]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $taxes = $this->arrayAt($this->json(), 'taxes');
+        self::assertSame([['TVA19', '19.000']], array_map(null, array_column($taxes, 'code'), array_column($taxes, 'amount')), 'the stated empty list stays untaxed');
+    }
+
     public function testWhatTheShapeOrTheCompanyRefusesAnswersUnprocessableNamingTheField(): void
     {
         $this->signedIn(self::WRITER);

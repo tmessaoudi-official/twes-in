@@ -591,7 +591,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     {
         return array_values(array_map(
             static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(),
-            array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax): bool => $tax->isDefault() && TaxKind::PercentageLine === $tax->getKind()),
+            array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax): bool => $tax->isLineDefault()),
         ));
     }
 

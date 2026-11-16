@@ -25,8 +25,8 @@ import { refusedError } from '../shared/form/refusal-words';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { TextsParts } from '../shared/i18n/texts-part';
 import {
-  amountOf,
-  atCurrencyScale,
+  atScale,
+  decimalOf,
   exactPriceFor,
   markupOf,
   marginOf,
@@ -92,10 +92,10 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.margin' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-margin">
-              @if (percentOf(margin()) === null) {
+              @if (margin() === null) {
                 —
               } @else {
-                {{ percentOf(margin()) | amount: 2 }}&nbsp;%
+                {{ margin() | amount: 2 }}&nbsp;%
               }
             </dd>
             <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-margin-how">
@@ -112,10 +112,10 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.markup' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-markup">
-              @if (percentOf(markup()) === null) {
+              @if (markup() === null) {
                 —
               } @else {
-                {{ percentOf(markup()) | amount: 2 }}&nbsp;%
+                {{ markup() | amount: 2 }}&nbsp;%
               }
             </dd>
             <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-markup-how">
@@ -312,10 +312,11 @@ export class PriceCalculator {
   protected readonly bases: readonly PercentBasis[] = ['margin', 'markup'];
   protected readonly basis = signal<PercentBasis>('margin');
   protected readonly wanted = signal('');
-  protected readonly cost = signal<number | null>(null);
+  /** The cost and the net price as decimal strings, null while either is not an amount: money is never a float. */
+  protected readonly cost = signal<string | null>(null);
   /** The cost as the form holds it, which the price to ask is counted from exactly. */
   private readonly costText = signal('');
-  protected readonly price = signal<number | null>(null);
+  protected readonly price = signal<string | null>(null);
   /** The net price as the form holds it, when the API would take it. */
   private readonly priceText = signal<string | null>(null);
   private readonly taxIds = signal<readonly string[]>([], { equal: sameList });
@@ -331,15 +332,15 @@ export class PriceCalculator {
 
   protected readonly profit = computed(() => {
     const [cost, price] = [this.cost(), this.price()];
-    return cost === null || price === null ? null : profitOf(cost, price);
+    return cost === null || price === null ? null : profitOf(cost, price, this.scale());
   });
   protected readonly margin = computed(() => {
     const [cost, price] = [this.cost(), this.price()];
-    return cost === null || price === null ? null : marginOf(cost, price);
+    return cost === null || price === null ? null : marginOf(cost, price, 2);
   });
   protected readonly markup = computed(() => {
     const [cost, price] = [this.cost(), this.price()];
-    return cost === null || price === null ? null : markupOf(cost, price);
+    return cost === null || price === null ? null : markupOf(cost, price, 2);
   });
   /** The price for the percentage wanted, at the currency's scale; null while none is typed or none exists. */
   protected readonly target = computed(() =>
@@ -369,9 +370,9 @@ export class PriceCalculator {
     effect((onCleanup) => {
       const form = this.form();
       const read = (): void => {
-        this.cost.set(amountOf(String(form.get('costPrice')?.value ?? '')));
+        this.cost.set(decimalOf(String(form.get('costPrice')?.value ?? '')));
         this.costText.set(String(form.get('costPrice')?.value ?? ''));
-        this.price.set(amountOf(String(form.get('unitPriceNet')?.value ?? '')));
+        this.price.set(decimalOf(String(form.get('unitPriceNet')?.value ?? '')));
         const text = typedText(String(form.get('unitPriceNet')?.value ?? ''));
         this.priceText.set(PRICE.test(text) ? text : null);
         const taxes: unknown = form.get('defaultTaxComponentIds')?.value;
@@ -385,13 +386,8 @@ export class PriceCalculator {
     });
   }
 
-  protected shown(value: number | null): string {
-    return value === null ? '' : atCurrencyScale(value, this.scale());
-  }
-
-  /** A percentage at two decimals, as the amount pipe takes it; none for a figure there is not. */
-  protected percentOf(value: number | null): string | null {
-    return value === null ? null : (Math.round(value * 100) / 100).toFixed(2);
+  protected shown(value: string | null): string {
+    return value === null ? '' : atScale(value, this.scale());
   }
 
   protected linesOf(preview: Preview): PricePreviewLine[] | null {

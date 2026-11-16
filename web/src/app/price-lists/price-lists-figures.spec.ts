@@ -11,8 +11,8 @@ describe('rowFigures', () => {
     expect(figures).toEqual({
       shelf: '890.0000',
       cost: '534.0000',
-      changePercent: expect.closeTo(-10.11236, 4),
-      marginPercent: 33.25,
+      changePercent: '-10.1',
+      marginPercent: '33.3',
       belowCost: false,
     });
   });
@@ -20,7 +20,7 @@ describe('rowFigures', () => {
   it('flags a price under the cost, which leaves a negative margin', () => {
     const figures = rowFigures('400', product);
     expect(figures?.belowCost).toBe(true);
-    expect(figures?.marginPercent).toBeCloseTo(-33.5, 5);
+    expect(figures?.marginPercent).toBe('-33.5');
   });
 
   it('does not flag a price equal to the cost', () => {
@@ -32,7 +32,7 @@ describe('rowFigures', () => {
     expect(figures).toEqual({
       shelf: '890.0000',
       cost: null,
-      changePercent: expect.closeTo(-55.056, 2),
+      changePercent: '-55.1',
       marginPercent: null,
       belowCost: false,
     });

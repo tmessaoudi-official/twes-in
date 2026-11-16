@@ -395,8 +395,15 @@ function fitsUnit(options: DeliveryNoteOptions): ValidatorFn {
   };
 }
 
-/** One line's controls, at its values; a new line delivers one of the company's first unit. */
-export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOptions): LineGroup {
+/**
+ * One line's controls, at its values; a new line delivers one of the company's first unit, charged the company's line
+ * defaults its customer's regime takes, as an invoice line naming no product is, and as the API charges one stating none.
+ */
+export function lineGroup(
+  line: DeliveryNoteLine | null,
+  options: DeliveryNoteOptions,
+  excludedFamilies: readonly TaxFamily[] = [],
+): LineGroup {
   return new FormGroup<LineControls>(
     {
       productId: new FormControl(line?.productId ?? '', { nonNullable: true }),
@@ -418,9 +425,16 @@ export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOp
         line === null ? '' : atScale(line.unitPriceNet, options.currencyScale),
         { nonNullable: true, validators: [notBlank, matches(PRICE_PATTERN)] },
       ),
-      taxComponentIds: new FormControl<string[]>(line === null ? [] : [...line.taxComponentIds], {
-        nonNullable: true,
-      }),
+      taxComponentIds: new FormControl<string[]>(
+        line === null
+          ? offeredTaxes(options, excludedFamilies)
+              .filter((tax) => tax.isDefault)
+              .map((tax) => tax.id)
+          : [...line.taxComponentIds],
+        {
+          nonNullable: true,
+        },
+      ),
       lotCode: new FormControl(line?.lotCode ?? '', {
         nonNullable: true,
         validators: [Validators.maxLength(LOT_CODE_LENGTH), matches(LOT_CODE_PATTERN)],
@@ -482,6 +496,23 @@ export function offeredTaxes(
   excludedFamilies: readonly TaxFamily[],
 ): LineTaxOption[] {
   return options.taxes.filter((tax) => !excludedFamilies.includes(tax.family));
+}
+
+/**
+ * A customer chosen after a line was drawn may be of a regime that refuses what the line carries: those taxes come off,
+ * so that the API does not refuse the draft for a box nobody ticked on purpose. A change of customer adds nothing.
+ */
+export function dropRefusedTaxes(
+  line: LineGroup,
+  options: DeliveryNoteOptions,
+  excludedFamilies: readonly TaxFamily[],
+): void {
+  const offered = new Set(offeredTaxes(options, excludedFamilies).map((tax) => tax.id));
+  const charged = line.controls.taxComponentIds.value;
+  const kept = charged.filter(
+    (id) => offered.has(id) || !options.taxes.some((tax) => tax.id === id),
+  );
+  if (kept.length !== charged.length) line.controls.taxComponentIds.setValue(kept);
 }
 
 /**

@@ -124,6 +124,19 @@ final class ManageDeliveryNotesTest extends TestCase
         self::assertSame(['delivery_note', 'delivery_note.created', $actor, [], $this->company->getId()], [$entry->entityType, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId]);
     }
 
+    public function testAFreeLineThatStatesNoTaxesStartsFromTheCompanysDefaultVatAsAnInvoiceLineDoes(): void
+    {
+        // One canon for the document family (C102): what an invoice line naming no product is charged, a note's is too.
+        $free = new DeliveryNoteLineInput(null, 'Main d\'œuvre', '1', $this->unit('C62')->getId(), '100');
+        $exempt = new DeliveryNoteLineInput(null, 'Débours', '1', $this->unit('C62')->getId(), '100', []);
+
+        $note = $this->manage->create($this->company, $this->input($this->customer(), [$free, $exempt]), null);
+
+        self::assertSame([['TVA19'], []], array_map(static fn ($line): array => array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getCode(), $line->getTaxes()), $note->getLines()), 'a line stating none at all keeps none');
+        $export = $this->manage->create($this->company, $this->input($this->customer('export', [TaxFamily::Vat], number: 'CLI-0002'), [$free]), null);
+        self::assertSame([], $export->getLines()[0]->getTaxes(), 'the regime still filters the default');
+    }
+
     public function testACompanyOnAVatFreeRegimeChargesNoVatToAnyCustomer(): void
     {
         $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());

@@ -131,6 +131,7 @@ describe('DeliveryNotesApi', () => {
           family: 'vat',
           rate: '19',
           entersVatBase: false,
+          isDefault: true,
         },
       ],
     });
@@ -144,6 +145,7 @@ describe('DeliveryNotesApi', () => {
       isDefault: true,
     });
     expect(options.taxes[0]?.rate).toBe('19');
+    expect(options.taxes[0]?.isDefault).toBe(true);
   });
 
   it('asks a picker for the few a person means, and by id for the ones a note already names', async () => {

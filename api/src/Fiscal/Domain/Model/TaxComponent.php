@@ -358,6 +358,16 @@ class TaxComponent implements CompanyOwned
         return $this->isActive;
     }
 
+    /**
+     * Whether a line naming no product, and stating no taxes, is charged this: the company's active default percentage
+     * taxes, the VAT a counter sale would carry. One rule for invoices, quotes and delivery notes, and the taxes a new
+     * product starts with.
+     */
+    public function isLineDefault(): bool
+    {
+        return $this->isActive && $this->isDefault && TaxKind::PercentageLine === $this->kind;
+    }
+
     public function getExemptionMention(): ?string
     {
         return $this->exemptionMention;

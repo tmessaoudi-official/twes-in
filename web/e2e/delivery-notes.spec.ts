@@ -391,7 +391,8 @@ test('a new note is worked out as it is typed, line by line and in its totals', 
     await page.getByTestId('line-0-quantity').fill('3');
     await page.getByTestId('line-0-price').fill('12.5');
     await expect(page.getByTestId('line-0-net')).toContainText('37,500');
-    await expect(page.getByTestId('delivery-note-total')).toContainText('37,500');
+    // A free line starts from the company's default VAT, as an invoice line does: 37,500 + 19 %.
+    await expect(page.getByTestId('delivery-note-total')).toContainText('44,625');
     await expect(page.getByTestId('delivery-note-totals-note')).toContainText(
       'calculés à l’instant',
     );

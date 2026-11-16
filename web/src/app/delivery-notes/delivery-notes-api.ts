@@ -597,6 +597,7 @@ function toOptions(raw: DeliveryNoteOptionsDeliveryNoteOptionsRead): DeliveryNot
               family,
               rate: tax.rate,
               entersVatBase: tax.entersVatBase,
+              isDefault: tax.isDefault,
             },
           ];
     }),

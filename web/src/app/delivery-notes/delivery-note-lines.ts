@@ -18,6 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   applyProduct,
+  dropRefusedTaxes,
   type LineControls,
   type LineGroup,
   lineGroup,
@@ -181,14 +182,20 @@ export class DeliveryNoteLines {
   });
 
   constructor() {
-    // Another customer may pay another price: the lines picked on this screen start again from their lists.
+    // Another customer may pay another price, and its regime may refuse a tax a line carries: the lines picked on this
+    // screen start again from their lists, and lose what the regime refuses, as an invoice's do.
     let seen: string | null | undefined;
     effect(() => {
       const id = this.customer()?.id ?? null;
       const changed = seen !== undefined && seen !== id;
       seen = id;
       if (changed) {
-        untracked(() => this.lines().controls.forEach((line) => void this.reprice(line)));
+        untracked(() =>
+          this.lines().controls.forEach((line) => {
+            dropRefusedTaxes(line, this.options(), this.excludedFamilies());
+            void this.reprice(line);
+          }),
+        );
         untracked(() => this.refusals.clear());
       }
     });
@@ -287,7 +294,7 @@ export class DeliveryNoteLines {
   );
 
   protected add(): void {
-    this.lines().push(lineGroup(null, this.options()));
+    this.lines().push(lineGroup(null, this.options(), this.excludedFamilies()));
   }
 
   protected remove(index: number): void {

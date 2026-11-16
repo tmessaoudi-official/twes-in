@@ -79,7 +79,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertArrayHasKey('TVA19', $taxes);
         self::assertArrayNotHasKey('TIMBRE', $taxes, 'a stamp is charged on the document');
         self::assertIsArray($taxes['TVA19']);
-        self::assertSame(['vat', '19.000'], [$taxes['TVA19']['family'], $taxes['TVA19']['rate']]);
+        self::assertSame(['vat', '19.000', true], [$taxes['TVA19']['family'], $taxes['TVA19']['rate'], $taxes['TVA19']['isDefault']], 'the default a free line starts from, as an invoice line does');
     }
 
     public function testAWriterDraftsANoteWhoseLinesStartFromTheirProducts(): void

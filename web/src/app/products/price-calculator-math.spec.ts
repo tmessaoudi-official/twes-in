@@ -2,9 +2,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  amountOf,
-  atCurrencyScale,
+  atScale,
+  decimalOf,
   exactPriceFor,
+  isBelow,
   markupOf,
   marginOf,
   profitOf,
@@ -12,37 +13,54 @@ import {
 
 describe('price calculator math', () => {
   it('reads an amount from what the form holds, and nothing from what is not one', () => {
-    expect(amountOf('12.500')).toBe(12.5);
-    expect(amountOf(' 3 ')).toBe(3);
-    expect(amountOf('')).toBeNull();
-    expect(amountOf(null)).toBeNull();
-    expect(amountOf('abc')).toBeNull();
+    expect(decimalOf('12.500')).toBe('12.500');
+    expect(decimalOf(' 3 ')).toBe('3');
+    expect(decimalOf('')).toBeNull();
+    expect(decimalOf(null)).toBeNull();
+    expect(decimalOf('abc')).toBeNull();
+    expect(decimalOf('1e2')).toBeNull();
+    expect(decimalOf('-3')).toBeNull();
   });
 
-  it('counts profit, margin on the price and markup on the cost for the same pair', () => {
-    expect(profitOf(60, 100)).toBe(40);
-    expect(marginOf(60, 100)).toBeCloseTo(40);
-    expect(markupOf(60, 100)).toBeCloseTo(66.667, 3);
-    expect(marginOf(100, 80)).toBeCloseTo(-25);
-    expect(marginOf(10, 0)).toBeNull();
-    expect(markupOf(0, 10)).toBeNull();
+  // Unblock page rule-23 (C103): money is a decimal string, so what the calculator shows is counted as exactly as the
+  // price it writes, never through a float.
+  it('counts profit, margin on the price and markup on the cost for the same pair, exactly', () => {
+    expect(profitOf('60', '100', 3)).toBe('40.000');
+    expect(profitOf('100', '80', 3)).toBe('-20.000');
+    expect(profitOf('0.1', '0.3', 3)).toBe('0.200');
+    expect(marginOf('60', '100', 2)).toBe('40.00');
+    expect(markupOf('60', '100', 2)).toBe('66.67');
+    expect(marginOf('100', '80', 2)).toBe('-25.00');
+    expect(marginOf('10', '0', 2)).toBeNull();
+    expect(markupOf('0', '10', 2)).toBeNull();
   });
 
-  it('writes a price at the currency scale with a point, rounded half up', () => {
-    expect(atCurrencyScale(100, 3)).toBe('100.000');
-    expect(atCurrencyScale(83.3333, 3)).toBe('83.333');
-    expect(atCurrencyScale(0.0005, 3)).toBe('0.001');
-    expect(atCurrencyScale(12.5, 0)).toBe('13');
+  it('rounds half away from zero, where a float rounds 1.005 down, and says no sign for a nought', () => {
+    expect(profitOf('1', '2.005', 2)).toBe('1.01');
+    expect(profitOf('2.005', '1', 2)).toBe('-1.01');
+    expect(markupOf('200', '200.01', 2)).toBe('0.01');
+    expect(markupOf('200', '200.009', 2)).toBe('0.00');
+    expect(markupOf('200', '199.991', 2)).toBe('0.00');
+    expect(markupOf('3', '4', 1)).toBe('33.3');
+    expect(atScale('83.3335', 3)).toBe('83.334');
+    expect(atScale('12.5', 0)).toBe('13');
+    expect(atScale('100', 3)).toBe('100.000');
+  });
+
+  it('compares two amounts at any scale', () => {
+    expect(isBelow('400', '534.0000')).toBe(true);
+    expect(isBelow('534', '534.0000')).toBe(false);
+    expect(isBelow('534.0001', '534')).toBe(false);
   });
 
   it('round-trips: the price for a margin has that margin', () => {
-    for (const percent of [5, 25, 33.3, 90]) {
-      const price = Number(exactPriceFor('42', String(percent), 'margin', 4));
-      expect(marginOf(42, price)).toBeCloseTo(percent, 2);
+    for (const percent of ['5', '25', '33.3', '90']) {
+      const price = exactPriceFor('42', percent, 'margin', 4) ?? '';
+      expect(Number(marginOf('42', price, 2))).toBeCloseTo(Number(percent), 2);
     }
-    for (const percent of [5, 25, 150]) {
-      const price = Number(exactPriceFor('42', String(percent), 'markup', 4));
-      expect(markupOf(42, price)).toBeCloseTo(percent, 2);
+    for (const percent of ['5', '25', '150']) {
+      const price = exactPriceFor('42', percent, 'markup', 4) ?? '';
+      expect(Number(markupOf('42', price, 2))).toBeCloseTo(Number(percent), 2);
     }
   });
 

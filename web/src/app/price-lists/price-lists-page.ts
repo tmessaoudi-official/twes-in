@@ -546,16 +546,13 @@ export class PriceListsPage implements OnInit {
 
   /** The sentence under a row's price: the translation key and its words, with the cost only for who may read it. */
   protected lineOf(figures: RowFigures): { key: string; params: Record<string, string> } {
-    const percent = (value: number | null): string =>
-      value === null ? '—' : `${this.format.decimal((Math.round(value * 10) / 10).toFixed(1))} %`;
+    const percent = (value: string | null): string =>
+      value === null ? '—' : `${this.format.decimal(value)} %`;
     const params = {
       shelf: this.format.amount(figures.shelf, null),
-      // float: a ratio worked out on screen, rounded to what is shown. A change keeps its sign written, and the
-      // formatter's marks keep it on the figure's left in Arabic, where a sentence holds no <bdi>.
-      change:
-        figures.changePercent === null
-          ? '—'
-          : this.format.signed(figures.changePercent.toFixed(1), 1),
+      // A change keeps its sign written, and the formatter's marks keep it on the figure's left in Arabic, where a
+      // sentence holds no <bdi>.
+      change: figures.changePercent === null ? '—' : this.format.signed(figures.changePercent, 1),
       cost: figures.cost === null ? '' : this.format.amount(figures.cost, null),
       margin: percent(figures.marginPercent),
     };

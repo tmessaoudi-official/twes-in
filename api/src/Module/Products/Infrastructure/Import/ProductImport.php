@@ -923,7 +923,7 @@ final readonly class ProductImport implements DeclaresImport
     {
         return $context->once('default-taxes', fn (): array => array_values(array_filter(
             $this->taxes->ofCompany($company->getId()),
-            static fn (TaxComponent $tax): bool => $tax->isActive() && $tax->isDefault() && TaxKind::PercentageLine === $tax->getKind(),
+            static fn (TaxComponent $tax): bool => $tax->isLineDefault(),
         )));
     }
 

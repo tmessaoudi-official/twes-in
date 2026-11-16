@@ -94,7 +94,15 @@ const options: DeliveryNoteOptions = {
   establishments: [{ id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true }],
   units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
   taxes: [
-    { id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', rate: '19', entersVatBase: false },
+    {
+      id: 't1',
+      code: 'TVA19',
+      name: 'TVA 19 %',
+      family: 'vat',
+      rate: '19',
+      entersVatBase: false,
+      isDefault: false,
+    },
   ],
 };
 /** What the pickers answer; the page is never handed either list whole. */

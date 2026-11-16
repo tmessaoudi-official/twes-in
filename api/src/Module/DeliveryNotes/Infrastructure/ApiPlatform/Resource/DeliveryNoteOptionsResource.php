@@ -72,12 +72,12 @@ final class DeliveryNoteOptionsResource
     #[Groups([self::READ])]
     public array $units = [];
 
-    /** @var list<array{id: string, code: string, name: string, family: string, rate: string, entersVatBase: bool}> */
+    /** @var list<array{id: string, code: string, name: string, family: string, rate: string, entersVatBase: bool, isDefault: bool}> the company's line defaults marked, which a new free line starts from */
     #[ApiProperty(schema: [
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['id', 'code', 'name', 'family', 'rate', 'entersVatBase'],
+            'required' => ['id', 'code', 'name', 'family', 'rate', 'entersVatBase', 'isDefault'],
             'properties' => [
                 'id' => ['type' => 'string'],
                 'code' => ['type' => 'string'],
@@ -85,6 +85,7 @@ final class DeliveryNoteOptionsResource
                 'family' => ['type' => 'string', 'enum' => ['vat', 'levy']],
                 'rate' => ['type' => 'string'],
                 'entersVatBase' => ['type' => 'boolean'],
+                'isDefault' => ['type' => 'boolean'],
             ],
         ],
     ])]

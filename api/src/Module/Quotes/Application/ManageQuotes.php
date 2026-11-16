@@ -316,6 +316,20 @@ final readonly class ManageQuotes implements DeclaresAuditActions
     }
 
     /**
+     * What a line naming no product is charged when it states no taxes: the company's line defaults, as an invoice line
+     * is (TaxComponent::isLineDefault), which the customer's regime then still filters. An empty list keeps meaning none.
+     *
+     * @return list<string>
+     */
+    private function defaultLineTaxIds(Company $company): array
+    {
+        return array_values(array_map(
+            static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(),
+            array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax): bool => $tax->isLineDefault()),
+        ));
+    }
+
+    /**
      * The taxes a line states, each checked; or, when it states none, its product's defaults that both its customer's
      * regime and its company's own charge, and that the company still has active.
      *
@@ -328,7 +342,7 @@ final readonly class ManageQuotes implements DeclaresAuditActions
     {
         $excluded = $this->excluded->of($company, $customer->getTaxRegime());
         if (null === $line->taxComponentIds) {
-            $defaults = array_map(fn (string $id): ?TaxComponent => $this->taxes->ofIdInCompany(Uuid::fromString($id), $company->getId()), $productDefaults ?? []);
+            $defaults = array_map(fn (string $id): ?TaxComponent => $this->taxes->ofIdInCompany(Uuid::fromString($id), $company->getId()), $productDefaults ?? $this->defaultLineTaxIds($company));
 
             return array_values(array_filter($defaults, static fn (?TaxComponent $tax): bool => null !== $tax && $tax->isActive() && !\in_array($tax->getFamily(), $excluded, true)));
         }

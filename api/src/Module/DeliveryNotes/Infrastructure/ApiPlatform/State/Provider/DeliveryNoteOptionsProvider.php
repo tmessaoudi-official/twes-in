@@ -64,6 +64,7 @@ final readonly class DeliveryNoteOptionsProvider implements ProviderInterface
             'family' => $tax->getFamily()->value,
             'rate' => Decimal::format(Decimal::of($tax->getRate() ?? '0'), 3),
             'entersVatBase' => $tax->entersVatBase(),
+            'isDefault' => $tax->isLineDefault(),
         ], array_filter($this->taxes->ofCompany($companyId), static fn (TaxComponent $tax): bool => $tax->isActive() && TaxKind::PercentageLine === $tax->getKind())));
 
         return $options;
