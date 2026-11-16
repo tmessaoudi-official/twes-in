@@ -9,7 +9,9 @@ on:
     - cron: "17 3 * * 1"
   workflow_dispatch:
   push:
-    branches: [master, 'release/**']
+    # A cloud session's branch too (`claude/...`, `ccr-...`, `cloud/...`, as ci.yml), so its change to these paths is
+    # checked before the developer lands it; nothing here needs a secret.
+    branches: [master, 'claude/**', 'ccr-*', 'cloud/**', 'release/**']
     paths:
       - compose.prod.yaml
       - compose.backup.yaml
