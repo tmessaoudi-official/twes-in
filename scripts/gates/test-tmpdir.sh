@@ -4,8 +4,9 @@
 # when it cannot: its first TMPDIR line reads `TMPDIR=$(mktemp -d) || exit 1`. An unchecked one left the variable empty
 # when the folder could not be made (the recipe run by hand, a root-owned toolchain folder), and every fixture path and
 # every cleanup then started at `/`, where only an unprivileged account saved the tree; a cloud session runs as root.
-# The runner every test goes through, no-leftovers.sh, stops the same way on its own folder. Tests are read from the
-# index, as CI sees them. Usage: test-tmpdir.sh [--root DIR] [--floor N]
+# The runner every test goes through, no-leftovers.sh, stops the same way on its own folder, and so does every other
+# shell test of the tree (infra/**/tests, scripts/<area>/tests) for any folder it makes at the top, TMPDIR or another.
+# Tests are read from the index, as CI sees them. Usage: test-tmpdir.sh [--root DIR] [--floor N]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 floor=100  # under today's 104 tests, so losing a folder of them reds
@@ -26,6 +27,14 @@ while IFS= read -r path; do
     wrong+=("$path: $line (stop when the folder cannot be made: TMPDIR=\$(mktemp -d) || exit 1)")
   fi
 done < <(git -C "$root" ls-files -- 'scripts/gates/tests/*.test.sh' 'scripts/tests/*.test.sh')
+# Every shell test: a folder made at the top (a line starting NAME=$(mktemp -d)) is checked on that line.
+elsewhere=0
+while IFS= read -r path; do
+  elsewhere=$((elsewhere+1))
+  while IFS= read -r line; do
+    [[ "$line" =~ \|\|\ *(exit|\{) ]] || wrong+=("$path: ${line%%;*} (stop when the folder cannot be made: … || exit 1)")
+  done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=\$\(mktemp -d\)' "$root/$path" | grep -v -E '^TMPDIR=\$\(mktemp -d\) \|\| exit 1(;|$)')
+done < <(git -C "$root" ls-files -- '*.test.sh' | grep -v -E '^scripts/(gates/)?tests/')
 runner=scripts/gates/tests/no-leftovers.sh
 if [[ -f "$root/$runner" ]] && grep -qE '^[a-z_]+=\$\(mktemp -d\) *$' "$root/$runner"; then
   wrong+=("$runner: its own folder is made unchecked")
@@ -38,4 +47,4 @@ if ((${#wrong[@]})); then
   printf '  %s\n' "${wrong[@]}"
   exit 1
 fi
-printf 'test-tmpdir: OK — %d tests stop when their temporary folder cannot be made\n' "$read"
+printf 'test-tmpdir: OK — %d tests and the %d elsewhere stop when a temporary folder they make cannot be made\n' "$read" "$elsewhere"

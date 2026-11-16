@@ -15,7 +15,7 @@ echo "web nginx: the forwarded scheme ($image)"
 check "the web image's nginx is found in its Dockerfile" "$([[ -n "$image" ]] && echo yes)" yes
 
 id=twes-fwd-$$
-dir=$(mktemp -d)
+dir=$(mktemp -d) || exit 1
 cleanup() { docker rm -f "$id-web" "$id-api" >/dev/null 2>&1; docker network rm "$id" >/dev/null 2>&1; rm -rf "$dir"; }
 trap cleanup EXIT
 printf 'server { listen 80; location / { return 200 "[$http_x_forwarded_proto]"; } }\n' > "$dir/echo.conf"

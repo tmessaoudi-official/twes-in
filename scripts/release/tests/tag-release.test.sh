@@ -3,7 +3,7 @@
 # tag-release.sh against a stand-in docker: which commits it tags, what the tag's message holds, what it refuses, and that
 # it never pushes.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR
 # Every case's fixture is made here and goes with it, the key's agents stopped first.
 trap 'GNUPGHOME="$TMPDIR/gnupg" gpgconf --kill all 2>/dev/null; rm -rf "$TMPDIR"' EXIT
 SCRIPT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/tag-release.sh

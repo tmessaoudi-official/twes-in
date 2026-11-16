@@ -14,7 +14,7 @@ echo "web nginx: no link token in the access log ($image)"
 check "the web image's nginx is found in its Dockerfile" "$([[ -n "$image" ]] && echo yes)" yes
 
 id=twes-log-$$
-dir=$(mktemp -d)
+dir=$(mktemp -d) || exit 1
 cleanup() { docker rm -f "$id-web" "$id-api" >/dev/null 2>&1; docker network rm "$id" >/dev/null 2>&1; rm -rf "$dir"; }
 trap cleanup EXIT
 printf 'server { listen 80; access_log off; location / { return 200 "ok"; } }\n' > "$dir/echo.conf"

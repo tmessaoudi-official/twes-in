@@ -4,7 +4,7 @@
 # values staging-follow.env holds), written as a drop-in over the timer; five minutes when unset, as the timer itself says,
 # and refused below a minute or in any form the script does not read.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 SCRIPT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/staging-follow-interval.sh
 TIMER=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/infra/staging/twes-staging-follow.timer
 pass=0; fail=0

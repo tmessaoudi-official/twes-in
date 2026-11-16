@@ -37,4 +37,15 @@ out=$(run "$d"); check "a staged-only enumeration: an untracked test is not read
 
 d=$(tree); out=$(run "$d" 3); check "fewer tests than the floor is refused, not read as all clean" $? 1 "$out" "floor"
 
+# Tests elsewhere (infra/**/tests, scripts/<area>/tests) need no TMPDIR line, but any folder they make at the top
+# stops them when it cannot be made.
+d=$(tree); mkdir -p "$d/infra/web/tests"; printf '#!/usr/bin/env bash\ndir=$(mktemp -d)\nprintf x > "$dir/echo.conf"\n' > "$d/infra/web/tests/log.test.sh"; git -C "$d" add -A
+out=$(run "$d"); check "an unchecked top-level dir=\$(mktemp -d) anywhere is refused" $? 1 "$out" "infra/web/tests/log.test.sh"
+
+d=$(tree); mkdir -p "$d/scripts/release/tests"; printf '#!/usr/bin/env bash\nTMPDIR=$(mktemp -d); export TMPDIR\n' > "$d/scripts/release/tests/tag.test.sh"; git -C "$d" add -A
+out=$(run "$d"); check "  an unchecked TMPDIR line outside the two folders too" $? 1 "$out" "scripts/release/tests/tag.test.sh"
+
+d=$(tree); mkdir -p "$d/infra/web/tests"; printf '#!/usr/bin/env bash\ndir=$(mktemp -d) || exit 1\necho ok\n' > "$d/infra/web/tests/log.test.sh"; git -C "$d" add -A
+out=$(run "$d"); check "  one that stops passes, with no TMPDIR line asked of it" $? 0 "$out" "OK"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

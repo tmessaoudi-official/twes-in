@@ -15,7 +15,7 @@ echo "Caddy: no link token in any log line ($image)"
 check "the edge's Caddy image is found in compose.deploy.yaml" "$([[ -n "$image" ]] && echo yes)" yes
 
 id=twes-caddy-log-$$
-dir=$(mktemp -d)
+dir=$(mktemp -d) || exit 1
 cleanup() { docker rm -f "$id" >/dev/null 2>&1; docker network rm "$id" >/dev/null 2>&1; rm -rf "$dir"; }
 trap cleanup EXIT
 docker pull -q "$image" >/dev/null

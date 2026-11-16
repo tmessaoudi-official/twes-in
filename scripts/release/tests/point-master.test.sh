@@ -3,7 +3,7 @@
 # point-master.sh against a stand-in docker: which commit :master is moved to, by copying the per-commit images in the
 # registry, and what it refuses before moving anything.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR
 trap 'rm -rf "$TMPDIR"' EXIT
 SCRIPT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/point-master.sh
 pass=0; fail=0

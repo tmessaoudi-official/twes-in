@@ -4,14 +4,14 @@
 # rotates every channel's file, and a writer that kept its file open (as the API's PHP workers do) still writes to
 # the live file afterwards, not to the rotated one.
 set -uo pipefail
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 CONF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/logrotate.conf
 pass=0; fail=0
 check() { if [[ "$2" == "$3" ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (got '$2', wanted '$3')"; fi; }
 command -v logrotate >/dev/null || { echo "logrotate is not installed"; exit 1; }
 echo "self-hosted logrotate"
 
-dir=$(mktemp -d)
+dir=$(mktemp -d) || exit 1
 sed "s#/var/log/twes-in/#$dir/#" "$CONF" > "$dir/twes-in.conf"
 check "the copy points at the temporary directory" "$(grep -c "^$dir/\*\.log {" "$dir/twes-in.conf")" 1
 

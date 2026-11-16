@@ -3,7 +3,7 @@
 set -uo pipefail
 # None of the machine's own git settings: a developer's commit.gpgsign would sign the fixtures with a real key.
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
-TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+TMPDIR=$(mktemp -d) || exit 1; export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SCRIPT=$HERE/../snapshot-gate.sh
 MAKEFILE=$HERE/../../../Makefile
