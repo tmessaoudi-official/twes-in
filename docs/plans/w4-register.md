@@ -7,9 +7,9 @@ line a search for its symbol found, a dated snapshot: each batch starts by readi
 writing, the test that holds it as the default. Every parameter keeps today's behaviour as its default. The 13:19
 test of SPEC § 7 (does it change what a fiscal document prints or computes, or loosen a ruled refusal or a security
 floor) was applied to every pick: one a ruling already answers gets no parameter, one only the developer can answer
-goes to the decision desk, one the accountant answers joins the packet, and the rest carry their bound here.
+goes to the decision desk, and the rest carry their bound here.
 
-Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); already built 19; with the accountant 1 (A68, Q26 beside Q25); merged into another pick's key 5; planned on their own row 2 (C94 row 40, B79 row 132; S0.10i's « 7 already planned » was a key search that named only these two, and a search of the plan by id and by key finds no other); on the desk 6, and A104 both on the desk and in B4, so 7 desk cards (q-w4-*: A41, A2, A54, B13, B35, A104, A49); no reader yet 1; dropped 7 (A48, A73, B80 at triage; C16, C161, C114, A52 because a recorded ruling decides, and A93 keeps only its raise-only half). The estimate of 70 is replaced by 60.
+Counts: 61 to build (new 57, an existing setting extended 3, partly built 1); already built 19; merged into another pick's key 5; planned on their own row 2 (C94 row 40, B79 row 132; S0.10i's « 7 already planned » was a key search that named only these two, and a search of the plan by id and by key finds no other); on the desk 6, and A104 both on the desk and in B4, so 7 desk cards (q-w4-*: A41, A2, A54, B13, B35, A104, A49); no reader yet 1; dropped 7 (A48, A73, B80 at triage; C16, C161, C114, A52 because a recorded ruling decides, and A93 keeps only its raise-only half). The estimate of 70 is replaced by 61.
 
 ## B1. Operator parameters (services.yaml, bounded at start) (8, 20 points)
 
@@ -29,7 +29,7 @@ Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); al
 | Pick | Key (level) | Today | Invariant or source | Size |
 |---|---|---|---|---|
 | C162 | `imports.notation (date order, decimal mark)` (company + per-run import option) | ImportCells reads a comma or a point and one date order in code; `api/src/ImportExport/Application/ImportCells.php:20` | - | M |
-| C108 | `excess_decimals (refuse / round with a gross_rounded note)` (products import option) | the products import refuses too_many_decimals except float noise; `api/src/ImportExport/Application/ImportCells.php:62` | default refuse = today (triage set it back); round to the currency scale once | M |
+| C108 | `excess_decimals (refuse / round with a gross_rounded note)` (products import option) | the products import refuses too_many_decimals except float noise; `api/src/ImportExport/Application/ImportCells.php:62` | import set-aside never loosens the domain: the rounded value still passes the price value object, the row carries its gross_rounded note, and the default stays refuse (too_many_decimals) | M |
 | B61 | `import.undo_stock_conflict (keep and say / refuse the undo)` (company) | UndoImportedStock keeps a counted or below-zero place and says which; `api/src/Module/Inventory/Infrastructure/Import/UndoImportedStock.php:30` | - | M |
 | A111 | `import.stock_cost_fallback` (company) | row cost, else the product's, else none, hard-coded; `api/src/Module/Inventory/Infrastructure/Import/OpeningStockImport.php:45` | money: a receipt with no cost is valued at the average | M |
 | C49 | `import.product_vendors.mode (add only / replace)` (products-vendors import option) | a file adds links and codes, never removes; `api/src/Module/Products/Application/ManageProducts.php:336` | a replace removes links: through the import undo | L |
@@ -69,7 +69,7 @@ Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); al
 | C95 | `documents.drafts_offer_cancel (always / when delete is refused)` (company) | every draft offers both Annuler and Supprimer; `web/src/app/invoices/invoice-actions.ts:108` | default = today: both offered (the triage set it back) | M |
 | C88 | `product.check_reasons (with C89)` (company) | nine automatic reasons, all on, in ProductCheckRules; `api/src/Module/Products/Infrastructure/Doctrine/ProductCheckRules.php:22` | - | M |
 
-## B5. Company settings: prices, money, stock (14, 50 points)
+## B5. Company settings: prices, money, stock (15, 53 points)
 
 | Pick | Key (level) | Today | Invariant or source | Size |
 |---|---|---|---|---|
@@ -79,6 +79,7 @@ Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); al
 | C120 | `article.after_price_restore (close review / reopen)` (company) | restoreFollowedPrice clears priceReviewCost: the review stays closed; `api/src/Module/Products/Domain/Model/Product.php:533` | - | M |
 | A39 | `price_list.same_kind_tie (lowest / highest)` (company) | ResolveUnitPrice: between two lists of one tier the lower net wins; `api/src/Module/PriceLists/Application/ResolveUnitPrice.php:26` | - | M |
 | A11 | `article.reference_reserved_on_open` (company) | ProductReferences::preview shows the next without taking it; `api/src/Module/Products/Application/ProductReferences.php:29` | - | M |
+| A68 | `invoice.credit_note_cost (at the credit note's issue / as credited)` (company) | each line freezes unit_cost at its own issue; `api/src/Module/Invoices/Domain/Model/InvoiceLine.php:163` | margin only: the line cost feeds the summary's and the sales reports' margin, never stock valuation (a return moves back at the sale movement's cost, StockMovement.php:394); default today, the cost at the credit note's own issue (InvoiceLine.php:163) | M |
 | A71 | `credit_note.returned_by_default` (company) | the returned flag starts false in the form; `web/src/app/invoices/invoice-forms.ts:710` | - | S |
 | A63 | `stock.line_in_other_unit (say / refuse validation)` (company) | a line in another unit moves nothing and is said; `api/src/Module/Inventory/Application/MoveStockForDeliveryNotes.php:53` | - | M |
 | A75 | `stock.named_lot_unavailable (say / refuse validation)` (company) | the line moves nothing and the reason is said; `api/src/Module/Inventory/Application/MoveStockForDeliveryNotes.php:399` | another lot is never taken in its place unless chosen | M |
@@ -128,7 +129,6 @@ Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); al
 | B69 | exists | already built: built in parameter batch 3 (2026-11-02) |
 | A2 | desk | on the decision desk: invariant: gapless continuous numbering; a company-wide series and when it may change need a fiscal source |
 | A9 | exists | already built: both presets declare DEV-{YYYY}-{MM}-{SEQ:5}; the company edits its series |
-| A68 | accountant | each line freezes unit_cost at its own issue |
 | A73 | dropped | dropped at triage: its note builds nothing |
 | B80 | dropped | dropped at triage: no order document is built |
 | C140 | exists | already built: built in parameter batch 2 (2026-11-02) |
@@ -152,5 +152,5 @@ Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); al
 | B10 | exists | already built: built in parameter batch 3 |
 | B35 | desk | on the decision desk: r18 (the Installation card) was moved after the release by an earlier ruling; W4 (later) says before: which wins |
 
-Total: 187 points by the 1/3/8 sizes. Cost baseline: the three parameter batches of 2026-11-02 built 15 values in
+Total: 190 points by the 1/3/8 sizes. Cost baseline: the three parameter batches of 2026-11-02 built 15 values in
 about five hours; W4 is mostly behaviours, measured again after B1.
