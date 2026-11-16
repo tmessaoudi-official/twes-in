@@ -15,10 +15,14 @@ use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Domain\Model\User;
+use App\Settings\Application\PlatformSettings;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
+use App\Tenancy\Domain\Exception\SuspensionReasonUnchanged;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -42,6 +46,8 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
     public const string SUSPENDED = 'company.suspended';
     /** A suspended company opened again: its access is back, which is not its approval. */
     public const string RESTORED = 'company.restored';
+    /** A suspended company's reason said anew by a second « Suspendre », where the operators have it so. */
+    public const string REASON_CHANGED = 'company.suspension_reason_changed';
 
     public function __construct(
         private CompanyRepository $companies,
@@ -52,6 +58,7 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
         #[Autowire(param: 'app.signup.login_url')]
         private string $loginUrl,
         private Transactions $transactions,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -86,9 +93,12 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
     }
 
     /**
-     * Refuses a company never opened or suspends one that was; a company already suspended keeps its reason.
+     * Refuses a company never opened or suspends one that was; a company already suspended keeps its reason, unless the
+     * operators have a second « Suspendre » say it anew (`approval.resuspend_updates_reason`), when another reason
+     * replaces it and its owners are told again; the reason it already has is refused then, as nothing would change.
      *
      * @throws CompanyNotFound
+     * @throws SuspensionReasonUnchanged
      */
     public function reject(Uuid $companyId, Uuid $operatorId, ?string $reason = null): Company
     {
@@ -97,7 +107,17 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
         [$company, $action] = $this->transactions->run(function () use ($companyId, $operatorId, $reason): array {
             $company = $this->heldCompany($companyId);
             if (Company::STATUS_SUSPENDED === $company->getStatus()) {
-                return [$company, null];
+                if (!$this->reasonSaidAnew()) {
+                    return [$company, null];
+                }
+                if ($reason === $company->getSuspensionReason()) {
+                    throw new SuspensionReasonUnchanged('The company is already suspended with this reason.');
+                }
+                $company->changeSuspensionReason($reason);
+                $this->companies->save($company);
+                $this->record($company, self::REASON_CHANGED, Company::STATUS_SUSPENDED, $operatorId);
+
+                return [$company, self::REASON_CHANGED];
             }
             $from = $company->getStatus();
             $action = $company->wasOpened() ? self::SUSPENDED : self::REJECTED;
@@ -114,10 +134,15 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
         // A company an operator made waits for its first owner, so a refusal of it reaches nobody, as an approval would.
         foreach ($this->owners($company) as $owner) {
             $mail = new CompanyDecisionMail($owner->getEmail()->value, $company->getName(), $owner->getLocale(), $reason);
-            self::SUSPENDED === $action ? $this->mailer->suspended($mail) : $this->mailer->refused($mail);
+            $company->wasOpened() ? $this->mailer->suspended($mail) : $this->mailer->refused($mail);
         }
 
         return $company;
+    }
+
+    private function reasonSaidAnew(): bool
+    {
+        return true === $this->settings->value(new SettingContext(), PlatformSettings::RESUSPEND_UPDATES_REASON);
     }
 
     /** @return list<User> */
@@ -157,6 +182,7 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
             self::REJECTED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
             self::SUSPENDED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
             self::RESTORED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
+            self::REASON_CHANGED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

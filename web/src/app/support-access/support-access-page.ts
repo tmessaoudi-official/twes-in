@@ -7,6 +7,7 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  linkedSignal,
   signal,
   viewChild,
 } from '@angular/core';
@@ -33,9 +34,6 @@ import {
   SupportAccessRefused,
   type SupportAccessState,
 } from './support-access-api';
-
-/** The window offered first: long enough for a question asked in the morning to be answered the next day. */
-export const DEFAULT_SUPPORT_HOURS = 24;
 
 /**
  * « Accès du support »: the owner lets the platform's support read the company for an hour, a day or three, read-only,
@@ -67,7 +65,10 @@ export class SupportAccessPage {
   protected readonly state = signal<SupportAccessState | null>(null);
   /** True when the API says only the owner may come here. */
   protected readonly ownerOnly = signal(false);
-  protected readonly hours = signal(DEFAULT_SUPPORT_HOURS);
+  /** The window offered first, the operator's: a day unless it says otherwise. */
+  private readonly firstWindow = computed(() => this.state()?.defaultHours ?? null);
+  /** The window chosen, the first one offered until the owner picks another. */
+  protected readonly hours = linkedSignal(() => this.firstWindow());
   /** What is wrong, as the owner types it for support to read on opening the company. */
   protected readonly reason = signal('');
   protected readonly busy = signal(false);
@@ -110,6 +111,7 @@ export class SupportAccessPage {
     try {
       // Opening the company to support waits for the owner to prove who is at the screen (docs/SPEC.md § 7).
       const hours = this.hours();
+      if (hours === null) return;
       const typed = typedText(this.reason());
       const reason = typed === '' ? null : typed;
       this.state.set(

@@ -21,7 +21,8 @@
         "period_closed": "a clôturé une période",
         "rejected": "a refusé l’entreprise",
         "restored": "a rétabli l’accès à l’entreprise",
-        "suspended": "a suspendu l’entreprise"
+        "suspended": "a suspendu l’entreprise",
+        "suspension_reason_changed": "a changé le motif de suspension de l’entreprise"
       },
       "customer": {
         "created": "a créé le client",
@@ -49,6 +50,7 @@
         "photo_added": "a ajouté une photo à l’article",
         "photo_removed": "a retiré une photo de l’article",
         "photo_restored": "a remis une photo de l’article",
+        "photo_let_go": "a laissé partir une photo retirée de l’article, son temps de garde passé",
         "photos_reordered": "a réordonné les photos de l’article",
         "main_photo_changed": "a changé la photo principale de l’article",
         "deleted": "a supprimé l’article",

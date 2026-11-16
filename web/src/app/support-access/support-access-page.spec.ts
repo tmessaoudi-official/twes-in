@@ -25,7 +25,7 @@ import {
   SupportAccessRefused,
   type SupportAccessState,
 } from './support-access-api';
-import { DEFAULT_SUPPORT_HOURS, SupportAccessPage } from './support-access-page';
+import { SupportAccessPage } from './support-access-page';
 import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
@@ -45,6 +45,7 @@ const CLOSED: SupportAccessState = {
   endsAt: null,
   reason: null,
   hours: [1, 24, 72],
+  defaultHours: 24,
   reasonMax: 500,
 };
 // A window open around the moment the spec runs: one ended is shown closed.
@@ -53,6 +54,7 @@ const OPEN: SupportAccessState = {
   endsAt: new Date(Date.now() + 23 * 3_600_000).toISOString(),
   reason: null,
   hours: [1, 24, 72],
+  defaultHours: 24,
   reasonMax: 500,
 };
 
@@ -118,11 +120,19 @@ describe('SupportAccessPage', () => {
     });
   });
 
+  it('offers the windows the operator set, the first one checked, never a window of its own', async () => {
+    api.read.mockResolvedValue({ ...CLOSED, hours: [1, 4], defaultHours: 4 });
+    await open();
+
+    expect(q('support-access-hours-24')).toBeNull();
+    const checked = q('support-access-hours-4')?.querySelector('input') as HTMLInputElement;
+    expect(checked.checked).toBe(true);
+  });
+
   it('offers an hour, a day or three, a day first, and opens the company for the window chosen', async () => {
     await open();
 
     expect(q('support-access-closed')).not.toBeNull();
-    expect(DEFAULT_SUPPORT_HOURS).toBe(24);
     const checked = q('support-access-hours-24')?.querySelector('input') as HTMLInputElement;
     expect(checked.checked).toBe(true);
 

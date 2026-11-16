@@ -224,7 +224,8 @@
       "expense_not_draft_changed": "This expense is recorded in the books: only a draft is changed.",
       "company_closed_down": "Its owner closed this company down: only they can reopen it, within the days allowed.",
       "company_has_owners": "This company already has an owner, who invites the next ones.",
-      "not_an_owner": "This account no longer owns a company: its password unlocks by itself at the time shown, or through the link it was sent."
+      "not_an_owner": "This account no longer owns a company: its password unlocks by itself at the time shown, or through the link it was sent.",
+      "suspension_reason_unchanged": "This company already has this reason: nothing changed and nobody was told."
     }
   }
 }

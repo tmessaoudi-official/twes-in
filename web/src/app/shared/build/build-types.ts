@@ -13,8 +13,11 @@ export interface PartBuild {
 
 /** What the API says of itself: its build, the environment its kernel runs in, and the deployment, as it is. */
 export interface ApiBuild extends PartBuild {
-  /** `prod`, `dev` or `test`: the footer names it only when it is not `prod`. */
-  mode: string;
+  /**
+   * `prod`, `dev` or `test`: the footer names it only when it is not `prod`; null when the operator has the API say
+   * its release alone (`app.health.public_build`).
+   */
+  mode: string | null;
   /** `dev`, `staging` or `prod`, or null when the deployment names none: shown only when it is not `prod`. */
   deployment: string | null;
   /** The monitor's public status page the operators set, which the footer links to; null when none is. */

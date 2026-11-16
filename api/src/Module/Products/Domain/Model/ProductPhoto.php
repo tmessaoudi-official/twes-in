@@ -146,6 +146,12 @@ class ProductPhoto implements CompanyOwned
         return null !== $this->removedAt;
     }
 
+    /** When it was taken out of the gallery; null while it is in it. */
+    public function getRemovedAt(): ?\DateTimeImmutable
+    {
+        return $this->removedAt;
+    }
+
     public function moveTo(int $position): void
     {
         $this->position = $position;

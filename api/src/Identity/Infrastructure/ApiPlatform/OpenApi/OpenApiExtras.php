@@ -82,7 +82,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                     'properties' => [
                         'version' => ['type' => ['string', 'null'], 'description' => 'YYYY.MM.DD.N, « -dirty » when built from uncommitted changes; null when the image was built without one'],
                         'commit' => ['type' => ['string', 'null'], 'description' => 'The short hash of the last commit the version counts'],
-                        'mode' => ['type' => 'string', 'description' => 'The kernel environment: prod, dev or test'],
+                        'mode' => ['type' => ['string', 'null'], 'description' => 'The kernel environment: prod, dev or test; null when the operator has the release alone said (app.health.public_build)'],
                     ],
                 ],
                 'deployment' => ['type' => ['string', 'null'], 'description' => 'The deployment this is (dev, staging, prod), null when it names none'],

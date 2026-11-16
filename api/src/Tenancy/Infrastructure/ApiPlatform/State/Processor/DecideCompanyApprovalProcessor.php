@@ -18,6 +18,7 @@ use App\Tenancy\Application\Approval\DecideCompanyApproval;
 use App\Tenancy\Application\Approval\PlatformCompanies;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Domain\Exception\CompanyClosedDown;
+use App\Tenancy\Domain\Exception\SuspensionReasonUnchanged;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\PlatformCompanyResource;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -53,6 +54,8 @@ final readonly class DecideCompanyApprovalProcessor implements ProcessorInterfac
         } catch (CompanyClosedDown $closed) {
             // Its owner closed it down: only they take that back, and an operator's decision is no longer asked for.
             throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $closed->getMessage(), 'company_closed_down', [], $closed);
+        } catch (SuspensionReasonUnchanged $unchanged) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $unchanged->getMessage(), 'suspension_reason_unchanged', [], $unchanged);
         }
 
         return PlatformCompanyResource::of($this->companies->viewOf($company), $this->standings->of($company->getId()));

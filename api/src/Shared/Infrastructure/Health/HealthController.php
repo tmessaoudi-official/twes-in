@@ -58,6 +58,8 @@ final readonly class HealthController
         #[Autowire(param: ClientErrorBounds::MAX_BODY)] private int $errorReportBytes,
         #[Autowire(param: ClientErrorBounds::MAX_MESSAGE)] private int $errorMessageLength,
         #[Autowire(param: ClientErrorBounds::MAX_STACK)] private int $errorStackLength,
+        // How much of the build anyone may read: the whole of it unless the operator says the release alone.
+        #[Autowire(param: HealthBounds::PUBLIC_BUILD)] private string $publicBuild = HealthBounds::PUBLIC_BUILD_FULL,
     ) {
     }
 
@@ -70,8 +72,8 @@ final readonly class HealthController
             [
                 'status' => $reachable ? 'ok' : 'degraded',
                 'database' => $reachable ? 'ok' : 'unreachable',
-                'build' => ['version' => self::given($this->version), 'commit' => self::given($this->commit), 'mode' => $this->mode],
-                'deployment' => self::given($this->deployment),
+                'build' => $this->build(),
+                'deployment' => $this->releaseOnly() ? null : self::given($this->deployment),
                 'statusUrl' => $reachable ? $this->statusUrl() : null,
                 'passkeys' => ['host' => $this->passkeyHost->current(), 'address' => $this->passkeyHost->address()],
                 'web' => [
@@ -89,6 +91,23 @@ final readonly class HealthController
             ],
             $reachable ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE,
         );
+    }
+
+    /** @return array{version: ?string, commit: ?string, mode: ?string} */
+    private function build(): array
+    {
+        if ($this->releaseOnly()) {
+            $version = self::given($this->version);
+
+            return ['version' => null === $version ? null : preg_replace('/-dirty$/', '', $version), 'commit' => null, 'mode' => null];
+        }
+
+        return ['version' => self::given($this->version), 'commit' => self::given($this->commit), 'mode' => $this->mode];
+    }
+
+    private function releaseOnly(): bool
+    {
+        return HealthBounds::PUBLIC_BUILD_VERSION === $this->publicBuild;
     }
 
     private function statusUrl(): ?string

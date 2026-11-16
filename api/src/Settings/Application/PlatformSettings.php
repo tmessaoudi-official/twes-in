@@ -23,6 +23,8 @@ final readonly class PlatformSettings implements DeclaresSettings
     public const string MODULE = 'core';
     public const string SIGNUP_ENABLED = 'signup.enabled';
     public const string SIGNUP_APPROVAL_REQUIRED = 'signup.approval_required';
+    /** Whether a second « Suspendre » with another reason says it anew to the owners; off, the first reason stays. */
+    public const string RESUSPEND_UPDATES_REASON = 'approval.resuspend_updates_reason';
 
     public function settings(): iterable
     {
@@ -31,5 +33,6 @@ final readonly class PlatformSettings implements DeclaresSettings
 
         yield new SettingDefinition(self::SIGNUP_ENABLED, SettingType::Bool, false, $chain, $platform, 'settings.platform.signup_enabled', self::MODULE);
         yield new SettingDefinition(self::SIGNUP_APPROVAL_REQUIRED, SettingType::Bool, true, $chain, $platform, 'settings.platform.signup_approval_required', self::MODULE);
+        yield new SettingDefinition(self::RESUSPEND_UPDATES_REASON, SettingType::Bool, false, $chain, $platform, 'settings.platform.resuspend_updates_reason', self::MODULE);
     }
 }

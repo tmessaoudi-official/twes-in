@@ -28,12 +28,15 @@ use Psr\Clock\ClockInterface;
  * its own. What is only the account's goes with it in the database (sessions, factors, memberships, its notifications),
  * its preferences go too, and its address leaves the journal; every entry about it stays, under an id that no longer
  * names anyone. The records a company keeps (an invoice issued, a payment recorded) keep that id as well. An account that
- * has become a company's only owner since it asked is kept, for that company would be left with no one to run it, and
- * is tried again the next night.
+ * has become a company's only owner since it asked is kept, for that company would be left with no one to run it: tried
+ * again the next night, or, where the platform says so, its request withdrawn and the
+ * person told which companies keep them (`account.deletion_withdrawn_when_sole_owner`).
  */
 final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
 {
     public const string DELETED = 'account.deleted';
+    /** A deletion the nightly run gave up on: the account became a company's only owner and the platform withdraws then. */
+    public const string WITHDRAWN = 'account.deletion_withdrawn';
 
     public function __construct(
         private UserRepository $users,
@@ -44,6 +47,7 @@ final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private AccountDeletionMailer $mailer,
     ) {
     }
 
@@ -54,16 +58,26 @@ final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
         if (!\is_int($days)) {
             throw new \UnexpectedValueException('The days before an account deletion is final are not a number.');
         }
+        $withdraw = true === $this->readSetting->value(new SettingContext(), AccountDeletionSettings::WITHDRAWN_WHEN_SOLE_OWNER);
         $deleted = $kept = 0;
         foreach ($this->users->deletionsRequestedBefore($this->clock->now()->modify(\sprintf('-%d days', $days))) as $due) {
             $userId = $due->getId();
-            $done = $this->transactions->run(function () use ($userId): ?bool {
+            $told = null;
+            $done = $this->transactions->run(function () use ($userId, $withdraw, &$told): ?bool {
                 $user = $this->users->lockedOfId($userId);
                 // Signed in again since the list was read: taken back.
                 if (null === $user || !$user->isDeletionPending()) {
                     return null;
                 }
-                if ([] !== $this->ownedAlone->of($userId)) {
+                $alone = $this->ownedAlone->of($userId);
+                if ([] !== $alone) {
+                    if ($withdraw) {
+                        $user->cancelDeletion($this->clock->now());
+                        $this->users->save($user);
+                        $this->audit->record(new AuditEntry(ManageAccounts::ENTITY_TYPE, $userId, self::WITHDRAWN, null));
+                        $told = new AccountDeletionKeptMail($user->getEmail()->value, $user->getLocale(), array_map(static fn (OwnedAlone $one): string => $one->name, $alone));
+                    }
+
                     return false;
                 }
                 $address = $user->getEmail()->value;
@@ -74,6 +88,10 @@ final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
 
                 return true;
             });
+            // Told once the withdrawal is stored, never of one that rolled back.
+            if (null !== $told) {
+                $this->mailer->kept($told);
+            }
             $deleted += true === $done ? 1 : 0;
             $kept += false === $done ? 1 : 0;
         }
@@ -85,6 +103,7 @@ final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
     {
         return [
             self::DELETED => new Recorded(ManageAccounts::ENTITY_TYPE, AuditScope::Outside),
+            self::WITHDRAWN => new Recorded(ManageAccounts::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

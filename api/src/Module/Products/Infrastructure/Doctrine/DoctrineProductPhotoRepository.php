@@ -12,7 +12,9 @@ namespace App\Module\Products\Infrastructure\Doctrine;
 use App\Module\Products\Domain\Model\ProductPhoto;
 use App\Module\Products\Domain\Repository\ProductPhotoRepository;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineProductPhotoRepository implements ProductPhotoRepository
@@ -69,6 +71,41 @@ final readonly class DoctrineProductPhotoRepository implements ProductPhotoRepos
     public function save(ProductPhoto $photo): void
     {
         $this->entityManager->persist($photo);
+        $this->entityManager->flush();
+    }
+
+    public function removedBefore(\DateTimeImmutable $before, int $limit): array
+    {
+        /** @var list<array{company: string|Uuid, product: string|Uuid, id: Uuid}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(p.company) AS company', 'IDENTITY(p.product) AS product', 'p.id')->from(ProductPhoto::class, 'p')
+            ->where('p.removedAt IS NOT NULL')->andWhere('p.removedAt < :before')
+            ->orderBy('p.removedAt', \SortDirection::Ascending)->addOrderBy('p.id', \SortDirection::Ascending)
+            ->setParameter('before', $before, 'datetime_immutable')
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+
+        return array_map(static fn (array $row): array => [
+            'company' => $row['company'] instanceof Uuid ? $row['company'] : Uuid::fromString($row['company']),
+            'product' => $row['product'] instanceof Uuid ? $row['product'] : Uuid::fromString($row['product']),
+            'id' => $row['id'],
+        ], $rows);
+    }
+
+    public function lockedRemoved(Uuid $companyId, Uuid $id): ?ProductPhoto
+    {
+        $photo = $this->entityManager->createQueryBuilder()
+            ->select('p')->from(ProductPhoto::class, 'p')
+            ->where('p.id = :id')->andWhere('p.company = :company')->andWhere('p.removedAt IS NOT NULL')
+            ->setParameter('id', $id, 'uuid')->setParameter('company', $companyId, 'uuid')
+            ->getQuery()->setLockMode(LockMode::PESSIMISTIC_WRITE)->setHint(Query::HINT_REFRESH, true)->getOneOrNullResult();
+
+        return $photo instanceof ProductPhoto ? $photo : null;
+    }
+
+    public function delete(ProductPhoto $photo): void
+    {
+        $this->entityManager->remove($photo);
         $this->entityManager->flush();
     }
 }

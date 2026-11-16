@@ -222,6 +222,22 @@
                   (change)="turn('signup.approval_required', $event)"
                   >{{ 'platform.signup.approval_required' | translate }}</mat-slide-toggle
                 >
+                <mat-slide-toggle
+                  data-testid="platform-resuspend-updates-reason"
+                  [checked]="signup()?.resuspendUpdatesReason ?? false"
+                  [disabled]="signup() === null"
+                  (change)="turn('approval.resuspend_updates_reason', $event)"
+                  >{{ 'platform.signup.resuspend_updates_reason' | translate }}</mat-slide-toggle
+                >
+                <mat-slide-toggle
+                  data-testid="platform-deletion-withdrawn-when-sole-owner"
+                  [checked]="signup()?.deletionWithdrawnWhenSoleOwner ?? false"
+                  [disabled]="signup() === null"
+                  (change)="turn('account.deletion_withdrawn_when_sole_owner', $event)"
+                  >{{
+                    'platform.signup.deletion_withdrawn_when_sole_owner' | translate
+                  }}</mat-slide-toggle
+                >
               </div>
             </mat-card-content>
           </mat-card>

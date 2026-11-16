@@ -479,7 +479,12 @@ describe('PlatformApi', () => {
     ]);
 
     expect(await settings).toEqual({
-      signup: { enabled: true, approvalRequired: false },
+      signup: {
+        enabled: true,
+        approvalRequired: false,
+        resuspendUpdatesReason: false,
+        deletionWithdrawnWhenSoleOwner: false,
+      },
       // The platform's own country, which its phone fields start on, among the presets' countries.
       country: { key: 'platform.country', value: 'FR', choices: ['FR', 'TN'] },
       // What becomes of a phone outside the ranges its country hands out: refused, or kept and marked to check.

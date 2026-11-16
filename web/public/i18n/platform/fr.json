@@ -3,7 +3,9 @@
     "signup": {
       "title": "Inscriptions",
       "enabled": "Tout le monde peut s’inscrire",
-      "approval_required": "Une entreprise inscrite attend l’approbation"
+      "approval_required": "Une entreprise inscrite attend l’approbation",
+      "resuspend_updates_reason": "Un second « Suspendre » avec un autre motif le remplace et prévient les propriétaires",
+      "deletion_withdrawn_when_sole_owner": "La suppression demandée par un compte devenu seul propriétaire d’une entreprise est annulée et la personne prévenue, plutôt que retentée chaque nuit"
     },
     "demo": {
       "title": "Démo",
@@ -71,6 +73,9 @@
         "suspend": "Suspendre",
         "suspend_title": "Suspendre cette entreprise ?",
         "suspend_message": "Les membres de {{name}} n’y ont plus accès, dès maintenant, et ses propriétaires reçoivent un courrier avec le motif s’il est donné et le contact du support. Ses données restent intactes, et « Rétablir l’accès » la rouvre.",
+        "change_reason": "Changer le motif",
+        "change_reason_title": "Changer le motif ?",
+        "change_reason_message": "{{name}} reste fermée à ses membres, et ses propriétaires reçoivent un nouveau courrier avec ce motif, qui remplace le précédent sur leur page de connexion.",
         "reason": "Motif (facultatif)",
         "reason_hint": "Il figure dans le courrier aux propriétaires et sur leur page de connexion.",
         "keep": "Ne rien changer"
@@ -79,7 +84,8 @@
         "approved": "{{name}} est approuvée.",
         "restored": "L’accès à {{name}} est rétabli.",
         "rejected": "{{name}} est refusée.",
-        "suspended": "{{name}} est suspendue."
+        "suspended": "{{name}} est suspendue.",
+        "reason_changed": "Le motif donné pour {{name}} est changé."
       }
     },
     "accounts": {

@@ -9,11 +9,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Audit\Application\AuditTrail;
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Module\Products\Application\Photo\LetRemovedPhotosGo;
+use App\Module\Products\Domain\Repository\ProductPhotoRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\MakesPictures;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -245,6 +250,67 @@ final class ProductPhotosTest extends ApiTestCase
         $kept = (int) $kept;
         self::assertGreaterThan(\strlen($sent), $kept, 'the original and both copies');
         self::assertSame($before + $kept, $files->bytesUsed($this->company));
+    }
+
+    /** Today's way, the shipped default: a removed photo stays restorable however long ago it was removed. */
+    public function testARemovedPhotoIsKeptWithoutLimitByDefault(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $product = $this->aProduct();
+        $photo = $this->added($product, self::jpeg(40, 40));
+        $this->sendJson('DELETE', $this->photos($product)."/$photo");
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $this->moveClock('+400 days');
+        self::assertSame(0, static::getContainer()->get(LetRemovedPhotosGo::class)->handle());
+
+        // A session started on a clock this far ahead is past its own age: the case's clock goes back to put it back.
+        $this->clockBack();
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->postJson($this->photos($product)."/$photo/restore", null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * The operator may let a removed photo go once it has been out of the gallery long enough (app.products.removed_photos_kept_for):
+     * its three files go with it and stop counting in what the company keeps, and it can no longer be put back.
+     */
+    public function testARemovedPhotoGoesWithItsFilesOnceTheOperatorsTimeHasPassed(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $product = $this->aProduct();
+        $files = static::getContainer()->get(Files::class);
+        $before = $files->bytesUsed($this->company);
+        $kept = $this->added($product, self::jpeg(40, 40));
+        $gone = $this->added($product, self::jpeg(40, 40));
+        $keptBytes = $files->bytesUsed($this->company);
+        $this->sendJson('DELETE', $this->photos($product)."/$gone");
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $letGo = new LetRemovedPhotosGo(
+            static::getContainer()->get(ProductPhotoRepository::class),
+            $files,
+            static::getContainer()->get(AuditTrail::class),
+            static::getContainer()->get(Transactions::class),
+            static::getContainer()->get(ClockInterface::class),
+            'PT24H',
+        );
+
+        $this->moveClock('+23 hours');
+        self::assertSame(0, $letGo->handle(), 'not before its time');
+        $this->moveClock('+25 hours');
+        self::assertSame(1, $letGo->handle());
+        self::assertSame(0, $letGo->handle(), 'nothing twice');
+
+        $this->em()->clear();
+        self::assertLessThan($keptBytes, $files->bytesUsed($this->company));
+        self::assertGreaterThan($before, $files->bytesUsed($this->company), 'the photo kept still counts');
+        $this->clockBack();
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->postJson($this->photos($product)."/$gone/restore", null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->photos($product));
+        self::assertSame([$kept => true], $this->mainByPhoto());
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'product.photo_let_go'"));
     }
 
     public function testEachChangeIsOnRecordOnTheProduct(): void

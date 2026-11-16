@@ -8,6 +8,8 @@ import type { PlatformCompanyRow } from './platform-types';
 export interface CompanyActionRunner {
   approve(company: PlatformCompanyRow): void;
   suspend(company: PlatformCompanyRow): void;
+  /** Whether a second suspension says its reason anew, the platform's switch (approval.resuspend_updates_reason). */
+  reasonChangeable(): boolean;
   busy(): boolean;
 }
 
@@ -16,12 +18,18 @@ const ACTIONS = 'platform.companies.actions';
 /** The most a refusal's or a suspension's reason holds, as the API holds it. */
 export const REASON_MAX_LENGTH = 500;
 
+/** What suspending a company says it does: refusing one that waits, a new reason for one already suspended. */
+export function suspendVerb(company: PlatformCompanyRow): 'reject' | 'suspend' | 'change_reason' {
+  if (company.status === 'pending') return 'reject';
+  return company.status === 'suspended' ? 'change_reason' : 'suspend';
+}
+
 /**
- * Refusing a waiting company or suspending an open one, asked with the reason its owners' mail and their sign-in page
- * will give, which the operator may leave out (docs/SPEC.md § 7, 2026-10-27 21:37).
+ * Refusing a waiting company, suspending an open one or saying a suspended one's reason anew, asked with the reason its
+ * owners' mail and their sign-in page will give, which the operator may leave out (docs/SPEC.md § 7, 2026-10-27 21:37).
  */
 export function suspendQuestion(company: PlatformCompanyRow): ActionConfirm {
-  const verb = company.status === 'pending' ? 'reject' : 'suspend';
+  const verb = suspendVerb(company);
   return {
     kind: 'corrigeable',
     title: `${ACTIONS}.${verb}_title`,
@@ -87,6 +95,18 @@ export function companyActions(runner: CompanyActionRunner): RecordAction<Platfo
       // « Encaisser » opens its own dialog.
       effect: { kind: 'plain' },
       shown: (company) => company.status === 'pending' || company.status === 'active',
+      disabled: () => runner.busy(),
+      run: (company) => runner.suspend(company),
+    },
+    {
+      id: 'change_reason',
+      label: () => `${ACTIONS}.change_reason`,
+      icon: 'edit_note',
+      group: 'state',
+      frequency: 'rare',
+      // Its question asks the new reason, as « Suspendre »'s does, and the API mails it to the owners again.
+      effect: { kind: 'plain' },
+      shown: (company) => company.status === 'suspended' && runner.reasonChangeable(),
       disabled: () => runner.busy(),
       run: (company) => runner.suspend(company),
     },

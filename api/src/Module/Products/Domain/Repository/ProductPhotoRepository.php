@@ -36,4 +36,16 @@ interface ProductPhotoRepository
     public function lockProduct(Uuid $productId): void;
 
     public function save(ProductPhoto $photo): void;
+
+    /**
+     * Photos removed before that moment, of every company, oldest first, at most so many.
+     *
+     * @return list<array{company: Uuid, product: Uuid, id: Uuid}>
+     */
+    public function removedBefore(\DateTimeImmutable $before, int $limit): array;
+
+    /** One removed photo, its row held until the transaction ends; null once it is back in the gallery or gone. */
+    public function lockedRemoved(Uuid $companyId, Uuid $id): ?ProductPhoto;
+
+    public function delete(ProductPhoto $photo): void;
 }

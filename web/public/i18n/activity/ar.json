@@ -21,7 +21,8 @@
         "period_closed": "أقفل فترة",
         "rejected": "رفض الشركة",
         "restored": "أعاد الوصول إلى الشركة",
-        "suspended": "علّق الشركة"
+        "suspended": "علّق الشركة",
+        "suspension_reason_changed": "غيّر سبب تعليق الشركة"
       },
       "customer": {
         "created": "أنشأ الحريف",
@@ -49,6 +50,7 @@
         "photo_added": "أضاف صورة إلى المنتج",
         "photo_removed": "سحب صورة من المنتج",
         "photo_restored": "أعاد صورة إلى المنتج",
+        "photo_let_go": "تخلّى عن صورة محذوفة من المنتج بعد انقضاء مدة حفظها",
         "photos_reordered": "أعاد ترتيب صور المنتج",
         "main_photo_changed": "غيّر الصورة الرئيسية للمنتج",
         "deleted": "حذف المنتج",

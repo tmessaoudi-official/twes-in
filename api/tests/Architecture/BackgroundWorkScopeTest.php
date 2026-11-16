@@ -25,6 +25,7 @@ use App\Module\Customers\Infrastructure\Scheduler\MarkKeptCustomerContactsEveryN
 use App\Module\DeliveryNotes\Infrastructure\Scheduler\StoreMissingDeliveryNotePdfsEveryQuarterHour;
 use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
 use App\Module\Invoices\Infrastructure\Scheduler\StoreMissingInvoicePdfsEveryQuarterHour;
+use App\Module\Products\Infrastructure\Scheduler\LetRemovedPhotosGoEveryHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
 use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
@@ -56,6 +57,7 @@ final class BackgroundWorkScopeTest extends TestCase
         SandboxToBuildHandler::class => 'the sandbox by its id, and the company it opens for that sandbox alone, named by id in every step',
         EndErasuresEveryQuarterHour::class => 'each due erasure, locked by its own id, ends the company or account it names',
         RemoveUnnamedBytesEveryHour::class => 'each company\'s folder in turn, read against that company\'s file rows alone',
+        LetRemovedPhotosGoEveryHour::class => 'every company at once, on purpose: a removed photo goes by its age alone; each is locked by its id and its company, and lets go that company\'s files only',
         EndRemovalsEveryQuarterHour::class => 'each due delete, locked by its own id and its company, ends in that company',
         FinalizeAccountDeletionsEveryNight::class => 'each due account, locked by its own id, no company: an account belongs to none, and its memberships go with it',
         RemoveExpiredSessionsEveryHour::class => 'every session at once, on purpose: a session goes by its expiry alone, and it names no company in a column',

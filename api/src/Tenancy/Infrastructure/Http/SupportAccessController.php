@@ -47,7 +47,7 @@ final readonly class SupportAccessController
     {
         $company = $this->company($companyId);
 
-        return $this->answer(fn (): Response => new JsonResponse(self::described($this->support->current($company, $this->guard->account()->getId()))));
+        return $this->answer(fn (): Response => new JsonResponse($this->described($this->support->current($company, $this->guard->account()->getId()))));
     }
 
     #[Route('/api/companies/{companyId}/support-access', name: 'api_support_access_grant', defaults: ['_api_respond' => true], methods: ['POST'])]
@@ -60,7 +60,7 @@ final readonly class SupportAccessController
             throw new BadRequestHttpException('The body is a JSON object naming the hours, and what is wrong if the owner says.', $unreadable);
         }
 
-        return $this->answer(fn (): Response => new JsonResponse(self::described($this->support->grant($company, $this->guard->account()->getId(), $body['hours'] ?? null, $body['reason'] ?? null)), Response::HTTP_CREATED));
+        return $this->answer(fn (): Response => new JsonResponse($this->described($this->support->grant($company, $this->guard->account()->getId(), $body['hours'] ?? null, $body['reason'] ?? null)), Response::HTTP_CREATED));
     }
 
     #[Route('/api/companies/{companyId}/support-access', name: 'api_support_access_end', defaults: ['_api_respond' => true], methods: ['DELETE'])]
@@ -97,14 +97,15 @@ final readonly class SupportAccessController
         }
     }
 
-    /** @return array{startsAt: ?string, endsAt: ?string, reason: ?string, hours: list<int>, reasonMax: int} */
-    private static function described(?SupportGrant $grant): array
+    /** @return array{startsAt: ?string, endsAt: ?string, reason: ?string, hours: list<int>, defaultHours: int, reasonMax: int} */
+    private function described(?SupportGrant $grant): array
     {
         return [
             'startsAt' => $grant?->getStartsAt()->format(\DateTimeInterface::ATOM),
             'endsAt' => $grant?->getEndsAt()->format(\DateTimeInterface::ATOM),
             'reason' => $grant?->getReason(),
-            'hours' => SupportGrant::HOURS,
+            'hours' => $this->support->windows()->offered,
+            'defaultHours' => $this->support->windows()->first,
             'reasonMax' => SupportGrant::REASON_MAX,
         ];
     }

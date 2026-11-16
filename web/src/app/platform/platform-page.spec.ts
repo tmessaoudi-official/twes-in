@@ -210,6 +210,8 @@ class StaticLoader implements TranslateLoader {
             reject_title: 'Refuser cette entreprise ?',
             suspend: 'Suspendre',
             suspend_title: 'Suspendre cette entreprise ?',
+            change_reason: 'Changer le motif',
+            change_reason_title: 'Changer le motif ?',
             reason: 'Motif (facultatif)',
             keep: 'Ne rien changer',
           },
@@ -294,7 +296,12 @@ const row: PlatformCompanyRow = {
 
 describe('PlatformPage', () => {
   const waiting = signal<readonly PlatformCompanyRow[]>([row]);
-  const signup = signal<PlatformSignup | null>({ enabled: false, approvalRequired: true });
+  const signup = signal<PlatformSignup | null>({
+    enabled: false,
+    approvalRequired: true,
+    resuspendUpdatesReason: false,
+    deletionWithdrawnWhenSoleOwner: false,
+  });
   const support = signal<PlatformSupport | null>({
     phone: '',
     whatsapp: '',
@@ -461,7 +468,12 @@ describe('PlatformPage', () => {
 
   beforeEach(async () => {
     waiting.set([row]);
-    signup.set({ enabled: false, approvalRequired: true });
+    signup.set({
+      enabled: false,
+      approvalRequired: true,
+      resuspendUpdatesReason: false,
+      deletionWithdrawnWhenSoleOwner: false,
+    });
     support.set({ phone: '', whatsapp: '', email: '', status_url: '' });
     delays.set(delayRows);
     demo.set(demoState);
@@ -992,6 +1004,44 @@ describe('PlatformPage', () => {
           key: 'platform.companies.done.restored',
           effect: 'corrigeable',
         }),
+      ]),
+    );
+  });
+
+  // While the platform's switch says so, a second suspension says its reason anew: the action is where a suspended company
+  // appears, and nowhere while the switch is off (the case above).
+  it('offers a suspended company a new reason while the switch says so, and tells the owners again', async () => {
+    signup.set({ ...signup()!, resuspendUpdatesReason: true });
+    companies.set([{ ...row, status: 'suspended', opened: true }]);
+    const { fixture } = await render('/?tab=companies&company=c1');
+
+    expect(
+      TestBed.inject(ScreenActions)
+        .actions()
+        .map((action) => [action.id, action.label]),
+    ).toEqual([
+      ['approve', 'platform.companies.actions.restore'],
+      ['change_reason', 'platform.companies.actions.change_reason'],
+    ]);
+
+    TestBed.inject(ScreenActions).actions()[1].run!();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('[data-testid="confirm-title"]')?.textContent).toContain(
+      'Changer le motif',
+    );
+    const notes = document.querySelectorAll<HTMLTextAreaElement>('[data-testid="confirm-note"]');
+    const note = notes[notes.length - 1];
+    note.value = 'Relevé bancaire illisible';
+    note.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await answer(fixture, 'run');
+    await vi.waitFor(() =>
+      expect(facade.reject).toHaveBeenCalledWith('c1', 'Relevé bancaire illisible'),
+    );
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.companies.done.reason_changed' }),
       ]),
     );
   });

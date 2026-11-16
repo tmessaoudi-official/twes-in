@@ -57,7 +57,7 @@ import { DocumentActions } from '../shared/ui/document-actions';
 import { onRecord, onRows } from '../shared/actions/record-action';
 import type { ActionConfirm, ActionKind } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import { companyActions, suspendQuestion } from './platform-actions';
+import { companyActions, suspendQuestion, suspendVerb } from './platform-actions';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { membershipRoleLabel } from './membership-role';
 import { PlatformFacade } from './platform-facade';
@@ -284,6 +284,7 @@ export class PlatformPage implements OnInit {
   private readonly companyRecordActions = companyActions({
     approve: (company) => void this.approve(company),
     suspend: (company) => void this.suspend(company),
+    reasonChangeable: () => this.platform.signup()?.resuspendUpdatesReason === true,
     busy: () => this.busy(),
   });
   /** The countries the platform's country setting offers, the fiscal presets', by content: a save reads the same. */
@@ -1156,12 +1157,15 @@ export class PlatformPage implements OnInit {
         .afterClosed(),
     );
     if (typeof reason !== 'string') return;
-    const done = company.status === 'pending' ? 'rejected' : 'suspended';
+    const verb = suspendVerb(company);
+    const done = { reject: 'rejected', suspend: 'suspended', change_reason: 'reason_changed' }[
+      verb
+    ];
     if (await this.platform.reject(company.id, typedText(reason) === '' ? null : reason)) {
       this.feedback.effect(
         `platform.companies.done.${done}`,
         { name: company.name },
-        this.companyKind('suspend'),
+        this.companyKind(verb === 'change_reason' ? 'change_reason' : 'suspend'),
       );
     }
   }

@@ -3,7 +3,9 @@
     "signup": {
       "title": "Signup",
       "enabled": "Anyone may sign up",
-      "approval_required": "A company that signs up waits for approval"
+      "approval_required": "A company that signs up waits for approval",
+      "resuspend_updates_reason": "A second “Suspend” with another reason replaces it and tells the owners",
+      "deletion_withdrawn_when_sole_owner": "A deletion asked by an account since become a company’s only owner is withdrawn and the person told, rather than tried again every night"
     },
     "demo": {
       "title": "Demo",
@@ -71,6 +73,9 @@
         "suspend": "Suspend",
         "suspend_title": "Suspend this company?",
         "suspend_message": "{{name}}’s members lose access right away, and its owners receive a mail with the reason, if one is given, and the support contact. Its data stays intact, and “Restore access” opens it again.",
+        "change_reason": "Change the reason",
+        "change_reason_title": "Change the reason?",
+        "change_reason_message": "{{name}} stays closed to its members, and its owners receive a new mail with this reason, which replaces the previous one on their sign-in page.",
         "reason": "Reason (optional)",
         "reason_hint": "It appears in the mail to the owners and on their sign-in page.",
         "keep": "Change nothing"
@@ -79,7 +84,8 @@
         "approved": "{{name}} is approved.",
         "restored": "Access to {{name}} is restored.",
         "rejected": "{{name}} is rejected.",
-        "suspended": "{{name}} is suspended."
+        "suspended": "{{name}} is suspended.",
+        "reason_changed": "The reason given for {{name}} is changed."
       }
     },
     "accounts": {

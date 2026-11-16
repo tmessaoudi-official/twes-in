@@ -99,6 +99,15 @@ parameters:
     # (`'%env(MAIL_STOP_KEY)%'`). Checked when the container is built (MailStopKeysBounds): a list of one key or more, a
     # key written out at least 32 characters.
     app.notification.stop_keys: ['%kernel.secret%']
+    # The windows an owner may open the company to support for, in hours, and the one the page offers first. Support
+    # stays time-boxed: checked when the container is built (SupportWindowBounds), whole hours from 1 to 72, each once,
+    # shortest first, the first offered among them; fewer or shorter windows only.
+    app.support.windows_hours: [1, 24, 72]
+    app.support.default_window_hours: 24
+    # How much of its build /api/health says to anyone: `full` (version, commit, the kernel's mode and the deployment, the
+    # footer's build line) or `version` (the release alone, without « -dirty »). Checked when the container is built
+    # (HealthBounds).
+    app.health.public_build: full
     # A notification's mail: where its button opens the app, and the page its stop link opens, which asks before
     # turning that kind's mail off.
     app.notification.open_url: '%env(DEFAULT_URI)%/'
@@ -278,6 +287,11 @@ parameters:
     # the data check reports them once the task should have taken them. Checked when the container is built
     # (UnnamedBytesBounds): PT6H to P30D.
     app.files.unnamed_removed_after: 'PT24H'
+    # How long a removed product photo is kept, restorable, before it and its three files go and stop counting in what
+    # the company keeps: null keeps it as long as its product (the shipped default), else an ISO 8601 duration from a day
+    # to ten years. Checked when the container is built (RemovedPhotosBounds). A removed attachment is not let go here:
+    # an expense's receipt is kept with the document it supports, whatever the gallery's time.
+    app.products.removed_photos_kept_for: ~
     # Under how many bytes left a disk on which a file the request prepares (a download, an import's working copy) could
     # not be written is read as out of room, and said so (ScratchFiles): the writers say only that they could not write,
     # and the largest file a request prepares, a full export, stays under this.
@@ -332,6 +346,10 @@ services:
     App\Identity\Application\Password\NewPasswordPolicy:
         arguments:
             $minLength: '%app.password.min_length%'
+    App\Tenancy\Application\Support\SupportWindows:
+        arguments:
+            $offered: '%app.support.windows_hours%'
+            $first: '%app.support.default_window_hours%'
     App\Demo\Application\DemoSettings:
         arguments:
             $installation: '%app.installation%'

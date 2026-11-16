@@ -151,6 +151,9 @@ export class PlatformApi {
         signup: {
           enabled: valueOf('signup.enabled') === true,
           approvalRequired: valueOf('signup.approval_required') !== false,
+          resuspendUpdatesReason: valueOf('approval.resuspend_updates_reason') === true,
+          deletionWithdrawnWhenSoleOwner:
+            valueOf('account.deletion_withdrawn_when_sole_owner') === true,
         },
         showComing: valueOf('presentation.show-coming') === true,
         support: {

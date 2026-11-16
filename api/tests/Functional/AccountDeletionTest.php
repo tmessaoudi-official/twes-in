@@ -212,16 +212,51 @@ final class AccountDeletionTest extends ApiTestCase
     public function testAnAccountThatHasBecomeACompanysOnlyOwnerMeanwhileIsKept(): void
     {
         $this->askToGo();
-        $owner = $this->em()->getConnection()->fetchOne("SELECT id FROM \"user\" WHERE email = 'owner@twes.local'");
-        self::assertIsString($owner);
-        $this->em()->getConnection()->executeStatement('UPDATE membership SET role_id = (SELECT role_id FROM membership WHERE user_id = ?) WHERE user_id = ?', [$owner, $this->leaving->getId()->toRfc4122()]);
-        $this->em()->getConnection()->executeStatement('DELETE FROM membership WHERE user_id = ?', [$owner]);
+        $this->becomeTheOnlyOwner();
 
         $this->moveClock('+8 days');
 
         self::assertSame(0, $this->finalize());
         $this->em()->clear();
         self::assertTrue($this->reload($this->leaving)->isDeletionPending());
+    }
+
+    /**
+     * The platform may have the nightly run give up rather than wait (`account.deletion_withdrawn_when_sole_owner`): the
+     * request is taken back, the journal says so, and the person is told which company keeps them, so they name another
+     * owner before asking again. The last owner stays either way.
+     */
+    public function testWhereThePlatformSaysSoTheRequestOfANewOnlyOwnerIsWithdrawnAndTheyAreTold(): void
+    {
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext(), 'account.deletion_withdrawn_when_sole_owner', SettingLevel::Platform, true, null);
+        $this->askToGo();
+        $this->becomeTheOnlyOwner();
+
+        $this->moveClock('+8 days');
+
+        self::assertSame(0, $this->finalize());
+        $this->em()->clear();
+        self::assertFalse($this->reload($this->leaving)->isDeletionPending());
+        self::assertSame(1, $this->journalCount('account.deletion_withdrawn'));
+        $mails = array_values(array_filter(self::getMailerMessages(), static fn ($mail): bool => $mail instanceof MimeEmail));
+        $message = end($mails);
+        self::assertInstanceOf(MimeEmail::class, $message);
+        self::assertSame(self::LEAVING, $message->getTo()[0]->getAddress());
+        self::assertStringContainsString('Acme', (string) $message->getHtmlBody());
+        self::assertStringContainsString('seul propriétaire', (string) $message->getHtmlBody());
+
+        // Withdrawn, it is never tried again.
+        $this->moveClock('+9 days');
+        self::assertSame(0, $this->finalize());
+        self::assertSame(1, $this->journalCount('account.deletion_withdrawn'));
+    }
+
+    private function becomeTheOnlyOwner(): void
+    {
+        $owner = $this->em()->getConnection()->fetchOne("SELECT id FROM \"user\" WHERE email = 'owner@twes.local'");
+        self::assertIsString($owner);
+        $this->em()->getConnection()->executeStatement('UPDATE membership SET role_id = (SELECT role_id FROM membership WHERE user_id = ?) WHERE user_id = ?', [$owner, $this->leaving->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement('DELETE FROM membership WHERE user_id = ?', [$owner]);
     }
 
     private function askToGo(): void

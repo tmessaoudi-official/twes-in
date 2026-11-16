@@ -22,6 +22,7 @@ use App\Inbox\Infrastructure\Mail\MailStopKeysBounds;
 use App\Kernel;
 use App\Licensing\Infrastructure\Scheduler\LapseNoticeBounds;
 use App\Module\DeliveryNotes\Infrastructure\Watch\DraftWatchBounds;
+use App\Module\Products\Infrastructure\Scheduler\RemovedPhotosBounds;
 use App\Records\Infrastructure\Http\RecordUndoBounds;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
@@ -33,6 +34,7 @@ use App\Shared\Infrastructure\Realtime\RealtimeTokenBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Console\EarlierNumberingDaysBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
+use App\Tenancy\Infrastructure\Http\SupportWindowBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
 use App\Tenancy\Infrastructure\Scheduler\RemovalNoticeBounds;
 use App\Tenancy\Infrastructure\Session\CompanyProofBounds;
@@ -69,6 +71,13 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame(12, $parameters['app.password.min_length']);
         // HmacMailStopTokens signed under the application secret alone before its keys were a parameter.
         self::assertSame(['%kernel.secret%'], $parameters['app.notification.stop_keys']);
+        // SupportGrant::HOURS and the web's DEFAULT_SUPPORT_HOURS before they were parameters.
+        self::assertSame([1, 24, 72], $parameters['app.support.windows_hours']);
+        self::assertSame(24, $parameters['app.support.default_window_hours']);
+        // HealthController said the whole build to anyone before it was a parameter (docs/SPEC.md § 7, 2026-10-07 14:31).
+        self::assertSame('full', $parameters['app.health.public_build']);
+        // A removed product photo was kept without limit before this was a parameter.
+        self::assertNull($parameters['app.products.removed_photos_kept_for']);
         self::assertSame('P7D', $parameters['app.invitation.valid_for']);
         self::assertSame([], $parameters['app.error_reporting.extra_masks']);
         self::assertFalse($parameters['app.step_up.on_restore'], 'a restore asks no proof until the operator says so');
@@ -137,7 +146,7 @@ final class OperatorParameterBoundsTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{0: string, 1: array<mixed>|bool|int|string, 2?: array<string, int|string>}> */
+    /** @return iterable<string, array{0: string, 1: array<mixed>|bool|int|string, 2?: array<string, array<mixed>|int|string>}> */
     public static function withinBounds(): iterable
     {
         yield 'every restore asks a proof' => ['app.step_up.on_restore', true];
@@ -154,6 +163,11 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a new password of sixty-four characters at least' => ['app.password.min_length', 64];
         yield 'stop links signed under a key of its own, the secret still read' => ['app.notification.stop_keys', ['%env(MAIL_STOP_KEY)%', '%kernel.secret%']];
         yield 'stop links under a written key of thirty-two characters' => ['app.notification.stop_keys', [str_repeat('k', 32)]];
+        yield 'support for an hour or four' => ['app.support.windows_hours', [1, 4], ['app.support.default_window_hours' => 4]];
+        yield 'support offered for four hours first' => ['app.support.default_window_hours', 4, ['app.support.windows_hours' => [1, 4, 8]]];
+        yield 'the release alone said to anyone' => ['app.health.public_build', 'version'];
+        yield 'removed photos kept for a month' => ['app.products.removed_photos_kept_for', 'P30D'];
+        yield 'removed photos kept for a day at least' => ['app.products.removed_photos_kept_for', 'P1D'];
         yield 'an invitation for a day' => ['app.invitation.valid_for', 'P1D'];
         yield 'an invitation for thirty days' => ['app.invitation.valid_for', 'P30D'];
         yield 'a report body of 1 KiB' => ['app.client_errors.max_body', 1_024];
@@ -220,8 +234,8 @@ final class OperatorParameterBoundsTest extends TestCase
     }
 
     /**
-     * @param array<mixed>|bool|int|string $value
-     * @param array<string, int|string>    $beside other parameters a bound is measured against, set first
+     * @param array<mixed>|bool|int|string           $value
+     * @param array<string, array<mixed>|int|string> $beside other parameters a bound is measured against, set first
      */
     #[DataProvider('withinBounds')]
     public function testAValueWithinItsBoundsIsKept(string $parameter, array|bool|int|string $value, array $beside = []): void
@@ -233,7 +247,7 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame($value, $container->getParameter($parameter));
     }
 
-    /** @return iterable<string, array{0: string, 1: array<mixed>|int|string, 2?: array<string, int|string>}> */
+    /** @return iterable<string, array{0: string, 1: array<mixed>|int|string, 2?: array<string, array<mixed>|int|string>}> */
     public static function outOfBounds(): iterable
     {
         yield 'a session noted every 59 seconds' => ['app.session.touch_every', 'PT59S'];
@@ -254,6 +268,17 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'an empty stop key' => ['app.notification.stop_keys', ['']];
         yield 'a written stop key shorter than thirty-two characters' => ['app.notification.stop_keys', [str_repeat('k', 31)]];
         yield 'stop keys as a map' => ['app.notification.stop_keys', ['new' => str_repeat('k', 32)]];
+        // Support stays time-boxed (2026-10-12 08:53): the ruled windows are the ceiling, a parameter only shortens.
+        yield 'no support window' => ['app.support.windows_hours', []];
+        yield 'a support window over three days' => ['app.support.windows_hours', [24, 96]];
+        yield 'a support window of no hour' => ['app.support.windows_hours', [0, 24]];
+        yield 'a support window offered twice' => ['app.support.windows_hours', [24, 24]];
+        yield 'support windows out of order' => ['app.support.windows_hours', [24, 1]];
+        yield 'a support window as text' => ['app.support.windows_hours', ['24']];
+        yield 'a first support window not offered' => ['app.support.default_window_hours', 8, ['app.support.windows_hours' => [1, 24]]];
+        yield 'a build said some other way' => ['app.health.public_build', 'none'];
+        yield 'a removed photo let go within its undo' => ['app.products.removed_photos_kept_for', 'PT12H'];
+        yield 'removed photos kept for a number' => ['app.products.removed_photos_kept_for', 30];
         yield 'an invitation for 23 hours' => ['app.invitation.valid_for', 'PT23H'];
         yield 'an invitation for 31 days' => ['app.invitation.valid_for', 'P31D'];
         yield 'a mask that is no regular expression' => ['app.error_reporting.extra_masks', [['pattern' => '/(unclosed/', 'replacement' => 'x']]];
@@ -361,8 +386,8 @@ final class OperatorParameterBoundsTest extends TestCase
     }
 
     /**
-     * @param array<mixed>|int|string   $value
-     * @param array<string, int|string> $beside other parameters a bound is measured against, set first
+     * @param array<mixed>|int|string                $value
+     * @param array<string, array<mixed>|int|string> $beside other parameters a bound is measured against, set first
      */
     #[DataProvider('outOfBounds')]
     public function testAValueOutOfItsBoundsStopsTheContainer(string $parameter, array|int|string $value, array $beside = []): void
@@ -429,12 +454,12 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new PasswordLengthBounds(), new MailStopKeysBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new UnnamedBytesBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new PasswordLengthBounds(), new MailStopKeysBounds(), new SupportWindowBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new UnnamedBytesBounds(), new RemovedPhotosBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
     }
 
     /**
      * @param array<mixed>|bool|float|int|string|null $value
-     * @param array<string, int|string>               $beside
+     * @param array<string, array<mixed>|int|string>  $beside
      */
     private function withShipped(string $parameter, mixed $value, array $beside = []): ContainerBuilder
     {
@@ -456,7 +481,7 @@ final class OperatorParameterBoundsTest extends TestCase
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.password.min_length', 'app.notification.stop_keys', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures', 'app.auth.account_lock_after_failures', 'app.files.unnamed_removed_after'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.password.min_length', 'app.notification.stop_keys', 'app.support.windows_hours', 'app.support.default_window_hours', 'app.health.public_build', 'app.products.removed_photos_kept_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures', 'app.auth.account_lock_after_failures', 'app.files.unnamed_removed_after'];
         $names = [...$names, ...array_values(array_filter(array_map('strval', array_keys($file['parameters'])), static fn (string $name): bool => str_starts_with($name, 'app.rate_limit.')))];
         $shipped = [];
         foreach ($names as $name) {

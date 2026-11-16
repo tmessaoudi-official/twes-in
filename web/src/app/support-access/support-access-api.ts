@@ -17,6 +17,8 @@ export interface SupportAccessState {
   readonly reason: string | null;
   /** The windows offered, in hours. */
   readonly hours: readonly number[];
+  /** The window checked first, the operator's (`app.support.default_window_hours`). */
+  readonly defaultHours: number;
   /** The longest reason the API keeps, in characters. */
   readonly reasonMax: number;
 }

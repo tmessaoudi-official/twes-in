@@ -70,6 +70,21 @@ final class SupportAccessTest extends TestCase
         }
     }
 
+    /** The operator may offer shorter windows (app.support.windows_hours): only those are taken, never past three days. */
+    public function testOnlyTheWindowsTheOperatorOffersAreTakenAndNoneOverThreeDays(): void
+    {
+        $grant = new SupportGrant($this->company, $this->owner, 4, $this->clock->now(), offered: [1, 4]);
+        self::assertEquals(new \DateTimeImmutable('2026-10-12 13:00:00'), $grant->getEndsAt());
+
+        foreach ([[24, [1, 4]], [96, [1, 96]]] as [$hours, $offered]) {
+            try {
+                new SupportGrant($this->company, $this->owner, $hours, $this->clock->now(), offered: $offered);
+                self::fail("$hours hours opened a window");
+            } catch (InvalidSupportWindow) {
+            }
+        }
+    }
+
     public function testAWindowEndedIsNoLongerLiveAndKeepsWhenItEnded(): void
     {
         $grant = new SupportGrant($this->company, $this->owner, 1, $this->clock->now());

@@ -193,6 +193,55 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertNull($signedIn['suspensionReason']);
     }
 
+    /** Today's way, the platform's default: a second « Suspendre » changes nothing, its reason kept, nobody mailed again. */
+    public function testSuspendingASuspendedCompanyAgainKeepsTheFirstReason(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('nadia@example.test', 'password-1234', $company);
+        $this->signedInAsOperator();
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars']);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars et avril']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('Impayé de mars', $this->em()->getConnection()->fetchOne('SELECT suspension_reason FROM company WHERE id = ?', [$company->getId()->toRfc4122()]));
+        self::assertSame(['company.suspended'], $this->auditActionsFor($company));
+        self::assertCount(0, self::getMailerMessages());
+    }
+
+    /**
+     * The operators may have a second « Suspendre » say the reason anew (`approval.resuspend_updates_reason`): the
+     * company stays suspended, its reason is the new one, the journal says so and its owners are told why again.
+     */
+    public function testWithTheSwitchOnASecondSuspensionReplacesTheReasonAndTellsTheOwners(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('nadia@example.test', 'password-1234', $company);
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'approval.resuspend_updates_reason', true, self::heldNow()));
+        $this->em()->flush();
+        $this->signedInAsOperator();
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars']);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars et avril']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('suspended', $this->json()['status']);
+        self::assertSame('Impayé de mars et avril', $this->em()->getConnection()->fetchOne('SELECT suspension_reason FROM company WHERE id = ?', [$company->getId()->toRfc4122()]));
+        $actions = $this->auditActionsFor($company);
+        sort($actions);
+        self::assertSame(['company.suspended', 'company.suspension_reason_changed'], $actions);
+        self::assertStringContainsString('Impayé de mars et avril', $this->lastMailTo('nadia@example.test'));
+
+        // The same reason again changes nothing and tells nobody, and says so rather than answering as if it had.
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars et avril']);
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame([['propertyPath' => '', 'reason' => 'suspension_reason_unchanged', 'params' => []]], $this->refusals());
+        self::assertCount(2, $this->auditActionsFor($company));
+        self::assertCount(0, self::getMailerMessages());
+    }
+
     public function testRestoringASuspendedCompanySaysAccessIsBackNeverThatItWasApproved(): void
     {
         $company = $this->createCompany('Acme');

@@ -54,6 +54,28 @@ final class HealthControllerTest extends TestCase
         self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => null], 'web' => ['errorReportsPerPage' => 5, 'errorReportBytes' => 16384, 'errorMessageLength' => 500, 'errorStackLength' => 4000, 'submissionRetryMinutes' => 15, 'passwordResetSeconds' => 3600, 'signupSeconds' => 86400, 'stepUpSeconds' => 300, 'recordsUndoableSeconds' => 86400, 'erasureUndoableSeconds' => 86400]], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
     }
 
+    /**
+     * The operator may say only the release to anyone (app.health.public_build: version): no commit, mode or deployment,
+     * and no « -dirty », while the footer still reads which release answers.
+     */
+    public function testAnInstallationSayingTheVersionOnlyKeepsTheRestToItself(): void
+    {
+        $probe = new class implements DatabaseProbe {
+            public function isReachable(): bool
+            {
+                return true;
+            }
+        };
+
+        $response = (new HealthController($probe, self::settings(new SupportSettings()), '2026.10.07.5-dirty', 'a7adf55f', 'dev', 'staging', self::passkeysOn('localhost', null), 5, 15, 'PT1H', 'PT24H', 'PT5M', 'PT24H', 'PT24H', 16384, 500, 4000, 'version'))();
+
+        $body = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        self::assertSame(['version' => '2026.10.07.5', 'commit' => null, 'mode' => null], $body['build']);
+        self::assertNull($body['deployment']);
+        self::assertSame('ok', $body['status']);
+    }
+
     /** Where passkeys are bound now, as the installation's configuration or its operators' switch says. */
     private static function passkeysOn(string $host, ?string $address): PasskeyHost
     {

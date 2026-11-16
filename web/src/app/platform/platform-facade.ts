@@ -362,7 +362,11 @@ export class PlatformFacade {
         this.signupSignal.set(
           key === 'signup.enabled'
             ? { ...signup, enabled: value }
-            : { ...signup, approvalRequired: value },
+            : key === 'signup.approval_required'
+              ? { ...signup, approvalRequired: value }
+              : key === 'approval.resuspend_updates_reason'
+                ? { ...signup, resuspendUpdatesReason: value }
+                : { ...signup, deletionWithdrawnWhenSoleOwner: value },
         );
       }
       return true;

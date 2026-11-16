@@ -58,7 +58,12 @@ const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
 });
 
 const SETTINGS = {
-  signup: { enabled: false, approvalRequired: true },
+  signup: {
+    enabled: false,
+    approvalRequired: true,
+    resuspendUpdatesReason: false,
+    deletionWithdrawnWhenSoleOwner: false,
+  },
   showComing: false,
   passkeys: { signInAlone: true, onTailnetName: false },
   support: { phone: '+216 71 000 000', whatsapp: '', email: '', status_url: '' },
@@ -221,7 +226,12 @@ describe('PlatformFacade', () => {
     expect(facade.waitingTotal()).toBe(7);
     expect(facade.companyCount()).toBe(130);
     expect(facade.accountCount()).toBe(41);
-    expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
+    expect(facade.signup()).toEqual({
+      enabled: false,
+      approvalRequired: true,
+      resuspendUpdatesReason: false,
+      deletionWithdrawnWhenSoleOwner: false,
+    });
     expect(facade.demand()).toEqual([
       { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
     ]);
@@ -306,8 +316,37 @@ describe('PlatformFacade', () => {
     await facade.setSwitch('signup.enabled', true);
 
     expect(api.setSwitch).toHaveBeenCalledWith('signup.enabled', true);
-    expect(facade.signup()).toEqual({ enabled: true, approvalRequired: true });
+    expect(facade.signup()).toEqual({
+      enabled: true,
+      approvalRequired: true,
+      resuspendUpdatesReason: false,
+      deletionWithdrawnWhenSoleOwner: false,
+    });
     expect(facade.demo()?.enabled).toBe(true);
+  });
+
+  it('turns whether a second suspension says its reason anew, leaving the signup switches as they were', async () => {
+    await facade.load();
+    api.setSwitch.mockResolvedValue(undefined);
+
+    await facade.setSwitch('approval.resuspend_updates_reason', true);
+
+    expect(api.setSwitch).toHaveBeenCalledWith('approval.resuspend_updates_reason', true);
+    expect(facade.signup()).toEqual({
+      enabled: false,
+      approvalRequired: true,
+      resuspendUpdatesReason: true,
+      deletionWithdrawnWhenSoleOwner: false,
+    });
+
+    await facade.setSwitch('account.deletion_withdrawn_when_sole_owner', true);
+
+    expect(facade.signup()).toEqual({
+      enabled: false,
+      approvalRequired: true,
+      resuspendUpdatesReason: true,
+      deletionWithdrawnWhenSoleOwner: true,
+    });
   });
 
   it('turns the demo off and shows it off, its count kept', async () => {
@@ -511,7 +550,12 @@ describe('PlatformFacade', () => {
 
     expect(await facade.setSwitch('signup.enabled', true)).toBe(false);
 
-    expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
+    expect(facade.signup()).toEqual({
+      enabled: false,
+      approvalRequired: true,
+      resuspendUpdatesReason: false,
+      deletionWithdrawnWhenSoleOwner: false,
+    });
     expect(facade.error()).toBe('network');
   });
 

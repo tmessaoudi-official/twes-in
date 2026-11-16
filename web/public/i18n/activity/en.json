@@ -21,7 +21,8 @@
         "period_closed": "closed a period",
         "rejected": "turned the company down",
         "restored": "restored the company’s access",
-        "suspended": "suspended the company"
+        "suspended": "suspended the company",
+        "suspension_reason_changed": "changed the company’s suspension reason"
       },
       "customer": {
         "created": "created the customer",
@@ -49,6 +50,7 @@
         "photo_added": "added a photo to the product",
         "photo_removed": "removed a photo of the product",
         "photo_restored": "put back a photo of the product",
+        "photo_let_go": "let a removed photo of the product go, its keeping time over",
         "photos_reordered": "reordered the photos of the product",
         "main_photo_changed": "changed the main photo of the product",
         "deleted": "deleted the product",

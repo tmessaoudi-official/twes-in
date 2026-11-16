@@ -123,6 +123,20 @@ describe('BuildLine', () => {
     expect(q('build-deployment')?.textContent?.trim()).toBe('[staging]');
   });
 
+  it('says the release alone when the API keeps its mode to itself', () => {
+    api.set({
+      version: '2026.10.07.5',
+      commit: null,
+      mode: null,
+      deployment: null,
+      statusUrl: null,
+    });
+    open();
+
+    expect(q('build-api')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('API 2026.10.07.5');
+    expect(read('shown')).toBe('Web 2026.10.07.3 · API 2026.10.07.5');
+  });
+
   /** The line's name is its text: without a said separator a screen reader ran « devAPI » and « dev[staging] ». */
   it('keeps each part apart in what a screen reader is given', () => {
     info.webMode = 'dev';

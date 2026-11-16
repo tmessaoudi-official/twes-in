@@ -1,0 +1,17 @@
+{# The mail sent when the nightly run withdraws a deletion asked for by someone who has since become a company's only owner, where the platform has it withdrawn (account.deletion_withdrawn_when_sole_owner). Plain, inline-styled HTML: mail clients strip stylesheets. #}
+<!DOCTYPE html>
+<html lang="{{ app.locale }}" dir="{{ text_direction(app.locale) }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <div dir="{{ text_direction(app.locale) }}" lang="{{ app.locale }}">
+      <h1 style="font-size: 20px;">{{ 'account_deletion.kept_heading'|trans({}, 'emails') }}</h1>
+      <p>{{ 'account_deletion.kept_intro'|trans({'%product%': productName}, 'emails') }}</p>
+      <ul>
+        {% for name in companies %}
+          <li><bdi>{{ name }}</bdi></li>
+        {% endfor %}
+      </ul>
+      <p>{{ 'account_deletion.kept_next'|trans({}, 'emails') }}</p>
+      <p dir="auto" style="font-size: 12px; color: #888;">{{ productName }}</p>
+    </div>
+  </body>
+</html>

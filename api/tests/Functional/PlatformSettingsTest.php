@@ -35,6 +35,10 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame([
             // The days before a deletion a person asked for is final (Identity\Application\Account\AccountDeletionSettings).
             'account.deletion_days',
+            // Whether the nightly run withdraws the deletion of an account become a company's only owner (the same class).
+            'account.deletion_withdrawn_when_sole_owner',
+            // Whether a second « Suspendre » says its reason anew (Settings\Application\PlatformSettings).
+            'approval.resuspend_updates_reason',
             // The days the owner of a company closed down may take it back (Tenancy\Application\Company\CompanyClosingSettings).
             'company.reopen_days',
             // Whether visitors may try the demo, and how many sandboxes may exist at once (Demo\Application\DemoSettings).

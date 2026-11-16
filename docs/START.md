@@ -180,8 +180,8 @@ that scripts can compute codes. You can also add it to any authenticator app to 
   **Manage the platform** link (*Gérer la plateforme*) opens **Platform** (http://localhost:8090/platform), where the
   operator runs the platform.
 - Being Demo's owner is development data only: an operator keeps no standing access to a company. A company's owner
-  lets support in from **Settings → Support access** (*Paramètres → Accès du support*) for 1, 24 or 72 hours; the
-  company then appears in the operator's company switcher marked **Support**, read-only (no write, no export, no cost
+  lets support in from **Settings → Support access** (*Paramètres → Accès du support*) for 1, 24 or 72 hours (the
+  operator may offer fewer or shorter windows, `app.support.windows_hours`, never longer); the company then appears in the operator's company switcher marked **Support**, read-only (no write, no export, no cost
   price), under a banner saying until when, and every page read is in its activity log. To try it, use a company
   the operator is not a member of, such as one opened from **Platform** for a new owner.
 
@@ -693,7 +693,8 @@ deployment included, which is what to paste when reporting a problem.
   whenever it comes back into view; when the server holds another build, « Nouvelle version disponible — Recharger »
   appears, and only the button reloads. A new API changes the line quietly.
 - `/api/health` answers the API's build and the deployment, as they are: `{"build": {"version", "commit", "mode"},
-  "deployment"}`.
+  "deployment"}`. An operator who would rather not say them to anyone sets `app.health.public_build: version` in
+  `api/config/services.yaml`: the release alone, without « -dirty », commit, mode or deployment, which the footer then leaves out.
 
 ## 12. The guide videos
 

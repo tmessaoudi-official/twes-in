@@ -181,6 +181,10 @@ account_deletion:
     final: 'The deletion becomes final in %days% day, on %date%: your account and preferences will then be erased, and your address taken out of the journal.|The deletion becomes final in %days% days, on %date%: your account and preferences will then be erased, and your address taken out of the journal.'
     cancel: 'To keep your account, sign in again before that date: the deletion will be cancelled.'
     not_you: 'If you did not ask for this, sign in and change your password.'
+    kept_subject: 'Your %product% account was not deleted'
+    kept_heading: 'Your account is kept'
+    kept_intro: 'You asked for your %product% account to be deleted. Since then you have become the only owner of the companies below: deleting it would leave them with no one to run them, so the request is withdrawn.'
+    kept_next: 'Name another owner of each, then ask again for your account to be deleted.'
 security_notice:
     subject: 'Security of your %product% account: %change%'
     authenticator_added:

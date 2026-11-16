@@ -70,12 +70,18 @@ export interface PlatformCompanyRow {
 export interface PlatformSignup {
   readonly enabled: boolean;
   readonly approvalRequired: boolean;
+  /** Whether a second « Suspendre » with another reason replaces the first and tells the owners again. */
+  readonly resuspendUpdatesReason: boolean;
+  /** Whether the nightly run withdraws a deletion asked by someone since become a company's only owner, and tells them. */
+  readonly deletionWithdrawnWhenSoleOwner: boolean;
 }
 
 /** A switch the operators turn, the last word being theirs: it is set without a version. */
 export type PlatformSwitch =
   | 'signup.enabled'
   | 'signup.approval_required'
+  | 'approval.resuspend_updates_reason'
+  | 'account.deletion_withdrawn_when_sole_owner'
   | 'demo.enabled'
   | 'presentation.show-coming'
   | 'identity.passkey_sign_in'

@@ -90,6 +90,9 @@ final class SupportAccessTest extends ApiTestCase
         $this->getJson($this->path('/support-access'));
         self::assertResponseIsSuccessful();
         self::assertSame($until, $this->json()['endsAt']);
+        // The windows offered and the first one are the operator's (app.support.windows_hours), as shipped: today's.
+        self::assertSame([1, 24, 72], $this->json()['hours']);
+        self::assertSame(24, $this->json()['defaultHours']);
 
         // The other owner is told; the one who granted it knows.
         self::assertSame([self::CO_OWNER], $this->toldOf('support_access.granted'));

@@ -34,7 +34,7 @@ import { BuildInfo } from './build-info';
         <span aria-hidden="true"> · </span><span class="sr-only">, </span>
         <span data-testid="build-api"
           >API {{ api.version ?? ('build.unversioned' | translate)
-          }}{{ api.mode !== 'prod' ? ' ' + api.mode : '' }}</span
+          }}{{ api.mode !== null && api.mode !== 'prod' ? ' ' + api.mode : '' }}</span
         >
         @if (api.deployment && api.deployment !== 'prod') {
           <span aria-hidden="true"> · </span><span class="sr-only">, </span>

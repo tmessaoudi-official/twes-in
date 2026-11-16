@@ -50,7 +50,14 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
         private Transactions $transactions,
         private ClockInterface $clock,
         private ConfirmStepUp $stepUp,
+        private SupportWindows $windows,
     ) {
+    }
+
+    /** The windows offered and the one offered first, for the support page. */
+    public function windows(): SupportWindows
+    {
+        return $this->windows;
     }
 
     /** @throws OwnerOnly */
@@ -80,7 +87,7 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
             throw new InvalidSupportReason('What is wrong is said in words.');
         }
         $now = $this->clock->now();
-        $grant = new SupportGrant($company, $owner, $hours, $now, $reason);
+        $grant = new SupportGrant($company, $owner, $hours, $now, $reason, $this->windows->offered);
         if (!$this->stepUp->isRecent($userId)) {
             throw new StepUpRequired();
         }

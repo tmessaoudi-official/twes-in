@@ -182,6 +182,10 @@ account_deletion:
     final: 'La suppression sera définitive dans %days% jour, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.|La suppression sera définitive dans %days% jours, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.'
     cancel: 'Pour garder votre compte, reconnectez-vous avant cette date : la suppression sera annulée.'
     not_you: 'Si vous n’êtes pas à l’origine de cette demande, reconnectez-vous et changez votre mot de passe.'
+    kept_subject: 'Votre compte %product% n’a pas été supprimé'
+    kept_heading: 'Votre compte est gardé'
+    kept_intro: 'Vous avez demandé la suppression de votre compte %product%. Depuis, vous êtes devenu le seul propriétaire des entreprises ci-dessous : le supprimer les laisserait sans personne pour les tenir, et la demande est donc annulée.'
+    kept_next: 'Nommez un autre propriétaire pour chacune, puis demandez de nouveau la suppression de votre compte.'
 security_notice:
     subject: 'Sécurité de votre compte %product% : %change%'
     authenticator_added:

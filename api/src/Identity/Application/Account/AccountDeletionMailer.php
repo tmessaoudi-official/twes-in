@@ -12,4 +12,7 @@ namespace App\Identity\Application\Account;
 interface AccountDeletionMailer
 {
     public function send(AccountDeletionMail $mail): void;
+
+    /** The deletion was withdrawn by the nightly run: the person is now a company's only owner. */
+    public function kept(AccountDeletionKeptMail $mail): void;
 }

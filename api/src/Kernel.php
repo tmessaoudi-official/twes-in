@@ -22,6 +22,7 @@ use App\Identity\Infrastructure\StepUp\StepUpBounds;
 use App\Inbox\Infrastructure\Mail\MailStopKeysBounds;
 use App\Licensing\Infrastructure\Scheduler\LapseNoticeBounds;
 use App\Module\DeliveryNotes\Infrastructure\Watch\DraftWatchBounds;
+use App\Module\Products\Infrastructure\Scheduler\RemovedPhotosBounds;
 use App\Records\Infrastructure\Http\RecordUndoBounds;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
@@ -34,6 +35,7 @@ use App\Shared\Infrastructure\Realtime\RealtimeTokenBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Console\EarlierNumberingDaysBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
+use App\Tenancy\Infrastructure\Http\SupportWindowBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
 use App\Tenancy\Infrastructure\Scheduler\RemovalNoticeBounds;
 use App\Tenancy\Infrastructure\Session\CompanyProofBounds;
@@ -68,6 +70,7 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new PasswordResetBounds());
         $container->addCompilerPass(new PasswordLengthBounds());
         $container->addCompilerPass(new MailStopKeysBounds());
+        $container->addCompilerPass(new SupportWindowBounds());
         $container->addCompilerPass(new InvitationBounds());
         $container->addCompilerPass(new ErrorReportingMasksBounds());
         $container->addCompilerPass(new RestoreStepUpBounds());
@@ -87,6 +90,7 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new RemovalNoticeBounds());
         $container->addCompilerPass(new LapseNoticeBounds());
         $container->addCompilerPass(new UnnamedBytesBounds());
+        $container->addCompilerPass(new RemovedPhotosBounds());
         $container->addCompilerPass(new EarlierNumberingDaysBounds());
         $container->addCompilerPass(new RateLimitBounds());
     }

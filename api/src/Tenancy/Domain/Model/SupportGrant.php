@@ -27,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_support_grant_company_ends', columns: ['company_id', 'ends_at'])]
 class SupportGrant
 {
-    /** The windows an owner may choose from, in hours. */
+    /** The windows ruled, in hours: the operator may offer fewer or shorter ones (app.support.windows_hours), never longer. */
     public const array HOURS = [1, 24, 72];
     /** The longest « what is wrong » an owner may write, in characters. */
     public const int REASON_MAX = 500;
@@ -62,13 +62,15 @@ class SupportGrant
     private ?string $reason;
 
     /**
-     * @throws InvalidSupportWindow when the hours are not one of HOURS
+     * @param list<int> $offered the windows the operator offers, HOURS unless it says otherwise
+     *
+     * @throws InvalidSupportWindow when the hours are not one offered, or longer than the longest of HOURS
      * @throws InvalidSupportReason when the reason is longer than REASON_MAX
      */
-    public function __construct(Company $company, User $grantedBy, int $hours, \DateTimeImmutable $now, ?string $reason = null)
+    public function __construct(Company $company, User $grantedBy, int $hours, \DateTimeImmutable $now, ?string $reason = null, array $offered = self::HOURS)
     {
-        if (!\in_array($hours, self::HOURS, true)) {
-            throw new InvalidSupportWindow(\sprintf('Support access lasts %s hours, not %d.', implode(', ', self::HOURS), $hours));
+        if (!\in_array($hours, $offered, true) || $hours < 1 || $hours > max(self::HOURS)) {
+            throw new InvalidSupportWindow(\sprintf('Support access lasts %s hours, not %d.', implode(', ', $offered), $hours));
         }
         $reason = TypedText::trimmedOrNull($reason);
         if (null !== $reason && mb_strlen($reason) > self::REASON_MAX) {

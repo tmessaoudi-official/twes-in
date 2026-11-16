@@ -29,7 +29,7 @@ describe('SupportAccessApi', () => {
     const request = http.expectOne('/api/companies/c1/support-access');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({ hours: 24, reason: 'La facture du 3 mars' });
-    request.flush({ startsAt: 'a', endsAt: 'b', hours: [1, 24, 72] });
+    request.flush({ startsAt: 'a', endsAt: 'b', hours: [1, 24, 72], defaultHours: 24 });
     expect((await opened).endsAt).toBe('b');
   });
 

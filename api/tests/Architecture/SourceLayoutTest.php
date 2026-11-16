@@ -92,6 +92,7 @@ final class SourceLayoutTest extends TestCase
         'App\Module\DeliveryNotes\Infrastructure\Scheduler\StoreMissingDeliveryNotePdfsEveryQuarterHour',
         'App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour',
         'App\Module\Invoices\Infrastructure\Scheduler\StoreMissingInvoicePdfsEveryQuarterHour',
+        'App\Module\Products\Infrastructure\Scheduler\LetRemovedPhotosGoEveryHour',
         'App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour',
         'App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour',
         'App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos',

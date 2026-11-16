@@ -48,7 +48,7 @@ export class BuildApi {
     return {
       version: given(build.version),
       commit: given(build.commit),
-      mode: build.mode,
+      mode: given(build.mode),
       deployment: given(body?.deployment),
       statusUrl: given(body?.statusUrl),
       ...(body?.web

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Mail;
 
+use App\Identity\Application\Account\AccountDeletionKeptMail;
 use App\Identity\Application\Account\AccountDeletionMail;
 use App\Identity\Application\Account\AccountDeletionMailer;
 use App\Shared\Infrastructure\Mail\MailFigures;
@@ -43,6 +44,22 @@ final readonly class SymfonyAccountDeletionMailer implements AccountDeletionMail
                     'days' => $mail->days,
                     // A day as the person writes it, in UTC like every moment the API keeps.
                     'finalOn' => $this->figures->day($mail->finalAt->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d'), $mail->locale, $mail->dateFormat),
+                    'productName' => $this->productName,
+                ]),
+        );
+    }
+
+    public function kept(AccountDeletionKeptMail $mail): void
+    {
+        $this->mailer->send(
+            (new TemplatedEmail())
+                ->from($this->sender)
+                ->to($mail->to)
+                ->subject($this->translator->trans('account_deletion.kept_subject', ['%product%' => $this->productName], 'emails', $mail->locale))
+                ->htmlTemplate('email/account_deletion_kept.html.twig')
+                ->locale($mail->locale)
+                ->context([
+                    'companies' => $mail->companies,
                     'productName' => $this->productName,
                 ]),
         );

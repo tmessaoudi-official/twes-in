@@ -226,6 +226,21 @@ class Company
         $this->suspensionReason = $reason;
     }
 
+    /**
+     * Says anew why it is suspended, while it stays suspended: the operator's second « Suspendre » where the operators
+     * have it replace the reason.
+     */
+    public function changeSuspensionReason(?string $reason): void
+    {
+        if (self::STATUS_SUSPENDED !== $this->status) {
+            throw new \LogicException('Only a suspended company has a suspension reason to change.');
+        }
+        if (null !== $reason && mb_strlen($reason) > self::SUSPENSION_REASON_MAX) {
+            throw new \InvalidArgumentException(\sprintf('A reason holds at most %d characters.', self::SUSPENSION_REASON_MAX));
+        }
+        $this->suspensionReason = $reason;
+    }
+
     /** Whether it was ever opened: its suspension is then a suspension, never a refusal. */
     public function wasOpened(): bool
     {
