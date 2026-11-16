@@ -38,7 +38,8 @@ export const INVOICES_COMMANDS: readonly NavigateCommand[] = [
 export const INVOICES_HOME: readonly HomePanel[] = [
   {
     key: 'invoices',
-    permission: 'invoice.read',
+    // The business's figures are their own permission, which a role reading invoices at the counter may lack.
+    permission: 'invoice.summary.read',
     module: INVOICES_MODULE,
     load: () => import('./invoices-home').then((feature) => feature.InvoicesHome),
   },

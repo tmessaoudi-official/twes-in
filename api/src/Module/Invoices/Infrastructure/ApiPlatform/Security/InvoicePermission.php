@@ -17,6 +17,11 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\Security;
 final class InvoicePermission
 {
     public const string READ = 'invoice.read';
+    /**
+     * The home's money cards, what the business invoiced, collected, is owed and charged in VAT: their own, so a role made
+     * to read invoices at the counter need not see the business's figures; every built-in role reading invoices holds it.
+     */
+    public const string SUMMARY_READ = 'invoice.summary.read';
     public const string WRITE = 'invoice.write';
     public const string ISSUE = 'invoice.issue';
     public const string PAYMENT_WRITE = 'payment.write';

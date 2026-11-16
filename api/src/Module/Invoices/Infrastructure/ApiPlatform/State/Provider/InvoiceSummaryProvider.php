@@ -27,7 +27,7 @@ final readonly class InvoiceSummaryProvider implements ProviderInterface
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): InvoiceSummaryResource
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::SUMMARY_READ);
 
         return InvoiceSummaryResource::of($this->summarize->handle($company, $this->guard->may($company, ProductPermission::COST_READ)));
     }

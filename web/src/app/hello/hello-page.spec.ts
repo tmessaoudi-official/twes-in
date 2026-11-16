@@ -151,7 +151,7 @@ describe('HelloPage', () => {
     expect(text('home-today')).toContain(todayIn('Africa/Tunis').slice(0, 4));
   });
 
-  it('shows the invoices panel to a reader of invoices in a company that has them on, and to nobody else', async () => {
+  it('shows the invoices panel to a reader of the business figures in a company that has them on, and to nobody else', async () => {
     const without = await render();
     // Give a panel that should not be there every chance to arrive: the same import, then a turn beyond it.
     await INVOICES_HOME[0]?.load();
@@ -160,7 +160,7 @@ describe('HelloPage', () => {
     expect(without.el.querySelector('app-invoices-home')).toBeNull();
     without.fixture.destroy();
 
-    hasPermission.mockImplementation((permission: string) => permission === 'invoice.read');
+    hasPermission.mockImplementation((permission: string) => permission === 'invoice.summary.read');
     hasModule.mockImplementation((module: string) => module === 'invoices');
     const reader = await render();
     // The panel's component arrives through a dynamic import, several turns after the first render.
@@ -194,7 +194,7 @@ describe('HelloPage', () => {
 
   it('lays its panels on twelve columns, a half-width panel taking half of them from a laptop up', async () => {
     hasPermission.mockImplementation((permission: string) =>
-      ['stock.read', 'invoice.read'].includes(permission),
+      ['stock.read', 'invoice.summary.read'].includes(permission),
     );
     hasModule.mockImplementation((module: string) => ['inventory', 'invoices'].includes(module));
     const { fixture, el } = await render();

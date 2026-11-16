@@ -152,6 +152,9 @@
     },
     "invoice": {
       "read": "Voir les factures",
+      "summary": {
+        "read": "Voir les chiffres de l’accueil : facturé, encaissé, à encaisser, TVA collectée"
+      },
       "write": "Créer et modifier les brouillons",
       "issue": "Émettre une facture",
       "credit": "Créer et émettre un avoir"

@@ -39,7 +39,9 @@ use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Shared\Domain\ValueObject\WatermarkIntensity;
 use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Application\Company\CompanyLogo;
+use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\FakePdfRenderer;
@@ -1382,7 +1384,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testTheHomeSummaryCostsTheSameStatementsWhateverTheInvoicesItAddsUp(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'product.cost.read']);
+        $this->signedIn(['invoice.read', 'invoice.summary.read', 'invoice.write', 'invoice.issue', 'payment.write', 'product.cost.read']);
         $this->issuedDueToday();
         $this->em()->clear();
         $few = $this->statementsFor($this->companyPath().'/invoice-summary');
@@ -1401,7 +1403,7 @@ final class InvoicesTest extends ApiTestCase
     public function testTheSummaryCountsWhatIsDueAndCollectedOnTheCompanysDayForAReader(): void
     {
         $globex = $this->createCompany('Globex');
-        $this->createUser('summary-reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
+        $this->createUser('summary-reader@twes.local', 'password-1234', $this->company, ['invoice.summary.read'], 'reader');
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
@@ -1429,9 +1431,22 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testTheHomesMoneyCardsAreTheirOwnPermissionNotEveryInvoiceReaders(): void
+    {
+        // A role made to read invoices at the counter need not see the business's figures (C101).
+        $this->signedIn(['invoice.read']);
+
+        $this->getJson($this->companyPath().'/invoice-summary');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        foreach ([Role::ADMIN, Role::MEMBER, Role::CLERK, Role::ACCOUNTANT] as $role) {
+            self::assertContains('invoice.summary.read', SeedPlatform::BUILT_IN_ROLES[$role], "the built-in $role keeps the cards it saw");
+        }
+    }
+
     public function testSwitchedOffTheModuleAnswersNotFoundAndKeepsItsInvoices(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'company.read', 'company.settings']);
+        $this->signedIn(['invoice.read', 'invoice.summary.read', 'invoice.write', 'company.read', 'company.settings']);
         $this->postJson($this->path(), $this->invoice());
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->getJson($this->companyPath().'/invoice-summary');

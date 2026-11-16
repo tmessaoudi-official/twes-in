@@ -37,7 +37,7 @@ describe('home manifest', () => {
     expect(HOME_PANELS[2]).toMatchObject({
       key: 'invoices',
       module: 'invoices',
-      permission: 'invoice.read',
+      permission: 'invoice.summary.read',
     });
     expect(HOME_PANELS[3]).toMatchObject({
       key: 'watch',
@@ -78,11 +78,12 @@ describe('home manifest', () => {
         false,
         (module) => modules.includes(module),
       ).map((panel) => panel.key);
-    expect(shown(['invoice.read'], ['invoices'])).toEqual(['install', 'invoices']);
+    expect(shown(['invoice.summary.read'], ['invoices'])).toEqual(['install', 'invoices']);
+    expect(shown(['invoice.read'], ['invoices'])).toEqual(['install']);
     expect(shown(['expense.read'], ['expenses'])).toEqual(['install', 'expenses']);
     expect(shown(['expense.read'], ['invoices'])).toEqual(['install']);
     expect(shown([], ['invoices'])).toEqual(['install']);
-    expect(shown(['invoice.read'], [])).toEqual(['install']);
+    expect(shown(['invoice.summary.read'], [])).toEqual(['install']);
     expect(shown(['company.read'], [])).toEqual(['install', 'first-steps', 'watch']);
     expect(shown(['stock.read'], ['inventory'])).toEqual(['install', 'stock']);
     expect(shown(['stock.read'], [])).toEqual(['install']);

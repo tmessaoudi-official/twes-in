@@ -152,6 +152,9 @@
     },
     "invoice": {
       "read": "See invoices",
+      "summary": {
+        "read": "See the home's figures: invoiced, collected, outstanding, VAT collected"
+      },
       "write": "Create and edit drafts",
       "issue": "Issue an invoice",
       "credit": "Create and issue a credit note"
