@@ -4,11 +4,12 @@ Built 2026-11-16, as ruled at the W4 gate (stable-release Decisions Log 2026-11-
 accept-parameter or changed in var/claude/assumed-stable/triage-2026-11-16.json, plus the shop setting the desk answer
 q-start-step-rerun asked for. « Today » is the picks review's reading of the code (about 2026-11-01) with the first
 line a search for its symbol found, a dated snapshot: each batch starts by reading that behaviour again and naming, or
-writing, the test that holds it as the default. Every parameter keeps today's behaviour as its default. A pick that
-changes what a fiscal document prints or computes, or loosens a ruled refusal or a security floor (the 13:19 test of
-SPEC § 7), is on the decision desk instead of a batch.
+writing, the test that holds it as the default. Every parameter keeps today's behaviour as its default. The 13:19
+test of SPEC § 7 (does it change what a fiscal document prints or computes, or loosen a ruled refusal or a security
+floor) was applied to every pick: one a ruling already answers gets no parameter, one only the developer can answer
+goes to the decision desk, one the accountant answers joins the packet, and the rest carry their bound here.
 
-Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); already built 19; merged into another pick's key 5; planned on their own row 2 (C94 row 40, B79 row 132: a search of the plan by id and by key found no other); on the desk 6, and A104 both on the desk and in B4, so 7 desk cards (q-w4-*: A41, A2, A54, B13, B35, A104, A49); no reader yet 1; dropped 7 (A48, A73, B80 at triage; C16, C161, C114, A52 because a recorded ruling decides, and A93 keeps only its raise-only half). The estimate of 70 is replaced by 61.
+Counts: 60 to build (new 56, an existing setting extended 3, partly built 1); already built 19; with the accountant 1 (A68, Q26 beside Q25); merged into another pick's key 5; planned on their own row 2 (C94 row 40, B79 row 132; S0.10i's « 7 already planned » was a key search that named only these two, and a search of the plan by id and by key finds no other); on the desk 6, and A104 both on the desk and in B4, so 7 desk cards (q-w4-*: A41, A2, A54, B13, B35, A104, A49); no reader yet 1; dropped 7 (A48, A73, B80 at triage; C16, C161, C114, A52 because a recorded ruling decides, and A93 keeps only its raise-only half). The estimate of 70 is replaced by 60.
 
 ## B1. Operator parameters (services.yaml, bounded at start) (8, 20 points)
 
@@ -56,11 +57,11 @@ Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); al
 | B46 | `vendors.merged_names_on_screens` (company) | screens read standingFor()/mergedInto; journals read the recorded vendor; `api/src/Module/Vendors/Domain/Model/Vendor.php:106` | books keep the recorded vendor whatever the setting | M |
 | C122 | `documents.inactive_party_at_issue` (company) | a draft keeps a deactivated customer; only a merged-away one is refused at issue; `api/src/Module/Customers/Domain/Model/Customer.php:402` | - | M |
 | C165 | `document.bulk_invoicing_mixed_customers` (company) | the first selected note fixes customer and establishment; `api/src/Module/DeliveryNotes/Application/InvoiceDeliveryNotes.php:186` | - | M |
-| B56 | `records.undoable_for over app.records.undoable_for (with B43, B59)` (company (over the operator value)) | app.records.undoable_for exists (operator, PT24H); no company override; `api/config/services.yaml:210` | ruling: every delete undoable 24 h; the company value bounded by the operator's | M |
+| B56 | `records.undoable_for over app.records.undoable_for (with B43, B59)` (company (over the operator value)) | app.records.undoable_for built and bounded PT1H-P30D in S0.10f (6effe010a); the company override is the new part; `api/config/services.yaml:210` | ruling: every delete undoable 24 h; the company value bounded by the operator's | M |
 | B2 | `support_grant.operator_id (optional)` (per grant) | any operator with a second factor reads through a live grant; `api/src/Tenancy/Application/Support/SupportAccess.php:48` | support stays owner-granted, read-only; naming an operator only narrows it | L |
 | C30 | `export.headers (keys / words)` (company) | report exports are headed by column keys; `api/src/Module/Reports/Infrastructure/Http/ReportExportController.php:53` | - | M |
 | A104 | `products.photos.strip_metadata, app.products.photo_cache_max_age` (company + operator) | the original is kept as uploaded and served to product.read; cache max-age 31536000 fixed; `api/src/Module/Products/Infrastructure/Http/ProductPhotosController.php:129` | default = today: the original kept with its EXIF (the triage said true; W4 keeps today); a privacy default to raise on the desk (also on the desk: q-w4-photo-metadata; built in B4 with the default the desk settles) | M |
-| B29 | `purchase_order.print_for_non_cost_readers (refused / without prices)` (company) | PurchaseOrderPdfController answers 404 without product.cost.read; `api/src/Module/Purchases/Infrastructure/Http/PurchaseOrderPdfController.php:33` | product.cost.read stays the only way to a cost: the other option prints no price | M |
+| B29 | `purchase_order.print_for_non_cost_readers (refused / without prices)` (company) | PurchaseOrderPdfController answers 404 without product.cost.read; `api/src/Module/Purchases/Infrastructure/Http/PurchaseOrderPdfController.php:33` | product.cost.read is the only way to a cost: a purchase order printed for a reader without it carries no price | M |
 | A90 | `members.admin_grants_admin` (company) | RoleBounds: an admin grants built-in roles up to admin; `api/src/Tenancy/Application/Member/RoleBounds.php:20` | nobody cuts their own access; the last owner kept | M |
 | A99 | `audit.address.read` (permission) | ActivityCollectionProvider shows ip only to user.write; `api/src/Audit/Infrastructure/ApiPlatform/State/Provider/ActivityCollectionProvider.php:31` | granted by migration where user.write is held, as C101 did, so nobody loses a view | M |
 | C68 | `customer.merge_main_contact` (company) | the kept customer's main contact stays main; `api/src/Module/Customers/Infrastructure/Records/CustomerMerges.php:50` | undo puts it back either way | M |
@@ -68,7 +69,7 @@ Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); al
 | C95 | `documents.drafts_offer_cancel (always / when delete is refused)` (company) | every draft offers both Annuler and Supprimer; `web/src/app/invoices/invoice-actions.ts:108` | default = today: both offered (the triage set it back) | M |
 | C88 | `product.check_reasons (with C89)` (company) | nine automatic reasons, all on, in ProductCheckRules; `api/src/Module/Products/Infrastructure/Doctrine/ProductCheckRules.php:22` | - | M |
 
-## B5. Company settings: prices, money, stock (15, 53 points)
+## B5. Company settings: prices, money, stock (14, 50 points)
 
 | Pick | Key (level) | Today | Invariant or source | Size |
 |---|---|---|---|---|
@@ -78,7 +79,6 @@ Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); al
 | C120 | `article.after_price_restore (close review / reopen)` (company) | restoreFollowedPrice clears priceReviewCost: the review stays closed; `api/src/Module/Products/Domain/Model/Product.php:533` | - | M |
 | A39 | `price_list.same_kind_tie (lowest / highest)` (company) | ResolveUnitPrice: between two lists of one tier the lower net wins; `api/src/Module/PriceLists/Application/ResolveUnitPrice.php:26` | - | M |
 | A11 | `article.reference_reserved_on_open` (company) | ProductReferences::preview shows the next without taking it; `api/src/Module/Products/Application/ProductReferences.php:29` | - | M |
-| A68 | `invoice.credit_note_cost (at the credit note's issue / as credited)` (company) | each line freezes unit_cost at its own issue; `api/src/Module/Invoices/Domain/Model/InvoiceLine.php:163` | default = today: the cost at the credit note's issue; stock valuation is before the accountant (Q25) | M |
 | A71 | `credit_note.returned_by_default` (company) | the returned flag starts false in the form; `web/src/app/invoices/invoice-forms.ts:710` | - | S |
 | A63 | `stock.line_in_other_unit (say / refuse validation)` (company) | a line in another unit moves nothing and is said; `api/src/Module/Inventory/Application/MoveStockForDeliveryNotes.php:53` | - | M |
 | A75 | `stock.named_lot_unavailable (say / refuse validation)` (company) | the line moves nothing and the reason is said; `api/src/Module/Inventory/Application/MoveStockForDeliveryNotes.php:399` | another lot is never taken in its place unless chosen | M |
@@ -92,16 +92,16 @@ Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); al
 
 | Pick | Key (level) | Today | Invariant or source | Size |
 |---|---|---|---|---|
-| A50 | `e_invoicing.formats (with C124)` (preset) | PRESETS = [FR] in DescribeFacturX and FACTUR_X_COUNTRIES = [FR] in the web: one list twice in code; `api/src/Module/Invoices/Application/FacturX/DescribeFacturX.php:44` | data only, no new fiscal behaviour | S |
+| A50 | `e_invoicing.formats (with C124)` (preset) | PRESETS = [FR] in DescribeFacturX and FACTUR_X_COUNTRIES = [FR] in the web: one list twice in code; `api/src/Module/Invoices/Application/FacturX/DescribeFacturX.php:44` | a preset value, never a company switch: which e-invoice formats a country issues is the law's | S |
 | A44 | `parties.required_fields` (preset) | PartyIdentity::assertNamed holds the lists in code; `api/src/Module/Invoices/Application/Print/PartyIdentity.php:32` | the preset may only add required fields; never fewer than the law asks (a test holds the law's list as the floor) | M |
-| B16 | `retention_counted_from (preset), company.retention_extra_years (platform)` (preset + platform) | retainUntil = 31 Dec of closing year + preset years; start is code; `api/config/fiscal/FR.yaml:10` | never shorter than the law: extra years only lengthen; another start needs a source (none names it) | M |
+| B16 | `retention_counted_from (preset), company.retention_extra_years (platform)` (preset + platform) | retainUntil = 31 Dec of closing year + preset years; start is code; `api/config/fiscal/FR.yaml:10` | retention never shorter than the law: the start and the extra years can only lengthen it (a test holds the preset years as the floor) | M |
 | C105 | `identifiers[siret].check_alternatives` (identifier data) | La Poste SIREN 356000000 a code constant; `api/src/Fiscal/Domain/ValueObject/IdentifierCheck.php:25` | sourced: INSEE notices, FR.md § 5 | S |
 
 ## B7. Installation values on a shop's machine (last, rehearsed) (4, 12 points)
 
 | Pick | Key (level) | Today | Invariant or source | Size |
 |---|---|---|---|---|
-| C5 | `BACKUP_KEEP_DAYS; TWES_ZONE written into the values` (installation) | pgbackrest repo1 retention 14 days fixed; TWES_ZONE read, not written; `infra/postgres/pgbackrest.conf:11` | the off-site Object Lock stays 14 days whatever the local value | M |
+| C5 | `BACKUP_KEEP_DAYS; TWES_ZONE written into the values` (installation) | pgbackrest repo1 retention 14 days fixed; TWES_ZONE read, not written; `infra/postgres/pgbackrest.conf:11` | backups kept at least the ruled 14 days (Object Lock, 2026-10-13 00:04): the value only lengthens it | M |
 | A85 | `PHP_MEMORY_LIMIT` (installation) | conf.d/10-app.ini memory_limit = 256M for every mode; `infra/api/conf.d/10-app.ini:22` | - | M |
 | C14 | `TICK_INTERVAL_MINUTES` (installation) | OnCalendar=*:0/15 written by twes schedule; `scripts/onprem/twes:541` | - | M |
 | Q-SSR | `START_STEP_RERUN (next restart / night window / after ten minutes)` (installation) | q-start-step-rerun, answered (b) under the delegation: today's behaviour kept, the other moments a shop setting; `scripts/onprem/twes` | a downtime choice: default = today, the next restart of the computer | M |
@@ -128,6 +128,7 @@ Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); al
 | B69 | exists | already built: built in parameter batch 3 (2026-11-02) |
 | A2 | desk | on the decision desk: invariant: gapless continuous numbering; a company-wide series and when it may change need a fiscal source |
 | A9 | exists | already built: both presets declare DEV-{YYYY}-{MM}-{SEQ:5}; the company edits its series |
+| A68 | accountant | each line freezes unit_cost at its own issue |
 | A73 | dropped | dropped at triage: its note builds nothing |
 | B80 | dropped | dropped at triage: no order document is built |
 | C140 | exists | already built: built in parameter batch 2 (2026-11-02) |
@@ -151,5 +152,5 @@ Counts: 61 to build (new 58, an existing setting extended 2, partly built 1); al
 | B10 | exists | already built: built in parameter batch 3 |
 | B35 | desk | on the decision desk: r18 (the Installation card) was moved after the release by an earlier ruling; W4 (later) says before: which wins |
 
-Total: 190 points by the 1/3/8 sizes. Cost baseline: the three parameter batches of 2026-11-02 built 15 values in
+Total: 187 points by the 1/3/8 sizes. Cost baseline: the three parameter batches of 2026-11-02 built 15 values in
 about five hours; W4 is mostly behaviours, measured again after B1.
