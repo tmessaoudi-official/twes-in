@@ -3,7 +3,7 @@
 import ar from '../../../public/i18n/watch/ar.json';
 import en from '../../../public/i18n/watch/en.json';
 import fr from '../../../public/i18n/watch/fr.json';
-import { hintKey, WATCH_SUBJECTS } from './watch-subjects';
+import { hintKey, WATCH_SUBJECTS, withMarginBasis } from './watch-subjects';
 import type { WatchRowView } from './watch-view';
 
 /** The text at a dotted key of a texts file, or undefined. */
@@ -64,5 +64,21 @@ describe('the contacts to check', () => {
       ['/company/profile'],
       ['/company/establishments'],
     ]);
+  });
+
+  it('says a moved margin as a markup in the same columns, so a layout that placed them keeps them', () => {
+    const list = WATCH_SUBJECTS['product.margin_moved']!.list;
+    const markup = withMarginBasis(list, 'markup');
+    expect(markup.columns.map((column) => column.id)).toEqual(
+      list.columns.map((column) => column.id),
+    );
+    const now = markup.columns.find((column) => column.id === 'margin');
+    expect([now?.label, now?.width]).toEqual(['watch.columns.markup', 130]);
+    const row = { cells: { margin: '12,0 %', markup: '13,6 %' } } as unknown as WatchRowView;
+    expect(now?.value(row)).toBe('13,6 %');
+    expect(markup.columns.find((column) => column.id === 'previousMargin')?.label).toBe(
+      'watch.columns.previousMarkup',
+    );
+    expect(withMarginBasis(list, 'margin')).toBe(list);
   });
 });

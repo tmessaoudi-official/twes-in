@@ -278,15 +278,15 @@ const COST_COLUMNS: ListDescriptor<ProductListRow>['columns'] = [
   },
 ];
 
-/** The margin in percent as a share of the cost, in the place of the share of the price for whoever reads a markup. */
-const MARKUP_COLUMN: ListDescriptor<ProductListRow>['columns'][number] = {
-  id: 'markupPercent',
-  label: `${FIELDS}.markupPercent`,
-  value: (row) => row.markupPercent ?? '',
-  align: 'end',
-  width: 96,
-  defaultHidden: true,
-};
+/**
+ * The margin in percent as a share of the cost for whoever reads a markup: the same column, its id kept, so a layout
+ * that shows « Marge % » shows the markup in its place rather than losing the column.
+ */
+function asMarkup(
+  column: ListDescriptor<ProductListRow>['columns'][number],
+): ListDescriptor<ProductListRow>['columns'][number] {
+  return { ...column, label: `${FIELDS}.markupPercent`, value: (row) => row.markupPercent ?? '' };
+}
 
 /**
  * The products list with a hidden column per active custom field of the company for products, the cost columns for a
@@ -301,7 +301,7 @@ export function productsList(
 ): ListDescriptor<ProductListRow> {
   const costColumns =
     basis === 'markup'
-      ? COST_COLUMNS.map((column) => (column.id === 'marginPercent' ? MARKUP_COLUMN : column))
+      ? COST_COLUMNS.map((column) => (column.id === 'marginPercent' ? asMarkup(column) : column))
       : COST_COLUMNS;
   const reasons = PRODUCT_CHECK_REASONS.filter((reason) => offered.includes(reason));
   const columns = PRODUCTS_LIST.columns;

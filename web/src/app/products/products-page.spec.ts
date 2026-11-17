@@ -316,16 +316,18 @@ describe('ProductsPage', () => {
     expect(q('products-merge')).toBeNull();
   });
 
-  it('lists the margin as the person reads it, a share of the price or of the cost', async () => {
-    const ids = (): string[] =>
-      (fixture.componentInstance as unknown as { list: () => { columns: { id: string }[] } })
+  it('lists the margin as the person reads it, a share of the price or of the cost, in one column', async () => {
+    interface Listed {
+      list: () => { columns: { id: string; label: string }[] };
+    }
+    const label = (): string | undefined =>
+      (fixture.componentInstance as unknown as Listed)
         .list()
-        .columns.map((column) => column.id);
-    expect(ids()).toContain('marginPercent');
+        .columns.find((column) => column.id === 'marginPercent')?.label;
+    expect(label()).toBe('products.fields.marginPercent');
     TestBed.inject(SettingsFacade).set(PRESENTATION.marginBasis, 'markup');
     await settle();
-    expect(ids()).toContain('markupPercent');
-    expect(ids()).not.toContain('marginPercent');
+    expect(label()).toBe('products.fields.markupPercent');
   });
 
   it('says why the list could not be read', async () => {

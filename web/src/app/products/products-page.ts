@@ -79,7 +79,7 @@ export class ProductsPage implements OnInit {
   private readonly format = inject(FormatFacade);
   private readonly deletes = inject(RecordDeletes);
   /** Whether the person reads a margin as a share of the price or of the cost. */
-  private readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
+  protected readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
 
   /** Rows are selected for what the selection bar offers on them: their labels on one sheet, and a merge. */
   protected readonly list = computed(() => ({

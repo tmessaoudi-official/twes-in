@@ -55,7 +55,7 @@ const MARKUP_COLUMNS: Readonly<Record<string, string>> = {
 
 /**
  * A subject's table as a reader who reads a margin as a share of the cost sees it: each margin column says the markup,
- * in the same place and width. A table with no margin is handed back as it is.
+ * its id kept, so a layout that placed or hid it keeps doing so. A table with no margin is handed back as it is.
  */
 export function withMarginBasis(
   list: ListDescriptor<WatchRowView>,
@@ -67,8 +67,10 @@ export function withMarginBasis(
     ...list,
     columns: list.columns.map((column) => {
       const markup = MARKUP_COLUMNS[column.id];
-      // Its own id, words and value, in the column's place, width and priority.
-      return markup === undefined ? column : { ...column, ...cell(markup) };
+      // The markup's words and value in the margin column itself.
+      return markup === undefined
+        ? column
+        : { ...column, label: cell(markup).label, value: cell(markup).value };
     }),
   };
 }
