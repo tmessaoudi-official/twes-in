@@ -37,6 +37,6 @@ final readonly class CreateExpenseProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), 0);
+        return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), 0, vendorAsRecorded: $this->manage->namesVendorAsRecorded($company));
     }
 }

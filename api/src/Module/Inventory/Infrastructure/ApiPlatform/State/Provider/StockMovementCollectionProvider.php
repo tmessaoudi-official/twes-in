@@ -16,6 +16,7 @@ use App\Module\Inventory\Application\KeepLossAttachments;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
+use App\Module\Inventory\Infrastructure\ApiPlatform\Output\MovementVendorNames;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Payload\StockMovementSearchReader;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMovementResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
@@ -34,7 +35,7 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
  */
 final readonly class StockMovementCollectionProvider implements ProviderInterface
 {
-    public function __construct(private KeepStock $stock, private KeepLossAttachments $attachments, private CompanyGuard $guard, private Paging $paging)
+    public function __construct(private KeepStock $stock, private KeepLossAttachments $attachments, private CompanyGuard $guard, private Paging $paging, private MovementVendorNames $vendorNames)
     {
     }
 
@@ -50,8 +51,10 @@ final readonly class StockMovementCollectionProvider implements ProviderInterfac
         // Which sales of the page left their place short, read once for the page as well.
         $short = array_flip($this->stock->soldWithoutStock($company, $page->items));
 
-        return $this->paging->paginator($page, static function (StockMovement $movement) use ($counts, $short): StockMovementResource {
-            $resource = StockMovementResource::of($movement);
+        $recorded = $this->vendorNames->asRecorded($company);
+
+        return $this->paging->paginator($page, static function (StockMovement $movement) use ($counts, $short, $recorded): StockMovementResource {
+            $resource = StockMovementResource::of($movement, $recorded);
             $resource->attachmentCount = $counts[$movement->getId()->toRfc4122()] ?? $resource->attachmentCount;
             $resource->withoutStock = isset($short[$movement->getId()->toRfc4122()]);
 

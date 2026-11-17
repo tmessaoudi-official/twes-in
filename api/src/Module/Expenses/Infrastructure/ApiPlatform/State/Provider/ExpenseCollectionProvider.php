@@ -44,14 +44,16 @@ final readonly class ExpenseCollectionProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ExpensePermission::READ);
         $scale = $this->scales->of($company->getCurrency());
-        $search = ExpenseSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, ExpenseSearch::SORTS));
+        // Read once: the rows name each vendor, and sort by it, as the company's screens name a vendor merged away.
+        $recorded = $this->manage->namesVendorAsRecorded($company);
+        $search = ExpenseSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, ExpenseSearch::SORTS))->withVendorAsRecorded($recorded);
 
         $page = $this->manage->search($company, $search, $this->paging->request($operation, $context));
         $attached = $this->manage->attachmentCounts($company, $page->items);
 
         return $this->paging->paginator(
             $page,
-            static fn (Expense $expense) => ExpenseResource::of($expense, $scale, $attached[$expense->getId()->toRfc4122()] ?? 0),
+            static fn (Expense $expense) => ExpenseResource::of($expense, $scale, $attached[$expense->getId()->toRfc4122()] ?? 0, vendorAsRecorded: $recorded),
         );
     }
 }

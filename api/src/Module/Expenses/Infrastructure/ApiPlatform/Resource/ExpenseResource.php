@@ -382,7 +382,7 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public bool $amountToCheck = false;
 
-    public static function of(Expense $expense, int $currencyScale, int $attachmentCount, ?string $suggestedWithholdingRate = null): self
+    public static function of(Expense $expense, int $currencyScale, int $attachmentCount, ?string $suggestedWithholdingRate = null, bool $vendorAsRecorded = false): self
     {
         $amount = static fn (string $stored): string => Decimal::format(Decimal::of($stored), $currencyScale);
         $resource = new self();
@@ -393,8 +393,10 @@ final class ExpenseResource
         $resource->reference = $expense->getReference();
         $resource->description = $expense->getDescription();
         $resource->vendorId = $expense->getVendor()?->getId()->toRfc4122();
-        // Shown as the vendor kept when it was merged away; the id stays the one recorded, which the books name.
-        $resource->vendorName = $expense->getVendor()?->standingFor()->getProfile()->name;
+        // Shown as the vendor kept when it was merged away, unless the company names the one recorded; the id stays the
+        // one recorded, which the books name.
+        $vendor = $vendorAsRecorded ? $expense->getVendor() : $expense->getVendor()?->standingFor();
+        $resource->vendorName = $vendor?->getProfile()->name;
         $resource->payee = $expense->getPayee();
         $resource->categoryId = $expense->getCategory()?->getId()->toRfc4122();
         $resource->categoryName = $expense->getCategory()?->getName();

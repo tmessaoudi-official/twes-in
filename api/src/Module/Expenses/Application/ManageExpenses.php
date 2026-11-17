@@ -36,9 +36,12 @@ use App\Module\Expenses\Domain\ValueObject\ExpenseAmounts;
 use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
 use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
 use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
+use App\Module\Vendors\Application\VendorNameSettings;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -83,6 +86,7 @@ final readonly class ManageExpenses implements DeclaresAuditActions
         private ModuleStates $modules,
         private FiscalPresets $presets,
         private RecordVersions $versions,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -100,6 +104,15 @@ final readonly class ManageExpenses implements DeclaresAuditActions
     public function search(Company $company, ExpenseSearch $search, PageRequest $page): Page
     {
         return $this->expenses->search($company->getId(), $this->withSubcategories($company, $search), $page);
+    }
+
+    /**
+     * Whether the company's screens name a vendor merged away by its own name rather than the vendor kept for it
+     * (`vendors.merged_names_on_screens`); the books keep the vendor recorded either way.
+     */
+    public function namesVendorAsRecorded(Company $company): bool
+    {
+        return VendorNameSettings::RECORDED === $this->settings->value(new SettingContext($company), VendorNameSettings::MERGED_NAMES);
     }
 
     /**

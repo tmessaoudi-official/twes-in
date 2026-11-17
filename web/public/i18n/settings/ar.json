@@ -299,6 +299,12 @@
           "add": "إضافة فقط",
           "replace": "استبدال قائمة كل منتج"
         }
+      },
+      "vendors": {
+        "merged_names_on_screens": {
+          "kept": "المورد المحتفظ به",
+          "recorded": "المورد المسجَّل"
+        }
       }
     },
     "overrides": {
@@ -395,6 +401,10 @@
       "decimal_mark": "الفاصل العشري في ملفات CSV",
       "day_order": "ترتيب التواريخ في ملفات CSV",
       "product_vendors_mode": "استيراد مزوّدي المنتجات"
+    },
+    "vendors": {
+      "merged_names_on_screens": "المورد المدمج كما تسمّيه الشاشات",
+      "merged_names_on_screens_hint": "تحتفظ الدفاتر والتصاريح دائمًا بالمورد المسجَّل، وتقترح القوائم المورد المحتفظ به."
     }
   }
 }

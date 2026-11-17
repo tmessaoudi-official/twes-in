@@ -299,6 +299,12 @@
           "add": "Add only",
           "replace": "Replace each product’s list"
         }
+      },
+      "vendors": {
+        "merged_names_on_screens": {
+          "kept": "The vendor kept",
+          "recorded": "The vendor recorded"
+        }
       }
     },
     "overrides": {
@@ -395,6 +401,10 @@
       "decimal_mark": "Decimal mark of CSV files",
       "day_order": "Date order of CSV files",
       "product_vendors_mode": "Import of products’ vendors"
+    },
+    "vendors": {
+      "merged_names_on_screens": "Merged vendor, as screens name it",
+      "merged_names_on_screens_hint": "The books and declarations always keep the vendor recorded; pickers offer the vendor kept."
     }
   }
 }

@@ -1132,8 +1132,9 @@ final class InventoryTest extends ApiTestCase
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
         // Measured 11 on 2026-09-25 (18 for six rows before), the session and the company's checks included, plus one:
-        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request.
-        self::assertLessThanOrEqual(12, $statements[6]);
+        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request,
+        // and one for how the company's screens name a vendor merged away.
+        self::assertLessThanOrEqual(13, $statements[6]);
     }
 
     public function testTrackingIsChosenBeforeTheFirstMovementAndKeptAfterIt(): void

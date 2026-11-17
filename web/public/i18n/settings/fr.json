@@ -299,6 +299,12 @@
           "add": "Ajouter seulement",
           "replace": "Remplacer la liste de chaque produit"
         }
+      },
+      "vendors": {
+        "merged_names_on_screens": {
+          "kept": "Le fournisseur gardé",
+          "recorded": "Le fournisseur enregistré"
+        }
       }
     },
     "overrides": {
@@ -395,6 +401,10 @@
       "decimal_mark": "Séparateur décimal des fichiers CSV",
       "day_order": "Ordre des dates des fichiers CSV",
       "product_vendors_mode": "Import des fournisseurs des produits"
+    },
+    "vendors": {
+      "merged_names_on_screens": "Fournisseur fusionné, nommé à l’écran",
+      "merged_names_on_screens_hint": "Les livres et les déclarations gardent toujours le fournisseur enregistré ; le choix d’un fournisseur propose le fournisseur gardé."
     }
   }
 }

@@ -16,6 +16,7 @@ use App\Module\Inventory\Application\StockMovementNotFound;
 use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Exception\StockMovementCostKnown;
 use App\Module\Inventory\Domain\ValueObject\CostBasis;
+use App\Module\Inventory\Infrastructure\ApiPlatform\Output\MovementVendorNames;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\ReceiptCostEntryResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMovementResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
@@ -29,7 +30,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProcessorInterface<ReceiptCostEntryResource, StockMovementResource> */
 final readonly class EnterReceiptCostProcessor implements ProcessorInterface
 {
-    public function __construct(private KeepStock $stock, private CompanyGuard $guard)
+    public function __construct(private KeepStock $stock, private CompanyGuard $guard, private MovementVendorNames $vendorNames)
     {
     }
 
@@ -49,6 +50,6 @@ final readonly class EnterReceiptCostProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return StockMovementResource::of($receipt);
+        return StockMovementResource::of($receipt, $this->vendorNames->asRecorded($company));
     }
 }

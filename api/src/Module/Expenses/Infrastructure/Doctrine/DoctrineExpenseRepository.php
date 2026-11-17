@@ -43,6 +43,12 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         'status' => 'e.status',
     ];
 
+    /** The same sorts where the company's screens name the vendor recorded rather than the one kept. */
+    private const array SORTED_BY_RECORDED = [
+        ...self::SORTED_BY,
+        'vendor' => ['CASE WHEN v.id IS NULL THEN e.payee ELSE v.name END', 'COALESCE(v.name, e.payee) IS NULL'],
+    ];
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -92,7 +98,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         // so it is the default rather than the tie-break, which would name the same column twice. An expense carries
         // no number, so what settles a tie is when it was filed, then its id, which is unique and never empty.
         $order = [] === $search->order ? ['date' => 'desc'] : $search->order;
-        ListOrder::apply($query, $order, self::SORTED_BY, ['vendor', 'category'], 'e.createdAt', \SortDirection::Descending)
+        ListOrder::apply($query, $order, $search->vendorAsRecorded ? self::SORTED_BY_RECORDED : self::SORTED_BY, ['vendor', 'category'], 'e.createdAt', \SortDirection::Descending)
             ->addOrderBy('e.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 

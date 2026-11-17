@@ -16,8 +16,11 @@ use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -292,6 +295,8 @@ final class VendorMergeTest extends ApiTestCase
         self::assertSame([[$order, 'Sotumag']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['vendorName'] ?? null], $this->jsonList()));
         $this->getJson($this->path('stock-movements'));
         self::assertSame(['Sotumag'], array_values(array_filter(array_column($this->jsonList(), 'vendorName'))));
+        // The list's file names each vendor as the list does.
+        self::assertSame(['Sotumag', 'Sotumag Gabès'], $this->expenseFileVendors());
 
         // The day every expense here is written on.
         $today = '2026-10-20';
@@ -312,6 +317,43 @@ final class VendorMergeTest extends ApiTestCase
         $this->client->request('GET', $this->path("exports/purchases-journal.csv?from=$today&to=$today"));
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Sotumag Sfax', (string) $this->client->getInternalResponse()->getContent());
+    }
+
+    /**
+     * A company may ask its screens to name the vendor a record was made with, by its own name, rather than the one kept:
+     * every list and record shows it and sorts by it, while pickers still offer the vendor kept alone.
+     */
+    public function testAScreenNamesTheVendorRecordedWhenTheCompanyAsks(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->vendorId('F-001'), $this->vendorId('F-002'), $this->vendorId('F-003')];
+        $recorded = $this->anExpense($merged, record: true);
+        $elsewhere = $this->anExpense($other, record: true);
+        $order = $this->anOrder($merged);
+        $this->aReceipt($merged);
+        $this->merged($kept, [$merged]);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company), 'vendors.merged_names_on_screens', SettingLevel::Company, 'recorded', null);
+
+        $this->getJson($this->path('expenses?vendorId='.$kept));
+        self::assertSame([[$recorded, $merged, 'Sotumag Sfax']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['vendorId'] ?? null, $row['vendorName'] ?? null], $this->jsonList()));
+        $this->getJson($this->path("expenses/$recorded"));
+        self::assertSame('Sotumag Sfax', $this->json()['vendorName'] ?? null);
+        // Sorted by the name shown: « Sotumag Gabès » before « Sotumag Sfax ».
+        $this->getJson($this->path('expenses?order[vendor]=asc'));
+        self::assertSame([$elsewhere, $recorded], array_column($this->jsonList(), 'id'));
+        $this->getJson($this->path('purchase-orders?vendorId='.$kept));
+        self::assertSame([[$order, 'Sotumag Sfax']], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['vendorName'] ?? null], $this->jsonList()));
+        $this->getJson($this->path("purchase-orders/$order"));
+        self::assertSame('Sotumag Sfax', $this->json()['vendorName'] ?? null);
+        $this->getJson($this->path('stock-movements'));
+        self::assertSame(['Sotumag Sfax'], array_values(array_filter(array_column($this->jsonList(), 'vendorName'))));
+        self::assertSame(['Sotumag Gabès', 'Sotumag Sfax'], $this->expenseFileVendors());
+        foreach (['expense-options/vendors?q=sotumag', 'stock-options/vendors?q=sotumag', 'purchase-order-options/vendors?q=sotumag'] as $picker) {
+            $this->getJson($this->path($picker));
+            self::assertSame([$kept, $other], array_column($this->jsonList(), 'id'), $picker);
+        }
     }
 
     /** An order sent before the merge is the vendor merged away's: its goods are still received, naming it as the order does. */
@@ -585,6 +627,21 @@ final class VendorMergeTest extends ApiTestCase
     private function companyId(): string
     {
         return $this->company->getId()->toRfc4122();
+    }
+
+    /** @return list<string> the vendor column of the expenses file, sorted */
+    private function expenseFileVendors(): array
+    {
+        $this->client->request('GET', $this->path('exports/expenses.csv'));
+        self::assertResponseIsSuccessful();
+        $lines = array_values(array_filter(explode("\n", (string) $this->client->getInternalResponse()->getContent()), static fn (string $line): bool => '' !== trim($line)));
+        $header = array_map(strval(...), str_getcsv(ltrim($lines[0] ?? '', "\xEF\xBB\xBF"), escape: ''));
+        $column = array_search('vendor', $header, true);
+        self::assertIsInt($column);
+        $vendors = array_map(static fn (string $line): string => (string) (str_getcsv($line, escape: '')[$column] ?? ''), \array_slice($lines, 1));
+        sort($vendors);
+
+        return $vendors;
     }
 
     private function path(string $rest): string

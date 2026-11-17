@@ -282,7 +282,7 @@ final class StockMovementResource
         return null === $this->lotCode ? null : new NamedLot($this->lotCode, null === $this->lotExpiresOn ? null : new \DateTimeImmutable($this->lotExpiresOn));
     }
 
-    public static function of(StockMovement $movement): self
+    public static function of(StockMovement $movement, bool $vendorAsRecorded = false): self
     {
         $resource = new self();
         $resource->id = $movement->getId()->toRfc4122();
@@ -302,8 +302,9 @@ final class StockMovementResource
         $resource->reason = $movement->getReason()?->value;
         $resource->note = $movement->getNote();
         $resource->vendorId = $movement->getVendor()?->getId()->toRfc4122();
-        // Shown as the vendor kept when it was merged away; the movement still names the vendor the goods came from.
-        $resource->vendorName = $movement->getVendor()?->standingFor()->getProfile()->name;
+        // Shown as the vendor kept when it was merged away, unless the company names the one recorded; the movement still
+        // names the vendor the goods came from.
+        $resource->vendorName = ($vendorAsRecorded ? $movement->getVendor() : $movement->getVendor()?->standingFor())?->getProfile()->name;
         $resource->supplierReference = $movement->getSupplierReference();
         $resource->receivedOn = $movement->getReceivedOn()?->format('Y-m-d');
         $resource->sourceId = $movement->getSourceId()?->toRfc4122();

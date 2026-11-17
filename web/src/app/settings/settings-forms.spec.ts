@@ -124,6 +124,25 @@ describe('companySettingsForm', () => {
     ]);
   });
 
+  it('gives a setting standing apart from its neighbours a whole row and its hint', () => {
+    const vendors = row({
+      key: 'vendors.merged_names_on_screens',
+      chain: 'parties',
+      type: 'enum',
+      defaultValue: 'kept',
+      value: 'kept',
+      choices: ['kept', 'recorded'],
+    });
+    const fields = companySettingsForm([terms, vendors]).sections.flatMap(
+      (section) => section.fields,
+    );
+
+    expect(fields.find((field) => field.id === 'vendors__merged_names_on_screens')).toMatchObject({
+      span: 2,
+      hint: 'settings.vendors.merged_names_on_screens_hint',
+    });
+  });
+
   it("carries each setting's constraints to its field", () => {
     const fields = companySettingsForm(rows).sections.flatMap((section) => section.fields);
     const byId = Object.fromEntries(fields.map((field) => [field.id, field]));

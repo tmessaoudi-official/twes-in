@@ -17,6 +17,7 @@ use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\CostBasis;
 use App\Module\Inventory\Domain\ValueObject\StockLossReason;
+use App\Module\Inventory\Infrastructure\ApiPlatform\Output\MovementVendorNames;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMovementResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -29,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
 /** @implements ProcessorInterface<StockMovementResource, StockMovementResource> */
 final readonly class RecordStockMovementProcessor implements ProcessorInterface
 {
-    public function __construct(private KeepStock $stock, private ReceiptDocuments $documents, private CompanyGuard $guard)
+    public function __construct(private KeepStock $stock, private ReceiptDocuments $documents, private CompanyGuard $guard, private MovementVendorNames $vendorNames)
     {
     }
 
@@ -52,7 +53,7 @@ final readonly class RecordStockMovementProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return StockMovementResource::of($movement);
+        return StockMovementResource::of($movement, $this->vendorNames->asRecorded($company));
     }
 
     /**

@@ -59,13 +59,15 @@ final readonly class ExpenseExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $search = ExpenseSearchReader::read($query->parameters(), $query->text(), $query->order(ExpenseSearch::SORTS));
+        // The file names each vendor, and sorts by it, as the list does.
+        $recorded = $this->manage->namesVendorAsRecorded($company);
+        $search = ExpenseSearchReader::read($query->parameters(), $query->text(), $query->order(ExpenseSearch::SORTS))->withVendorAsRecorded($recorded);
         $scale = $this->scales->of($company->getCurrency());
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));
             foreach ($answer->items as $expense) {
-                yield self::row($expense, $scale);
+                yield self::row($expense, $scale, $recorded);
             }
             if ($page * self::BATCH >= $answer->total || [] === $answer->items) {
                 return;
@@ -74,7 +76,7 @@ final readonly class ExpenseExport implements DeclaresExport
     }
 
     /** @return list<string> */
-    private static function row(Expense $expense, int $scale): array
+    private static function row(Expense $expense, int $scale, bool $vendorAsRecorded): array
     {
         $amount = static fn (string $stored): string => Decimal::format(Decimal::of($stored), $scale);
 
@@ -82,7 +84,7 @@ final readonly class ExpenseExport implements DeclaresExport
             $expense->getDate()->format('Y-m-d'),
             $expense->getReference() ?? '',
             $expense->getDescription(),
-            $expense->getVendor()?->getProfile()->name ?? $expense->getPayee() ?? '',
+            ($vendorAsRecorded ? $expense->getVendor() : $expense->getVendor()?->standingFor())?->getProfile()->name ?? $expense->getPayee() ?? '',
             $expense->getCategory()?->getName() ?? '',
             $expense->getCurrency(),
             $amount($expense->getAmountNet()),

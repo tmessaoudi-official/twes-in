@@ -55,6 +55,6 @@ final readonly class ClassifyExpenseWithholdingProcessor implements ProcessorInt
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), $this->manage->attachmentCount($expense));
+        return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), $this->manage->attachmentCount($expense), vendorAsRecorded: $this->manage->namesVendorAsRecorded($company));
     }
 }

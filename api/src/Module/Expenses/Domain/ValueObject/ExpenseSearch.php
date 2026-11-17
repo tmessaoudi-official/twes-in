@@ -34,12 +34,13 @@ final readonly class ExpenseSearch
     public const array SORTS = ['date', 'description', 'vendor', 'category', 'amountGross', 'status'];
 
     /**
-     * @param list<ExpenseStatus>         $statuses       any of them; none is every status
-     * @param list<Uuid>                  $vendors        any of them
-     * @param list<Uuid>                  $categories     any of them, each standing for itself (the use case adds what sits under it)
-     * @param array<string, 'asc'|'desc'> $order          one of SORTS per key, in the order it applies
-     * @param list<PaymentMethod>         $paymentMethods any of them; an expense not paid yet has none and is left out by any
-     * @param bool|null                   $withheld       true: something was withheld when it was paid; false: nothing was; null: either
+     * @param list<ExpenseStatus>         $statuses         any of them; none is every status
+     * @param list<Uuid>                  $vendors          any of them
+     * @param list<Uuid>                  $categories       any of them, each standing for itself (the use case adds what sits under it)
+     * @param array<string, 'asc'|'desc'> $order            one of SORTS per key, in the order it applies
+     * @param list<PaymentMethod>         $paymentMethods   any of them; an expense not paid yet has none and is left out by any
+     * @param bool|null                   $withheld         true: something was withheld when it was paid; false: nothing was; null: either
+     * @param bool                        $vendorAsRecorded the vendor a row names, and sorts by, is the one recorded rather than the one kept for it
      */
     public function __construct(
         public ?string $text = null,
@@ -51,6 +52,7 @@ final readonly class ExpenseSearch
         public ?bool $withheld = null,
         public ?DateRange $date = null,
         public ?DecimalRange $amountGross = null,
+        public bool $vendorAsRecorded = false,
     ) {
     }
 
@@ -61,12 +63,18 @@ final readonly class ExpenseSearch
      */
     public function withCategories(array $categories): self
     {
-        return new self($this->text, $this->statuses, $this->vendors, $categories, $this->order, $this->paymentMethods, $this->withheld, $this->date, $this->amountGross);
+        return new self($this->text, $this->statuses, $this->vendors, $categories, $this->order, $this->paymentMethods, $this->withheld, $this->date, $this->amountGross, $this->vendorAsRecorded);
     }
 
     /** The same search whatever the status, which is what the status chips count under. */
     public function withoutStatus(): self
     {
-        return new self($this->text, [], $this->vendors, $this->categories, [], $this->paymentMethods, $this->withheld, $this->date, $this->amountGross);
+        return new self($this->text, [], $this->vendors, $this->categories, [], $this->paymentMethods, $this->withheld, $this->date, $this->amountGross, $this->vendorAsRecorded);
+    }
+
+    /** The same search naming each row's vendor as recorded, or as kept. */
+    public function withVendorAsRecorded(bool $recorded): self
+    {
+        return new self($this->text, $this->statuses, $this->vendors, $this->categories, $this->order, $this->paymentMethods, $this->withheld, $this->date, $this->amountGross, $recorded);
     }
 }

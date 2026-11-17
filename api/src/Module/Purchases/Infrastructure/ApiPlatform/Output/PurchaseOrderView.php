@@ -16,7 +16,9 @@ use App\Module\Purchases\Application\OrderVendors;
 use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
+use App\Module\Vendors\Application\VendorNameSettings;
 use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
@@ -64,12 +66,14 @@ final readonly class PurchaseOrderView
         }
 
         // An order names its vendor as it was saved or sent; the list shows the vendor standing for it now, the one kept
-        // when it was merged away, while a sent order's printed vendor stays in its snapshot.
+        // when it was merged away, unless the company names the one recorded; a sent order's printed vendor stays in its
+        // snapshot either way.
         $vendors = [];
         foreach ($orders as $order) {
             $vendors[$order->getVendorId()->toRfc4122()] = $order->getVendorId();
         }
-        $standing = $this->vendors->standingFor($company, array_values($vendors));
+        $recorded = VendorNameSettings::RECORDED === $this->settings->value(new SettingContext($company), VendorNameSettings::MERGED_NAMES);
+        $standing = $recorded ? [] : $this->vendors->standingFor($company, array_values($vendors));
 
         return array_map(static function (PurchaseOrder $order) use ($seesCost, $scale, $tracking, $standing): PurchaseOrderResource {
             $resource = PurchaseOrderResource::of($order, $seesCost, $scale, $tracking);
