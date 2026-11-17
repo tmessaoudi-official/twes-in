@@ -119,6 +119,8 @@
       "expires": "تاريخ انتهاء الصلوحية",
       "serials": "الأرقام التسلسلية، رقم في كل سطر",
       "serials_hint": "{{count}} من أصل {{expected}} منتظرة",
+      "serials_fields": "الأرقام التسلسلية",
+      "serial_piece": "القطعة {{piece}}",
       "the_line": "السطر",
       "refused": "« {{field}} » مرفوض: تثبّت من القيمة.",
       "confirm": "{count, plural, =0 {استلام} zero {استلام} one {استلام سطر واحد} two {استلام سطرين} few {استلام {{count}} أسطر} many {استلام {{count}} سطرًا} other {استلام {{count}} سطر}}",

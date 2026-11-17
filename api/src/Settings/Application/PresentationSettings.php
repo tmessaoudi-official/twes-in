@@ -54,6 +54,11 @@ final readonly class PresentationSettings implements DeclaresSettings
         // How many rows a list shows per page, one choice for every list: `auto` is each list's own first size, and a list
         // that does not offer the size chosen shows its own first too.
         yield new SettingDefinition('presentation.page-size', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.page_size', self::MODULE, choices: ['auto', '10', '25', '50', '100', '200']);
+        // What an expense line added or removed keeps of the others typed taxes included: their nets until a company, a role
+        // or a person keeps their totals instead, whose nets are then worked out again.
+        yield new SettingDefinition('presentation.expense-line-change', SettingType::Enum, 'nets', $chain, $shared, 'settings.presentation.expense_line_change', self::MODULE, choices: ['nets', 'totals']);
+        // How the serial numbers of a piece received are typed: one column, as a scanner writes them, or one field per piece.
+        yield new SettingDefinition('presentation.receive-serials', SettingType::Enum, 'column', $chain, $shared, 'settings.presentation.receive_serials', self::MODULE, choices: ['column', 'fields']);
         yield new SettingDefinition('presentation.language', SettingType::Enum, $this->languages->default(), $chain, $shared, 'settings.presentation.language', self::MODULE, choices: $this->languages->interface());
         // « Montrer ce qui arrive »: the vision's parts not built yet, marked. Hidden until someone shows them: the operator
         // for the whole installation, a company for its members, a member for themself.

@@ -105,6 +105,9 @@
       "folded_sections": "Folded menu sections",
       "settings_list": "Settings list",
       "stock_map_view": "Stock map view",
+      "expense_line_change": "Expense line added or removed",
+      "expense_line_change_hint": "What the other lines typed with tax keep: their net amount, or the total typed.",
+      "receive_serials": "Serial numbers when receiving",
       "page_size": "Rows per page",
       "passkey_entry": "Enter with a passkey"
     },
@@ -203,6 +206,14 @@
         "stock-map-view": {
           "plan": "2D plan",
           "volume": "3D volume"
+        },
+        "expense-line-change": {
+          "nets": "Keep the net amounts",
+          "totals": "Keep the totals typed with tax"
+        },
+        "receive-serials": {
+          "column": "One column, a number per line",
+          "fields": "One field per piece"
         },
         "page-size": {
           "auto": "As the list offers",

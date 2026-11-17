@@ -28,6 +28,13 @@ export type PlanLabelMode = (typeof PLAN_LABEL_MODES)[number];
 export const STOCK_MAP_VIEWS = ['plan', 'volume'] as const;
 export type StockMapView = (typeof STOCK_MAP_VIEWS)[number];
 /** The rows a list shows per page, the same for every list: `auto` is each list's own first size. */
+/** What an expense line coming or going keeps of the others: their nets, or their totals typed taxes included. */
+export const EXPENSE_LINE_CHANGES = ['nets', 'totals'] as const;
+export type ExpenseLineChange = (typeof EXPENSE_LINE_CHANGES)[number];
+/** How a piece kept by serial number is received: the numbers in one column, or one field per piece. */
+export const RECEIVE_SERIALS = ['column', 'fields'] as const;
+export type ReceiveSerials = (typeof RECEIVE_SERIALS)[number];
+
 export const PAGE_SIZE_CHOICES = ['auto', '10', '25', '50', '100', '200'] as const;
 export type PageSizeChoice = (typeof PAGE_SIZE_CHOICES)[number];
 
@@ -144,6 +151,21 @@ export const PRESENTATION = {
     'presentation.page-size',
     'auto',
     oneOf<PageSizeChoice>(...PAGE_SIZE_CHOICES),
+  ),
+  /**
+   * What an expense line added or removed keeps of the others typed taxes included: their nets, each total said again
+   * as the stamp moves, until a person chooses their totals, whose nets are worked out again.
+   */
+  expenseLineChange: defineSetting<ExpenseLineChange>(
+    'presentation.expense-line-change',
+    'nets',
+    oneOf<ExpenseLineChange>(...EXPENSE_LINE_CHANGES),
+  ),
+  /** How the serial numbers of a piece received are typed: one column, as a scanner writes them, until someone chooses. */
+  receiveSerials: defineSetting<ReceiveSerials>(
+    'presentation.receive-serials',
+    'column',
+    oneOf<ReceiveSerials>(...RECEIVE_SERIALS),
   ),
   language: defineSetting<Language>(
     'presentation.language',

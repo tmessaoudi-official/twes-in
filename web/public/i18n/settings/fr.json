@@ -105,6 +105,9 @@
       "folded_sections": "Sections repliées des menus",
       "settings_list": "Liste des réglages",
       "stock_map_view": "Vue du plan du stock",
+      "expense_line_change": "Ligne ajoutée ou retirée d’une dépense",
+      "expense_line_change_hint": "Ce que gardent les autres lignes saisies TTC : leur montant HT, ou le total saisi.",
+      "receive_serials": "Saisie des numéros de série à la réception",
       "page_size": "Lignes par page",
       "passkey_entry": "Entrer avec une clé d’accès"
     },
@@ -203,6 +206,14 @@
         "stock-map-view": {
           "plan": "Plan 2D",
           "volume": "Volume 3D"
+        },
+        "expense-line-change": {
+          "nets": "Garder les montants HT",
+          "totals": "Garder les totaux TTC saisis"
+        },
+        "receive-serials": {
+          "column": "Une colonne, un numéro par ligne",
+          "fields": "Un champ par pièce"
         },
         "page-size": {
           "auto": "Selon la liste",

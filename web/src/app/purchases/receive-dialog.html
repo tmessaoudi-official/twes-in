@@ -68,7 +68,40 @@
           }}
         </p>
         <div class="grid items-start gap-3 sm:grid-cols-2">
-          @if (row.line.productTracking === 'serial') {
+          @if (row.line.productTracking === 'serial' && serialEntry() === 'fields') {
+            <fieldset class="sm:col-span-2" [attr.data-testid]="'receive-row-' + i + '-pieces'">
+              <legend class="mb-1 font-medium">
+                {{ 'purchases.receive.serials_fields' | translate }}
+              </legend>
+              <div class="grid gap-3 sm:grid-cols-2">
+                @for (piece of pieces(row); track piece) {
+                  <mat-form-field subscriptSizing="dynamic">
+                    <mat-label>{{
+                      'purchases.receive.serial_piece' | translate: { piece: piece + 1 }
+                    }}</mat-label>
+                    <input
+                      matInput
+                      autocomplete="off"
+                      [ngModel]="serialAt(row, piece)"
+                      (ngModelChange)="setSerial(i, piece, $event)"
+                      (keydown.enter)="nextPiece($event, i, piece)"
+                      [attr.data-testid]="'receive-row-' + i + '-serial-' + piece"
+                    />
+                  </mat-form-field>
+                }
+              </div>
+              <p class="mt-1 text-sm text-on-surface-variant">
+                {{
+                  'purchases.receive.serials_hint'
+                    | translate
+                      : {
+                          count: serialCount(row),
+                          expected: (plain(row.line.outstanding) | amount: null),
+                        }
+                }}
+              </p>
+            </fieldset>
+          } @else if (row.line.productTracking === 'serial') {
             <mat-form-field subscriptSizing="dynamic" class="sm:col-span-2">
               <mat-label>{{ 'purchases.receive.serials' | translate }}</mat-label>
               <textarea

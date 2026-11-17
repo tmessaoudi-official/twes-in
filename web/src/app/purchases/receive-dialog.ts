@@ -28,6 +28,8 @@ import type { UnknownRefusal } from '../shared/errors/unknown-refusal';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { refusedError, worded } from '../shared/form/refusal-words';
 import { revealInvalid } from '../shared/form/reveal-invalid';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import { type ReceiverContact, receiverChoice, receiverForm } from '../shared/receivers/receiver';
 import { ReceiverField } from '../shared/receivers/receiver-field';
 import { AmountPipe } from '../shared/i18n/format-pipes';
@@ -192,6 +194,34 @@ export class ReceiveDialog {
 
   protected serialCount(row: ReceiveRow): number {
     return serialsOf(row).length;
+  }
+
+  /** How a person types the serial numbers of a piece received: one column, or one field per piece. */
+  protected readonly serialEntry = inject(SettingsFacade).value(PRESENTATION.receiveSerials);
+
+  /** One field for each whole piece still expected, when the person types each piece in its own. */
+  protected pieces(row: ReceiveRow): number[] {
+    return Array.from({ length: Math.floor(Number(row.line.outstanding)) }, (_, at) => at);
+  }
+
+  protected serialAt(row: ReceiveRow, piece: number): string {
+    return row.serials.split(/\r?\n/)[piece] ?? '';
+  }
+
+  /** A piece's field writes its own line of the same column, so what is checked and sent stays one. */
+  protected setSerial(index: number, piece: number, value: string): void {
+    const parts = this.rows()[index]!.serials.split(/\r?\n/);
+    while (parts.length <= piece) parts.push('');
+    parts[piece] = value;
+    this.update(index, { serials: parts.join('\n') });
+  }
+
+  /** A scanner ends each code with Enter: the next piece's field takes the next one, and the dialog is not sent. */
+  protected nextPiece(event: Event, index: number, piece: number): void {
+    event.preventDefault();
+    this.host
+      .querySelector<HTMLInputElement>(`[data-testid="receive-row-${index}-serial-${piece + 1}"]`)
+      ?.focus();
   }
 
   /** Why the API refused a row, in its reason's words, when it gave one. */

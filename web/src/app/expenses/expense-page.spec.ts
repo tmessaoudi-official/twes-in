@@ -16,6 +16,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -1091,6 +1092,28 @@ describe('ExpensePage', () => {
           documentTaxComponentIds: ['s1'],
         }),
       );
+    });
+
+    it("keeps each line's total typed taxes included when a line comes or goes, for a person who keeps totals", async () => {
+      TestBed.inject(SettingsFacade).set(PRESENTATION.expenseLineChange, 'totals');
+      optionsState.set(offered);
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await open(undefined);
+      type('bill-line-0-gross', '12,9');
+      bill().controls.lines.at(0).controls.taxComponentIds.setValue(['t1']);
+      (q('bill-charge-s1')?.querySelector('input') as HTMLInputElement).click();
+      await settle();
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('10.000');
+
+      // A second line takes the stamp out of the first one's total: the total typed stays, its net is worked out again.
+      q('bill-add-line')!.click();
+      await settle();
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('12,9');
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('10.840');
+      q('bill-line-1-remove')!.click();
+      await settle();
+      expect((q('bill-line-0-gross') as HTMLInputElement).value).toBe('12,9');
+      expect(bill().controls.lines.at(0).controls.amountNet.value).toBe('10.000');
     });
 
     it('takes each rate of a bill at several rates taxes included, the stamp left out', async () => {

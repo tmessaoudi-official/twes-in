@@ -16,6 +16,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { PRESENTATION, type ReceiveSerials } from '../shared/settings/settings-registry';
 import type { PurchaseOrderLine, Receiving } from './purchases-types';
 import { ReceiveDialog, type ReceiveDialogData } from './receive-dialog';
 
@@ -84,7 +85,10 @@ describe('ReceiveDialog', () => {
 
   const confirm = (): HTMLButtonElement => q('receive-confirm') as HTMLButtonElement;
 
-  async function open(patch: Partial<ReceiveDialogData> = {}): Promise<void> {
+  async function open(
+    patch: Partial<ReceiveDialogData> = {},
+    serials: ReceiveSerials = 'column',
+  ): Promise<void> {
     const data: ReceiveDialogData = {
       lines: [line('a'), line('s', { productTracking: 'serial', outstanding: '2.000' })],
       receiving,
@@ -115,6 +119,7 @@ describe('ReceiveDialog', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
+    TestBed.inject(SettingsFacade).set(PRESENTATION.receiveSerials, serials);
     fixture = TestBed.createComponent(ReceiveDialog);
     await settle();
   }
@@ -144,6 +149,36 @@ describe('ReceiveDialog', () => {
       }),
     );
     expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('gives each piece expected a field of its own for a person who chooses it, a scan moving on to the next', async () => {
+    await open({}, 'fields');
+    expect(q('receive-row-1-serials')).toBeNull();
+    const first = q('receive-row-1-serial-0') as HTMLInputElement;
+    expect(q('receive-row-1-serial-1')).not.toBeNull();
+    expect(q('receive-row-1-serial-2')).toBeNull();
+
+    first.focus();
+    type('receive-row-1-serial-0', 'SN1');
+    first.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+    await settle();
+    expect(document.activeElement).toBe(q('receive-row-1-serial-1'));
+    type('receive-row-1-serial-1', 'SN2');
+    await settle();
+    confirm().click();
+    await settle();
+
+    expect(receive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({ orderLineId: 'a', quantity: '10' }),
+          expect.objectContaining({ orderLineId: 's', quantity: '1', lotCode: 'SN1' }),
+          expect.objectContaining({ orderLineId: 's', quantity: '1', lotCode: 'SN2' }),
+        ],
+      }),
+    );
   });
 
   it('records nothing more than is still expected', async () => {

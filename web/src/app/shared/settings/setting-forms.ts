@@ -164,6 +164,7 @@ function valueAt(row: SettingRow, level: SettingLevel): unknown {
  * beside it. Keyed by the setting, as its label is; each key is in both translation files (its spec checks).
  */
 export const SETTING_HINTS: Readonly<Record<string, string>> = {
+  'presentation.expense-line-change': 'settings.presentation.expense_line_change_hint',
   'watch.late_after_days': 'settings.watch.late_after_days_hint',
   'watch.unsold_after_days': 'settings.watch.unsold_after_days_hint',
   'credit.limit': 'settings.credit.limit_hint',

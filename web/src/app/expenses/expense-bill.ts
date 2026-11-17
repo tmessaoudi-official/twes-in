@@ -44,6 +44,8 @@ import {
 import type { ExpenseOptions } from './expenses-types';
 import { refusedError } from '../shared/form/refusal-words';
 import { typedText } from '../shared/form/typed-text';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 
 /**
  * A supplier's bill as it is printed: a line for each VAT rate, its net and the rates on it (a levy such as FODEC beside
@@ -83,6 +85,8 @@ export class ExpenseBill {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly translate = inject(TranslateService);
   private readonly format = inject(FormatFacade);
+  /** What a line coming or going keeps of the others: their nets (said again as totals), or the totals typed. */
+  private readonly onLineChange = inject(SettingsFacade).value(PRESENTATION.expenseLineChange);
   /** Drops what the API last refused at the bill's next change. */
   private refusalsCleared: Subscription | null = null;
 
@@ -150,9 +154,11 @@ export class ExpenseBill {
         seen = shape(bill);
         if (this.mode() !== 'gross') return;
         // A line added or removed moves the charges between the receipt's total and the rates' amounts: the nets
-        // stay, and what each line comes to is said again.
+        // stay, and what each line comes to is said again, unless the person keeps the totals typed, whose nets move.
         if (seen.count !== was.count) {
-          this.refill();
+          if (untracked(this.onLineChange) === 'totals')
+            bill.controls.lines.controls.forEach((line) => this.derive(line));
+          else this.refill();
           return;
         }
         const charged = seen.charges !== was.charges && seen.count === 1;
