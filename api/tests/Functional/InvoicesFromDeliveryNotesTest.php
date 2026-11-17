@@ -699,17 +699,22 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read', 'delivery_note.read', 'delivery_note.write'], 'reader');
         $this->createSales();
         $this->login('reader@twes.local', 'password-1234');
-        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$mine]]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'without invoice.write');
+        // Drafting one invoice and drafting one for each party are refused alike.
+        foreach ([$this->fromNotesPath(), $this->eachPath()] as $path) {
+            $this->postJson($path, ['deliveryNoteIds' => [$mine]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "without invoice.write, at $path");
+        }
         $this->sendJson('POST', '/api/auth/logout');
 
         $this->login('sales@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
-        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$theirs]]);
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, "another company's note is no note of this one");
-        self::assertStringContainsString('deliveryNoteIds', (string) $this->client->getResponse()->getContent(), 'refused as a note of no one, not by what drafting it would break later');
-        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/from-delivery-notes', ['deliveryNoteIds' => [$theirs]]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        foreach (['', '/each'] as $each) {
+            $this->postJson($this->fromNotesPath().$each, ['deliveryNoteIds' => [$theirs]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, "another company's note is no note of this one, at from-delivery-notes$each");
+            self::assertStringContainsString('deliveryNoteIds', (string) $this->client->getResponse()->getContent(), 'refused as a note of no one, not by what drafting it would break later');
+            $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/from-delivery-notes'.$each, ['deliveryNoteIds' => [$theirs]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        }
 
         // The accountant's files and the recurring invoices need the invoices: off while invoices are switched off, so invoices may be.
         $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
@@ -717,8 +722,10 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         foreach (['delivery_notes', 'invoices'] as $module) {
             $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => false]);
             self::assertResponseIsSuccessful();
-            $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$mine]]);
-            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "with $module switched off");
+            foreach ([$this->fromNotesPath(), $this->eachPath()] as $path) {
+                $this->postJson($path, ['deliveryNoteIds' => [$mine]]);
+                self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "with $module switched off, at $path");
+            }
             $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => true]);
             self::assertResponseIsSuccessful();
         }
