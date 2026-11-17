@@ -97,6 +97,8 @@ final class ReportsTest extends ApiTestCase
             $base.'/export.csv?from=2026-09-01&to=2026-09-30&establishment=nope' => ['an establishment that is no identifier, in the file', 'establishment', 'invalid_value', []],
             $base.'?from=2026-09-01&to=2026-09-30&establishment='.Uuid::v7()->toRfc4122() => ['an establishment the company has not, or no longer', 'establishment', 'unknown_choice', []],
             $base.'?from=2026-09-01&to=2026-09-30&establishment='.$this->establishment() => ['an expense belongs to no establishment', 'establishment', 'not_by_establishment', []],
+            $base.'?from=2026-09-01&to=2026-09-30&mergedProducts=apart' => ['an option the report does not take', 'mergedProducts', 'invalid_value', []],
+            $base.'/export.csv?from=2026-09-01&to=2026-09-30&netBeforeDiscount=shown' => ['an option the report does not take, in the file', 'netBeforeDiscount', 'invalid_value', []],
             $base.'/documents?from=2026-09-01&to=2026-09-30' => ['the documents of a row name the row', 'row', null, []],
             $base.'/documents?from=2026-09-01&to=2026-09-30&row=x&establishment='.$this->establishment() => ['the documents of a report no establishment narrows', 'establishment', 'not_by_establishment', []],
         ];
@@ -140,6 +142,41 @@ final class ReportsTest extends ApiTestCase
         $this->client->request('GET', $base.'/export.csv'.$narrowed);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([['propertyPath' => 'establishment', 'reason' => 'not_by_establishment', 'params' => []]], $this->refusals(), 'and so is its establishment');
+    }
+
+    public function testAReportTakesTheOptionsItsCatalogueOffersAndItsFileFollowsThem(): void
+    {
+        $this->login('owner@twes.local', 'password-1234');
+        $this->getJson($this->path().'/reports');
+        self::assertResponseIsSuccessful();
+        $options = [];
+        foreach ($this->arrayAt($this->json(), 'reports') as $report) {
+            self::assertIsArray($report);
+            self::assertIsString($report['key'] ?? null);
+            $options[$report['key']] = $report['options'] ?? null;
+        }
+        $sales = [['name' => 'netBeforeDiscount', 'choices' => ['hidden', 'shown']], ['name' => 'mergedProducts', 'choices' => ['kept', 'apart']]];
+        self::assertSame([$sales, $sales, [['name' => 'netBeforeDiscount', 'choices' => ['hidden', 'shown']]], []], [$options['sales-by-product'] ?? null, $options['sales-by-family'] ?? null, $options['sales-by-customer'] ?? null, $options['takings'] ?? null]);
+
+        $asked = '?from=2026-09-01&to=2026-09-30&netBeforeDiscount=shown&mergedProducts=apart';
+        $this->getJson($this->path().'/reports/sales-by-product'.$asked);
+        self::assertResponseIsSuccessful();
+        $keys = array_map(static fn (mixed $column): mixed => \is_array($column) ? $column['key'] ?? null : null, $this->arrayAt($this->json(), 'columns'));
+        self::assertContains('net_before_discount', $keys);
+        self::assertContains('merged_into', $keys);
+
+        $this->stepUp('password-1234');
+        $this->client->request('GET', $this->path().'/reports/sales-by-product/export.csv'.$asked);
+        self::assertResponseIsSuccessful();
+        $header = explode("\n", ltrim($this->client->getInternalResponse()->getContent(), "\xEF\xBB\xBF"))[0];
+        self::assertStringContainsString('merged_into', $header, 'the file is the report the screen shows');
+        self::assertStringContainsString('net_before_discount', $header);
+
+        foreach (['/export.csv', '/documents', ''] as $where) {
+            $this->client->request('GET', $this->path().'/reports/sales-by-product'.$where.'?from=2026-09-01&to=2026-09-30&row=none&mergedProducts=sideways', server: ['HTTP_ACCEPT' => 'application/json']);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $where);
+            self::assertSame(['not_one_of', ['choices' => 'kept, apart']], $this->refusalOf('mergedProducts'), $where);
+        }
     }
 
     public function testTheFileIsTheReportsFiguresAndIsOnRecord(): void

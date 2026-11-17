@@ -47,7 +47,7 @@ describe('ReportsFacade', () => {
 
   it('keeps the catalogue shown when a later read fails, and says it failed', async () => {
     catalogue.mockResolvedValueOnce([
-      { key: 'takings', byEstablishment: true, periodic: true, columns: [] },
+      { key: 'takings', byEstablishment: true, periodic: true, columns: [], options: [] },
     ]);
     await facade.loadCatalogue('k1');
     catalogue.mockRejectedValueOnce(new Error('offline'));

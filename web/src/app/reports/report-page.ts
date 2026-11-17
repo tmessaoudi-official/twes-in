@@ -78,6 +78,9 @@ export const REPORT_KINDS = [
  * stays in the address, so a report come back to from a list reads as it was left. The figures are the API's own
  * decimal strings, shown through the pipes, never summed here.
  */
+/** A report not yet in the catalogue offers no option to write in the address. */
+const NO_OPTIONS = { options: [] } as const;
+
 @Component({
   selector: 'app-report-page',
   imports: [
@@ -208,7 +211,7 @@ export class ReportPage implements OnInit {
       untracked(() => {
         void this.router.navigate([], {
           relativeTo: this.route,
-          queryParams: addressOf(query),
+          queryParams: addressOf(query, untracked(this.entry) ?? NO_OPTIONS),
           queryParamsHandling: 'merge',
           replaceUrl: true,
         });
@@ -251,6 +254,18 @@ export class ReportPage implements OnInit {
 
   protected pickComparison(compare: ReportComparison): void {
     this.change({ compare });
+  }
+
+  /** A choice among the options the report offers; one back at its default is no longer asked. */
+  protected pickOption(name: string, choice: string): void {
+    const option = this.entry()?.options.find((each) => each.name === name);
+    const query = this.query();
+    if (!option || query === null) return;
+    const others = Object.entries(query.options ?? {}).filter(([each]) => each !== name);
+    const options = Object.fromEntries(
+      choice === option.choices[0] ? others : [...others, [name, choice]],
+    );
+    this.change({ options: Object.keys(options).length === 0 ? undefined : options });
   }
 
   protected pickEstablishment(establishment: string | null): void {

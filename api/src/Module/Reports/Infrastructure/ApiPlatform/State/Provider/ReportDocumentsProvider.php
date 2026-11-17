@@ -28,13 +28,14 @@ final readonly class ReportDocumentsProvider implements ProviderInterface
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): ReportDocumentsResource
     {
-        $asked = ReportRequest::of($operation);
+        $asked = ReportRequest::of($operation, $context);
         $reading = $this->contexts->of($uriVariables, $asked->establishment);
         $key = $uriVariables['key'] ?? null;
         $report = \is_string($key) ? $this->catalogue->declarationOf($key, $reading) : null;
         if (null === $report) {
             throw new NotFoundHttpException('There is no report by that name.');
         }
+        $reading = $asked->withOptions($report, $reading, $this->catalogue->optionNames());
         if (null !== $asked->establishment && !$report->byEstablishment()) {
             throw DomainRule::refused('establishment', \sprintf('The report %s cannot be narrowed to an establishment.', $report->key()), 'not_by_establishment');
         }

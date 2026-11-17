@@ -36,6 +36,7 @@ const entry = (key: string): ReportEntry => ({
   byEstablishment: true,
   periodic: true,
   columns: [],
+  options: [],
 });
 
 describe('ReportsPage', () => {

@@ -29,13 +29,14 @@ final readonly class ReportProvider implements ProviderInterface
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): ReportResource
     {
-        $asked = ReportRequest::of($operation);
+        $asked = ReportRequest::of($operation, $context);
         $reading = $this->contexts->of($uriVariables, $asked->establishment);
         $key = $uriVariables['key'] ?? null;
         $report = \is_string($key) ? $this->catalogue->declarationOf($key, $reading) : null;
         if (null === $report) {
             throw new NotFoundHttpException('There is no report by that name.');
         }
+        $reading = $asked->withOptions($report, $reading, $this->catalogue->optionNames());
 
         try {
             return ReportResource::of($this->run->run($report, $reading, $asked->periodFor($report, $reading), $asked->comparison));

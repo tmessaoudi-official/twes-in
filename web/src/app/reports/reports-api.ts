@@ -35,6 +35,7 @@ export class ReportsApi {
       byEstablishment: report.byEstablishment,
       periodic: report.periodic,
       columns: report.columns,
+      options: report.options,
     }));
   }
 
@@ -96,12 +97,17 @@ function reportsPath(companyId: string): string {
   return `/api/companies/${encodeURIComponent(companyId)}/reports`;
 }
 
-/** What is asked, as the API reads it: no period for a report of today, no comparison when there is none. */
+/**
+ * What is asked, as the API reads it: no period for a report of today, no comparison when there is none, and each option
+ * chosen, so the report, a row's documents and the file all read alike.
+ */
 function paramsOf(query: ReportQuery): HttpParams {
   let params = new HttpParams();
   if (query.from !== null) params = params.set('from', query.from);
   if (query.to !== null) params = params.set('to', query.to);
   if (query.compare !== 'none') params = params.set('compare', query.compare);
   if (query.establishment !== null) params = params.set('establishment', query.establishment);
+  for (const [name, choice] of Object.entries(query.options ?? {}))
+    params = params.set(name, choice);
   return params;
 }

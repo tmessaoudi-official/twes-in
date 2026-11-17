@@ -73,17 +73,37 @@ export function queryOf(values: QueryValues, entry: ReportEntry, today: string):
       : presetPeriod('this_month', today);
   const asked = values.get('compare');
   const compare = REPORT_COMPARISONS.find((each) => each === asked) ?? 'previous';
-  return { ...period, compare, establishment };
+  return { ...period, compare, establishment, ...optionsOf(values, entry) };
+}
+
+/**
+ * The choices the address names among the options the report offers, each kept only when it is one of them and not the
+ * default; an option the report does not offer is not read, as the API would refuse it.
+ */
+function optionsOf(values: QueryValues, entry: ReportEntry): { options?: Record<string, string> } {
+  const options: Record<string, string> = {};
+  for (const option of entry.options) {
+    const asked = values.get(option.name);
+    if (asked && asked !== option.choices[0] && option.choices.includes(asked))
+      options[option.name] = asked;
+  }
+  return Object.keys(options).length === 0 ? {} : { options };
 }
 
 /** The address of what is asked, so a report opened again, or come back to from a list, reads the same. */
-export function addressOf(query: ReportQuery): Record<string, string | null> {
-  return {
+export function addressOf(
+  query: ReportQuery,
+  entry: Pick<ReportEntry, 'options'>,
+): Record<string, string | null> {
+  const address: Record<string, string | null> = {
     from: query.from,
     to: query.to,
     compare: query.from === null ? null : query.compare,
     establishment: query.establishment,
   };
+  // Each option the report offers, the one back at its default cleared from the address.
+  for (const option of entry.options) address[option.name] = query.options?.[option.name] ?? null;
+  return address;
 }
 
 /**

@@ -177,6 +177,11 @@ final class SalesByCustomerStub implements DeclaresReport
         return $this->periodic;
     }
 
+    public function options(): array
+    {
+        return [];
+    }
+
     public function columns(ReportContext $context): array
     {
         $columns = [new ReportColumn('customer', ReportColumnKind::Label), new ReportColumn('net', ReportColumnKind::Amount), new ReportColumn('invoices', ReportColumnKind::Count)];

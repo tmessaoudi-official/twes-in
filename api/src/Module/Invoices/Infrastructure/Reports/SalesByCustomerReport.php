@@ -67,10 +67,16 @@ final readonly class SalesByCustomerReport implements DeclaresReport
         return true;
     }
 
+    public function options(): array
+    {
+        return [SalesReportOptions::netBeforeDiscount()];
+    }
+
     public function columns(ReportContext $context): array
     {
         return [
             new ReportColumn('customer', ReportColumnKind::Label),
+            ...SalesReportOptions::showsNetBeforeDiscount($context) ? [new ReportColumn('net_before_discount', ReportColumnKind::Amount)] : [],
             new ReportColumn('net', ReportColumnKind::Amount),
             new ReportColumn('gross', ReportColumnKind::Amount),
             new ReportColumn('documents', ReportColumnKind::Count),
@@ -81,18 +87,21 @@ final readonly class SalesByCustomerReport implements DeclaresReport
     {
         [$where, $params] = $this->issued($context, $period);
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT c.id AS customer_id, c.name, SUM(i.total_net) AS net, SUM(i.total_gross) AS gross, COUNT(*) AS documents
+            'SELECT c.id AS customer_id, c.name, SUM(lines.net) AS before, SUM(i.total_net) AS net, SUM(i.total_gross) AS gross, COUNT(*) AS documents
                FROM invoice i '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
+               -- What each document\'s lines come to before its own discount.
+               CROSS JOIN LATERAL (SELECT COALESCE(SUM(l.line_net), 0) AS net FROM invoice_line l WHERE l.invoice_id = i.id) lines
               WHERE '.$where.'
               GROUP BY c.id, c.name
               ORDER BY SUM(i.total_net) DESC, c.name, c.id',
             $params,
         );
         $narrowed = null !== $context->establishmentId;
+        $before = SalesReportOptions::showsNetBeforeDiscount($context);
         $from = $period->from->format('Y-m-d');
         $to = $period->to->format('Y-m-d');
 
-        return array_map(static function (array $row) use ($narrowed, $from, $to): ReportRow {
+        return array_map(static function (array $row) use ($narrowed, $from, $to, $before): ReportRow {
             $customer = self::text($row['customer_id']);
 
             // The invoices list's own address: the customer, the period's issue days, every kind of document, and the
@@ -100,6 +109,7 @@ final readonly class SalesByCustomerReport implements DeclaresReport
             // report narrowed to one lists its own documents instead.
             return new ReportRow($customer, [
                 'customer' => self::text($row['name']),
+                ...$before ? ['net_before_discount' => self::text($row['before'])] : [],
                 'net' => self::text($row['net']),
                 'gross' => self::text($row['gross']),
                 'documents' => (int) self::text($row['documents']),

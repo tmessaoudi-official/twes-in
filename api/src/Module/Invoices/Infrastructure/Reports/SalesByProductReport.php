@@ -21,6 +21,7 @@ use App\Module\Reports\Application\ReportDocument;
 use App\Module\Reports\Application\ReportDrill;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
+use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Component\Uid\Uuid;
@@ -69,13 +70,21 @@ final readonly class SalesByProductReport implements DeclaresReport
         return true;
     }
 
+    public function options(): array
+    {
+        return [SalesReportOptions::netBeforeDiscount(), SalesReportOptions::mergedProducts()];
+    }
+
     public function columns(ReportContext $context): array
     {
         $columns = [
             new ReportColumn('product', ReportColumnKind::Label),
             new ReportColumn('reference', ReportColumnKind::Label),
+            // A product merged away, counted on its own, says which product it now is.
+            ...SalesReportOptions::mergedApart($context) ? [new ReportColumn('merged_into', ReportColumnKind::Label)] : [],
             new ReportColumn('unit', ReportColumnKind::Label),
             new ReportColumn('quantity', ReportColumnKind::Quantity),
+            ...SalesReportOptions::showsNetBeforeDiscount($context) ? [new ReportColumn('net_before_discount', ReportColumnKind::Amount)] : [],
             new ReportColumn('net', ReportColumnKind::Amount),
         ];
         if (!($context->may)(ProductPermission::COST_READ)) {
@@ -95,31 +104,36 @@ final readonly class SalesByProductReport implements DeclaresReport
         [$sql, $params] = IssuedLines::of($context, $period);
         // The lines naming no product group together whatever their unit: NULL groups with NULL, and their unit is dropped.
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT g.product_id, g.unit_id, p.name, p.reference, u.code AS unit, g.quantity, g.net, g.costed_net, g.cost
+            'SELECT g.product_id, g.unit_id, p.name, p.reference, CASE WHEN '.KeptRecords::mergedAway('p').' THEN kept.name END AS merged_into, u.code AS unit, g.quantity, g.before, g.net, g.costed_net, g.cost
                FROM (
                     SELECT s.product_id, CASE WHEN s.product_id IS NULL THEN NULL ELSE s.unit_id END AS unit_id,
                            SUM(s.quantity) AS quantity,
+                           SUM(s.line_net) AS before,
                            ROUND(SUM(s.net), :scale) AS net,
                            ROUND(SUM(s.net) FILTER (WHERE s.unit_cost IS NOT NULL), :scale) AS costed_net,
                            ROUND(SUM(s.cost), :scale) AS cost
                       FROM ('.$sql.') s
                      GROUP BY 1, 2
                ) g
-               LEFT JOIN product p ON p.id = g.product_id
+               '.KeptRecords::join('product', 'g.product_id', 'kept', 'p').'
                LEFT JOIN unit u ON u.id = g.unit_id
               ORDER BY g.product_id IS NULL, g.net DESC, p.name, g.product_id, g.unit_id',
             $params + ['scale' => $this->scales->of($context->company->getCurrency())],
             ['scale' => ParameterType::INTEGER],
         );
         $costing = ($context->may)(ProductPermission::COST_READ);
+        $apart = SalesReportOptions::mergedApart($context);
+        $before = SalesReportOptions::showsNetBeforeDiscount($context);
 
-        return array_map(static function (array $row) use ($costing): ReportRow {
+        return array_map(static function (array $row) use ($costing, $apart, $before): ReportRow {
             $named = null !== $row['product_id'];
             $cells = [
                 'product' => $named ? self::text($row['name']) : null,
                 'reference' => $named ? self::text($row['reference']) : null,
+                ...$apart ? ['merged_into' => null === $row['merged_into'] ? null : self::text($row['merged_into'])] : [],
                 'unit' => $named ? self::text($row['unit']) : null,
                 'quantity' => $named ? self::text($row['quantity']) : null,
+                ...$before ? ['net_before_discount' => self::text($row['before'])] : [],
                 'net' => self::text($row['net']),
             ];
             if ($costing) {

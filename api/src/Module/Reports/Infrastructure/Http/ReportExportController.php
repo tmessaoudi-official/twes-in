@@ -70,6 +70,8 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
         $asked = ReportRequest::ofQuery($request->query->all());
         $reading = $this->contexts->of(['companyId' => $companyId], $asked->establishment);
         $report = $this->catalogue->declarationOf($key, $reading) ?? throw new NotFoundHttpException('There is no report by that name.');
+        // The file is the report its screen shows, under the same options, refused as the screen's address would be.
+        $reading = $asked->withOptions($report, $reading, $this->catalogue->optionNames());
 
         $account = $this->security->getUser();
         if (!$account instanceof SecurityUser) {

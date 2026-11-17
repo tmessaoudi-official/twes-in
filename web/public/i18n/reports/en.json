@@ -27,6 +27,18 @@
       "label": "Establishment",
       "all": "The whole company"
     },
+    "options": {
+      "netBeforeDiscount": {
+        "label": "Net before discount",
+        "hidden": "Not shown",
+        "shown": "Shown"
+      },
+      "mergedProducts": {
+        "label": "Merged items",
+        "kept": "Under the item kept",
+        "apart": "Each on its own"
+      }
+    },
     "total": "Total",
     "previous": "Period compared",
     "unnamed": "Not given",
@@ -165,7 +177,9 @@
       "unit": "Unit",
       "value": "Value",
       "vat": "VAT collected",
-      "withheld": "Withheld"
+      "withheld": "Withheld",
+      "net_before_discount": "Net before discount",
+      "merged_into": "Merged into"
     }
   }
 }

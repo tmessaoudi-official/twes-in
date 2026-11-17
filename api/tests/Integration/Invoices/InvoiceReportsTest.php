@@ -61,6 +61,7 @@ use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tests\Support\KeptNames;
 use App\Tests\Support\PastFiscalGuard;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
@@ -330,6 +331,63 @@ final class InvoiceReportsTest extends KernelTestCase
         self::assertSame(['family', 'net'], array_map(static fn ($column): string => $column->key, $this->report(SalesByFamilyReport::class, '2026-09-01', '2026-09-21', may: false)->columns));
     }
 
+    public function testTheNetBeforeEachDocumentsDiscountIsAColumnOfEverySalesReportOnlyWhenAsked(): void
+    {
+        $piece = $this->unit('C62');
+        $drill = $this->product('PER-08', 'Perceuse', $piece);
+        // The line keeps 500 before the document's discount of 50; the credit note gives 100 back, its line as much.
+        $sold = $this->sold('FAC-1', '2026-09-10', [[$drill, '1']], ['500.000'], '450.000');
+        $this->credit($sold, 'AV-1', '2026-09-15', '-100.000');
+        $this->em()->clear();
+
+        $shown = ['netBeforeDiscount' => 'shown'];
+        foreach ([SalesByCustomerReport::class, SalesByProductReport::class, SalesByFamilyReport::class] as $report) {
+            self::assertSame([['netBeforeDiscount', ['hidden', 'shown']]], array_values(array_filter(array_map(static fn ($option): array => [$option->name, $option->choices], $this->declared($report)->options()), static fn (array $option): bool => 'netBeforeDiscount' === $option[0])), $report);
+            $hidden = $this->report($report, '2026-09-01', '2026-09-21', may: false);
+            self::assertNotContains('net_before_discount', array_map(static fn ($column): string => $column->key, $hidden->columns), $report);
+            $result = $this->report($report, '2026-09-01', '2026-09-21', may: false, options: $shown);
+            $keys = array_map(static fn ($column): string => $column->key, $result->columns);
+            $before = array_search('net_before_discount', $keys, true);
+            self::assertIsInt($before, $report);
+            self::assertSame('net', $keys[$before + 1] ?? null, $report.': just before the net');
+            self::assertSame([['400.000', '350.000']], array_map(static fn (array $line): array => [$line['row']->cells['net_before_discount'], $line['row']->cells['net']], $result->rows), $report);
+            self::assertSame(['400.000', '350.000'], [$result->totals['net_before_discount'], $result->totals['net']], $report);
+        }
+        // The net itself is what the home counts, whichever the person chose.
+        self::assertSame($this->summary()->invoicedMonth, $this->report(SalesByCustomerReport::class, '2026-09-01', '2026-09-21', options: $shown)->totals['net']);
+    }
+
+    public function testAProductMergedAwayCountsUnderTheProductKeptOrOnItsOwnSayingWhereItWent(): void
+    {
+        $piece = $this->unit('C62');
+        $tools = $this->category('Outillage');
+        $old = $this->category('Ancien');
+        $kept = $this->product('VIS-6', 'Vis 6', $piece, category: $tools);
+        $merged = $this->product('VIS-6B', 'Vis 6 bis', $piece, category: $old);
+        $this->sold('FAC-1', '2026-09-10', [[$kept, '10'], [$merged, '5']], ['100.000', '50.000'], '150.000');
+        static::getContainer()->get(Connection::class)->executeStatement('UPDATE product SET merged_into_id = :kept WHERE id = :merged', ['kept' => $kept->getId()->toRfc4122(), 'merged' => $merged->getId()->toRfc4122()]);
+        $this->em()->clear();
+
+        self::assertSame([['mergedProducts', ['kept', 'apart']]], array_values(array_filter(array_map(static fn ($option): array => [$option->name, $option->choices], $this->declared(SalesByProductReport::class)->options()), static fn (array $option): bool => 'mergedProducts' === $option[0])));
+        $under = $this->report(SalesByProductReport::class, '2026-09-01', '2026-09-21', may: false);
+        self::assertSame(['product', 'reference', 'unit', 'quantity', 'net'], array_map(static fn ($column): string => $column->key, $under->columns));
+        self::assertSame([['Vis 6', 'VIS-6', 'C62', '15.000', '150.000']], array_map(static fn (array $line): array => array_values($line['row']->cells), $under->rows));
+
+        $apart = ['mergedProducts' => 'apart'];
+        $own = $this->report(SalesByProductReport::class, '2026-09-01', '2026-09-21', may: false, options: $apart);
+        self::assertSame(['product', 'reference', 'merged_into', 'unit', 'quantity', 'net'], array_map(static fn ($column): string => $column->key, $own->columns));
+        self::assertSame([
+            ['Vis 6', 'VIS-6', null, 'C62', '10.000', '100.000'],
+            ['Vis 6 bis', 'VIS-6B', 'Vis 6', 'C62', '5.000', '50.000'],
+        ], array_map(static fn (array $line): array => array_values($line['row']->cells), $own->rows));
+        // The row's documents are its own product's lines alone, as the row counts them.
+        self::assertSame([['FAC-1', '50.000']], $this->documents(SalesByProductReport::class, '2026-09-01', '2026-09-21', $own->rows[1]['row']->key, options: $apart));
+        self::assertSame([['FAC-1', '150.000']], $this->documents(SalesByProductReport::class, '2026-09-01', '2026-09-21', $under->rows[0]['row']->key));
+
+        self::assertSame([['Outillage', '150.000']], $this->families([]));
+        self::assertSame([['Outillage', '100.000'], ['Ancien', '50.000']], $this->families($apart));
+    }
+
     public function testWhatEachCustomerWasGivenBackIsItsCreditNotesAndItsInvoicesDiscountsAsIssuingKeptThem(): void
     {
         $discounted = $this->issued('FAC-1', 'Nabeul Bois', '2026-09-05', 30, '450.000');
@@ -398,12 +456,16 @@ final class InvoiceReportsTest extends KernelTestCase
     }
 
     /** @param class-string<DeclaresReport> $report */
-    private function report(string $report, ?string $from = null, ?string $to = null, ReportComparison $comparison = ReportComparison::None, ?Establishment $establishment = null, bool $may = true): ReportResult
+    /**
+     * @param class-string<DeclaresReport> $report
+     * @param array<string, string>        $options the report's options, as the address chose them
+     */
+    private function report(string $report, ?string $from = null, ?string $to = null, ReportComparison $comparison = ReportComparison::None, ?Establishment $establishment = null, bool $may = true, array $options = []): ReportResult
     {
         $declared = $this->declared($report);
         $period = null === $from || null === $to ? new ReportPeriod(new \DateTimeImmutable('2026-09-21'), new \DateTimeImmutable('2026-09-21')) : new ReportPeriod(new \DateTimeImmutable($from), new \DateTimeImmutable($to));
 
-        return new RunReport()->run($declared, $this->context($establishment, $may), $period, $comparison);
+        return new RunReport()->run($declared, $this->context($establishment, $may, $options), $period, $comparison);
     }
 
     /** @param class-string<DeclaresReport> $report */
@@ -417,22 +479,36 @@ final class InvoiceReportsTest extends KernelTestCase
 
     /**
      * @param class-string<DeclaresReport> $report
+     * @param array<string, string>        $options the report's options, as the address chose them
      *
      * @return list<array{?string, string}> each document's number and what it brought
      */
-    private function documents(string $report, ?string $from, ?string $to, string $row, ?Establishment $establishment = null): array
+    private function documents(string $report, ?string $from, ?string $to, string $row, ?Establishment $establishment = null, array $options = []): array
     {
         $period = new ReportPeriod(new \DateTimeImmutable($from ?? '2026-09-21'), new \DateTimeImmutable($to ?? '2026-09-21'));
 
-        return array_map(static fn (ReportDocument $document): array => [$document->number, $document->amount], $this->declared($report)->documents($this->context($establishment), $period, $row));
+        return array_map(static fn (ReportDocument $document): array => [$document->number, $document->amount], $this->declared($report)->documents($this->context($establishment, true, $options), $period, $row));
     }
 
-    private function context(?Establishment $establishment = null, bool $may = true): ReportContext
+    /**
+     * Each family's net in the sales by family, under the options asked.
+     *
+     * @param array<string, string> $options
+     *
+     * @return list<array{mixed, mixed}>
+     */
+    private function families(array $options): array
+    {
+        return array_map(static fn (array $line): array => [$line['row']->cells['family'], $line['row']->cells['net']], $this->report(SalesByFamilyReport::class, '2026-09-01', '2026-09-21', may: false, options: $options)->rows);
+    }
+
+    /** @param array<string, string> $options */
+    private function context(?Establishment $establishment = null, bool $may = true, array $options = []): ReportContext
     {
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
 
-        return new ReportContext($company, new \DateTimeImmutable('2026-09-21'), static fn (string $permission): bool => $may, $establishment?->getId()->toRfc4122());
+        return new ReportContext($company, new \DateTimeImmutable('2026-09-21'), static fn (string $permission): bool => $may, $establishment?->getId()->toRfc4122(), $options);
     }
 
     /** @return array<string, array<string, string|int|null>> the rows with a figure in the column, by key */

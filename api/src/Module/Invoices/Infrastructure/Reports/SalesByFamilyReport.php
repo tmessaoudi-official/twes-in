@@ -72,10 +72,16 @@ final readonly class SalesByFamilyReport implements DeclaresReport
         return true;
     }
 
+    public function options(): array
+    {
+        return [SalesReportOptions::netBeforeDiscount(), SalesReportOptions::mergedProducts()];
+    }
+
     public function columns(ReportContext $context): array
     {
         $columns = [
             new ReportColumn('family', ReportColumnKind::Label),
+            ...SalesReportOptions::showsNetBeforeDiscount($context) ? [new ReportColumn('net_before_discount', ReportColumnKind::Amount)] : [],
             new ReportColumn('net', ReportColumnKind::Amount),
         ];
         if (!($context->may)(ProductPermission::COST_READ)) {
@@ -95,9 +101,10 @@ final readonly class SalesByFamilyReport implements DeclaresReport
         [$sql, $params] = IssuedLines::of($context, $period);
         $rows = $this->connection->fetchAllAssociative(
             self::PATHS.'
-            SELECT g.category_id, path.name, g.net, g.costed_net, g.cost
+            SELECT g.category_id, path.name, g.before, g.net, g.costed_net, g.cost
               FROM (
                    SELECT p.category_id,
+                          SUM(s.line_net) AS before,
                           ROUND(SUM(s.net), :scale) AS net,
                           ROUND(SUM(s.net) FILTER (WHERE s.unit_cost IS NOT NULL), :scale) AS costed_net,
                           ROUND(SUM(s.cost), :scale) AS cost
@@ -111,11 +118,13 @@ final readonly class SalesByFamilyReport implements DeclaresReport
             ['scale' => ParameterType::INTEGER],
         );
         $costing = ($context->may)(ProductPermission::COST_READ);
+        $before = SalesReportOptions::showsNetBeforeDiscount($context);
 
-        return array_map(static function (array $row) use ($costing): ReportRow {
+        return array_map(static function (array $row) use ($costing, $before): ReportRow {
             $named = null !== $row['category_id'];
             $cells = [
                 'family' => $named ? self::text($row['name']) : null,
+                ...$before ? ['net_before_discount' => self::text($row['before'])] : [],
                 'net' => self::text($row['net']),
             ];
             if ($costing) {

@@ -74,6 +74,11 @@ final readonly class DeadStockReport implements DeclaresReport
         return false;
     }
 
+    public function options(): array
+    {
+        return [];
+    }
+
     public function columns(ReportContext $context): array
     {
         $columns = [

@@ -84,6 +84,11 @@ final readonly class TakingsReport implements DeclaresReport
         return true;
     }
 
+    public function options(): array
+    {
+        return [];
+    }
+
     public function columns(ReportContext $context): array
     {
         return [

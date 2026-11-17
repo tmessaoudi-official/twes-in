@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use App\Module\Reports\Application\DeclaresReport;
 use App\Module\Reports\Application\ReportContext;
+use App\Module\Reports\Application\ReportOption;
 use App\Module\Reports\Infrastructure\ApiPlatform\State\Provider\ReportCatalogueProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
@@ -51,17 +52,26 @@ final class ReportCatalogueResource
         ],
     ];
 
-    /** @var list<array{key: string, byEstablishment: bool, periodic: bool, columns: list<array{key: string, kind: string, params: object}>}> */
+    /** @var list<array{key: string, byEstablishment: bool, periodic: bool, columns: list<array{key: string, kind: string, params: object}>, options: list<array{name: string, choices: list<string>}>}> */
     #[ApiProperty(identifier: false, schema: [
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['key', 'byEstablishment', 'periodic', 'columns'],
+            'required' => ['key', 'byEstablishment', 'periodic', 'columns', 'options'],
             'properties' => [
                 'key' => ['type' => 'string'],
                 'byEstablishment' => ['type' => 'boolean'],
                 'periodic' => ['type' => 'boolean'],
                 'columns' => self::COLUMNS,
+                // The choices it offers in how it reads, each named in the address by its name; the first is its default.
+                'options' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'required' => ['name', 'choices'],
+                        'properties' => ['name' => ['type' => 'string'], 'choices' => ['type' => 'array', 'items' => ['type' => 'string']]],
+                    ],
+                ],
             ],
         ],
     ])]
@@ -77,6 +87,7 @@ final class ReportCatalogueResource
             'byEstablishment' => $report->byEstablishment(),
             'periodic' => $report->periodic(),
             'columns' => ReportResource::columnsOf($report->columns($context)),
+            'options' => array_map(static fn (ReportOption $option): array => ['name' => $option->name, 'choices' => $option->choices], $report->options()),
         ], $reports);
 
         return $resource;

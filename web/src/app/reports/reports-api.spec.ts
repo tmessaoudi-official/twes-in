@@ -30,12 +30,15 @@ describe('ReportsApi', () => {
 
   it('reads the catalogue, and an answer naming no report as none', async () => {
     const columns = [{ key: 'gross', kind: 'amount', params: {} }];
+    const options = [{ name: 'mergedProducts', choices: ['kept', 'apart'] }];
     const offered = api.catalogue('k1');
     http.expectOne(BASE).flush({
-      reports: [{ key: 'expenses-by-category', byEstablishment: false, periodic: true, columns }],
+      reports: [
+        { key: 'expenses-by-category', byEstablishment: false, periodic: true, columns, options },
+      ],
     });
     expect(await offered).toEqual([
-      { key: 'expenses-by-category', byEstablishment: false, periodic: true, columns },
+      { key: 'expenses-by-category', byEstablishment: false, periodic: true, columns, options },
     ]);
 
     const none = api.catalogue('k1');
@@ -82,6 +85,37 @@ describe('ReportsApi', () => {
       previousTotals: null,
     });
     expect((await today).previousTotals).toBeNull();
+  });
+
+  it('asks a report the options chosen, its documents and its file the same', async () => {
+    const query = { ...SEPTEMBER, options: { mergedProducts: 'apart' } };
+    const read = api.report('k1', 'sales-by-product', query);
+    const request = http.expectOne((r) => r.url === `${BASE}/sales-by-product`);
+    expect(request.request.params.toString()).toBe(
+      'from=2026-09-01&to=2026-09-30&compare=previous&mergedProducts=apart',
+    );
+    request.flush({
+      key: 'sales-by-product',
+      from: '2026-09-01',
+      to: '2026-09-30',
+      comparisonFrom: null,
+      comparisonTo: null,
+      columns: [],
+      rows: [],
+      totals: {},
+      previousTotals: null,
+    });
+    await read;
+
+    const documents = api.documents('k1', 'sales-by-product', query, 'p1:u1');
+    const asked = http.expectOne((r) => r.url === `${BASE}/sales-by-product/documents`);
+    expect(asked.request.params.get('mergedProducts')).toBe('apart');
+    asked.flush({ documents: [], more: false });
+    await documents;
+
+    expect(api.exportAddress('k1', 'sales-by-product', query, 'csv')).toContain(
+      'mergedProducts=apart',
+    );
   });
 
   it('turns 404 into ReportGone and 422 into ReportRefused, and keeps any other failure', async () => {

@@ -54,12 +54,24 @@ const BY_CATEGORY: ReportEntry = {
   byEstablishment: false,
   periodic: true,
   columns: [],
+  options: [],
 };
 const DEAD_STOCK: ReportEntry = {
   key: 'dead-stock',
   byEstablishment: true,
   periodic: false,
   columns: [],
+  options: [],
+};
+const BY_PRODUCT: ReportEntry = {
+  key: 'sales-by-product',
+  byEstablishment: true,
+  periodic: true,
+  columns: [],
+  options: [
+    { name: 'netBeforeDiscount', choices: ['hidden', 'shown'] },
+    { name: 'mergedProducts', choices: ['kept', 'apart'] },
+  ],
 };
 
 const SEPTEMBER: ReportResult = {
@@ -173,7 +185,7 @@ describe('ReportPage', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     // Half past midnight on 1 October in Tunis, still September in UTC: the company's month is October.
     vi.setSystemTime(new Date('2026-09-30T23:30:00Z'));
-    catalogue.set([BY_CATEGORY, DEAD_STOCK]);
+    catalogue.set([BY_CATEGORY, DEAD_STOCK, BY_PRODUCT]);
     catalogueFailed.set(false);
     report.set({ status: 'ready', result: SEPTEMBER });
     establishments.set([]);
@@ -340,6 +352,36 @@ describe('ReportPage', () => {
       compare: 'previous',
       establishment: null,
     });
+  });
+
+  it('offers each option the report takes, reads it from the address and asks the report again on a pick', async () => {
+    const { harness, el } = await open('/reports/sales-by-product?mergedProducts=apart');
+
+    expect(lastAsked().options).toEqual({ mergedProducts: 'apart' });
+    expect(el.querySelector('[data-testid="report-option-mergedProducts"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="report-option-netBeforeDiscount"]')).not.toBeNull();
+    const page = harness.routeDebugElement!.componentInstance as {
+      pickOption(name: string, choice: string): void;
+    };
+
+    page.pickOption('netBeforeDiscount', 'shown');
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    expect(lastAsked().options).toEqual({ mergedProducts: 'apart', netBeforeDiscount: 'shown' });
+
+    // Back at its default, an option is no longer asked, nor written in the address.
+    page.pickOption('mergedProducts', 'kept');
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    expect(lastAsked().options).toEqual({ netBeforeDiscount: 'shown' });
+    expect(TestBed.inject(Router).url).not.toContain('mergedProducts');
+  });
+
+  it('offers no option to a report that takes none', async () => {
+    const { el } = await open('/reports/expenses-by-category?mergedProducts=apart');
+
+    expect(lastAsked().options).toBeUndefined();
+    expect(el.querySelector('[data-testid^="report-option-"]')).toBeNull();
   });
 
   it('says so when the catalogue does not offer the report, and asks nothing', async () => {

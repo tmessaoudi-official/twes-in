@@ -19,14 +19,15 @@ use App\Shared\Infrastructure\Doctrine\KeptRecords;
  * Every line of a period's issued documents, as the sales reports read them: its share of its document's net, the base
  * the home's margin reads, so a document's discount is taken once whichever way its prices were typed, and its signed
  * cost. A credit note's lines keep a positive quantity while their figures are negative, so its quantity and cost are
- * turned over. A line naming a product merged away is counted under the product kept.
+ * turned over. A line naming a product merged away is counted under the product kept, or under its own when the report
+ * was asked to (`mergedProducts`); each line also keeps its own net, before its document's discount.
  */
 final class IssuedLines
 {
-    private static function lines(): string
+    private static function lines(bool $apart): string
     {
         return 'SELECT i.id AS document, i.number, i.customer_snapshot ->> \'name\' AS party, i.issue_date,
-                '.KeptRecords::id('named').' AS product_id, l.unit_id, l.unit_cost,
+                '.($apart ? 'l.product_id' : KeptRecords::id('named')).' AS product_id, l.unit_id, l.unit_cost, l.line_net,
                 CASE WHEN i.document_type = :credit THEN -1 ELSE 1 END * l.quantity AS quantity,
                 CASE WHEN SUM(l.line_net) OVER (PARTITION BY i.id) = 0 THEN l.line_net
                      ELSE l.line_net * i.total_net / SUM(l.line_net) OVER (PARTITION BY i.id) END AS net,
@@ -51,10 +52,11 @@ final class IssuedLines
             'from' => $period->from->format('Y-m-d'),
             'to' => $period->to->format('Y-m-d'),
         ];
+        $lines = self::lines(SalesReportOptions::mergedApart($context));
         if (null === $context->establishmentId) {
-            return [\sprintf(self::lines(), ''), $params];
+            return [\sprintf($lines, ''), $params];
         }
 
-        return [\sprintf(self::lines(), 'AND i.establishment_id = :establishment'), $params + ['establishment' => $context->establishmentId]];
+        return [\sprintf($lines, 'AND i.establishment_id = :establishment'), $params + ['establishment' => $context->establishmentId]];
     }
 }

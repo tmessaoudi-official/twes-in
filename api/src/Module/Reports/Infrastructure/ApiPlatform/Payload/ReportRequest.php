@@ -15,13 +15,18 @@ use App\Module\Reports\Application\DeclaresReport;
 use App\Module\Reports\Application\InvalidReportRequest;
 use App\Module\Reports\Application\ReportComparison;
 use App\Module\Reports\Application\ReportContext;
+use App\Module\Reports\Application\ReportOption;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
 
-/** What a report's address asks: the period's two days, the comparison and the establishment, once API Platform checked their shapes. */
+/**
+ * What a report's address asks: the period's two days, the comparison and the establishment, once API Platform checked
+ * their shapes, and the choices among the options a report offers, which only the report can check.
+ */
 final readonly class ReportRequest
 {
     private function __construct(
@@ -29,12 +34,17 @@ final readonly class ReportRequest
         private ?string $to,
         public ReportComparison $comparison,
         public ?Uuid $establishment,
+        /** @var array<array-key, mixed> the whole query string, where each report's options are read */
+        private array $query = [],
     ) {
     }
 
-    public static function of(Operation $operation): self
+    /** @param array<string, mixed> $context the provider's context, whose request carries the options' names */
+    public static function of(Operation $operation, array $context = []): self
     {
-        return self::read(self::given($operation, 'from'), self::given($operation, 'to'), self::given($operation, 'compare'), self::given($operation, 'establishment'));
+        $request = $context['request'] ?? null;
+
+        return self::read(self::given($operation, 'from'), self::given($operation, 'to'), self::given($operation, 'compare'), self::given($operation, 'establishment'), $request instanceof Request ? $request->query->all() : []);
     }
 
     /** What the address gave for a parameter, null when it gave nothing. */
@@ -53,10 +63,11 @@ final readonly class ReportRequest
      */
     public static function ofQuery(array $query): self
     {
-        return self::read($query['from'] ?? null, $query['to'] ?? null, $query['compare'] ?? null, $query['establishment'] ?? null);
+        return self::read($query['from'] ?? null, $query['to'] ?? null, $query['compare'] ?? null, $query['establishment'] ?? null, $query);
     }
 
-    private static function read(mixed $from, mixed $to, mixed $compare, mixed $establishment): self
+    /** @param array<array-key, mixed> $query */
+    private static function read(mixed $from, mixed $to, mixed $compare, mixed $establishment, array $query): self
     {
         if (null !== $compare && (!\is_string($compare) || null === ReportComparison::tryFrom($compare))) {
             $choices = implode(', ', array_map(static fn (ReportComparison $each): string => $each->value, ReportComparison::cases()));
@@ -73,7 +84,44 @@ final readonly class ReportRequest
             self::day($to, 'to'),
             null === $compare ? ReportComparison::None : ReportComparison::from($compare),
             null === $establishment ? null : Uuid::fromString($establishment),
+            $query,
         );
+    }
+
+    /**
+     * The context the report reads under the choices asked among the options it offers. An option some report offers,
+     * named for one that offers none, is refused as a period is for a report of today, rather than read as nothing; a
+     * name no report offers is no option and is left alone.
+     *
+     * @param list<string> $known the names of every option some report offers
+     */
+    public function withOptions(DeclaresReport $report, ReportContext $context, array $known): ReportContext
+    {
+        $offered = [];
+        foreach ($report->options() as $option) {
+            $offered[$option->name] = $option;
+        }
+        $chosen = [];
+        foreach ($known as $name) {
+            if (!\array_key_exists($name, $this->query)) {
+                continue;
+            }
+            $option = $offered[$name] ?? throw DomainRule::refused($name, \sprintf('The report %s takes no option %s.', $report->key(), $name), 'invalid_value');
+            $chosen[$name] = self::choice($option, $this->query[$name]);
+        }
+
+        return new ReportContext($context->company, $context->today, $context->may, $context->establishmentId, $chosen);
+    }
+
+    private static function choice(ReportOption $option, mixed $value): string
+    {
+        if (!\is_string($value) || !\in_array($value, $option->choices, true)) {
+            $choices = implode(', ', $option->choices);
+
+            throw DomainRule::refused($option->name, \sprintf('One of %s.', $choices), 'not_one_of', ['choices' => $choices]);
+        }
+
+        return $value;
     }
 
     /**

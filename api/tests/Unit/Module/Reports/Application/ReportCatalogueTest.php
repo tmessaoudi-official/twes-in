@@ -124,6 +124,11 @@ final class ReportCatalogueTest extends TestCase
                 return true;
             }
 
+            public function options(): array
+            {
+                return [];
+            }
+
             public function columns(ReportContext $context): array
             {
                 return [];

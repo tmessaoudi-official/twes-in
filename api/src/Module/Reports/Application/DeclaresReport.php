@@ -50,6 +50,14 @@ interface DeclaresReport
     public function periodic(): bool;
 
     /**
+     * The choices it offers in how it reads (the net before each document's discount shown, a merged product on its own),
+     * each read by the report from the context; none for most.
+     *
+     * @return list<ReportOption>
+     */
+    public function options(): array;
+
+    /**
      * Its columns, for this member: a cost or a margin is a column only for whoever may read costs. The first column
      * names the row.
      *

@@ -23,6 +23,8 @@ final readonly class ReportContext
         public \DateTimeImmutable $today,
         public \Closure $may,
         public ?string $establishmentId = null,
+        /** @var array<string, string> the choice asked for each option the report offers, by its name */
+        public array $options = [],
     ) {
     }
 }

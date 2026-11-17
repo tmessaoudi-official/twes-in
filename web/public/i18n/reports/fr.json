@@ -27,6 +27,18 @@
       "label": "Établissement",
       "all": "Toute l’entreprise"
     },
+    "options": {
+      "netBeforeDiscount": {
+        "label": "HT avant remise",
+        "hidden": "Non montré",
+        "shown": "Montré"
+      },
+      "mergedProducts": {
+        "label": "Articles fusionnés",
+        "kept": "Sous l’article gardé",
+        "apart": "Chacun à part"
+      }
+    },
     "total": "Total",
     "previous": "Période comparée",
     "unnamed": "Non renseigné",
@@ -165,7 +177,9 @@
       "unit": "Unité",
       "value": "Valeur",
       "vat": "TVA collectée",
-      "withheld": "Retenu"
+      "withheld": "Retenu",
+      "net_before_discount": "HT avant remise",
+      "merged_into": "Fusionné dans"
     }
   }
 }

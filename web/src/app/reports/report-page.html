@@ -104,6 +104,25 @@
             </mat-select>
           </mat-form-field>
         }
+        @for (option of report.options; track option.name) {
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'reports.options.' + option.name + '.label' | translate }}</mat-label>
+            <mat-select
+              [value]="asked.options?.[option.name] ?? option.choices[0]"
+              (valueChange)="pickOption(option.name, $event)"
+              [attr.data-testid]="'report-option-' + option.name"
+            >
+              @for (choice of option.choices; track choice) {
+                <mat-option
+                  [value]="choice"
+                  [attr.data-testid]="'report-option-' + option.name + '-' + choice"
+                >
+                  {{ 'reports.options.' + option.name + '.' + choice | translate }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
         @if (establishments().length > 0) {
           <mat-form-field subscriptSizing="dynamic">
             <mat-label>{{ 'reports.establishment.label' | translate }}</mat-label>

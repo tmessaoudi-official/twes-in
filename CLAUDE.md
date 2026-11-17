@@ -305,6 +305,8 @@ test in `gate-scripts.md` (`scripts/gates/**`, `scripts/tests/**`). Here: what a
   is read by `MailDirectionTest`, a resource's shape by `OpenApiTest`, a French text by `i18n-parity.spec.ts`. Before
   gating, also run every test that `git grep -lw`s the changed directory, resource or CLASS name (each changed file's
   basename, not a keyword: `StockCostSettingsTest` counted its class's settings and a keyword sweep missed it, 2026-11-17);
+  and `api/tests/Architecture`, which reads every source file and names none: a port's value given a method and a merged
+  product joined by hand went red only in the gate (2026-11-17);
   drop 2 went red three times on them (2026-10-28), an hour a cycle under load 20 (the API suite took 37 to 52 minutes).
 - `make gate` never boots the application: six cherry-picked fixes went green through it while the app stopped at start
   on NG0200 (an interceptor built `SpentBudget`, which asked for `TranslateService`, whose texts request runs the

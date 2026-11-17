@@ -16,12 +16,24 @@ const PERIODIC: ReportEntry = {
   byEstablishment: true,
   periodic: true,
   columns: [],
+  options: [],
 };
 const TODAY: ReportEntry = {
   key: 'aged-balance',
   byEstablishment: true,
   periodic: false,
   columns: [],
+  options: [],
+};
+const SALES: ReportEntry = {
+  key: 'sales-by-product',
+  byEstablishment: true,
+  periodic: true,
+  columns: [],
+  options: [
+    { name: 'netBeforeDiscount', choices: ['hidden', 'shown'] },
+    { name: 'mergedProducts', choices: ['kept', 'apart'] },
+  ],
 };
 
 describe('report view', () => {
@@ -115,18 +127,55 @@ describe('report view', () => {
 
   it('writes the address back, leaving out what is not asked', () => {
     expect(
-      addressOf({ from: '2026-09-01', to: '2026-09-30', compare: 'none', establishment: null }),
+      addressOf(
+        { from: '2026-09-01', to: '2026-09-30', compare: 'none', establishment: null },
+        PERIODIC,
+      ),
     ).toEqual({
       from: '2026-09-01',
       to: '2026-09-30',
       compare: 'none',
       establishment: null,
     });
-    expect(addressOf({ from: null, to: null, compare: 'none', establishment: 'e1' })).toEqual({
+    expect(
+      addressOf({ from: null, to: null, compare: 'none', establishment: 'e1' }, TODAY),
+    ).toEqual({
       from: null,
       to: null,
       compare: null,
       establishment: 'e1',
+    });
+  });
+
+  it('reads the options the report offers from the address, its default left out, and writes each one back', () => {
+    const asked = new Map([
+      ['from', '2026-09-01'],
+      ['to', '2026-09-15'],
+      ['netBeforeDiscount', 'shown'],
+      ['mergedProducts', 'kept'],
+    ]);
+    expect(queryOf(asked, SALES, '2026-10-18').options).toEqual({ netBeforeDiscount: 'shown' });
+    expect(
+      queryOf(new Map([['mergedProducts', 'sideways']]), SALES, '2026-10-18').options,
+    ).toBeUndefined();
+    // An option another report offers is not read for this one, which would refuse it.
+    expect(queryOf(asked, PERIODIC, '2026-10-18').options).toBeUndefined();
+
+    const query = {
+      from: '2026-09-01',
+      to: '2026-09-15',
+      compare: 'none' as const,
+      establishment: null,
+      options: { netBeforeDiscount: 'shown' },
+    };
+    // Each option the report offers is written, the one back at its default cleared from the address.
+    expect(addressOf(query, SALES)).toEqual({
+      from: '2026-09-01',
+      to: '2026-09-15',
+      compare: 'none',
+      establishment: null,
+      netBeforeDiscount: 'shown',
+      mergedProducts: null,
     });
   });
 

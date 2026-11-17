@@ -13,6 +13,12 @@ export interface ReportColumn {
   readonly params: Readonly<Record<string, number>>;
 }
 
+/** A choice a report offers in how it reads, named in its address; its first choice is what it reads when none is asked. */
+export interface ReportOption {
+  readonly name: string;
+  readonly choices: readonly string[];
+}
+
 /** A report the member may read, as the catalogue offers it. */
 export interface ReportEntry {
   readonly key: string;
@@ -21,6 +27,8 @@ export interface ReportEntry {
   /** Whether it reads a period; a report that is not reads today, and has nothing to be compared with. */
   readonly periodic: boolean;
   readonly columns: readonly ReportColumn[];
+  /** The choices it offers in how it reads (the net before each discount, a merged product on its own); none for most. */
+  readonly options: readonly ReportOption[];
 }
 
 export type ReportCell = string | number | null;
@@ -63,6 +71,8 @@ export interface ReportQuery {
   readonly to: string | null;
   readonly compare: ReportComparison;
   readonly establishment: string | null;
+  /** The choice asked for each option the report offers, by its name, one at its default left out. */
+  readonly options?: Readonly<Record<string, string>>;
 }
 
 /** One document behind a row's figures, with what it brings to them. */

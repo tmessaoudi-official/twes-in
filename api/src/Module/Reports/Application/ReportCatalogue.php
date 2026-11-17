@@ -80,6 +80,24 @@ final readonly class ReportCatalogue
         return null;
     }
 
+    /**
+     * The name of every option some report offers, whoever reads: a name an address gives is an option, refused by a
+     * report that offers none, whether or not the reader may open the report offering it.
+     *
+     * @return list<string>
+     */
+    public function optionNames(): array
+    {
+        $names = [];
+        foreach ($this->declarations as $declaration) {
+            foreach ($declaration->options() as $option) {
+                $names[$option->name] = true;
+            }
+        }
+
+        return array_keys($names);
+    }
+
     /** @param \Closure(string): bool $may */
     private function shown(DeclaresReport $declaration, Company $company, \Closure $may): bool
     {
