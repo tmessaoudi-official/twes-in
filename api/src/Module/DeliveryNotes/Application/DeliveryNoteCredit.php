@@ -13,6 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\InvalidDocument;
 use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoicedLines;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;

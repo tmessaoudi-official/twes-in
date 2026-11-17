@@ -111,7 +111,10 @@ the end of § Lessons here.
   names the one kept, or the one recorded under `vendors.merged_names_on_screens`, `Vendors/Application/VendorNameSettings`,
   whose key and choices the modules read as constants, while the books keep the vendor recorded; a document's number
   for a party deactivated since its draft follows `document.inactive_party_at_issue`, `Customers/Application/PartyAtIssueSettings`,
-  read by the four documents' workflows, never by a credit note),
+  read by the four documents' workflows, never by a credit note; invoicing delivery notes of several customers at once
+  follows `delivery_note.mixed_customers_invoicing`, `DeliveryNotes/Application/Invoicing/DeliveryNoteInvoicingSettings`: the
+  first note's customer alone, or a draft for each customer and establishment, `InvoiceDeliveryNotes::draftInvoices`
+  behind `POST …/invoices/from-delivery-notes/each`, which the check's `invoices` count sends the list to),
   `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
   `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`

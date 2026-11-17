@@ -332,6 +332,11 @@ export class DeliveryNotesFacade {
     return this.api.invoice(companyId, ids, undefined, intoDraftId);
   }
 
+  /** One draft invoice for each customer and establishment the notes name; their ids. */
+  async invoiceEach(companyId: string, ids: readonly string[]): Promise<string[]> {
+    return this.api.invoiceEach(companyId, ids);
+  }
+
   /**
    * The drafts a note could be added to, none when there are none or they could not be read (the reason is in `error`:
    * what could not be asked is not the same as there being nothing to add to).

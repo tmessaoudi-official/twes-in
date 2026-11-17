@@ -134,6 +134,43 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertSame([null, null, null], array_column($this->arrayAt($this->json(), 'lines'), 'sourceDeliveryNoteLineId'), 'a credit note invoices no delivery note');
     }
 
+    /** A company may invoice the notes of several customers at once, one draft each, where by default only the first's go. */
+    public function testACompanyInvoicingEachCustomerDraftsOneInvoiceForEach(): void
+    {
+        $otherCustomer = $this->customer('CLI-0002')->getId()->toRfc4122();
+        $this->signedIn();
+        $first = $this->validatedNote();
+        $other = $this->validatedNote(['customerId' => $otherCustomer]);
+        $second = $this->validatedNote();
+        $chosen = ['deliveryNoteIds' => [$first, $other, $second]];
+
+        $this->postJson($this->checkPath(), $chosen);
+        self::assertSame([[null, 'other_customer', null], 1], [array_column($this->arrayAt($this->json(), 'rows'), 'reason'), $this->json()['invoices']], 'by default the first note names the customer');
+        $this->postJson($this->eachPath(), $chosen);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['notes_one_customer', []], $this->refusalOf('deliveryNoteIds'), 'as drafting one invoice refuses them');
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM invoice'));
+
+        $this->companyChooses($this->company, 'delivery_note.mixed_customers_invoicing', 'invoice_each');
+        $this->postJson($this->checkPath(), $chosen);
+        $answer = $this->json();
+        self::assertSame([[null, null, null], 2, null, null], [array_column($this->arrayAt($answer, 'rows'), 'reason'), $answer['invoices'], $answer['customerId'], $answer['establishmentId']], 'no customer to find a draft of when two drafts are made');
+        $this->postJson($this->eachPath(), $chosen);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $drafts = $this->arrayAt($this->json(), 'invoiceIds');
+        self::assertCount(2, $drafts);
+        self::assertSame(
+            [[$this->customerId, 'draft', 2], [$otherCustomer, 'draft', 1]],
+            array_map(fn (mixed $id): array => [
+                $this->em()->getConnection()->fetchOne('SELECT customer_id::text FROM invoice WHERE id = ?', [$id]),
+                $this->em()->getConnection()->fetchOne('SELECT status FROM invoice WHERE id = ?', [$id]),
+                $this->em()->getConnection()->fetchOne('SELECT count(*) FROM invoice_line WHERE invoice_id = ?', [$id]),
+            ], $drafts),
+            "one draft per customer, in the order of each one's first note",
+        );
+    }
+
     /** Invoicing several notes at once says first which go on the invoice and why the rest do not. */
     public function testWhatInvoicingSeveralNotesWouldTakeIsCheckedBeforeAndChangesNothing(): void
     {
@@ -840,6 +877,11 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     private function fromNotesPath(): string
     {
         return $this->companyPath().'/invoices/from-delivery-notes';
+    }
+
+    private function eachPath(): string
+    {
+        return $this->fromNotesPath().'/each';
     }
 
     private function checkPath(): string

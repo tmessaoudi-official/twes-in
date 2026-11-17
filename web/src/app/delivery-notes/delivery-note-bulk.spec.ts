@@ -28,6 +28,7 @@ describe('DeliveryNoteBulk', () => {
   let check: InvoicingCheck | Error;
   let drafts: InvoiceDraftOption[] | Error;
   let invoiced: string | Error;
+  let eachDrafted: string[] | Error;
 
   const facade = {
     invoicingCheck: vi.fn<(companyId: string, ids: readonly string[]) => Promise<InvoicingCheck>>(
@@ -43,6 +44,9 @@ describe('DeliveryNoteBulk', () => {
     invoiceNotes: vi.fn<
       (companyId: string, ids: readonly string[], intoDraftId?: string) => Promise<string>
     >(() => (invoiced instanceof Error ? Promise.reject(invoiced) : Promise.resolve(invoiced))),
+    invoiceEach: vi.fn<(companyId: string, ids: readonly string[]) => Promise<string[]>>(() =>
+      eachDrafted instanceof Error ? Promise.reject(eachDrafted) : Promise.resolve(eachDrafted),
+    ),
   };
   const navigate = vi.fn(() => Promise.resolve(true));
 
@@ -71,6 +75,7 @@ describe('DeliveryNoteBulk', () => {
   beforeEach(() => {
     drafts = [];
     invoiced = 'i1';
+    eachDrafted = ['i1', 'i2'];
   });
 
   afterEach(() => {
@@ -90,6 +95,7 @@ describe('DeliveryNoteBulk', () => {
     rows,
     included: rows.filter((one) => one.included).length,
     skipped: rows.filter((one) => !one.included).length,
+    invoices: rows.some((one) => one.included) ? 1 : 0,
     customerId: rows.some((one) => one.included) ? 'k1' : null,
     establishmentId: rows.some((one) => one.included) ? 'e1' : null,
   });
@@ -122,6 +128,51 @@ describe('DeliveryNoteBulk', () => {
     expect(body('delivery-notes-bulk-skipped')).toBeNull();
     expect(facade.invoiceNotes).toHaveBeenCalledExactlyOnceWith('c1', ['a', 'b'], undefined);
     expect(navigate).toHaveBeenCalledExactlyOnceWith(['/invoices', 'i1']);
+  });
+
+  it('drafts an invoice for each customer where the company invoices each, says how many, and opens the drafts', async () => {
+    check = {
+      ...checkOf(row('a'), row('b'), row('c')),
+      invoices: 2,
+      customerId: null,
+      establishmentId: null,
+    };
+    const fixture = create(['a', 'b', 'c']);
+
+    await invoice(fixture);
+
+    expect(facade.invoiceEach).toHaveBeenCalledExactlyOnceWith('c1', ['a', 'b', 'c']);
+    expect(facade.draftsToAddTo).not.toHaveBeenCalled();
+    expect(facade.invoiceNotes).not.toHaveBeenCalled();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+      expect.objectContaining({ key: 'delivery_notes.bulk.drafted_each', params: { count: 2 } }),
+    );
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(['/invoices'], {
+      queryParams: { status: 'draft' },
+    });
+  });
+
+  it('says why drafting an invoice for each customer was refused, and stays on the list', async () => {
+    check = {
+      ...checkOf(row('a'), row('b')),
+      invoices: 2,
+      customerId: null,
+      establishmentId: null,
+    };
+    eachDrafted = new DeliveryNotesRefused('invalid', [
+      { field: 'deliveryNoteIds', reason: 'notes_one_customer', params: {} },
+    ]);
+    const fixture = create(['a', 'b']);
+    TestBed.inject(TranslateService).setTranslation(
+      'fr',
+      { import: { rejections: { notes_one_customer: 'Un seul client.' } } },
+      true,
+    );
+
+    await invoice(fixture);
+
+    expect(said()).toEqual(['import.rejections.notes_one_customer']);
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('names each note left out and why, and invoices the others only once the person says so', async () => {

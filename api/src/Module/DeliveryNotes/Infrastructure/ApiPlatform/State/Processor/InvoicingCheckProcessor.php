@@ -11,7 +11,8 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\DeliveryNoteInvoicingSettings;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\InvoicingCheckResource;
 use App\Module\Invoices\Application\InvoiceNotFound;
@@ -19,6 +20,7 @@ use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
 /** @implements ProcessorInterface<InvoicingCheckResource, InvoicingCheckResource> */
 final readonly class InvoicingCheckProcessor implements ProcessorInterface
 {
-    public function __construct(private InvoiceDeliveryNotes $invoicing, private CompanyGuard $guard, private ModuleStates $modules)
+    public function __construct(private InvoiceDeliveryNotes $invoicing, private CompanyGuard $guard, private ModuleStates $modules, private ReadSetting $settings)
     {
     }
 
@@ -45,6 +47,7 @@ final readonly class InvoicingCheckProcessor implements ProcessorInterface
                 $company,
                 array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds),
                 null === $data->invoiceId ? null : Uuid::fromString($data->invoiceId),
+                DeliveryNoteInvoicingSettings::invoicesEachParty($this->settings, $company),
             );
         } catch (InvalidDeliveryNote $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
@@ -54,6 +57,7 @@ final readonly class InvoicingCheckProcessor implements ProcessorInterface
             throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         }
         $answer = new InvoicingCheckResource();
+        $parties = [];
         foreach ($rows as $row) {
             $answer->rows[] = [
                 'id' => $row->id->toRfc4122(),
@@ -66,9 +70,15 @@ final readonly class InvoicingCheckProcessor implements ProcessorInterface
                 ++$answer->included;
                 $answer->customerId ??= $row->note?->getCustomer()->standingFor()->getId()->toRfc4122();
                 $answer->establishmentId ??= $row->note?->getEstablishment()->getId()->toRfc4122();
+                $parties[$row->note?->getCustomer()->standingFor()->getId()->toRfc4122().'|'.$row->note?->getEstablishment()->getId()->toRfc4122()] = true;
             } else {
                 ++$answer->skipped;
             }
+        }
+        $answer->invoices = \count($parties);
+        // Several invoices have no one customer whose drafts the notes could join.
+        if ($answer->invoices > 1) {
+            [$answer->customerId, $answer->establishmentId] = [null, null];
         }
 
         return $answer;

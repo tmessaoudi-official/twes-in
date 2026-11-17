@@ -21,7 +21,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\DeliveryNotes\Application\DeliveryNoteInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteLineInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteWorkflow;
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\Expenses\Application\ExpenseInput;

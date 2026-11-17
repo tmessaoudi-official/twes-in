@@ -12,7 +12,7 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\InvoicingCheckProcessor;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -20,7 +20,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * What invoicing the delivery notes a person selected would do, before it runs,
  * with invoice.write: each id once, in the order sent, `included` or `skipped` with a `reason` the screen translates,
- * and the `customerId` and `establishmentId` of the invoice the included ones make.
+ * and the `customerId` and `establishmentId` of the invoice the included ones make, and how many `invoices` they make:
+ * one, or one for each customer and establishment where the company invoices each (delivery_note.mixed_customers_invoicing).
  * The invoice is the draft `invoiceId` names, or else a new one for the first note that can go on it. Nothing is
  * changed. More than a list page of ids, none, or one that is not an identifier, 422; an invoice that is not the
  * company's, 404; one that is no draft any more, 409. Like drafting, it answers 404 while either module is off.
@@ -82,12 +83,17 @@ final class InvoicingCheckResource
     #[Groups([self::READ])]
     public int $included = 0;
 
-    /** The customer of the invoice the notes that go in make, to find its drafts; null when none goes in. */
+    /** How many invoices the notes that go in make: none, one, or one per customer and establishment. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public int $invoices = 0;
+
+    /** The customer of the invoice the notes that go in make, to find its drafts; null when none goes in, or several invoices. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
     #[Groups([self::READ])]
     public ?string $customerId = null;
 
-    /** Its establishment, whose series numbers it; null when none goes in. */
+    /** Its establishment, whose series numbers it; null when none goes in, or several invoices. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
     #[Groups([self::READ])]
     public ?string $establishmentId = null;

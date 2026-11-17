@@ -51,6 +51,7 @@ final class SubmissionStancesTest extends KernelTestCase
     private const array STANCES = [
         '/companies/{companyId}/imports/{subject}' => self::ADDITIVE,
         '/companies/{companyId}/invoices/from-delivery-notes' => self::ADDITIVE,
+        '/companies/{companyId}/invoices/from-delivery-notes/each' => self::ADDITIVE,
         '/companies/{companyId}/invoices/{invoiceId}/apply-credit' => self::ADDITIVE,
         '/companies/{companyId}/invoices/{invoiceId}/delivery-notes' => self::ADDITIVE,
         '/companies/{companyId}/invoices/{invoiceId}/instruments' => self::ADDITIVE,

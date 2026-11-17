@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\DeliveryNotes\Application;
+namespace App\Module\DeliveryNotes\Application\Invoicing;
 
 use Symfony\Component\Uid\Uuid;
 

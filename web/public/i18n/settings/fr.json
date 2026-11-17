@@ -83,7 +83,9 @@
     "delivery_note": {
       "show_prices": "Afficher les prix sur les bons de livraison",
       "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)",
-      "receiver": "Nommer qui a reçu les marchandises"
+      "receiver": "Nommer qui a reçu les marchandises",
+      "mixed_customers_invoicing": "Facturer des bons de plusieurs clients à la fois",
+      "mixed_customers_invoicing_hint": "Les bons de livraison choisis pour une facture peuvent être de clients ou d’établissements différents."
     },
     "invoice": {
       "receiver": "Nommer qui a reçu, sur les factures",
@@ -240,6 +242,10 @@
           "off": "Jamais",
           "optional": "Si on le souhaite",
           "required": "Toujours, à la livraison"
+        },
+        "mixed_customers_invoicing": {
+          "first_customer": "Facturer le client du premier bon, laisser les autres",
+          "invoice_each": "Un brouillon de facture par client et établissement"
         }
       },
       "invoice": {

@@ -83,7 +83,9 @@
     "delivery_note": {
       "show_prices": "Show prices on delivery notes",
       "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)",
-      "receiver": "Name who received the goods"
+      "receiver": "Name who received the goods",
+      "mixed_customers_invoicing": "Invoicing notes of several customers at once",
+      "mixed_customers_invoicing_hint": "The delivery notes chosen for invoicing may belong to different customers or establishments."
     },
     "invoice": {
       "receiver": "Name who received, on invoices",
@@ -240,6 +242,10 @@
           "off": "Never",
           "optional": "When wished",
           "required": "Always, at delivery"
+        },
+        "mixed_customers_invoicing": {
+          "first_customer": "Invoice the first note’s customer, leave the others",
+          "invoice_each": "One draft invoice per customer and establishment"
         }
       },
       "invoice": {

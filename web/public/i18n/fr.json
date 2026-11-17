@@ -1773,6 +1773,7 @@
       "invoice": "Facturer",
       "skipped_title": "{count, plural, =0 {Aucun bon laissé de côté} one {Un bon sélectionné est laissé de côté} other {{{count}} bons sélectionnés sont laissés de côté}}",
       "invoice_rest": "{count, plural, one {Facturer l’autre} other {Facturer les {{count}} autres}}",
+      "drafted_each": "{count, plural, one {Un brouillon de facture créé} other {{{count}} brouillons de facture créés, un par client et établissement}}.",
       "close": "Fermer",
       "check_failed": "La sélection n’a pas pu être vérifiée. Réessayez.",
       "unknown": "Bon inconnu",

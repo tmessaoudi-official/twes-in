@@ -642,6 +642,7 @@ describe('DeliveryNotesApi', () => {
       ],
       included: 1,
       skipped: 2,
+      invoices: 1,
       customerId: 'k1',
       establishmentId: 'e1',
     });
@@ -653,6 +654,7 @@ describe('DeliveryNotesApi', () => {
       ],
       included: 1,
       skipped: 2,
+      invoices: 1,
       customerId: 'k1',
       establishmentId: 'e1',
     });
@@ -666,12 +668,39 @@ describe('DeliveryNotesApi', () => {
       ],
       included: 0,
       skipped: 1,
+      invoices: 0,
       customerId: null,
       establishmentId: null,
     });
     expect(await fresh).toEqual(
       expect.objectContaining({ customerId: null, establishmentId: null }),
     );
+  });
+
+  it('drafts an invoice for each customer and answers their ids, in the order the API gave them', async () => {
+    const pending = api.invoiceEach('c1', ['n1', 'n2']);
+    const request = http.expectOne('/api/companies/c1/invoices/from-delivery-notes/each');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ deliveryNoteIds: ['n1', 'n2'] });
+    request.flush({ invoiceIds: ['i2', 'i1'] }, { status: 201, statusText: 'Created' });
+    expect(await pending).toEqual(['i2', 'i1']);
+
+    const refused = api.invoiceEach('c1', ['n1', 'n3']);
+    http.expectOne('/api/companies/c1/invoices/from-delivery-notes/each').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'deliveryNoteIds',
+            message: 'One customer.',
+            payload: { reason: 'notes_one_customer', params: {} },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      refusals: [{ field: 'deliveryNoteIds', reason: 'notes_one_customer', params: {} }],
+    });
   });
 
   it('refuses a check that came without its rows, and turns a refused one into a code', async () => {

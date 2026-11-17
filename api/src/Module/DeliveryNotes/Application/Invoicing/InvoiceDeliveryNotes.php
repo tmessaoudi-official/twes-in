@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\DeliveryNotes\Application;
+namespace App\Module\DeliveryNotes\Application\Invoicing;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
@@ -16,6 +16,8 @@ use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
+use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
+use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteDiscounts;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
@@ -94,6 +96,47 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
     }
 
     /**
+     * One draft invoice for each customer and establishment the notes name, as `draftInvoice` drafts one, in the order of
+     * each one's first note, all in one transaction: a note one draft refuses refuses them all. A company invoicing the
+     * first party alone (`$eachParty` false) refuses notes of two customers or two establishments, as `draftInvoice` does.
+     *
+     * @param list<Uuid> $noteIds
+     *
+     * @return list<Uuid> the drafts' ids
+     *
+     * @throws InvalidDeliveryNote           as `draftInvoice`
+     * @throws DeliveryNoteTransitionRefused as `draftInvoice`
+     * @throws InvalidInvoice                as `draftInvoice`
+     */
+    public function draftInvoices(Company $company, array $noteIds, ?Uuid $actorUserId, bool $eachParty): array
+    {
+        if ([] === $noteIds) {
+            throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from at least one delivery note.', 'value_required');
+        }
+        $named = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $noteIds);
+        if (\count(array_unique($named)) !== \count($named)) {
+            throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.', 'named_twice');
+        }
+
+        return $this->transactions->run(function () use ($company, $noteIds, $named, $actorUserId, $eachParty): array {
+            $notes = self::inNumberOrder($this->notes->lockedOfIdsInCompany($noteIds, $company->getId()));
+            self::allFound($notes, $named);
+            $groups = [];
+            foreach ($notes as $note) {
+                $party = $eachParty ? $note->getCustomer()->standingFor()->getId()->toRfc4122().'|'.$note->getEstablishment()->getId()->toRfc4122() : '';
+                $groups[$party][] = $note->getId();
+            }
+            $drafts = [];
+            foreach ($groups as $ids) {
+                [$notes, $lines, $header] = $this->plan($company, $ids, array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids), null);
+                $drafts[] = $this->invoicing->createFromLines($company, $notes[0]->getEstablishment(), $notes[0]->getCustomer(), $header, $lines, ['deliveryNoteIds' => array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes)], $actorUserId);
+            }
+
+            return $drafts;
+        });
+    }
+
+    /**
      * The same notes' lines added after those a DRAFT invoice already has, instead of starting a new invoice:
      * the draft must be of the notes' customer and establishment, and what it already took of a line
      * counts as taken, so a line is never added twice over. An issued invoice is never touched: a credit note corrects it.
@@ -136,7 +179,8 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
      * What drafting one invoice from the selected notes would do with each, before it runs, as every bulk action is
      * previewed: each id once, in the order chosen, taken or skipped with its reason.
      * The invoice is the draft named, or else a new one for the customer and establishment of the first note that can go
-     * on it. Nothing is changed, and nothing is held: `draftInvoice` and `addToDraft` check again as they run.
+     * on it, or, where the company invoices each party (`$eachParty`) and no draft is named, one new invoice for each.
+     * Nothing is changed, and nothing is held: `draftInvoice`, `draftInvoices` and `addToDraft` check again as they run.
      *
      * @param list<Uuid> $noteIds
      *
@@ -147,7 +191,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
      * @throws InvoiceNotFound     when the invoice named is not the company's
      * @throws InvoiceNotDraft     when it is not a draft any more
      */
-    public function check(Company $company, array $noteIds, ?Uuid $invoiceId = null): array
+    public function check(Company $company, array $noteIds, ?Uuid $invoiceId = null, bool $eachParty = false): array
     {
         $unique = [];
         foreach ($noteIds as $id) {
@@ -183,6 +227,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
                 // A note handing over an issued invoice's goods was billed by that invoice already.
                 $note->deliversInvoice() => InvoicingCheckRow::INVOICED,
                 !self::anythingLeft($note, $left) => InvoicingCheckRow::NOTHING_LEFT,
+                ($eachParty && null === $target) => null,
                 null !== $customer && !$note->getCustomer()->standingFor()->getId()->equals($customer) => InvoicingCheckRow::OTHER_CUSTOMER,
                 null !== $establishment && !$note->getEstablishment()->getId()->equals($establishment) => InvoicingCheckRow::OTHER_ESTABLISHMENT,
                 default => null,
@@ -221,12 +266,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
     private function plan(Company $company, array $noteIds, array $named, ?array $quantities): array
     {
         $notes = self::inNumberOrder($this->notes->lockedOfIdsInCompany($noteIds, $company->getId()));
-        $found = array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes);
-        foreach ($named as $id) {
-            if (!\in_array($id, $found, true)) {
-                throw new InvalidDeliveryNote('deliveryNoteIds', \sprintf('No delivery note of this company has the id %s.', $id), 'unknown_choice');
-            }
-        }
+        self::allFound($notes, $named);
         foreach ($notes as $note) {
             if (DeliveryNoteStatus::Validated !== $note->getStatus() && DeliveryNoteStatus::Delivered !== $note->getStatus()) {
                 $refused = \sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', self::reference($note), $note->getStatus()->value);
@@ -385,6 +425,22 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
 
             return $left;
         });
+    }
+
+    /**
+     * @param list<DeliveryNote> $notes
+     * @param list<string>       $named
+     *
+     * @throws InvalidDeliveryNote on `deliveryNoteIds` for an id no note of the company has
+     */
+    private static function allFound(array $notes, array $named): void
+    {
+        $found = array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes);
+        foreach ($named as $id) {
+            if (!\in_array($id, $found, true)) {
+                throw new InvalidDeliveryNote('deliveryNoteIds', \sprintf('No delivery note of this company has the id %s.', $id), 'unknown_choice');
+            }
+        }
     }
 
     /**

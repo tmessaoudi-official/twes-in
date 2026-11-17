@@ -25,6 +25,8 @@ import type {
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceReadValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
   InvoicingCheckInvoicingCheckReadValidationInvoicingCheckWrite as InvoicingCheckRead,
   InvoicingCheckInvoicingCheckWriteValidationInvoicingCheckWrite as InvoicingCheckWrite,
+  InvoicesFromDeliveryNotesInvoicesFromDeliveryNotesReadValidationInvoicesFromDeliveryNotesWrite as InvoicesFromDeliveryNotesRead,
+  InvoicesFromDeliveryNotesInvoicesFromDeliveryNotesWriteValidationInvoicesFromDeliveryNotesWrite as InvoicesFromDeliveryNotesWrite,
 } from '../api/types.gen';
 import type { PreviewBody } from '../shared/documents/document-figures';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
@@ -327,10 +329,6 @@ export class DeliveryNotesApi {
     return this.step(companyId, id, 'cancel', null);
   }
 
-  /**
-   * Drafts an invoice from validated or delivered notes of one customer and establishment, and answers its id; 409
-   * when a note is not validated or delivered or is already on an invoice, 422 when the notes cannot share one.
-   */
   /** What invoicing the selected notes would do with each, checked by the API before it runs; nothing changes. */
   async invoicingCheck(
     companyId: string,
@@ -345,7 +343,12 @@ export class DeliveryNotesApi {
           body,
         ),
       );
-      if (check.rows === undefined || check.included === undefined || check.skipped === undefined)
+      if (
+        check.rows === undefined ||
+        check.included === undefined ||
+        check.skipped === undefined ||
+        check.invoices === undefined
+      )
         throw new Error('An invoicing check came without its rows.');
       return {
         rows: check.rows.map((row) => ({
@@ -357,12 +360,17 @@ export class DeliveryNotesApi {
         })),
         included: check.included,
         skipped: check.skipped,
+        invoices: check.invoices,
         customerId: check.customerId ?? null,
         establishmentId: check.establishmentId ?? null,
       };
     });
   }
 
+  /**
+   * Drafts an invoice from validated or delivered notes of one customer and establishment, and answers its id; 409
+   * when a note is not validated or delivered or is already on an invoice, 422 when the notes cannot share one.
+   */
   async invoice(
     companyId: string,
     deliveryNoteIds: readonly string[],
@@ -383,6 +391,24 @@ export class DeliveryNotesApi {
         ),
       );
       return draft.id ?? '';
+    });
+  }
+
+  /**
+   * Drafts one invoice for each customer and establishment the notes name, where the company invoices each, and answers
+   * their ids in the order of each one's first note; 422 on notes of two customers where it invoices the first alone.
+   */
+  async invoiceEach(companyId: string, deliveryNoteIds: readonly string[]): Promise<string[]> {
+    const body: InvoicesFromDeliveryNotesWrite = { deliveryNoteIds: [...deliveryNoteIds] };
+    return this.guard(async () => {
+      const drafts = await firstValueFrom(
+        this.http.post<InvoicesFromDeliveryNotesRead>(
+          `${companyPath(companyId)}/invoices/from-delivery-notes/each`,
+          body,
+        ),
+      );
+      if (drafts.invoiceIds === undefined) throw new Error('The drafts came without their ids.');
+      return drafts.invoiceIds;
     });
   }
 

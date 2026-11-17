@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Infrastructure\Invoicing;
 
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;

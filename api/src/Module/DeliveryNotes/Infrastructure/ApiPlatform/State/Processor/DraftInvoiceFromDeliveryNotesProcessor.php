@@ -11,7 +11,7 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\InvoiceAnswer;

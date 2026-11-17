@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\DeliveryNotes\Application;
+namespace App\Module\DeliveryNotes\Application\Invoicing;
 
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Invoices\Application\InvoiceNotFound;

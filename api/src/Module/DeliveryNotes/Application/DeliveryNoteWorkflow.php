@@ -19,6 +19,7 @@ use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Application\PartyAtIssueSettings;
 use App\Module\DeliveryNotes\Application\Invoices\InvoiceLines;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoicedLines;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteLines;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;

@@ -43,11 +43,15 @@ export interface InvoicingCheckRow {
   reason: InvoicingSkipReason | null;
 }
 
-/** What invoicing the selected notes would do, before it runs, and whose invoice the ones taken make. */
+/**
+ * What invoicing the selected notes would do, before it runs: how many invoices the ones taken make (one per customer
+ * and establishment where the company invoices each), and whose invoice they make when it is one.
+ */
 export interface InvoicingCheck {
   rows: readonly InvoicingCheckRow[];
   included: number;
   skipped: number;
+  invoices: number;
   customerId: string | null;
   establishmentId: string | null;
 }

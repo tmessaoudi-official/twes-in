@@ -9,11 +9,11 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output;
 
-use App\Module\DeliveryNotes\Application\CarryingInvoice;
 use App\Module\DeliveryNotes\Application\DeliveryNoteSettings;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
-use App\Module\DeliveryNotes\Application\InvoicedLines;
 use App\Module\DeliveryNotes\Application\Invoices\DeliverableInvoices;
+use App\Module\DeliveryNotes\Application\Invoicing\CarryingInvoice;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoicedLines;
 use App\Module\DeliveryNotes\Application\Quotes\DeliverableQuotes;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;

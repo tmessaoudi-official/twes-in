@@ -17,8 +17,8 @@ use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
-use App\Module\DeliveryNotes\Application\InvoicingCheckRow;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoicingCheckRow;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
@@ -411,6 +411,47 @@ final class InvoiceDeliveryNotesTest extends TestCase
     }
 
     /** The invoice a use case answered by its id, as the invoices keep it. */
+    public function testACompanyInvoicingEachPartyDraftsOneInvoicePerCustomerAndEstablishmentInTheOrderTheNotesWereNumbered(): void
+    {
+        $other = $this->customer($this->company, 'CLI-0002');
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Shared\Application\StoredContacts($phones))
+            ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
+        $first = $this->note('BL-2026-00001');
+        $theirs = $this->note('BL-2026-00002', customer: $other);
+        $fromTheBranch = $this->note('BL-2026-00003', establishment: $branch);
+        $second = $this->note('BL-2026-00004');
+        $chosen = [$second->getId(), $theirs->getId(), $fromTheBranch->getId(), $first->getId()];
+
+        self::assertSame([null, null, null, null], array_map(static fn (InvoicingCheckRow $row): ?string => $row->skipped, $this->invoicing->check($this->company, $chosen, eachParty: true)), 'no note is left out for its customer or its establishment');
+        $drafts = array_map($this->drafted(...), $this->invoicing->draftInvoices($this->company, $chosen, null, eachParty: true));
+
+        $lineOf = static fn (DeliveryNote $note): string => $note->getLines()[0]->getId()->toRfc4122();
+        self::assertSame(
+            [
+                ['CLI-0001', false, [$lineOf($first), $lineOf($second)]],
+                ['CLI-0002', false, [$lineOf($theirs)]],
+                ['CLI-0001', true, [$lineOf($fromTheBranch)]],
+            ],
+            array_map(static fn (Invoice $draft): array => [
+                $draft->getCustomer()->getNumber(),
+                $draft->getEstablishment()->getId()->equals($branch->getId()),
+                array_map(static fn (InvoiceLine $line): ?string => $line->getSourceDeliveryNoteLineId()?->toRfc4122(), $draft->getLines()),
+            ], $drafts),
+            'one draft per customer and establishment, each holding its notes in their order',
+        );
+
+        // The company invoicing the first party alone refuses notes of two customers, as drafting one invoice does.
+        $mine = $this->note('BL-2026-00005');
+        $yours = $this->note('BL-2026-00006', customer: $other);
+        try {
+            $this->invoicing->draftInvoices($this->company, [$mine->getId(), $yours->getId()], null, eachParty: false);
+            self::fail('notes of two customers made two drafts');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame('notes_one_customer', $refused->reason);
+        }
+        self::assertCount(1, $this->invoicing->draftInvoices($this->company, [$mine->getId()], null, eachParty: false), 'the notes of one party make one draft either way');
+    }
+
     private function drafted(Uuid $id): Invoice
     {
         return $this->invoices->ofIdInCompany($id, $this->company->getId()) ?? throw new \LogicException('The draft is kept.');

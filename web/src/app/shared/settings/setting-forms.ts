@@ -172,6 +172,8 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'document.exemption_reference': 'settings.document.exemption_reference_hint',
   'article.reference_format': 'settings.article.reference_format_hint',
   'article.price_on_cost_change': 'settings.article.price_on_cost_change_hint',
+  'delivery_note.mixed_customers_invoicing':
+    'settings.delivery_note.mixed_customers_invoicing_hint',
   'reminders.enabled': 'settings.reminders.enabled_hint',
   'reminders.stages': 'settings.reminders.stages_hint',
   'reminders.hour': 'settings.reminders.hour_hint',
@@ -193,6 +195,7 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
 const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'document.watermark_spread',
   'document.inactive_party_at_issue',
+  'delivery_note.mixed_customers_invoicing',
   'vendors.merged_names_on_screens',
 ]);
 

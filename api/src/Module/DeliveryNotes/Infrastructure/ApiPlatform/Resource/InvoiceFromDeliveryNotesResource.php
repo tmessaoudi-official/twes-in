@@ -12,7 +12,7 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
-use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\AddDeliveryNotesToDraftProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\DraftInvoiceFromDeliveryNotesProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;

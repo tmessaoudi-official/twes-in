@@ -151,7 +151,7 @@ final class ModuleBoundariesTest extends TestCase
 
         self::assertTrue(interface_exists('App\\Module\\Invoices\\Domain\\Repository\\InvoiceRepository'));
         self::assertFalse($contract->invoke($this, 'App\\Module\\Invoices\\Domain\\Repository\\InvoiceRepository'));
-        self::assertTrue($contract->invoke($this, 'App\\Module\\DeliveryNotes\\Application\\InvoicedLines'), 'a port is one');
+        self::assertTrue($contract->invoke($this, 'App\\Module\\DeliveryNotes\\Application\\Invoicing\\InvoicedLines'), 'a port is one');
         self::assertFalse($contract->invoke($this, 'App\\Module\\Invoices\\Domain\\Model\\Invoice'), 'an entity runs');
     }
 

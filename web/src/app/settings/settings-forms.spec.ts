@@ -127,6 +127,7 @@ describe('companySettingsForm', () => {
   it.each([
     ['vendors.merged_names_on_screens', ['kept', 'recorded']],
     ['document.inactive_party_at_issue', ['allowed', 'refused']],
+    ['delivery_note.mixed_customers_invoicing', ['first_customer', 'invoice_each']],
   ])('gives %s, standing apart from its neighbours, a whole row and its hint', (key, choices) => {
     const apart = row({
       key,

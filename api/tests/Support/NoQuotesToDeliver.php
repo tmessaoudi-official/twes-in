@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Fiscal\Infrastructure\Currency\IntlCurrencyScales;
-use App\Module\DeliveryNotes\Application\InvoicedLines;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoicedLines;
 use App\Module\DeliveryNotes\Application\Quotes\DeliverableQuotes;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteDiscounts;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteLines;

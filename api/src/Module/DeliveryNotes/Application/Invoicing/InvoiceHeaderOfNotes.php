@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\DeliveryNotes\Application;
+namespace App\Module\DeliveryNotes\Application\Invoicing;
 
 /** What the notes give the invoice drafted from them: the last day they delivered on and the reference they share. */
 final readonly class InvoiceHeaderOfNotes

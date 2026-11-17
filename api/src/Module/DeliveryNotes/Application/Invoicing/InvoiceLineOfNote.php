@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\DeliveryNotes\Application;
+namespace App\Module\DeliveryNotes\Application\Invoicing;
 
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Fiscal\Domain\Model\Unit;

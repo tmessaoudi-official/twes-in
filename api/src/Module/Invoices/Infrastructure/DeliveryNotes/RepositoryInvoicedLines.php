@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Module\DeliveryNotes\Application\CarryingInvoice;
-use App\Module\DeliveryNotes\Application\InvoicedLines;
+use App\Module\DeliveryNotes\Application\Invoicing\CarryingInvoice;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoicedLines;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use Symfony\Component\Uid\Uuid;

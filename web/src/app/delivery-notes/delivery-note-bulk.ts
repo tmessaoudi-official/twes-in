@@ -25,7 +25,9 @@ import { refusalKey } from '../shared/errors/unknown-refusal';
  * What the delivery notes list offers on the rows a person selected: « Facturer »
  * puts what is left of them on one invoice. The API is asked first what it would take; a note it would leave out (a
  * draft, one already invoiced, another customer's) is named with why before the others go on. Then, as on a note's
- * own page, a draft of the same customer and establishment may take them instead of a new invoice, which opens.
+ * own page, a draft of the same customer and establishment may take them instead of a new invoice, which opens. Where
+ * the company invoices each customer (delivery_note.mixed_customers_invoicing) and the notes make several invoices, a
+ * draft is made for each, said by their count, and the invoices' drafts open.
  */
 @Component({
   selector: 'app-delivery-note-bulk',
@@ -79,6 +81,10 @@ export class DeliveryNoteBulk {
     }
     if (check.skipped > 0 && !(await this.goOn(check))) return;
     const taken = check.rows.filter((row) => row.included).map((row) => row.id);
+    if (check.invoices > 1) {
+      await this.invoiceEach(companyId, taken);
+      return;
+    }
     if (taken.length === 0 || check.customerId === null) return;
     try {
       const target = await this.chooseTarget(companyId, check.customerId, check.establishmentId);
@@ -93,6 +99,24 @@ export class DeliveryNoteBulk {
       const code = error instanceof DeliveryNotesRefused ? error.code : 'network';
       this.failed(error, refusalKey('delivery_notes.errors', code));
     }
+  }
+
+  /** A draft for each customer and establishment: no draft of one customer to add them to, so new ones, then the list. */
+  private async invoiceEach(companyId: string, taken: readonly string[]): Promise<void> {
+    let drafts: string[];
+    try {
+      drafts = await this.facade.invoiceEach(companyId, taken);
+    } catch (error) {
+      const code = error instanceof DeliveryNotesRefused ? error.code : 'network';
+      this.failed(error, refusalKey('delivery_notes.errors', code));
+      return;
+    }
+    this.feedback.effect(
+      'delivery_notes.bulk.drafted_each',
+      { count: drafts.length },
+      'corrigeable',
+    );
+    await this.router.navigate(['/invoices'], { queryParams: { status: 'draft' } });
   }
 
   /**

@@ -10,10 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 
 use App\Module\Customers\Domain\Model\Customer;
-use App\Module\DeliveryNotes\Application\InvoiceDrafts;
-use App\Module\DeliveryNotes\Application\InvoiceHeaderOfNotes;
-use App\Module\DeliveryNotes\Application\InvoiceLineOfNote;
-use App\Module\DeliveryNotes\Application\InvoiceToAddTo;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceDrafts;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceHeaderOfNotes;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceLineOfNote;
+use App\Module\DeliveryNotes\Application\Invoicing\InvoiceToAddTo;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
