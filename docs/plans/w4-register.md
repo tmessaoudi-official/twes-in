@@ -23,9 +23,9 @@ Counts: 61 to build (new 57, an existing setting extended 3, partly built 1); al
 | C112 | `app.list_limits.<list>` (operator) | document.lines bounded; 25 written lists say « count: not bounded yet »; `api/config/services.yaml:116` | - | M |
 | B4 | `app.support.windows_hours, app.support.default_window_hours` (operator) | the windows [1, 24, 72] and 24 are code; `api/src/Tenancy/Domain/Model/SupportGrant.php:31` | support stays time-boxed: the ruled values (2026-10-12 08:53) are the ceiling, a parameter only shortens | M |
 | C100 | `app.health.public_build (full / version only)` (operator) | HealthController answers mode, deployment and « -dirty » to anyone; `api/src/Shared/Infrastructure/Health/HealthController.php:40` | default = today: full, as ruled 2026-10-07 14:31 | M |
-| C149 | `platform.approval.resuspend_updates_reason` (operator) | a second « Suspendre » changes nothing and keeps the first reason; `api/src/Tenancy/Application/Approval/DecideCompanyApproval.php:37` | - | M |
-| A79 | `app.files.removed_kept_for` (operator) | a removed photo is restorable with no time limit; its files count in storage; `api/src/Module/Products/Application/Photo/ProductPhotos.php:204` | default = today: kept without limit (the triage set it back); a shorter value lets the files go and stops counting them | M |
-| B14 | `account.deletion_when_sole_owner` (platform) | the nightly run keeps an account now sole owner and retries; `api/src/Identity/Application/Account/FinalizeAccountDeletions.php:34` | the last owner is never removed | S |
+| C149 | `approval.resuspend_updates_reason` (operator) | a second « Suspendre » changes nothing and keeps the first reason; `api/src/Tenancy/Application/Approval/DecideCompanyApproval.php:37` | - | M |
+| A79 | `app.products.removed_photos_kept_for` (operator) | a removed photo is restorable with no time limit; its files count in storage; `api/src/Module/Products/Application/Photo/ProductPhotos.php:204` | default = today: kept without limit (the triage set it back); a shorter value lets the files go and stops counting them | M |
+| B14 | `account.deletion_withdrawn_when_sole_owner` (platform) | the nightly run keeps an account now sole owner and retries; `api/src/Identity/Application/Account/FinalizeAccountDeletions.php:34` | the last owner is never removed | S |
 
 ## B2. Import options (8, 23 points)
 
