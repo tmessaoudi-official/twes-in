@@ -42,4 +42,27 @@ final class RecordsUndoSettingsTest extends TestCase
         self::assertSame(1, RecordsUndoSettings::operatorHours('PT90M'));
         self::assertSame(168, RecordsUndoSettings::operatorHours('P7D'));
     }
+
+    /** @return iterable<string, array{string, int}> */
+    public static function operators(): iterable
+    {
+        yield 'a day' => ['PT24H', 24];
+        yield 'a week' => ['P7D', 168];
+    }
+
+    /** What a company saves is refused below an hour and above the operator's hours, so the page says it out of range. */
+    #[DataProvider('operators')]
+    public function testASaveOutsideAnHourAndTheOperatorsHoursIsRefused(string $operator, int $hours): void
+    {
+        $definitions = [...(new RecordsUndoSettings($operator))->settings()];
+        self::assertCount(1, $definitions);
+        $definition = $definitions[0];
+        self::assertSame(RecordsUndoSettings::UNDOABLE_FOR, $definition->key);
+
+        self::assertSame($hours, $definition->default);
+        self::assertNull($definition->refusal(1));
+        self::assertNull($definition->refusal($hours));
+        self::assertNotNull($definition->refusal(0), 'below an hour');
+        self::assertNotNull($definition->refusal($hours + 1), 'above the operator');
+    }
 }
