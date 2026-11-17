@@ -343,6 +343,43 @@ final class ImportUndoTest extends ApiTestCase
         self::assertSame(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM product_barcode WHERE code = 'SOT-77'"));
     }
 
+    /**
+     * A file that replaced a product's vendors is taken back whole: the links it added go, and the vendors it dropped come
+     * back with the codes they held.
+     */
+    public function testAReplaceTakenBackPutsBackTheVendorsItDroppedWithTheirCodes(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-001,SF-1\n");
+        $run = $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-002,\n", 'upsert', ['mode' => 'replace']);
+        self::assertSame(['F-002'], $this->vendorsOf('P-OLD'));
+        self::assertSame(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM product_barcode WHERE code = 'SF-1'"));
+
+        $this->undo($run);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->arrayAt($this->json(), 'rowsKept'));
+        self::assertSame(['F-001'], $this->vendorsOf('P-OLD'));
+        self::assertSame(['F-001'], self::strings($this->em()->getConnection()->fetchFirstColumn("SELECT v.number FROM product_barcode b JOIN vendor v ON v.id = b.supplier_id WHERE b.code = 'SF-1'")));
+    }
+
+    /** A dropped vendor's code another product holds since is not taken from it: the link comes back, and the code is said. */
+    public function testADroppedCodeHeldElsewhereSinceIsKeptThereAndSaid(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-001,SF-1\n");
+        $run = $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-002,\n", 'upsert', ['mode' => 'replace']);
+        $this->imported('products', "reference,name,unit_code,unit_price_net\nP-NEW,Tenaille,H87,9\n");
+        $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-NEW,F-001,SF-1\n");
+
+        $this->undo($run);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([['label' => 'P-OLD F-001 SF-1', 'reason' => 'barcode_taken']], $this->fields($this->arrayAt($this->json(), 'rowsKept'), 'label', 'reason'));
+        self::assertSame(['F-001'], $this->vendorsOf('P-OLD'));
+        self::assertSame(['P-NEW'], self::strings($this->em()->getConnection()->fetchFirstColumn("SELECT p.reference FROM product_barcode b JOIN product p ON p.id = b.product_id WHERE b.code = 'SF-1'")));
+    }
+
     /** @param list<string> $permissions */
     private function signedIn(array $permissions, bool $prove = true): void
     {
@@ -355,9 +392,10 @@ final class ImportUndoTest extends ApiTestCase
     }
 
     /** Imports the file, committed, and answers the import's id. */
-    private function imported(string $subject, string $contents, string $mode = 'create'): string
+    /** @param array<string, string> $choices */
+    private function imported(string $subject, string $contents, string $mode = 'create', array $choices = []): string
     {
-        $this->import($subject, $contents, $mode);
+        $this->import($subject, $contents, $mode, choices: $choices);
         self::assertResponseIsSuccessful();
         $report = $this->json();
         self::assertSame([true, []], [$report['committed'], $report['rejected']], json_encode($report['rejected']) ?: '');
@@ -365,9 +403,10 @@ final class ImportUndoTest extends ApiTestCase
         return $this->stringAt($report, 'run');
     }
 
-    private function import(string $subject, string $contents, string $mode, bool $dryRun = false): void
+    /** @param array<string, string> $choices */
+    private function import(string $subject, string $contents, string $mode, bool $dryRun = false, array $choices = []): void
     {
-        $this->uploadFile($this->path('imports/'.$subject), $subject.'.csv', $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0']);
+        $this->uploadFile($this->path('imports/'.$subject), $subject.'.csv', $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', 'choices' => $choices]);
     }
 
     private function undo(string $run): void

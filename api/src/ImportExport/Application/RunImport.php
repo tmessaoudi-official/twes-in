@@ -68,7 +68,7 @@ final readonly class RunImport
     public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = [], array $chosen = [], ImportNotation $notation = new ImportNotation()): ImportReport
     {
         [$records, $paired] = $this->records($subject, $rows, $pairing, $notation);
-        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys(), $chosen);
+        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys(), $chosen, $records);
 
         try {
             return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $paired): ImportReport {
@@ -90,6 +90,7 @@ final readonly class RunImport
                 $declaration->finished($company, $context, $actorUserId);
                 $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now(), $paired));
                 $this->runs->saveCreated($company->getId(), $context->runId, $context->createdRecords());
+                $this->runs->saveRemoved($company->getId(), $context->runId, $context->removedRecords());
                 // Each record is said by its own subject; the run itself is audited by nobody, so it is said here.
                 $this->changes->stage(new LiveChange(self::RUN_KIND, $context->runId, self::COMMITTED, $actorUserId, $company->getId()));
 

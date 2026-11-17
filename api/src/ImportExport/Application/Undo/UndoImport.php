@@ -40,7 +40,10 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class UndoImport implements DeclaresAuditActions
 {
-    /** @param iterable<UndoesImportedRows> $rows */
+    /**
+     * @param iterable<UndoesImportedRows>     $rows
+     * @param iterable<PutsBackImportRemovals> $putsBack
+     */
     public function __construct(
         private ImportRunRepository $runs,
         private RecordCatalogue $records,
@@ -55,6 +58,8 @@ final readonly class UndoImport implements DeclaresAuditActions
         private string $undoableFor,
         #[AutowireIterator('app.import.undoes_rows')]
         private iterable $rows,
+        #[AutowireIterator('app.import.puts_back_removals')]
+        private iterable $putsBack = [],
     ) {
     }
 
@@ -104,6 +109,18 @@ final readonly class UndoImport implements DeclaresAuditActions
                 }
                 array_push($removed, ...$taken->removed);
                 array_push($kept, ...$taken->kept);
+            }
+            // What a file replacing a list dropped comes back once what it added is gone, through its module's own rules.
+            $removedRows = $this->runs->removedBy($company->getId(), $runId);
+            foreach ($this->putsBack as $handler) {
+                $mine = array_intersect_key($removedRows, array_flip($handler->tables()));
+                if ([] !== $mine) {
+                    array_push($rowsKept, ...$handler->putBack($company, $mine, $actorUserId));
+                }
+                $removedRows = array_diff_key($removedRows, $mine);
+            }
+            if ([] !== $removedRows) {
+                throw new \LogicException(\sprintf('An import removed rows of %s, which nothing puts back.', implode(', ', array_keys($removedRows))));
             }
             // The stock last: the records gone took their own movements with them, whatever is left is taken back.
             $undoId = Uuid::v7();

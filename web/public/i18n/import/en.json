@@ -154,7 +154,11 @@
       "vendor_number": "Vendor number",
       "vendor_number_note": "The number of the vendor the product is bought from: import the vendors first. One row for each vendor of a product.",
       "vendor_code": "Supplier code",
-      "vendor_code_note": "The code this vendor gives the product: added, or taken over from another of its vendors if it was theirs; none is removed."
+      "vendor_code_note": "The code this vendor gives the product: added, or taken over from another of its vendors if it was theirs; none is removed, except with its vendor when the file replaces the list.",
+      "mode": "Vendors the file does not name",
+      "mode_note": "Replace makes the file the whole list: each product it names keeps only the vendors it gives it, and a vendor dropped takes its codes with it. “Undo this import” puts them back.",
+      "mode_add": "Keep them (add only)",
+      "mode_replace": "Drop them (replace)"
     },
     "title": "Import {{subject}}",
     "subjects": {
@@ -258,7 +262,8 @@
       "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held.",
       "phone_kept_to_check": "“{{value}}” kept as it is: this number is not among those its country hands out. The record is marked “To check”: check it.",
       "date_kept_unknown": "Date “{{date}}” cannot be: the line is kept as “date unknown”.",
-      "zero_line_skipped": "Quantity 0: line skipped, as asked."
+      "zero_line_skipped": "Quantity 0: line skipped, as asked.",
+      "vendor_dropped": "Vendor “{{number}}” dropped{codes, plural, =0 {, with no code} one {, with its code} other {, with its {{codes}} codes}}."
     },
     "stock": {
       "stock_add": "Quantity to add",
@@ -294,7 +299,11 @@
       "kept": "“{{name}}” appears in {{uses}}.",
       "rows_kept": {
         "vendor_has_code": "{{label}}: the vendor still holds a code for this product.",
-        "product_merged": "{{label}}: the product was merged since."
+        "product_merged": "{{label}}: the product was merged since.",
+        "barcode_taken": "{{label}}: another product holds this code since, and keeps it.",
+        "product_gone": "{{label}}: the product no longer exists.",
+        "vendor_gone": "{{label}}: the vendor no longer exists.",
+        "vendor_merged": "{{label}}: the vendor was merged since."
       },
       "stock_title": "Stock",
       "stock_back": "{{reference}} at {{location}}: {{quantity}} taken back.",

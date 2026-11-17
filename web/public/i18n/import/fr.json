@@ -154,7 +154,11 @@
       "vendor_number": "Numéro fournisseur",
       "vendor_number_note": "Le numéro du fournisseur chez qui le produit s’achète : importez les fournisseurs d’abord. Une ligne par fournisseur d’un même produit.",
       "vendor_code": "Code fournisseur",
-      "vendor_code_note": "Le code que ce fournisseur donne au produit : ajouté, ou repris d’un autre de ses fournisseurs s’il était le sien ; aucun n’est retiré."
+      "vendor_code_note": "Le code que ce fournisseur donne au produit : ajouté, ou repris d’un autre de ses fournisseurs s’il était le sien ; aucun n’est retiré, sauf avec son fournisseur quand le fichier remplace la liste.",
+      "mode": "Fournisseurs que le fichier ne nomme pas",
+      "mode_note": "Remplacer fait du fichier la liste complète : chaque produit qu’il nomme ne garde que les fournisseurs qu’il lui donne, et un fournisseur retiré emporte ses codes. « Annuler cet import » les remet.",
+      "mode_add": "Les garder (ajouter seulement)",
+      "mode_replace": "Les retirer (remplacer)"
     },
     "title": "Importer des {{subject}}",
     "subjects": {
@@ -258,7 +262,8 @@
       "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait.",
       "phone_kept_to_check": "« {{value}} » gardé tel quel : ce numéro n’est pas parmi ceux que son pays attribue. La fiche est marquée « À vérifier » : vérifiez-le.",
       "date_kept_unknown": "Date « {{date}} » impossible : la ligne est gardée en « date inconnue ».",
-      "zero_line_skipped": "Quantité 0 : ligne ignorée, comme demandé."
+      "zero_line_skipped": "Quantité 0 : ligne ignorée, comme demandé.",
+      "vendor_dropped": "Fournisseur « {{number}} » retiré{codes, plural, =0 {, sans code} one {, avec son code} other {, avec ses {{codes}} codes}}."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",
@@ -294,7 +299,11 @@
       "kept": "« {{name}} » figure dans {{uses}}.",
       "rows_kept": {
         "vendor_has_code": "{{label}} : le fournisseur tient encore un code de ce produit.",
-        "product_merged": "{{label}} : le produit a été fusionné depuis."
+        "product_merged": "{{label}} : le produit a été fusionné depuis.",
+        "barcode_taken": "{{label}} : un autre produit tient ce code depuis, il le garde.",
+        "product_gone": "{{label}} : le produit n’existe plus.",
+        "vendor_gone": "{{label}} : le fournisseur n’existe plus.",
+        "vendor_merged": "{{label}} : le fournisseur a été fusionné depuis."
       },
       "stock_title": "Stock",
       "stock_back": "{{reference}} à {{location}} : {{quantity}} repris.",

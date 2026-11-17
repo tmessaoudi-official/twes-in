@@ -22,7 +22,10 @@ final readonly class ImportErasureReferences implements DeclaresErasure
 
     public function references(): array
     {
-        return [ErasureReference::ignore('import_run_record', 'record_id', null, 'Ids of rows an import created, which hold nothing of a person: the undo skips those erased since.')];
+        return [
+            ErasureReference::ignore('import_run_record', 'record_id', null, 'Ids of rows an import created, which hold nothing of a person: the undo skips those erased since.'),
+            ErasureReference::ignore('import_run_removal', 'record_id', null, 'Ids of rows an import removed (a product\'s link to a vendor), with the codes its undo puts back, which hold nothing of a person.'),
+        ];
     }
 
     public function files(): array

@@ -2914,6 +2914,7 @@
       "too_many_decimals": "Too many decimals: {max, plural, =0 {a whole number} one {one decimal at most} other {{{max}} decimals at most}}.",
       "percent_sign": "Write 5 for 5%.",
       "decimal_mark": "The company’s CSV files write decimals with “{{mark}}”: write 12{{mark}}5, or 12500 with no separator. Another mark is chosen in the import settings.",
+      "replace_needs_upsert": "A file replacing the list names the vendors it keeps: import it in “Create and update” mode.",
       "unknown_vendor": "The company has no supplier numbered “{{number}}”.",
       "vendor_merged": "Supplier “{{number}}” was merged into “{{kept}}”: change “{{kept}}” instead.",
       "vendor_merged_draft": "Vendor “{{number}}” was merged into “{{kept}}”: choose “{{kept}}” on the draft.",

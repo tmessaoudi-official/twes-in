@@ -29,10 +29,15 @@ final class ImportContext
     /** @var array<string, array<string, Uuid>> what the rows created, by table and id */
     private array $created = [];
 
+    /** @var array<string, list<array{id: Uuid, what: array<string, mixed>}>> what the rows removed, by table */
+    private array $removed = [];
+
     /**
      * @param list<string>          $ticked  the keys of the subject's switches the person ticked
      * @param list<string>          $columns the subject's columns for this company and person
      * @param array<string, string> $chosen  the answer of each of the subject's switches that is a choice, by its key
+     * @param list<ImportRecord>    $records the file's rows, for a subject whose row depends on the whole file (a file
+     *                                       replacing a list reads which rows it names before it drops the others)
      */
     public function __construct(
         public readonly Uuid $runId,
@@ -40,6 +45,7 @@ final class ImportContext
         public readonly bool $dryRun = false,
         public readonly array $columns = [],
         private readonly array $chosen = [],
+        public readonly array $records = [],
     ) {
     }
 
@@ -51,6 +57,23 @@ final class ImportContext
     public function created(string $table, Uuid $id): void
     {
         $this->created[$table][$id->toRfc4122()] = $id;
+    }
+
+    /**
+     * Notes a row the run removed, by its table, with what puts it back (`$what`, as the subject reads it again):
+     * « Annuler cet import » hands it to the subject's PutsBackImportRemovals.
+     *
+     * @param array<string, mixed> $what
+     */
+    public function removed(string $table, Uuid $id, array $what): void
+    {
+        $this->removed[$table][] = ['id' => $id, 'what' => $what];
+    }
+
+    /** @return array<string, list<array{id: Uuid, what: array<string, mixed>}>> what the rows removed, by table */
+    public function removedRecords(): array
+    {
+        return $this->removed;
     }
 
     /** @return array<string, list<Uuid>> what the rows created, by table */

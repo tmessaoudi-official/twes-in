@@ -426,6 +426,123 @@ final readonly class ManageProducts implements DeclaresAuditActions
     }
 
     /**
+     * A file replacing who a product is bought from drops the vendors it no longer names: each goes with the codes it
+     * holds on the product, which only somebody who may read costs writes (the caller has checked it). Audited as a
+     * revision of the fields it changed.
+     *
+     * @param list<Uuid> $vendorIds
+     *
+     * @return list<array{link: Uuid, vendor: Uuid, number: string, codes: list<array{role: string, code: string, quantity: int}>}>
+     *                                                                                                                              what went, by vendor number
+     *
+     * @throws ProductNotFound
+     * @throws ProductMergedAway
+     */
+    public function dropVendors(Company $company, Uuid $id, array $vendorIds, ?Uuid $actorUserId): array
+    {
+        return $this->transactions->run(function () use ($company, $id, $vendorIds, $actorUserId): array {
+            $product = $this->locked($company, $id);
+            self::notMergedAway($product);
+            $going = array_map(static fn (Uuid $vendor): string => $vendor->toRfc4122(), $vendorIds);
+            $dropped = [];
+            foreach ($product->getVendors() as $vendor) {
+                $link = $product->vendorLinkOf($vendor->getId());
+                if (null === $link || !\in_array($vendor->getId()->toRfc4122(), $going, true)) {
+                    continue;
+                }
+                $codes = [];
+                foreach ($product->getBarcodes() as $held) {
+                    if ($vendor->getId()->equals($held->getSupplier()?->getId())) {
+                        $codes[] = ['role' => $held->getRole()->value, 'code' => $held->getCode(), 'quantity' => $held->getQuantity()];
+                    }
+                }
+                $dropped[] = ['link' => $link->getId(), 'vendor' => $vendor->getId(), 'number' => $vendor->getNumber(), 'codes' => $codes];
+            }
+            if ([] === $dropped) {
+                return [];
+            }
+            $now = $this->clock->now();
+            $rows = [];
+            foreach ($product->getBarcodes() as $held) {
+                $supplier = $held->getSupplier()?->getId()->toRfc4122();
+                if (null === $supplier || !\in_array($supplier, $going, true)) {
+                    $rows[] = new BarcodeInput($held->getRole()->value, $held->getCode(), $held->getQuantity(), $held->getSupplier()?->getId());
+                }
+            }
+            $changed = [];
+            if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $now)) {
+                $changed[] = 'barcodes';
+            }
+            if ($product->replaceVendors(array_values(array_filter($product->getVendors(), static fn (Vendor $vendor): bool => !\in_array($vendor->getId()->toRfc4122(), $going, true))), $now)) {
+                $changed[] = 'vendors';
+            }
+            $this->products->save($product);
+            $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            usort($dropped, static fn (array $a, array $b): int => $a['number'] <=> $b['number']);
+
+            return $dropped;
+        });
+    }
+
+    /**
+     * « Annuler cet import » for a file that replaced who a product is bought from: a vendor it dropped is linked again
+     * with the codes it held. What cannot come back stays where it is and is said: a code another product holds since,
+     * a vendor gone or merged into another since, a product gone or merged since. Audited as a revision.
+     *
+     * @param list<array{role: string, code: string, quantity: int}> $codes
+     *
+     * @return list<array{label: string, reason: string}> what was not put back
+     */
+    public function putBackVendor(Company $company, Uuid $id, Uuid $vendorId, string $number, array $codes, ?Uuid $actorUserId): array
+    {
+        return $this->transactions->run(function () use ($company, $id, $vendorId, $number, $codes, $actorUserId): array {
+            // Read rather than locked(), which throws: a throw here would roll the whole undo back.
+            $product = $this->products->ofIdInCompany($id, $company->getId());
+            if (null === $product) {
+                return [['label' => $number, 'reason' => 'product_gone']];
+            }
+            $label = $product->getReference().' '.$number;
+            if ($product->isMergedAway()) {
+                return [['label' => $label, 'reason' => 'product_merged']];
+            }
+            $vendor = $this->vendors->ofIdInCompany($vendorId, $company->getId());
+            if (null === $vendor) {
+                return [['label' => $label, 'reason' => 'vendor_gone']];
+            }
+            if ($vendor->isMergedAway()) {
+                return [['label' => $label, 'reason' => 'vendor_merged']];
+            }
+            $product = $this->locked($company, $id);
+            $now = $this->clock->now();
+            $kept = [];
+            $rows = array_map(static fn (ProductBarcode $held): BarcodeInput => new BarcodeInput($held->getRole()->value, $held->getCode(), $held->getQuantity(), $held->getSupplier()?->getId()), $product->getBarcodes());
+            foreach ($codes as $code) {
+                $held = $this->products->barcodeOfKeyInCompany(Barcode::keyOf($code['code']), $company->getId());
+                if (null !== $held) {
+                    if (!$held->getProduct()->getId()->equals($product->getId())) {
+                        $kept[] = ['label' => $label.' '.$code['code'], 'reason' => 'barcode_taken'];
+                    }
+                    continue;
+                }
+                $rows[] = new BarcodeInput($code['role'], $code['code'], $code['quantity'], $vendorId);
+            }
+            $changed = [];
+            if ($product->replaceVendors([...$product->getVendors(), $vendor], $now)) {
+                $changed[] = 'vendors';
+            }
+            if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $now)) {
+                $changed[] = 'barcodes';
+            }
+            if ([] !== $changed) {
+                $this->products->save($product);
+                $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
+
+            return $kept;
+        });
+    }
+
+    /**
      * The product's codes with `$code` as this vendor's: the one held under that code becomes the vendor's, else the
      * code is added.
      *

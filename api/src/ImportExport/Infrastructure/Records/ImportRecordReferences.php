@@ -22,6 +22,9 @@ final readonly class ImportRecordReferences implements DeclaresRecordReferences
 
     public function references(): array
     {
-        return [RecordReference::ignored('import_run_record', 'record_id', null, 'An import keeps what it created so its undo finds it; a record gone since is not looked for.')];
+        return [
+            RecordReference::ignored('import_run_record', 'record_id', null, 'An import keeps what it created so its undo finds it; a record gone since is not looked for.'),
+            RecordReference::ignored('import_run_removal', 'record_id', null, 'An import keeps the links it removed so its undo puts them back; it reads the product and vendor again, never this id.'),
+        ];
     }
 }

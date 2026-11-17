@@ -2914,6 +2914,7 @@
       "too_many_decimals": "Trop de décimales : {max, plural, =0 {un nombre entier} one {une décimale au plus} other {{{max}} décimales au plus}}.",
       "percent_sign": "Écrivez 5 pour 5 %.",
       "decimal_mark": "Les fichiers CSV de l’entreprise écrivent les décimales avec « {{mark}} » : écrivez 12{{mark}}5, ou 12500 sans séparateur. Un autre séparateur se choisit dans les paramètres d’import.",
+      "replace_needs_upsert": "Un fichier qui remplace la liste nomme les fournisseurs qu’il garde : importez-le en mode « Créer et mettre à jour ».",
       "unknown_vendor": "L’entreprise n’a aucun fournisseur numéroté « {{number}} ».",
       "vendor_merged": "Le fournisseur « {{number}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
       "vendor_merged_draft": "Le fournisseur « {{number}} » a été fusionné dans « {{kept}} » : choisissez « {{kept}} » sur le brouillon.",

@@ -25,6 +25,8 @@ final readonly class ProductImportSettings implements DeclaresSettings
     public const string UNPRICED_INACTIVE = 'import.products_unpriced_inactive';
     public const string BELOW_COST = 'import.products_below_cost';
     public const string EXCESS_DECIMALS = 'import.products_excess_decimals';
+    /** Whether a file of who sells what adds to each product's vendors or replaces them (ProductVendorImport). */
+    public const string PRODUCT_VENDORS_MODE = 'import.product_vendors_mode';
     private const string MODULE = 'products';
 
     public function settings(): iterable
@@ -33,5 +35,6 @@ final readonly class ProductImportSettings implements DeclaresSettings
         yield new SettingDefinition('import.products_unpriced_inactive', SettingType::Bool, false, SettingChain::Articles, $company, 'settings.import.products_unpriced_inactive', self::MODULE);
         yield new SettingDefinition('import.products_below_cost', SettingType::Enum, 'note', SettingChain::Articles, $company, 'settings.import.products_below_cost', self::MODULE, choices: ['note', 'refuse']);
         yield new SettingDefinition('import.products_excess_decimals', SettingType::Enum, 'refuse', SettingChain::Articles, $company, 'settings.import.products_excess_decimals', self::MODULE, choices: ['refuse', 'round']);
+        yield new SettingDefinition('import.product_vendors_mode', SettingType::Enum, 'add', SettingChain::Articles, $company, 'settings.import.product_vendors_mode', self::MODULE, choices: ['add', 'replace']);
     }
 }

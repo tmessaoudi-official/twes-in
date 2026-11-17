@@ -278,6 +278,10 @@
           "day_first": "Day, month, year (15/03/2026)",
           "month_first": "Month, day, year (03/15/2026)",
           "year_first": "Year, month, day (2026/03/15)"
+        },
+        "product_vendors_mode": {
+          "add": "Add only",
+          "replace": "Replace each product’s list"
         }
       }
     },
@@ -373,7 +377,8 @@
       "stock_cost_fallback": "Cost of an imported addition with none",
       "undo_stock_conflict": "Undo an import whose stock was used",
       "decimal_mark": "Decimal mark of CSV files",
-      "day_order": "Date order of CSV files"
+      "day_order": "Date order of CSV files",
+      "product_vendors_mode": "Import of products’ vendors"
     }
   }
 }

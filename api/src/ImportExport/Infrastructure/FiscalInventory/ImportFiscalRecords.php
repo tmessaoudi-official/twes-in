@@ -18,7 +18,7 @@ final readonly class ImportFiscalRecords implements DeclaresFiscalRecords
     public function fiscalRecords(): array
     {
         return [
-            FiscalRecords::kept('import_export.runs', 'import_run', parts: ['import_run_record'], dateColumn: 'at'),
+            FiscalRecords::kept('import_export.runs', 'import_run', parts: ['import_run_record', 'import_run_removal'], dateColumn: 'at'),
         ];
     }
 

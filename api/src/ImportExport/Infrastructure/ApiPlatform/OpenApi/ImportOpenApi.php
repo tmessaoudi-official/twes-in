@@ -184,9 +184,9 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                             'label' => ['type' => 'string'],
                             'uses' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['table', 'column', 'count'], 'properties' => ['table' => ['type' => 'string'], 'column' => ['type' => 'string'], 'count' => ['type' => 'integer']]]],
                         ]]],
-                        'rowsKept' => ['type' => 'array', 'description' => 'The links the file added that stay, such as a vendor still holding a code of the product.', 'items' => ['type' => 'object', 'required' => ['label', 'reason'], 'properties' => [
+                        'rowsKept' => ['type' => 'array', 'description' => 'The links the file added that stay, such as a vendor still holding a code of the product, and what a file replacing a list dropped that cannot come back, such as a code another product holds since.', 'items' => ['type' => 'object', 'required' => ['label', 'reason'], 'properties' => [
                             'label' => ['type' => 'string'],
-                            'reason' => ['type' => 'string', 'enum' => ['vendor_has_code', 'product_merged']],
+                            'reason' => ['type' => 'string', 'enum' => ['vendor_has_code', 'product_merged', 'barcode_taken', 'product_gone', 'vendor_gone', 'vendor_merged']],
                         ]]],
                         'stockTakenBack' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['reference', 'location', 'quantity'], 'properties' => [
                             'reference' => ['type' => 'string'],

@@ -65,4 +65,18 @@ interface ImportRunRepository
      * @return array<string, list<Uuid>>
      */
     public function createdBy(Uuid $companyId, Uuid $runId): array;
+
+    /**
+     * Keeps what an import removed, by table, with what puts each row back.
+     *
+     * @param array<string, list<array{id: Uuid, what: array<string, mixed>}>> $removed
+     */
+    public function saveRemoved(Uuid $companyId, Uuid $runId, array $removed): void;
+
+    /**
+     * What an import removed, by table, in the order it removed them.
+     *
+     * @return array<string, list<array{id: Uuid, what: array<string, mixed>}>>
+     */
+    public function removedBy(Uuid $companyId, Uuid $runId): array;
 }

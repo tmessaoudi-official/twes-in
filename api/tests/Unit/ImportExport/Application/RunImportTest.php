@@ -361,6 +361,9 @@ final class InMemoryImportRuns implements ImportRunRepository
     /** @var array<string, array<string, list<Uuid>>> by run */
     public array $created = [];
 
+    /** @var array<string, array<string, list<array{id: Uuid, what: array<string, mixed>}>>> by run */
+    public array $removed = [];
+
     public function ofId(Uuid $companyId, Uuid $id): ?ImportRun
     {
         foreach ($this->saved as $run) {
@@ -401,6 +404,16 @@ final class InMemoryImportRuns implements ImportRunRepository
     public function createdBy(Uuid $companyId, Uuid $runId): array
     {
         return $this->created[$runId->toRfc4122()] ?? [];
+    }
+
+    public function saveRemoved(Uuid $companyId, Uuid $runId, array $removed): void
+    {
+        $this->removed[$runId->toRfc4122()] = $removed;
+    }
+
+    public function removedBy(Uuid $companyId, Uuid $runId): array
+    {
+        return $this->removed[$runId->toRfc4122()] ?? [];
     }
 }
 

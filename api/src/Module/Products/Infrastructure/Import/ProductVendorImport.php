@@ -10,11 +10,13 @@ declare(strict_types=1);
 namespace App\Module\Products\Infrastructure\Import;
 
 use App\ImportExport\Application\DeclaresImport;
+use App\ImportExport\Application\ImportChoice;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
@@ -23,6 +25,7 @@ use App\ImportExport\Application\RowRejected;
 use App\ImportExport\Application\UnknownImportSubject;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
+use App\Module\Products\Application\ProductImportSettings;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductBarcode;
@@ -43,7 +46,9 @@ use Symfony\Component\Uid\Uuid;
  * Who each product is bought from, from a file: a row names a product by its reference and a vendor by its number,
  * with the vendor's own code for the product when there is one. A product bought from several vendors has a row for
  * each. Written through ManageProducts::addVendor, the product's own rules: a file adds links and codes, never removes
- * one, as the product file's supplier columns do.
+ * one, as the product file's supplier columns do, unless it is a whole list (« Remplacer », import.product_vendors_mode):
+ * then each product it names keeps only the vendors it names for it, a vendor dropped going with its codes, which the
+ * product's first row says, preview and run alike, and « Annuler cet import » puts back (PutBackDroppedVendors).
  *
  * Who a product is bought from is read with the product, so whoever writes products may import it while the company
  * keeps vendors; a vendor's own code is read with costs, so its column is offered only to somebody who may read them.
@@ -51,6 +56,11 @@ use Symfony\Component\Uid\Uuid;
 final readonly class ProductVendorImport implements DeclaresImport
 {
     public const string KEY = 'product-vendors';
+    public const string MODE = 'mode';
+    public const string MODE_ADD = 'add';
+    public const string MODE_REPLACE = 'replace';
+    /** The removals a replace keeps for its undo: one per vendor dropped from a product. */
+    public const string DROPPED = 'product_vendor';
 
     public function __construct(
         private ManageProducts $manage,
@@ -93,13 +103,21 @@ final readonly class ProductVendorImport implements DeclaresImport
             throw new UnknownImportSubject(\sprintf('Nothing named "%s" can be imported.', self::KEY));
         }
 
+        $costs = $this->guard->may($company, ProductPermission::COST_READ);
+
         return new ImportSubject(self::KEY, [
             new ImportColumn('product_reference', 'import.product_vendors.product_reference', true, 'VIS-6X40', 'import.product_vendors.product_reference_note', code: true),
             new ImportColumn('vendor_number', 'import.product_vendors.vendor_number', true, 'FRN-0001', 'import.product_vendors.vendor_number_note', code: true),
-            ...$this->guard->may($company, ProductPermission::COST_READ)
+            ...$costs
                 ? [new ImportColumn('vendor_code', 'import.product_vendors.vendor_code', false, 'SF-883', 'import.product_vendors.vendor_code_note', code: true)]
                 : [],
-        ]);
+        ], $costs ? [
+            // A vendor dropped takes its codes, read with costs: the whole list is offered to whoever may read them.
+            new ImportSwitch(self::MODE, 'import.product_vendors.mode', 'import.product_vendors.mode_note', [
+                new ImportChoice(self::MODE_ADD, 'import.product_vendors.mode_add'),
+                new ImportChoice(self::MODE_REPLACE, 'import.product_vendors.mode_replace'),
+            ], ProductImportSettings::PRODUCT_VENDORS_MODE),
+        ] : []);
     }
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
@@ -111,6 +129,13 @@ final readonly class ProductVendorImport implements DeclaresImport
         $faults->stopIfAny();
         \assert(null !== $product && null !== $named);
         $vendor = MergedVendors::followed($named, 'vendor_number', $notes);
+        $replace = self::MODE_REPLACE === $context->chosen(self::MODE);
+        if ($replace && ImportMode::Create === $mode) {
+            throw new RowRejected('vendor_number', 'A file replacing who each product is bought from names the vendors it keeps: import it in "create and update" mode.', 'replace_needs_upsert');
+        }
+        if ($replace) {
+            $this->dropUnnamed($company, $product, $actorUserId, $notes, $context);
+        }
 
         try {
             $linked = array_any($product->getVendors(), static fn (Vendor $held): bool => $held->getId()->equals($vendor->getId()));
@@ -155,6 +180,64 @@ final readonly class ProductVendorImport implements DeclaresImport
 
     public function finished(Company $company, ImportContext $context, ?Uuid $actorUserId): void
     {
+    }
+
+    /**
+     * At a product's first row in a whole list, the vendors no row of the file names for it go, with their codes; each
+     * is said on that row and kept for the undo.
+     */
+    private function dropUnnamed(Company $company, Product $product, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): void
+    {
+        /** @var \ArrayObject<string, true> $done */
+        $done = $context->once('replace-done', static fn (): \ArrayObject => new \ArrayObject());
+        $key = $product->getId()->toRfc4122();
+        if (isset($done[$key])) {
+            return;
+        }
+        $done[$key] = true;
+        $named = $context->once('replace-named', fn (): array => $this->namedByTheFile($company, $context->records));
+        $going = array_values(array_filter(
+            $product->getVendors(),
+            static fn (Vendor $held): bool => !isset($named[$key][$held->getId()->toRfc4122()]),
+        ));
+        if ([] === $going) {
+            return;
+        }
+        foreach ($this->manage->dropVendors($company, $product->getId(), array_map(static fn (Vendor $held): Uuid => $held->getId(), $going), $actorUserId) as $dropped) {
+            $notes->note('vendor_number', 'vendor_dropped', ['number' => $dropped['number'], 'codes' => \count($dropped['codes'])]);
+            $context->removed(self::DROPPED, $dropped['link'], [
+                'product' => $key,
+                'vendor' => $dropped['vendor']->toRfc4122(),
+                'number' => $dropped['number'],
+                'codes' => $dropped['codes'],
+            ]);
+        }
+        // The product was written past the unit of work this row read: the row reads it again.
+        $this->entityManager->refresh($product);
+    }
+
+    /**
+     * The vendors each product is named with in the file, as its rows will write them: a product merged away stands for
+     * the one kept, a vendor merged away for its survivor. A row naming nothing known is refused on its own.
+     *
+     * @param list<ImportRecord> $records
+     *
+     * @return array<string, array<string, true>> vendor ids by product id
+     */
+    private function namedByTheFile(Company $company, array $records): array
+    {
+        $named = [];
+        foreach ($records as $record) {
+            $reference = $record->value('product_reference');
+            $number = $record->value('vendor_number');
+            $product = null === $reference ? null : $this->products->ofReferenceInCompany($reference, $company->getId());
+            $vendor = null === $number ? null : $this->vendors->ofNumberInCompany($number, $company->getId());
+            if (null !== $product && null !== $vendor) {
+                $named[$product->standingFor()->getId()->toRfc4122()][$vendor->standingFor()->getId()->toRfc4122()] = true;
+            }
+        }
+
+        return $named;
     }
 
     /** @throws RowRejected */

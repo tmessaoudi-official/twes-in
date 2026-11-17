@@ -181,4 +181,51 @@ final readonly class DoctrineImportRunRepository implements ImportRunRepository
 
         return $created;
     }
+
+    public function saveRemoved(Uuid $companyId, Uuid $runId, array $removed): void
+    {
+        $connection = $this->entityManager->getConnection();
+        foreach ($removed as $table => $rows) {
+            if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $table)) {
+                throw new \InvalidArgumentException(\sprintf('"%s" is not a table name.', $table));
+            }
+            foreach ($rows as $row) {
+                $connection->executeStatement(
+                    'INSERT INTO import_run_removal (id, company_id, run_id, table_name, record_id, what) VALUES (:id, :company, :run, :table, :record, :what)',
+                    [
+                        'id' => Uuid::v7()->toRfc4122(),
+                        'company' => $companyId->toRfc4122(),
+                        'run' => $runId->toRfc4122(),
+                        'table' => $table,
+                        'record' => $row['id']->toRfc4122(),
+                        'what' => json_encode($row['what'], \JSON_THROW_ON_ERROR),
+                    ],
+                );
+            }
+        }
+    }
+
+    public function removedBy(Uuid $companyId, Uuid $runId): array
+    {
+        $removed = [];
+        foreach ($this->entityManager->getConnection()->fetchAllAssociative(
+            'SELECT table_name, record_id, what FROM import_run_removal WHERE company_id = :company AND run_id = :run ORDER BY id',
+            ['company' => $companyId->toRfc4122(), 'run' => $runId->toRfc4122()],
+        ) as $row) {
+            $what = \is_string($row['what']) ? json_decode($row['what'], true, flags: \JSON_THROW_ON_ERROR) : null;
+            if (!\is_string($row['table_name']) || !\is_string($row['record_id']) || !\is_array($what)) {
+                throw new \LogicException('A removed record names its table, its id and what puts it back.');
+            }
+            $named = [];
+            foreach ($what as $key => $value) {
+                if (!\is_string($key)) {
+                    throw new \LogicException('What puts a removed record back is named, part by part.');
+                }
+                $named[$key] = $value;
+            }
+            $removed[$row['table_name']][] = ['id' => Uuid::fromString($row['record_id']), 'what' => $named];
+        }
+
+        return $removed;
+    }
 }

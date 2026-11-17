@@ -21,6 +21,8 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -99,6 +101,97 @@ final class ProductVendorImportTest extends ApiTestCase
 
         $this->import($file, mode: 'upsert', dryRun: true);
         self::assertSame([[], [], [2, 3, 4]], [$this->json()['created'], $this->json()['updated'], $this->json()['unchanged']]);
+    }
+
+    /**
+     * « Remplacer » (import.product_vendors_mode): each product the file names is bought from the vendors the file names
+     * for it and no other; a vendor dropped takes its codes with it, and the row says which, preview and run alike.
+     * A product the file does not name keeps what it holds, and a vendor kept keeps its codes.
+     */
+    public function testAReplaceLeavesEachProductNamedBoughtOnlyFromItsVendors(): void
+    {
+        $this->held('P-1', 'F-001', 'SF-1');
+        $this->linked('P-1', 'F-003');
+        $this->linked('P-1', 'F-002');
+        $this->linked('P-2', 'F-001');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $file = self::HEADER."P-1,F-002,\n";
+
+        $this->import($file, mode: 'upsert', dryRun: true, choices: ['mode' => 'replace']);
+        self::assertResponseIsSuccessful();
+        $said = [[2, 'vendor_dropped', ['number' => 'F-001', 'codes' => 1]], [2, 'vendor_dropped', ['number' => 'F-003', 'codes' => 0]]];
+        self::assertSame($said, $this->dropped());
+        $this->em()->clear();
+        self::assertSame(['F-001', 'F-002', 'F-003'], $this->vendorsOf('P-1'), 'a preview writes nothing');
+
+        $this->import($file, mode: 'upsert', choices: ['mode' => 'replace']);
+        self::assertResponseIsSuccessful();
+        self::assertSame($said, $this->dropped());
+        $this->em()->clear();
+        self::assertSame([['F-002'], []], [$this->vendorsOf('P-1'), $this->codesOf('P-1')]);
+        self::assertSame(['F-001'], $this->vendorsOf('P-2'), 'a product the file does not name keeps its vendors');
+    }
+
+    /**
+     * A row naming a vendor merged away names the vendor kept: a whole list naming the old number keeps the survivor and
+     * the codes it holds, rather than dropping it and linking it again bare.
+     */
+    public function testAReplaceNamingAVendorMergedAwayKeepsTheVendorKept(): void
+    {
+        $this->held('P-1', 'F-002', 'SF-2');
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE vendor SET merged_into_id = (SELECT id FROM vendor WHERE number = 'F-002'), is_active = false WHERE number = 'F-003'");
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(self::HEADER."P-1,F-003,\n", mode: 'upsert', choices: ['mode' => 'replace']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->dropped());
+        $this->em()->clear();
+        self::assertSame([['F-002'], [['supplier', 'SF-2', 1, 'F-002']]], [$this->vendorsOf('P-1'), $this->codesOf('P-1')]);
+    }
+
+    /** A company whose files of who sells what are whole lists starts the switch on « Remplacer ». */
+    public function testTheCompanyMayStartTheModeOnReplace(): void
+    {
+        $this->linked('P-1', 'F-003');
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'import.product_vendors_mode', 'replace', self::heldNow()));
+        $this->em()->flush();
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->client->request('GET', $this->companyPath().'/imports/product-vendors');
+        self::assertSame(['replace'], array_column(array_filter($this->arrayAt($this->json(), 'switches'), static fn (mixed $switch): bool => \is_array($switch) && 'mode' === ($switch['key'] ?? null)), 'answer'));
+
+        $this->import(self::HEADER."P-1,F-001,\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        $this->em()->clear();
+        self::assertSame(['F-001'], $this->vendorsOf('P-1'));
+    }
+
+    /** A whole list restates the links it keeps: « create » refuses every known row, so a replace asks to update. */
+    public function testAReplaceInCreateModeIsRefusedSayingSo(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(self::HEADER."P-1,F-002,\n", choices: ['mode' => 'replace']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([[2, 'vendor_number', 'replace_needs_upsert']], array_map(static fn (mixed $row): array => \is_array($row) ? [$row['line'], $row['column'], $row['code']] : [], $this->arrayAt($this->json(), 'rejected')));
+    }
+
+    /** Dropping a vendor drops its codes, which are read with costs: replace is offered to whoever may read them. */
+    public function testReplaceIsOfferedOnlyToWhoeverReadsCosts(): void
+    {
+        $this->linked('P-1', 'F-003');
+        $this->signedIn(['product.read', 'product.write']);
+        $this->client->request('GET', $this->companyPath().'/imports/product-vendors');
+        self::assertSame([], array_filter($this->arrayAt($this->json(), 'switches'), static fn (mixed $switch): bool => \is_array($switch) && 'mode' === ($switch['key'] ?? null)));
+
+        $this->import("product_reference,vendor_number\nP-1,F-001\n", mode: 'upsert', choices: ['mode' => 'replace']);
+
+        self::assertResponseIsSuccessful();
+        $this->em()->clear();
+        self::assertSame(['F-001', 'F-003'], $this->vendorsOf('P-1'), 'an answer to a switch not offered is never read');
     }
 
     /** In "create" mode a product already bought from the vendor is said so, as every subject says it of a known row. */
@@ -197,6 +290,24 @@ final class ProductVendorImportTest extends ApiTestCase
         $this->em()->flush();
     }
 
+    private function linked(string $reference, string $number): void
+    {
+        $product = $this->em()->getRepository(Product::class)->findOneBy(['reference' => $reference]);
+        $vendor = $this->em()->getRepository(Vendor::class)->findOneBy(['number' => $number]);
+        self::assertInstanceOf(Product::class, $product);
+        self::assertInstanceOf(Vendor::class, $vendor);
+        $product->replaceVendors([...$product->getVendors(), $vendor], self::heldNow());
+        $this->em()->flush();
+    }
+
+    /** @return list<array{mixed, mixed, mixed}> the report's notes of a vendor dropped: line, code, params */
+    private function dropped(): array
+    {
+        $notes = array_values(array_filter($this->arrayAt($this->json(), 'notes'), static fn (mixed $note): bool => \is_array($note) && 'vendor_dropped' === ($note['code'] ?? null)));
+
+        return array_map(static fn (array $note): array => [$note['line'] ?? null, $note['code'], $note['params'] ?? null], $notes);
+    }
+
     /** @return list<string> */
     private function vendorsOf(string $reference): array
     {
@@ -220,9 +331,10 @@ final class ProductVendorImportTest extends ApiTestCase
         return $product;
     }
 
-    private function import(string $contents, string $mode = 'create', bool $dryRun = false): void
+    /** @param array<string, string> $choices */
+    private function import(string $contents, string $mode = 'create', bool $dryRun = false, array $choices = []): void
     {
-        $this->uploadFile($this->companyPath().'/imports/product-vendors', 'product-vendors.csv', $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0']);
+        $this->uploadFile($this->companyPath().'/imports/product-vendors', 'product-vendors.csv', $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', 'choices' => $choices]);
     }
 
     /** @param list<string> $permissions */
