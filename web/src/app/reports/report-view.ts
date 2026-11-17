@@ -64,7 +64,8 @@ export interface QueryValues {
  */
 export function queryOf(values: QueryValues, entry: ReportEntry, today: string): ReportQuery {
   const establishment = (entry.byEstablishment ? values.get('establishment') : null) || null;
-  if (!entry.periodic) return { from: null, to: null, compare: 'none', establishment };
+  if (!entry.periodic)
+    return { from: null, to: null, compare: 'none', establishment, ...optionsOf(values, entry) };
   const from = values.get('from') ?? '';
   const to = values.get('to') ?? '';
   const period =

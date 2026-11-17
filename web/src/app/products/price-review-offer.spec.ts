@@ -16,6 +16,14 @@ import { PriceReviewOffer } from './price-review-offer';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductRow } from './products-types';
 import type { SaidEffect } from '../shared/effects/effects';
+import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 
 const moved: ProductRow = {
   id: 'p1',
@@ -76,7 +84,7 @@ describe('PriceReviewOffer', () => {
           provide: AuthFacade,
           useValue: {
             hasPermission: (name: string) => permissions.has(name),
-            me: () => ({ company: { id: 'c1' } }),
+            me: () => ({ user: { id: 'u1' }, company: { id: 'c1' } }),
           },
         },
         {
@@ -86,6 +94,9 @@ describe('PriceReviewOffer', () => {
             amount: (value: string) => `${value} TND`,
           },
         },
+        { provide: Session, useExisting: AuthFacade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
     return TestBed.inject(PriceReviewOffer);
@@ -109,6 +120,15 @@ describe('PriceReviewOffer', () => {
     expect(api.product).toHaveBeenCalledTimes(2);
     expect(successToasts()).toEqual(['products.price_review.moved']);
     expect(said()[0]?.params).toEqual({ name: 'Perceuse', before: '20,0', after: '12,0' });
+  });
+
+  it('says the moved margin as a share of the cost to a person who reads a markup', async () => {
+    const offered = offer();
+    TestBed.inject(SettingsFacade).set(PRESENTATION.marginBasis, 'markup');
+    await offered.said([marginMoved('p1')]);
+
+    expect(successToasts()).toEqual(['products.price_review.moved_markup']);
+    expect(said()[0]?.params).toEqual({ name: 'Perceuse', before: '25,0', after: '13,6' });
   });
 
   it('offers to adjust, which settles the review on the version read and says the new price', async () => {

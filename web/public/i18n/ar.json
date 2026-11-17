@@ -2101,6 +2101,7 @@
       "keep": "الإبقاء على السعر",
       "adjust_short": "تعديل السعر",
       "moved": "انتقل هامش {{name}} من {{before}}% إلى {{after}}%.",
+      "moved_markup": "انتقلت نسبة زيادة {{name}} من {{before}}% إلى {{after}}%.",
       "adjusted": "تم تعديل سعر {{name}} إلى {{price}}.",
       "kept": "تم الإبقاء على سعر {{name}} عند {{price}}.",
       "followed": "انتقل سعر {{name}} من {{before}} إلى {{after}} مع كلفته.",

@@ -99,12 +99,14 @@ final readonly class SalesByFamilyReport implements DeclaresReport
     public function rows(ReportContext $context, ReportPeriod $period): array
     {
         [$sql, $params] = IssuedLines::of($context, $period);
+        $before = SalesReportOptions::showsNetBeforeDiscount($context);
+        // The net before the discount is read only when it is asked.
         $rows = $this->connection->fetchAllAssociative(
             self::PATHS.'
             SELECT g.category_id, path.name, g.before, g.net, g.costed_net, g.cost
               FROM (
                    SELECT p.category_id,
-                          SUM(s.line_net) AS before,
+                          '.($before ? 'ROUND(SUM(s.line_net), :scale)' : 'NULL').' AS before,
                           ROUND(SUM(s.net), :scale) AS net,
                           ROUND(SUM(s.net) FILTER (WHERE s.unit_cost IS NOT NULL), :scale) AS costed_net,
                           ROUND(SUM(s.cost), :scale) AS cost
@@ -118,7 +120,6 @@ final readonly class SalesByFamilyReport implements DeclaresReport
             ['scale' => ParameterType::INTEGER],
         );
         $costing = ($context->may)(ProductPermission::COST_READ);
-        $before = SalesReportOptions::showsNetBeforeDiscount($context);
 
         return array_map(static function (array $row) use ($costing, $before): ReportRow {
             $named = null !== $row['category_id'];

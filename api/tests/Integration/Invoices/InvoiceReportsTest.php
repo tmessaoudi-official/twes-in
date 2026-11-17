@@ -357,6 +357,23 @@ final class InvoiceReportsTest extends KernelTestCase
         self::assertSame($this->summary()->invoicedMonth, $this->report(SalesByCustomerReport::class, '2026-09-01', '2026-09-21', options: $shown)->totals['net']);
     }
 
+    /** In a currency of two decimals the net before the discount reads at the net's own scale, row and total alike. */
+    public function testTheNetBeforeTheDiscountReadsAtTheNetsScaleInATwoDecimalCurrency(): void
+    {
+        $piece = $this->unit('C62');
+        $drill = $this->product('PER-08', 'Perceuse', $piece);
+        $this->sold('FAC-1', '2026-09-10', [[$drill, '1']], ['500.000'], '450.000');
+        $this->em()->clear();
+        static::getContainer()->get(Connection::class)->executeStatement("UPDATE company SET currency = 'EUR' WHERE id = :id", ['id' => $this->company->getId()->toRfc4122()]);
+        (new \ReflectionProperty(Company::class, 'currency'))->setValue($this->company, 'EUR');
+
+        foreach ([SalesByProductReport::class, SalesByFamilyReport::class] as $report) {
+            $result = $this->report($report, '2026-09-01', '2026-09-21', may: false, options: ['netBeforeDiscount' => 'shown']);
+            self::assertSame([['500.00', '450.00']], array_map(static fn (array $line): array => [$line['row']->cells['net_before_discount'], $line['row']->cells['net']], $result->rows), $report);
+            self::assertSame(['500.00', '450.00'], [$result->totals['net_before_discount'], $result->totals['net']], $report);
+        }
+    }
+
     public function testAProductMergedAwayCountsUnderTheProductKeptOrOnItsOwnSayingWhereItWent(): void
     {
         $piece = $this->unit('C62');

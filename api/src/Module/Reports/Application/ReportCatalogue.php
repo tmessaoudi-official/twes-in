@@ -88,14 +88,25 @@ final readonly class ReportCatalogue
      */
     public function optionNames(): array
     {
-        $names = [];
+        return array_keys($this->options());
+    }
+
+    /**
+     * Every option some report offers with every choice one of them gives it, in the order first declared: what the
+     * contract declares an address may name.
+     *
+     * @return array<string, list<string>>
+     */
+    public function options(): array
+    {
+        $options = [];
         foreach ($this->declarations as $declaration) {
             foreach ($declaration->options() as $option) {
-                $names[$option->name] = true;
+                $options[$option->name] = array_values(array_unique([...$options[$option->name] ?? [], ...$option->choices]));
             }
         }
 
-        return array_keys($names);
+        return $options;
     }
 
     /** @param \Closure(string): bool $may */

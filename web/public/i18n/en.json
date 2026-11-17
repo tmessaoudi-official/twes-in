@@ -2101,6 +2101,7 @@
       "keep": "Keep the price",
       "adjust_short": "Adjust the price",
       "moved": "The margin of {{name}} went from {{before}}% to {{after}}%.",
+      "moved_markup": "The markup of {{name}} went from {{before}}% to {{after}}%.",
       "adjusted": "Price of {{name}} set to {{price}}.",
       "kept": "Price of {{name}} kept at {{price}}.",
       "followed": "The price of {{name}} went from {{before}} to {{after}} with its cost.",

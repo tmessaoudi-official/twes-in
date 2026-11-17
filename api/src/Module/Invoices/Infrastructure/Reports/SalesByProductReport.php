@@ -102,28 +102,29 @@ final readonly class SalesByProductReport implements DeclaresReport
     public function rows(ReportContext $context, ReportPeriod $period): array
     {
         [$sql, $params] = IssuedLines::of($context, $period);
+        $apart = SalesReportOptions::mergedApart($context);
+        $before = SalesReportOptions::showsNetBeforeDiscount($context);
         // The lines naming no product group together whatever their unit: NULL groups with NULL, and their unit is dropped.
+        // What an option does not ask is not read: the net before the discount, and the product a merged one went into.
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT g.product_id, g.unit_id, p.name, p.reference, CASE WHEN '.KeptRecords::mergedAway('p').' THEN kept.name END AS merged_into, u.code AS unit, g.quantity, g.before, g.net, g.costed_net, g.cost
+            'SELECT g.product_id, g.unit_id, p.name, p.reference, '.($apart ? 'CASE WHEN '.KeptRecords::mergedAway('p').' THEN kept.name END' : 'NULL').' AS merged_into, u.code AS unit, g.quantity, g.before, g.net, g.costed_net, g.cost
                FROM (
                     SELECT s.product_id, CASE WHEN s.product_id IS NULL THEN NULL ELSE s.unit_id END AS unit_id,
                            SUM(s.quantity) AS quantity,
-                           SUM(s.line_net) AS before,
+                           '.($before ? 'ROUND(SUM(s.line_net), :scale)' : 'NULL').' AS before,
                            ROUND(SUM(s.net), :scale) AS net,
                            ROUND(SUM(s.net) FILTER (WHERE s.unit_cost IS NOT NULL), :scale) AS costed_net,
                            ROUND(SUM(s.cost), :scale) AS cost
                       FROM ('.$sql.') s
                      GROUP BY 1, 2
                ) g
-               '.KeptRecords::join('product', 'g.product_id', 'kept', 'p').'
+               '.($apart ? KeptRecords::join('product', 'g.product_id', 'kept', 'p') : 'LEFT JOIN product p ON p.id = g.product_id').'
                LEFT JOIN unit u ON u.id = g.unit_id
               ORDER BY g.product_id IS NULL, g.net DESC, p.name, g.product_id, g.unit_id',
             $params + ['scale' => $this->scales->of($context->company->getCurrency())],
             ['scale' => ParameterType::INTEGER],
         );
         $costing = ($context->may)(ProductPermission::COST_READ);
-        $apart = SalesReportOptions::mergedApart($context);
-        $before = SalesReportOptions::showsNetBeforeDiscount($context);
 
         return array_map(static function (array $row) use ($costing, $apart, $before): ReportRow {
             $named = null !== $row['product_id'];

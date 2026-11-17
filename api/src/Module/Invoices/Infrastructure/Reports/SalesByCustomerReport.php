@@ -86,18 +86,18 @@ final readonly class SalesByCustomerReport implements DeclaresReport
     public function rows(ReportContext $context, ReportPeriod $period): array
     {
         [$where, $params] = $this->issued($context, $period);
+        $before = SalesReportOptions::showsNetBeforeDiscount($context);
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT c.id AS customer_id, c.name, SUM(lines.net) AS before, SUM(i.total_net) AS net, SUM(i.total_gross) AS gross, COUNT(*) AS documents
+            'SELECT c.id AS customer_id, c.name, '.($before ? 'SUM(lines.net)' : 'NULL').' AS before, SUM(i.total_net) AS net, SUM(i.total_gross) AS gross, COUNT(*) AS documents
                FROM invoice i '.KeptRecords::join('customer', 'i.customer_id', 'c', 'cn', required: true).'
-               -- What each document\'s lines come to before its own discount.
-               CROSS JOIN LATERAL (SELECT COALESCE(SUM(l.line_net), 0) AS net FROM invoice_line l WHERE l.invoice_id = i.id) lines
+               '.($before ? '-- What each document\'s lines come to before its own discount, read only when it is asked.
+               CROSS JOIN LATERAL (SELECT COALESCE(SUM(l.line_net), 0) AS net FROM invoice_line l WHERE l.invoice_id = i.id) lines' : '').'
               WHERE '.$where.'
               GROUP BY c.id, c.name
               ORDER BY SUM(i.total_net) DESC, c.name, c.id',
             $params,
         );
         $narrowed = null !== $context->establishmentId;
-        $before = SalesReportOptions::showsNetBeforeDiscount($context);
         $from = $period->from->format('Y-m-d');
         $to = $period->to->format('Y-m-d');
 

@@ -141,3 +141,50 @@ test('a recorded expense is counted by category, opens its list, and the report 
     await retire(page, category);
   }
 });
+
+test('a sales report takes its options from the screen into the address, its columns and its file', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/reports/sales-by-product');
+  await expect(page.getByTestId('report-title')).toBeVisible();
+  const headings = page.getByTestId('report-table').locator('thead th');
+  await expect(headings.first()).toBeVisible();
+  // Today's reading by default: neither column, and nothing in the address.
+  await expect(page.locator('thead th[data-column="net_before_discount"]')).toHaveCount(0);
+  await expect(page.locator('thead th[data-column="merged_into"]')).toHaveCount(0);
+
+  await page.getByTestId('report-option-netBeforeDiscount').click();
+  await page.getByTestId('report-option-netBeforeDiscount-shown').click();
+  await page.getByTestId('report-option-mergedProducts').click();
+  await page.getByTestId('report-option-mergedProducts-apart').click();
+  await expect
+    .poll(() => {
+      const address = new URL(page.url()).searchParams;
+      return [address.get('netBeforeDiscount'), address.get('mergedProducts')];
+    })
+    .toEqual(['shown', 'apart']);
+  await expect(page.locator('thead th[data-column="net_before_discount"]')).toHaveText(
+    'HT avant remise',
+  );
+  await expect(page.locator('thead th[data-column="merged_into"]')).toHaveText('Fusionné dans');
+  expect(await wcagViolations(page)).toEqual([]);
+
+  // The file reads what the screen shows.
+  const asked = page.waitForRequest((request) => request.url().includes('/export.csv'));
+  await page.getByTestId('report-export').click();
+  await page.getByTestId('report-export-csv').click();
+  const stepUp = page.getByTestId('step-up-password');
+  const exported = await Promise.race([
+    asked.then((request) => request),
+    stepUp.waitFor({ state: 'visible' }).then(
+      () => null,
+      () => null,
+    ),
+  ]);
+  if (exported === null) await answerStepUp(page, OPERATOR_PASSWORD);
+  const request = exported ?? (await asked);
+  const file = new URL(request.url()).searchParams;
+  expect([file.get('netBeforeDiscount'), file.get('mergedProducts')]).toEqual(['shown', 'apart']);
+});

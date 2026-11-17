@@ -4,6 +4,8 @@ import { inject, Injectable } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductRow } from './products-types';
 import type { SaidEffect } from '../shared/effects/effects';
@@ -24,6 +26,7 @@ export class PriceReviewOffer {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
+  private readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
 
   /**
    * Says what the receipt did in one toast, since a second replaces the first before it is read: the product itself
@@ -136,16 +139,23 @@ export class PriceReviewOffer {
   private say(companyId: string, product: ProductRow): void {
     const review = product.priceReview;
     if (review === null) return;
+    // As the person reads a margin: a share of the cost where both costs had one, else of the price.
+    const [before, after] =
+      this.marginBasis() === 'markup' && review.previousMarkup !== null && review.markup !== null
+        ? [review.previousMarkup, review.markup]
+        : [null, null];
+    const markup = before !== null && after !== null;
+    const key = markup ? 'products.price_review.moved_markup' : 'products.price_review.moved';
     const params = {
       name: product.name,
-      before: this.format.decimal(review.previousMargin),
-      after: this.format.decimal(review.margin),
+      before: this.format.decimal(before ?? review.previousMargin),
+      after: this.format.decimal(after ?? review.margin),
     };
     if (!this.auth.hasPermission('product.write') || product.mergedInto !== null) {
-      this.feedback.success('products.price_review.moved', params);
+      this.feedback.success(key, params);
       return;
     }
-    this.feedback.success('products.price_review.moved', params, {
+    this.feedback.success(key, params, {
       key: 'products.price_review.adjust_short',
       run: () => void this.settle(companyId, product, 'adjust'),
     });

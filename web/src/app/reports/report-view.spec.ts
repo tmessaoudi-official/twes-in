@@ -160,6 +160,10 @@ describe('report view', () => {
     ).toBeUndefined();
     // An option another report offers is not read for this one, which would refuse it.
     expect(queryOf(asked, PERIODIC, '2026-10-18').options).toBeUndefined();
+    // A report of today reads the options it offers as a report over a period does.
+    expect(queryOf(asked, { ...TODAY, options: SALES.options }, '2026-10-18').options).toEqual({
+      netBeforeDiscount: 'shown',
+    });
 
     const query = {
       from: '2026-09-01',
