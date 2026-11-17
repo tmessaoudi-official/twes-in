@@ -17,8 +17,12 @@ use App\Identity\Infrastructure\Mail\SecurityNoticeToMail;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Identity\Infrastructure\Security\CsrfRequestListener;
+use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\Effects\EffectsAnswer;
 use App\Shared\Infrastructure\Submissions\Submissions;
@@ -709,6 +713,21 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /** Proves who is at the screen again, as the step-up dialog does before an export (docs/SPEC.md § 7, audit H-b2). */
+    /** A customer switched off since, as its screen's « Désactiver » leaves it, everything else kept. */
+    protected function customerSwitchedOff(string $customerId): void
+    {
+        $customer = $this->em()->find(Customer::class, Uuid::fromString($customerId)) ?? throw new \LogicException('no customer '.$customerId);
+        $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), $customer->getTaxRegime(), array_map(Uuid::fromString(...), $customer->getDefaultTaxComponentIds()), false, self::heldNow());
+        $this->em()->flush();
+    }
+
+    /** What the company chose for one of its settings, written through the settings use case. */
+    protected function companyChooses(Company $company, string $key, mixed $value): void
+    {
+        $company = $this->em()->find(Company::class, $company->getId()) ?? throw new \LogicException('no company');
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company), $key, SettingLevel::Company, $value, null);
+    }
+
     protected function stepUp(string $password): void
     {
         // An enrolled account gives its code beside the password wherever a second factor is required of it, as an

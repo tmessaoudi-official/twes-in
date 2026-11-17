@@ -94,6 +94,26 @@ final class ApiTranslationParityTest extends TestCase
         self::assertSame([], $straight);
     }
 
+    /**
+     * Arabic names a customer « حريف » and a supplier « مزوّد », as Tunisian forms do (docs/i18n/ar-glossary.md), never the
+     * Eastern « عميل » or « مورّد »; « الخصم من المورد » is the withholding at source, where « المورد » is the source.
+     */
+    public function testArabicNamesTheCustomerAndTheSupplierAsTunisianFormsDo(): void
+    {
+        $eastern = [];
+        foreach (glob(self::DIRECTORY.'/*.ar.yaml') ?: [] as $path) {
+            $node = Yaml::parseFile($path);
+            self::assertIsArray($node, $path);
+            array_walk_recursive($node, static function (mixed $text) use (&$eastern): void {
+                if (\is_string($text) && 1 === preg_match('/عميل|عملاء|مورّ?د/u', str_replace('من المورد', '', $text))) {
+                    $eastern[] = $text;
+                }
+            });
+        }
+
+        self::assertSame([], $eastern);
+    }
+
     /** @return list<string> */
     private static function keys(string $file): array
     {

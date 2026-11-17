@@ -17,6 +17,7 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
+use App\Module\Customers\Application\PartyAtIssueSettings;
 use App\Module\Quotes\Application\Delivery\QuoteDeliveryNotes;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Domain\Exception\QuoteNotDraft;
@@ -25,6 +26,7 @@ use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\Transactions;
@@ -89,7 +91,8 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             $quote = $this->locked($company, $id);
             $quote->assertDraft('is sent', sending: true);
             // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
-            if ($quote->getCustomer()->isMergedAway()) {
+            // Or deactivated since, where the company refuses it a new document.
+            if ($quote->getCustomer()->isMergedAway() || (!$quote->getCustomer()->isActive() && PartyAtIssueSettings::REFUSED === $this->settings->text(new SettingContext($company), PartyAtIssueSettings::INACTIVE_PARTY))) {
                 throw new InvalidQuote('customerId', $quote->getCustomer()->whySwitchedOff(), ...$quote->getCustomer()->switchedOffReason());
             }
             $this->totals->checked($quote);

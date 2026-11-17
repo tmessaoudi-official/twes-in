@@ -124,22 +124,25 @@ describe('companySettingsForm', () => {
     ]);
   });
 
-  it('gives a setting standing apart from its neighbours a whole row and its hint', () => {
-    const vendors = row({
-      key: 'vendors.merged_names_on_screens',
+  it.each([
+    ['vendors.merged_names_on_screens', ['kept', 'recorded']],
+    ['document.inactive_party_at_issue', ['allowed', 'refused']],
+  ])('gives %s, standing apart from its neighbours, a whole row and its hint', (key, choices) => {
+    const apart = row({
+      key,
       chain: 'parties',
       type: 'enum',
-      defaultValue: 'kept',
-      value: 'kept',
-      choices: ['kept', 'recorded'],
+      defaultValue: choices[0],
+      value: choices[0],
+      choices,
     });
-    const fields = companySettingsForm([terms, vendors]).sections.flatMap(
+    const fields = companySettingsForm([terms, apart]).sections.flatMap(
       (section) => section.fields,
     );
 
-    expect(fields.find((field) => field.id === 'vendors__merged_names_on_screens')).toMatchObject({
+    expect(fields.find((field) => field.id === key.replace('.', '__'))).toMatchObject({
       span: 2,
-      hint: 'settings.vendors.merged_names_on_screens_hint',
+      hint: `settings.${key}_hint`,
     });
   });
 

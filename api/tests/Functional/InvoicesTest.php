@@ -2468,6 +2468,32 @@ final class InvoicesTest extends ApiTestCase
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company, customerId: $customer->getId()), InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, $rule, null);
     }
 
+    public function testACompanyMayRefuseToIssueForACustomerDeactivatedSinceTheDraftWhileACreditNoteStillIs(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $issued = $this->issuedInvoice();
+        $this->postJson($this->path($issued).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $credit = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $this->customerSwitchedOff($this->customerId);
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'refused');
+
+        $this->postJson($this->path($draft).'/issue', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['customer_deactivated', ['number' => 'CLI-0001']], $this->refusalOf('customerId'), 'the screen says which customer and why');
+        self::assertSame('draft', $this->em()->getConnection()->fetchOne('SELECT status FROM invoice WHERE id = ?', [$draft]), 'refused before the series');
+        // A credit note corrects what was issued to the customer: it is issued whatever the company chose.
+        $this->postJson($this->path($credit).'/issue', null);
+        self::assertResponseIsSuccessful();
+
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'allowed');
+        $this->postJson($this->path($draft).'/issue', null);
+        self::assertResponseIsSuccessful();
+    }
+
     private function issuedInvoice(): string
     {
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));

@@ -109,7 +109,9 @@ the end of § Lessons here.
   `Inventory/Application/Merge/CarryMergedStock` carries to the product kept as `merge` movements and back on an undo,
   after which the stock store refuses any movement of the product merged away; a screen naming a vendor merged away
   names the one kept, or the one recorded under `vendors.merged_names_on_screens`, `Vendors/Application/VendorNameSettings`,
-  whose key and choices the modules read as constants, while the books keep the vendor recorded),
+  whose key and choices the modules read as constants, while the books keep the vendor recorded; a document's number
+  for a party deactivated since its draft follows `document.inactive_party_at_issue`, `Customers/Application/PartyAtIssueSettings`,
+  read by the four documents' workflows, never by a credit note),
   `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
   `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
   `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`

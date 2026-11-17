@@ -742,6 +742,24 @@ final class QuotesTest extends ApiTestCase
         return $this->json();
     }
 
+    public function testACompanyMayRefuseToSendAQuoteToACustomerDeactivatedSinceItsDraft(): void
+    {
+        $this->signedIn(self::WRITER);
+        $draft = $this->draft();
+        $this->customerSwitchedOff($this->customer->getId()->toRfc4122());
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'refused');
+
+        $this->postJson($this->path($draft).'/send', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['customer_deactivated', ['number' => 'CLI-0001']], $this->refusalOf('customerId'));
+        self::assertSame('draft', $this->em()->getConnection()->fetchOne('SELECT status FROM quote WHERE id = ?', [$draft]), 'refused before the series');
+
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'allowed');
+        $this->postJson($this->path($draft).'/send', null);
+        self::assertResponseIsSuccessful();
+    }
+
     /** @param array<string, mixed> $changes */
     private function draft(array $changes = []): string
     {

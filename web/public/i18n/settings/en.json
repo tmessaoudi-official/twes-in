@@ -42,7 +42,9 @@
       "watermark_intensity": "Watermark strength",
       "watermark_copies": "Watermark copies",
       "watermark_spread": "Watermark layout",
-      "watermark_spread_hint": "No effect while it prints once."
+      "watermark_spread_hint": "No effect while it prints once.",
+      "inactive_party_at_issue": "Customer or vendor deactivated since the draft",
+      "inactive_party_at_issue_hint": "A credit note is always issued; a merged customer or vendor is always refused."
     },
     "credit": {
       "limit": "Customer credit limit",
@@ -158,6 +160,10 @@
         "watermark_spread": {
           "grouped": "Grouped on the diagonal",
           "spread": "Spread over the whole page"
+        },
+        "inactive_party_at_issue": {
+          "allowed": "Issue anyway",
+          "refused": "Refuse to issue"
         }
       },
       "presentation": {

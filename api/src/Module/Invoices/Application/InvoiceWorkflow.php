@@ -20,6 +20,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\Unit;
+use App\Module\Customers\Application\PartyAtIssueSettings;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Module\Invoices\Application\Credit\CreditExcessTo;
 use App\Module\Invoices\Application\Credit\TellCreditWatchers;
@@ -136,6 +137,10 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             // the duplicate the merge retired. A credit note names the customer of the invoice it corrects, which a merge
             // leaves on the customer it printed, so it is issued there; its settings are read for the customer kept.
             if ($customer->isMergedAway() && InvoiceType::CreditNote !== $type) {
+                throw new InvalidInvoice('customerId', $customer->whySwitchedOff(), ...$customer->switchedOffReason());
+            }
+            // A customer deactivated since the draft was written, where the company refuses it a new document.
+            if (!$customer->isActive() && InvoiceType::CreditNote !== $type && $this->refusesInactiveParty($company)) {
                 throw new InvalidInvoice('customerId', $customer->whySwitchedOff(), ...$customer->switchedOffReason());
             }
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
@@ -356,5 +361,10 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             self::CREDITED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
             self::ISSUED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
         ];
+    }
+
+    private function refusesInactiveParty(Company $company): bool
+    {
+        return PartyAtIssueSettings::REFUSED === $this->settings->text(new SettingContext($company), PartyAtIssueSettings::INACTIVE_PARTY);
     }
 }

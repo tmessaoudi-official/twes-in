@@ -42,7 +42,9 @@
       "watermark_intensity": "Intensité du filigrane",
       "watermark_copies": "Densité du filigrane",
       "watermark_spread": "Répartition du filigrane",
-      "watermark_spread_hint": "Sans effet quand il est imprimé une seule fois."
+      "watermark_spread_hint": "Sans effet quand il est imprimé une seule fois.",
+      "inactive_party_at_issue": "Client ou fournisseur désactivé depuis le brouillon",
+      "inactive_party_at_issue_hint": "Un avoir est toujours émis ; un client ou un fournisseur fusionné est toujours refusé."
     },
     "credit": {
       "limit": "Plafond de crédit du client",
@@ -158,6 +160,10 @@
         "watermark_spread": {
           "grouped": "Groupé sur la diagonale",
           "spread": "Réparti sur toute la page"
+        },
+        "inactive_party_at_issue": {
+          "allowed": "Émettre quand même",
+          "refused": "Refuser l’émission"
         }
       },
       "presentation": {

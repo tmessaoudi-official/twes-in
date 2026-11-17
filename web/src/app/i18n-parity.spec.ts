@@ -409,6 +409,14 @@ describe('translation files', () => {
       expect(quoteVoided.ar).toBe('دون متابعة');
     });
 
+    it('names a customer « حريف » and a supplier « مزوّد », never the Eastern « عميل » or « مورّد »', () => {
+      // « الخصم من المورد » is the withholding at source, where « المورد » is the source, not a supplier.
+      const eastern = arabic.filter(([, text]) =>
+        /عميل|عملاء|مورّ?د/.test(text.replaceAll('من المورد', '')),
+      );
+      expect(eastern.map(([key]) => key)).toEqual([]);
+    });
+
     it('calls VAT collected, never due for declaring', () => {
       expect(homeVat[2]).toContain('{{month}}');
       expect(homeVat[2]).toContain('المُحصَّل');

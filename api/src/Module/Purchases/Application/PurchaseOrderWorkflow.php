@@ -16,6 +16,7 @@ use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Model\Unit;
+use App\Module\Customers\Application\PartyAtIssueSettings;
 use App\Module\Purchases\Application\Receivers\ChooseReceiptReceiver;
 use App\Module\Purchases\Application\Receivers\GoodsReceiptNotFound;
 use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
@@ -27,6 +28,7 @@ use App\Module\Purchases\Domain\Model\PurchaseOrderLine;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Receiver;
@@ -92,6 +94,10 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             // A draft put back from the bin after a merge still names the vendor merged away, which the merge never moved.
             if (null !== $vendor->keptNumber) {
                 throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s was merged into %s: an order sent names the vendor kept.', $vendor->number, $vendor->keptNumber), 'vendor_merged_draft', ['number' => $vendor->number, 'kept' => $vendor->keptNumber]);
+            }
+            // A vendor deactivated since the draft was written, where the company refuses it a new document.
+            if (!$vendor->active && PartyAtIssueSettings::REFUSED === $this->settings->text(new SettingContext($company), PartyAtIssueSettings::INACTIVE_PARTY)) {
+                throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s is retired.', $vendor->number), 'vendor_deactivated', ['number' => $vendor->number]);
             }
             $allocated = $this->numbers->allocate($company, $order->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->orders->numberTaken($company->getId(), $allocated->number)) {

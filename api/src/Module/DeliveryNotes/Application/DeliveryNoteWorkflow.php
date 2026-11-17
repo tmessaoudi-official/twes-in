@@ -17,6 +17,7 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
+use App\Module\Customers\Application\PartyAtIssueSettings;
 use App\Module\DeliveryNotes\Application\Invoices\InvoiceLines;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteLines;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
@@ -27,6 +28,7 @@ use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLineTax;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
@@ -198,7 +200,8 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
     {
         $note->assertDraft('is validated', validating: true);
         // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
-        if ($note->getCustomer()->isMergedAway()) {
+        // Or deactivated since, where the company refuses it a new document.
+        if ($note->getCustomer()->isMergedAway() || (!$note->getCustomer()->isActive() && PartyAtIssueSettings::REFUSED === $this->settings->text(new SettingContext($company), PartyAtIssueSettings::INACTIVE_PARTY))) {
             throw new InvalidDeliveryNote('customerId', $note->getCustomer()->whySwitchedOff(), ...$note->getCustomer()->switchedOffReason());
         }
         $this->chargedByItsRegimes($company, $note);

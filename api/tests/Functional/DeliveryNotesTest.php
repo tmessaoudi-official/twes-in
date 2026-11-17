@@ -893,6 +893,28 @@ final class DeliveryNotesTest extends ApiTestCase
     }
 
     /** A draft delivering one unit of the product; its id. */
+    public function testACompanyMayRefuseToValidateANoteForACustomerDeactivatedSinceItsDraft(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $draft = $this->draftWithALine();
+        $before = $this->draftWithALine();
+        $this->customerSwitchedOff($this->customerId);
+        // By default a draft keeps the customer it was written for, as it did before the company could choose.
+        $this->postJson($this->path($before).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'refused');
+
+        $this->postJson($this->path($draft).'/validate', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['customer_deactivated', ['number' => 'CLI-0001']], $this->refusalOf('customerId'));
+        self::assertSame('draft', $this->em()->getConnection()->fetchOne('SELECT status FROM delivery_note WHERE id = ?', [$draft]), 'refused before the series');
+
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'allowed');
+        $this->postJson($this->path($draft).'/validate', null);
+        self::assertResponseIsSuccessful();
+    }
+
     private function draftWithALine(): string
     {
         $this->postJson($this->path(), $this->note(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));

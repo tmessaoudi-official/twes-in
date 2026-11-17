@@ -42,7 +42,9 @@
       "watermark_intensity": "شدة العلامة المائية",
       "watermark_copies": "كثافة العلامة المائية",
       "watermark_spread": "توزيع العلامة المائية",
-      "watermark_spread_hint": "لا أثر له حين تُطبع مرة واحدة."
+      "watermark_spread_hint": "لا أثر له حين تُطبع مرة واحدة.",
+      "inactive_party_at_issue": "حريف أو مزوّد عُطِّل منذ المسودة",
+      "inactive_party_at_issue_hint": "تُصدَر الفاتورة التعديلية دائمًا، ويُرفض الحريف أو المزوّد المدمج دائمًا."
     },
     "credit": {
       "limit": "سقف ائتمان الحريف",
@@ -158,6 +160,10 @@
         "watermark_spread": {
           "grouped": "مجمّعة على القطر",
           "spread": "موزّعة على كامل الصفحة"
+        },
+        "inactive_party_at_issue": {
+          "allowed": "الإصدار رغم ذلك",
+          "refused": "رفض الإصدار"
         }
       },
       "presentation": {
@@ -302,8 +308,8 @@
       },
       "vendors": {
         "merged_names_on_screens": {
-          "kept": "المورد المحتفظ به",
-          "recorded": "المورد المسجَّل"
+          "kept": "المزوّد المحتفظ به",
+          "recorded": "المزوّد المسجَّل"
         }
       }
     },
@@ -403,8 +409,8 @@
       "product_vendors_mode": "استيراد مزوّدي المنتجات"
     },
     "vendors": {
-      "merged_names_on_screens": "المورد المدمج كما تسمّيه الشاشات",
-      "merged_names_on_screens_hint": "تحتفظ الدفاتر والتصاريح دائمًا بالمورد المسجَّل، وتقترح القوائم المورد المحتفظ به."
+      "merged_names_on_screens": "المزوّد المدمج كما تسمّيه الشاشات",
+      "merged_names_on_screens_hint": "تحتفظ الدفاتر والتصاريح دائمًا بالمزوّد المسجَّل، وتقترح القوائم المزوّد المحتفظ به."
     }
   }
 }

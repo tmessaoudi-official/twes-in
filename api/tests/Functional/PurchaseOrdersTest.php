@@ -186,6 +186,30 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertSame(['order_sent_already', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
+    public function testACompanyMayRefuseToSendAnOrderToAVendorDeactivatedSinceItsDraft(): void
+    {
+        $this->signedIn('writer', self::WRITER);
+        $draft = $this->draft();
+        $before = $this->draft();
+        $vendor = $this->em()->find(Vendor::class, Uuid::fromString($this->vendor)) ?? throw new \LogicException('no vendor');
+        $vendor->revise($vendor->getNumber(), $vendor->getProfile(), false, self::heldNow());
+        $this->em()->flush();
+        // By default a draft keeps the vendor it was written for, as it did before the company could choose.
+        $this->postJson($this->path($before).'/send', null);
+        self::assertResponseIsSuccessful();
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'refused');
+
+        $this->postJson($this->path($draft).'/send', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['vendor_deactivated', ['number' => 'FRN-0001']], $this->refusalOf('vendorId'), 'the screen says which vendor and why');
+        self::assertSame('draft', $this->em()->getConnection()->fetchOne('SELECT status FROM purchase_order WHERE id = ?', [$draft]), 'refused before the series');
+
+        $this->companyChooses($this->company, 'document.inactive_party_at_issue', 'allowed');
+        $this->postJson($this->path($draft).'/send', null);
+        self::assertResponseIsSuccessful();
+    }
+
     public function testGoodsReceivedInPartsGoOnTheShelvesNamingTheirReceiptAndFinishTheOrder(): void
     {
         $this->signedIn('buyer', self::BUYER);

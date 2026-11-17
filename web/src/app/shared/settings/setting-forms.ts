@@ -181,16 +181,18 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'invoice.receiver': 'settings.invoice.receiver_hint',
   'purchase_receipt.receiver': 'settings.purchase_receipt.receiver_hint',
   'vendors.merged_names_on_screens': 'settings.vendors.merged_names_on_screens_hint',
+  'document.inactive_party_at_issue': 'settings.document.inactive_party_at_issue_hint',
 };
 
 /**
  * Settings that take a whole row of the two-column grid: one declared alone among pairs, which would otherwise move
  * every field after it into the other column. The watermark's spread follows its strength and copies, a pair, and
- * leaves the logo's width and height side by side; how screens name a merged vendor is declared last and closes its
- * section on a row of its own.
+ * leaves the logo's width and height side by side; whether a customer deactivated since its draft is still issued, and
+ * how screens name a merged vendor, are declared last and close their section on a row each.
  */
 const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'document.watermark_spread',
+  'document.inactive_party_at_issue',
   'vendors.merged_names_on_screens',
 ]);
 
