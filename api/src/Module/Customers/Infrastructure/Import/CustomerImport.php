@@ -399,8 +399,8 @@ final readonly class CustomerImport implements DeclaresImport
                 continue;
             }
             $values[$field->getKey()] = $faults->read(static fn (): string|int|float|bool => match ($field->getType()) {
-                CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
-                CustomFieldType::Date => ImportCells::day($cell),
+                CustomFieldType::Number => ImportCells::number($record, $column) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
+                CustomFieldType::Date => ImportCells::day($cell, $record->notation->days),
                 CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
             }, $cell);
@@ -542,15 +542,5 @@ final readonly class CustomerImport implements DeclaresImport
             \in_array($cell, self::NO, true) => false,
             default => throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
         };
-    }
-
-    private static function number(string $cell): int|float|null
-    {
-        $normalised = str_replace([',', ' ', "\u{00A0}", "\u{202F}"], ['.', '', '', ''], $cell);
-        if (!is_numeric($normalised)) {
-            return null;
-        }
-
-        return 1 === preg_match('/^-?\d+$/', $normalised) ? (int) $normalised : (float) $normalised; // float: a custom number field is stored as a JSON number, never money
     }
 }

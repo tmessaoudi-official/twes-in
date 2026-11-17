@@ -83,17 +83,17 @@ final class ImportGuideResource
     /** @var list<ImportGuideSwitch> */
     #[ApiProperty(required: true, schema: [
         'type' => 'array',
-        'description' => 'The choices this file offers for one run: a tick, off unless sent in `switches[]`, or a choice of answers, its first unless another is sent in `choices[<key>]`.',
+        'description' => 'The choices this file offers for one run: a tick, off unless sent in `switches[]` (the screen starts it as `ticked` says), or a choice of answers, `answer` unless another is sent in `choices[<key>]`.',
         'items' => [
             'type' => 'object',
-            'required' => ['key', 'labelKey', 'noteKey', 'choices'],
+            'required' => ['key', 'labelKey', 'noteKey', 'choices', 'ticked', 'answer'],
             'properties' => [
                 'key' => ['type' => 'string', 'description' => 'What the import request names it by.'],
                 'labelKey' => ['type' => 'string', 'description' => 'A key of the screen’s catalogue.'],
                 'noteKey' => ['type' => ['string', 'null'], 'description' => 'A key of the screen’s catalogue saying when to tick it.'],
                 'choices' => [
                     'type' => 'array',
-                    'description' => 'Its answers, the first taken when none is sent; empty for a tick.',
+                    'description' => 'Its answers; empty for a tick.',
                     'items' => [
                         'type' => 'object',
                         'required' => ['key', 'labelKey'],
@@ -103,6 +103,8 @@ final class ImportGuideResource
                         ],
                     ],
                 ],
+                'ticked' => ['type' => 'boolean', 'description' => 'Whether the screen starts this tick ticked, as the company set it; false for a choice.'],
+                'answer' => ['type' => ['string', 'null'], 'description' => 'The answer a choice starts on and a request naming none takes: the company’s, else the first; null for a tick.'],
             ],
         ],
     ])]

@@ -8,7 +8,9 @@ export type ImportError =
   | 'step_up_required'
   | 'invalid'
   | 'import_undone'
-  | 'import_final';
+  | 'import_final'
+  // Stock others stand on since, where the company refuses such an undo whole (import.undo_stock_conflict).
+  | 'import_stock_stands';
 
 /** How a file is read: only new things, or new things and the ones already there. */
 export type ImportMode = 'create' | 'upsert';
@@ -39,6 +41,8 @@ export interface ImportRefusal {
     | 'too_many_rows'
     | 'invalid_pairing'
     | 'unreadable_encoding'
+    // A file imported before and not taken back, where the company refuses the same file twice (import.repeat_file).
+    | 'already_imported'
     // A workbook part declaring a document type, refused before anything parses it.
     | 'xml_doctype';
   /** The columns the reason names, empty when it names none. */
@@ -82,8 +86,12 @@ export interface ImportSwitch {
   labelKey: string;
   /** A key of this screen's catalogue saying when to tick it. */
   noteKey: string | null;
-  /** Its answers, the first taken when none is chosen; none for a tick. */
+  /** Its answers; none for a tick. */
   choices: readonly ImportSwitchChoice[];
+  /** Whether a tick starts ticked, as the company set it; false for a choice. */
+  ticked: boolean;
+  /** The answer a choice starts on, the company's else its first; null for a tick. */
+  answer: string | null;
 }
 
 /** One answer of a switch that is a choice. */

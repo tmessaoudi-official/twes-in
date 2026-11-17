@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\Inventory\Application\Location\ManageStockLocations;
+use App\Module\Inventory\Application\ReceiptCost\StockCostSettings;
 use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Model\StockMovement;
@@ -18,6 +19,8 @@ use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use BcMath\Number;
@@ -44,6 +47,7 @@ final readonly class ImportStock
         private ManageStockLocations $manageLocations,
         private RaiseStockAlerts $alerts,
         private TellStockKeepers $tell,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -104,13 +108,18 @@ final readonly class ImportStock
     }
 
     /**
-     * Goods added where they are, at the cost given, else nothing typed (the receipt is then valued at the average).
+     * Goods added where they are, at the cost given; a row naming none takes the product's cost, or where the company
+     * says so (import.stock_cost_fallback) nothing typed, and the receipt is then valued at the average, as a product with
+     * no cost always was.
      *
      * @throws StockImportRefused
      */
     public function add(Company $company, Product $product, StockLocation $place, string $quantity, ?string $unitCost, ?Uuid $actorUserId, Uuid $runId): StockChange
     {
         $before = $this->movements->onHand($product->getId(), $place->getId());
+        if (null === $unitCost && StockCostSettings::FALLBACK_AVERAGE !== $this->settings->value(new SettingContext($company), StockCostSettings::IMPORT_COST_FALLBACK)) {
+            $unitCost = $product->getDetails()->costPrice;
+        }
         $movement = $this->moving(fn (): StockMovement => $this->stock->receive($company, $product->getId(), $place->getId(), $quantity, $actorUserId, unitCost: $unitCost, importRunId: $runId));
 
         return self::change($product, $place, $movement, $before);

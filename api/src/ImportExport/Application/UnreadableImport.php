@@ -31,6 +31,8 @@ final class UnreadableImport extends \RuntimeException
     public const string INVALID_PAIRING = 'invalid_pairing';
     /** A header the encoding the file is read in cannot read: no column can be named, so none is. */
     public const string UNREADABLE_ENCODING = 'unreadable_encoding';
+    /** A file imported before and not taken back, where the company refuses the same file twice (import.repeat_file). */
+    public const string ALREADY_IMPORTED = 'already_imported';
 
     /** @param list<string> $columns */
     public function __construct(

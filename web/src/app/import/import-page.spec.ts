@@ -141,6 +141,8 @@ const GUIDE: ImportGuide = {
       labelKey: 'import.stock.recount',
       noteKey: 'import.stock.recount_note',
       choices: [],
+      ticked: false,
+      answer: null,
     },
     {
       key: 'unreachable_gross',
@@ -151,6 +153,8 @@ const GUIDE: ImportGuide = {
         { key: 'above', labelKey: 'import.products.unreachable_gross_above' },
         { key: 'refuse', labelKey: 'import.products.unreachable_gross_refuse' },
       ],
+      ticked: false,
+      answer: 'below',
     },
   ],
   lastPairing: [],
@@ -384,7 +388,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
@@ -412,7 +416,7 @@ describe('ImportPage', () => {
       ['recount'],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
   });
 
@@ -437,7 +441,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
 
@@ -461,6 +465,49 @@ describe('ImportPage', () => {
     );
   });
 
+  // Each switch starts where the company set it (import.products_*), and a guide read again leaves what the person set.
+  it('starts each switch as the guide says the company set it, until the person sets one', async () => {
+    const started: ImportGuide = {
+      ...GUIDE,
+      switches: [
+        { ...GUIDE.switches[0], ticked: true },
+        { ...GUIDE.switches[1], answer: 'above' },
+      ],
+    };
+    guide.set(started);
+    chooseFile();
+    await settle();
+    expect((q('import-switch-recount')!.querySelector('input') as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect(
+      (q('import-switch-unreachable_gross-above')!.querySelector('input') as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    facade.run.mockImplementation(async () => report.set(CLEAN));
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      ['recount'],
+      null,
+      [],
+      { unreachable_gross: 'above' },
+    );
+
+    (q('import-switch-recount')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    guide.set({ ...started });
+    await settle();
+
+    expect((q('import-switch-recount')!.querySelector('input') as HTMLInputElement).checked).toBe(
+      false,
+    );
+  });
+
   it('offers the encoding for a CSV only, found on the file until one is chosen', async () => {
     expect(q('import-encoding')).toBeNull();
     chooseFile('stocks.xlsx');
@@ -480,7 +527,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
   });
 
@@ -505,7 +552,7 @@ describe('ImportPage', () => {
       [],
       'windows-1256',
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
 
     chooseFile('other.csv');
@@ -520,7 +567,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
   });
 
@@ -912,7 +959,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),
@@ -1004,7 +1051,7 @@ describe('ImportPage', () => {
       [],
       null,
       [],
-      {},
+      { unreachable_gross: 'below' },
     );
   });
 

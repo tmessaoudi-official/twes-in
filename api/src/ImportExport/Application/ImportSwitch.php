@@ -23,20 +23,26 @@ final readonly class ImportSwitch
      * @param string             $label   a key of the screen's catalogue
      * @param string|null        $note    a key of the screen's catalogue saying when to tick it
      * @param list<ImportChoice> $choices its answers, the first the one taken when none is named; none for a tick
+     * @param string|null        $setting a company setting holding where it starts: a switch, ticked or not on the screen;
+     *                                    an answer of `$choices`, which a request naming none then takes
      */
     public function __construct(
         public string $key,
         public string $label,
         public ?string $note = null,
         public array $choices = [],
+        public ?string $setting = null,
     ) {
     }
 
-    /** The answer the request names, the first when it names none, null when it names one this switch does not offer. */
-    public function answer(?string $named): ?string
+    /**
+     * The answer the request names, else the company's (`$default`, read from `$setting`) when it is one offered, else the
+     * first; null when the request names one this switch does not offer.
+     */
+    public function answer(?string $named, ?string $default = null): ?string
     {
         if (null === $named) {
-            return $this->choices[0]->key ?? null;
+            return null !== $default && $this->offers($default) ? $default : ($this->choices[0]->key ?? null);
         }
         foreach ($this->choices as $choice) {
             if ($choice->key === $named) {
@@ -45,5 +51,16 @@ final readonly class ImportSwitch
         }
 
         return null;
+    }
+
+    private function offers(string $answer): bool
+    {
+        foreach ($this->choices as $choice) {
+            if ($choice->key === $answer) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

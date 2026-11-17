@@ -106,7 +106,7 @@ final class SetAside
     /** The row as it is written: without the cells set aside, which read as left blank. */
     public function without(ImportRecord $record): ImportRecord
     {
-        return [] === $this->cells ? $record : new ImportRecord($record->line, array_diff_key($record->values, $this->cells), $record->overflow, $record->unreadable);
+        return [] === $this->cells ? $record : new ImportRecord($record->line, array_diff_key($record->values, $this->cells), $record->overflow, $record->unreadable, $record->notation);
     }
 
     public function has(string $column): bool

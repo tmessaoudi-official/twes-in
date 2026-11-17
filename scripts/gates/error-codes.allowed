@@ -74,6 +74,7 @@ erasure_conflict act the erasure collides with a change made since
 unreadable act the file cannot be read as a spreadsheet
 xml_doctype act the spreadsheet declares a document type, refused
 unreadable_encoding act the file's characters are in no encoding read
+already_imported act the file was imported before and the company refuses the same file twice
 empty act the file holds no row
 unknown_columns act the file holds columns the import does not know, named beside
 missing_columns act the file lacks columns the import needs, named beside
@@ -82,6 +83,7 @@ too_many_rows act the file holds more rows than an import takes, the limit besid
 invalid_pairing act the columns paired do not match the file
 import_undone act the import was already taken back
 import_final act the import's day is over: it stays
+import_stock_stands act stock others stand on since keeps the import from being taken back whole, where the company refuses a partial undo
 
 # Texts
 unknown_text act the address names no text

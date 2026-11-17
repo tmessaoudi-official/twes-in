@@ -24,7 +24,8 @@ interface ProductFileStock
 
     /**
      * Goods added where the row says, or where the product can only mean: `$locationCode`, else `$homeLocationId`,
-     * else the product's home, else the only establishment's default place.
+     * else the product's home, else the only establishment's default place. `$unitCost` is the row's own cost; none
+     * leaves it to the company's fallback (import.stock_cost_fallback): the product's cost, or the average.
      *
      * @throws ProductStockRefused
      */

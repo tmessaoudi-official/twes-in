@@ -248,6 +248,36 @@
           "windows-1252": "Windows-1252 (français)",
           "windows-1256": "Windows-1256 (arabe)",
           "utf-16": "UTF-16 (Texte Unicode d’Excel)"
+        },
+        "products_below_cost": {
+          "note": "Signaler la ligne",
+          "refuse": "Refuser la ligne"
+        },
+        "products_excess_decimals": {
+          "refuse": "Refuser la ligne",
+          "round": "Arrondir et le dire"
+        },
+        "repeat_file": {
+          "warn": "Le signaler",
+          "refuse": "Le refuser"
+        },
+        "stock_cost_fallback": {
+          "product": "Le coût du produit",
+          "average": "Le coût moyen"
+        },
+        "undo_stock_conflict": {
+          "keep": "Garder ce stock et le dire",
+          "refuse": "Refuser l’annulation"
+        },
+        "decimal_mark": {
+          "auto": "Automatique (point ou virgule)",
+          "point": "Le point (1,234.50)",
+          "comma": "La virgule (1.234,50)"
+        },
+        "day_order": {
+          "day_first": "Jour, mois, année (15/03/2026)",
+          "month_first": "Mois, jour, année (03/15/2026)",
+          "year_first": "Année, mois, jour (2026/03/15)"
         }
       }
     },
@@ -335,7 +365,15 @@
     },
     "import": {
       "csv_encoding": "Encodage des fichiers CSV importés",
-      "reuse_last_pairing": "Reprendre les en-têtes du dernier import"
+      "reuse_last_pairing": "Reprendre les en-têtes du dernier import",
+      "products_unpriced_inactive": "Importer désactivés les produits sans prix",
+      "products_below_cost": "Prix importé sous le coût",
+      "products_excess_decimals": "Prix importé à plus de quatre décimales",
+      "repeat_file": "Même fichier importé deux fois",
+      "stock_cost_fallback": "Coût d’une entrée importée sans coût",
+      "undo_stock_conflict": "Annuler un import dont le stock a servi",
+      "decimal_mark": "Séparateur décimal des fichiers CSV",
+      "day_order": "Ordre des dates des fichiers CSV"
     }
   }
 }

@@ -98,7 +98,15 @@
       "unreachable_gross_note": "Certains prix TTC ne s’obtiennent avec aucun prix HT, le dernier chiffre de la devise tombant entre deux. Chaque ligne concernée dit le prix retenu.",
       "unreachable_gross_below": "Le plus proche en dessous",
       "unreachable_gross_above": "Le plus proche au-dessus",
-      "unreachable_gross_refuse": "Refuser la ligne"
+      "unreachable_gross_refuse": "Refuser la ligne",
+      "below_cost": "Prix sous le coût de revient",
+      "below_cost_note": "Un prix de vente sous le coût est le plus souvent une erreur de saisie. Seuls ceux qui voient les coûts en sont avertis.",
+      "below_cost_note_it": "Signaler la ligne",
+      "below_cost_refuse": "Refuser la ligne",
+      "excess_decimals": "Prix à plus de quatre décimales",
+      "excess_decimals_note": "Un prix ou un coût garde quatre décimales. Arrondi, chaque ligne concernée dit le montant retenu.",
+      "excess_decimals_refuse": "Refuser la ligne",
+      "excess_decimals_round": "Arrondir et le dire"
     },
     "vendors": {
       "number": "Numéro fournisseur",
@@ -215,7 +223,8 @@
       "invalid": "Le fichier n’a pas pu être lu.",
       "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement.",
       "import_undone": "Cet import est déjà annulé.",
-      "import_final": "Cet import ne s’annule plus : le délai de {{duration}} pour l’annuler est passé."
+      "import_final": "Cet import ne s’annule plus : le délai de {{duration}} pour l’annuler est passé.",
+      "import_stock_stands": "Rien n’est annulé : du stock de cet import a servi depuis, ici : {{places}}. Corrigez ces quantités par un mouvement, ou laissez l’import tel quel."
     },
     "refusals": {
       "not_received": "Le fichier n’est pas arrivé : choisissez-le de nouveau.",
@@ -228,6 +237,7 @@
       "missing_columns": "Colonnes manquantes : {{columns}}.",
       "too_many_rows": "Le fichier dépasse {{limit}} lignes. Coupez-le en plusieurs fichiers.",
       "unreadable_encoding": "L’en-tête du fichier ne se lit pas dans cet encodage : choisissez celui du fichier.",
+      "already_imported": "Ce fichier a déjà été importé, et la société refuse un même fichier deux fois. Pour le reprendre, annulez d’abord l’import précédent dans « Imports récents ».",
       "invalid_pairing": "Ces en-têtes étaient associés à une colonne qui n’existe plus : {{columns}}. Associez-les de nouveau dans « Vos en-têtes »."
     },
     "notes_title": "À savoir",
@@ -244,6 +254,7 @@
       "below_cost": "Vendu sous son prix de revient ({{cost}}).",
       "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche.",
       "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu.",
+      "decimals_rounded": "{{written}} arrondi à {{kept}}.",
       "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait.",
       "phone_kept_to_check": "« {{value}} » gardé tel quel : ce numéro n’est pas parmi ceux que son pays attribue. La fiche est marquée « À vérifier » : vérifiez-le.",
       "date_kept_unknown": "Date « {{date}} » impossible : la ligne est gardée en « date inconnue ».",

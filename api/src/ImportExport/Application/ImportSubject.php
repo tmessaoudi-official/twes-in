@@ -51,21 +51,24 @@ final readonly class ImportSubject
     }
 
     /**
-     * The answer of every switch of this subject that is a choice, as the request names it or its first; a key that
-     * names no such switch is no choice of this file. Null when the request names an answer a switch does not offer.
+     * The answer of every switch of this subject that is a choice, as the request names it, else the company's, else its
+     * first; a key that names no such switch is no choice of this file. Null when the request names an answer a switch
+     * does not offer.
      *
-     * @param array<string, string> $named
+     * @param array<string, string>      $named
+     * @param array<string, bool|string> $defaults where each switch starts, as ImportDefaults reads it
      *
      * @return array<string, string>|null
      */
-    public function chosen(array $named): ?array
+    public function chosen(array $named, array $defaults = []): ?array
     {
         $chosen = [];
         foreach ($this->switches as $switch) {
             if ([] === $switch->choices) {
                 continue;
             }
-            $answer = $switch->answer($named[$switch->key] ?? null);
+            $default = $defaults[$switch->key] ?? null;
+            $answer = $switch->answer($named[$switch->key] ?? null, \is_string($default) ? $default : null);
             if (null === $answer) {
                 return null;
             }

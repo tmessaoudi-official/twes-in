@@ -34,6 +34,17 @@ final readonly class ImportSettings implements DeclaresSettings
     /** The encoding found on the file itself, as a request naming none is read. */
     public const string AUTOMATIC = 'auto';
     public const string REUSE_LAST_PAIRING = 'import.reuse_last_pairing';
+    /** A file imported before and not taken back: told and kept as asked (the default), or refused whole. */
+    public const string REPEAT_FILE = 'import.repeat_file';
+    public const string REPEAT_WARN = 'warn';
+    public const string REPEAT_REFUSE = 'refuse';
+    /** An undo some of whose stock others stand on: kept and said (the default), or refused whole. */
+    public const string UNDO_STOCK_CONFLICT = 'import.undo_stock_conflict';
+    public const string UNDO_KEEP = 'keep';
+    public const string UNDO_REFUSE = 'refuse';
+    /** How the company's CSV files write numbers and days (DecimalMark, DayOrder); a workbook's cells say it themselves. */
+    public const string DECIMAL_MARK = 'import.decimal_mark';
+    public const string DAY_ORDER = 'import.day_order';
 
     public function settings(): iterable
     {
@@ -43,5 +54,9 @@ final readonly class ImportSettings implements DeclaresSettings
         // constants and the choices to TextEncoding.
         yield new SettingDefinition('import.csv_encoding', SettingType::Enum, self::AUTOMATIC, SettingChain::Parties, $company, 'settings.import.csv_encoding', self::MODULE, choices: ['auto', 'utf-8', 'windows-1252', 'windows-1256', 'utf-16']);
         yield new SettingDefinition('import.reuse_last_pairing', SettingType::Bool, true, SettingChain::Parties, $company, 'settings.import.reuse_last_pairing', self::MODULE);
+        yield new SettingDefinition('import.repeat_file', SettingType::Enum, 'warn', SettingChain::Parties, $company, 'settings.import.repeat_file', self::MODULE, choices: ['warn', 'refuse']);
+        yield new SettingDefinition('import.undo_stock_conflict', SettingType::Enum, 'keep', SettingChain::Parties, $company, 'settings.import.undo_stock_conflict', self::MODULE, choices: ['keep', 'refuse']);
+        yield new SettingDefinition('import.decimal_mark', SettingType::Enum, 'auto', SettingChain::Parties, $company, 'settings.import.decimal_mark', self::MODULE, choices: ['auto', 'point', 'comma']);
+        yield new SettingDefinition('import.day_order', SettingType::Enum, 'day_first', SettingChain::Parties, $company, 'settings.import.day_order', self::MODULE, choices: ['day_first', 'month_first', 'year_first']);
     }
 }

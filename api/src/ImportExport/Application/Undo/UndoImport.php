@@ -16,10 +16,13 @@ use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\ImportExport\Application\ImportSettings;
 use App\ImportExport\Application\RunImport;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RemoveRecords;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -47,6 +50,7 @@ final readonly class UndoImport implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private ReadSetting $settings,
         #[Autowire(param: 'app.records.undoable_for')]
         private string $undoableFor,
         #[AutowireIterator('app.import.undoes_rows')]
@@ -57,7 +61,8 @@ final readonly class UndoImport implements DeclaresAuditActions
     /**
      * @throws StepUpRequired    without a proof given again in the last few minutes
      * @throws UnknownImportRun  when the company has no such import
-     * @throws ImportNotUndoable when it was taken back already, or its day is over
+     * @throws ImportNotUndoable when it was taken back already, or its day is over, or (where the company says so) stock
+     *                           others stand on since keeps part of it
      */
     public function handle(Company $company, Uuid $runId, ?Uuid $actorUserId): ImportUndone
     {
@@ -103,6 +108,10 @@ final readonly class UndoImport implements DeclaresAuditActions
             // The stock last: the records gone took their own movements with them, whatever is left is taken back.
             $undoId = Uuid::v7();
             $stock = $this->stock->takeBack($company, $runId, $undoId, $actorUserId);
+            // Refused whole where the company says so: thrown inside the transaction, nothing above stays taken back.
+            if ([] !== $stock['kept'] && ImportSettings::UNDO_REFUSE === $this->settings->value(new SettingContext($company), ImportSettings::UNDO_STOCK_CONFLICT)) {
+                throw new ImportNotUndoable(ImportNotUndoable::STOCK_STANDS, 'Stock others stand on since keeps this import from being taken back whole.', $stock['kept']);
+            }
 
             $run->undo($undoId, $actorUserId, $now, $removal?->getId());
             $this->runs->save($run);

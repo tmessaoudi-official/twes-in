@@ -36,7 +36,14 @@ describe('ImportApi', () => {
         },
       ],
       switches: [
-        { key: 'recount', labelKey: 'import.stock.recount', noteKey: null, choices: [] },
+        {
+          key: 'recount',
+          labelKey: 'import.stock.recount',
+          noteKey: null,
+          choices: [],
+          ticked: true,
+          answer: null,
+        },
         {
           key: 'unreachable_gross',
           labelKey: 'import.products.unreachable_gross',
@@ -45,6 +52,8 @@ describe('ImportApi', () => {
             { key: 'below', labelKey: 'import.products.unreachable_gross_below' },
             { key: 'above', labelKey: 'import.products.unreachable_gross_above' },
           ],
+          ticked: false,
+          answer: 'above',
         },
       ],
       lastPairing: [],
@@ -52,7 +61,14 @@ describe('ImportApi', () => {
 
     const guide = await pending;
     expect(guide.switches).toEqual([
-      { key: 'recount', labelKey: 'import.stock.recount', noteKey: null, choices: [] },
+      {
+        key: 'recount',
+        labelKey: 'import.stock.recount',
+        noteKey: null,
+        choices: [],
+        ticked: true,
+        answer: null,
+      },
       {
         key: 'unreachable_gross',
         labelKey: 'import.products.unreachable_gross',
@@ -61,6 +77,8 @@ describe('ImportApi', () => {
           { key: 'below', labelKey: 'import.products.unreachable_gross_below' },
           { key: 'above', labelKey: 'import.products.unreachable_gross_above' },
         ],
+        ticked: false,
+        answer: 'above',
       },
     ]);
     expect(guide.identity).toEqual(['reference', 'location_code']);
@@ -435,5 +453,22 @@ describe('ImportApi', () => {
         .flush(body, { status, statusText: 'Refused' });
       await expect(pending).rejects.toEqual(new ImportRefused(code));
     }
+  });
+
+  it('names each product and place an undo refused whole met', async () => {
+    const pending = api.undo('c1', 'r1');
+    http.expectOne('/api/companies/c1/import-runs/r1/undo').flush(
+      {
+        error: 'import_stock_stands',
+        stands: [
+          { reference: 'P-OLD', location: '000', reason: 'below_zero' },
+          { reference: 'VIS-8', location: 'A-12', reason: 'counted_since' },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(pending).rejects.toEqual(
+      new ImportRefused('import_stock_stands', { places: 'P-OLD (000), VIS-8 (A-12)' }),
+    );
   });
 });

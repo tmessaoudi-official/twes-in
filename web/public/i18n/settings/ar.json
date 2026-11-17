@@ -248,6 +248,36 @@
           "windows-1252": "Windows-1252 (الفرنسية)",
           "windows-1256": "Windows-1256 (العربية)",
           "utf-16": "UTF-16 (نص Unicode من Excel)"
+        },
+        "products_below_cost": {
+          "note": "الإشارة إلى السطر",
+          "refuse": "رفض السطر"
+        },
+        "products_excess_decimals": {
+          "refuse": "رفض السطر",
+          "round": "التقريب مع ذكره"
+        },
+        "repeat_file": {
+          "warn": "الإشارة إليه",
+          "refuse": "رفضه"
+        },
+        "stock_cost_fallback": {
+          "product": "كلفة المنتج",
+          "average": "متوسط الكلفة"
+        },
+        "undo_stock_conflict": {
+          "keep": "إبقاء هذا المخزون مع ذكره",
+          "refuse": "رفض الإلغاء"
+        },
+        "decimal_mark": {
+          "auto": "تلقائي (نقطة أو فاصلة)",
+          "point": "النقطة (1,234.50)",
+          "comma": "الفاصلة (1.234,50)"
+        },
+        "day_order": {
+          "day_first": "اليوم، الشهر، السنة (15/03/2026)",
+          "month_first": "الشهر، اليوم، السنة (03/15/2026)",
+          "year_first": "السنة، الشهر، اليوم (2026/03/15)"
         }
       }
     },
@@ -335,7 +365,15 @@
     },
     "import": {
       "csv_encoding": "ترميز ملفات CSV المستوردة",
-      "reuse_last_pairing": "إعادة استعمال عناوين أعمدة آخر استيراد"
+      "reuse_last_pairing": "إعادة استعمال عناوين أعمدة آخر استيراد",
+      "products_unpriced_inactive": "استيراد المنتجات دون سعر معطَّلةً",
+      "products_below_cost": "سعر مستورد دون الكلفة",
+      "products_excess_decimals": "سعر مستورد بأكثر من أربعة أرقام بعد الفاصل",
+      "repeat_file": "الملف نفسه مستوردًا مرتين",
+      "stock_cost_fallback": "كلفة إضافة مستوردة دون كلفة",
+      "undo_stock_conflict": "إلغاء استيراد استُعمل مخزونه",
+      "decimal_mark": "الفاصل العشري في ملفات CSV",
+      "day_order": "ترتيب التواريخ في ملفات CSV"
     }
   }
 }

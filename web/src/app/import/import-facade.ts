@@ -178,6 +178,7 @@ export class ImportFacade {
         const said = refusalKey('import.errors', codeOf(error));
         this.feedback.failure(said.key, {
           duration: this.durations.recordsUndoable(),
+          ...(error instanceof ImportRefused ? error.params : {}),
           ...said.params,
         });
         await this.loadRecent(companyId);

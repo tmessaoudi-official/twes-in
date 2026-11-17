@@ -269,6 +269,31 @@ final class ImportUndoTest extends ApiTestCase
         self::assertSame('1.000', $this->onHand('P-OLD'));
     }
 
+    /**
+     * A company may have such an undo refused whole rather than keep part of the stock (import.undo_stock_conflict): it
+     * names each product and place standing in its way, and nothing is taken back.
+     */
+    public function testACompanyMayRefuseAnUndoWhoseStockSomethingStandsOn(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read', 'stock.read', 'stock.write']);
+        $run = $this->imported('opening-stock', "reference,stock_add\nP-OLD,5\n");
+        $place = $this->em()->getConnection()->fetchOne('SELECT location_id FROM stock_movement LIMIT 1');
+        self::assertIsString($place);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        static::getContainer()->get(KeepStock::class)->writeOff($company, Uuid::fromString($this->productId), Uuid::fromString($place), '4', StockLossReason::Broken, null, null);
+        $this->em()->persist(new Setting(SettingAddress::company($company), 'import.undo_stock_conflict', 'refuse', self::heldNow()));
+        $this->em()->flush();
+
+        $this->undo($run);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('import_stock_stands', $this->json()['error'] ?? null);
+        self::assertSame([['reference' => 'P-OLD', 'reason' => 'below_zero']], $this->fields($this->arrayAt($this->json(), 'stands'), 'reference', 'reason'));
+        self::assertSame('1.000', $this->onHand('P-OLD'));
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM import_run WHERE undone_at IS NOT NULL'), 'the import stays undoable');
+    }
+
     public function testAnOpeningStockIsTakenBackWhereNothingMovedSince(): void
     {
         $this->signedIn(['product.read', 'stock.read', 'stock.write']);

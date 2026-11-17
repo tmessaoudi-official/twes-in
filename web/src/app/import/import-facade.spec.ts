@@ -378,6 +378,19 @@ describe('ImportFacade', () => {
       expect(api.recent).toHaveBeenCalledWith('c1');
     });
 
+    it('says the products and places an undo refused whole met', async () => {
+      api.undo.mockRejectedValue(
+        new ImportRefused('import_stock_stands', { places: 'P-OLD (000)' }),
+      );
+
+      expect(await facade.undo('c1', 'r1')).toBe(false);
+
+      const said = (TestBed.inject(Feedback) as RecordedFeedback).said.find(
+        (toast) => toast.key === 'import.errors.import_stock_stands',
+      );
+      expect(said?.params).toEqual(expect.objectContaining({ places: 'P-OLD (000)' }));
+    });
+
     it('says an undo refused with an answer it has no words for by its code', async () => {
       api.undo.mockRejectedValue(new ImportRefused({ unknown: '500' }));
 

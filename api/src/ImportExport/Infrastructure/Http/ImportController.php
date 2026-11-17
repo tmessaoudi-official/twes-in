@@ -12,7 +12,9 @@ namespace App\ImportExport\Infrastructure\Http;
 use ApiPlatform\Validator\Exception\ValidationException;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\ImportCatalogue;
+use App\ImportExport\Application\ImportDefaults;
 use App\ImportExport\Application\ImportMode;
+use App\ImportExport\Application\Notation\ImportNotation;
 use App\ImportExport\Application\RunImport;
 use App\ImportExport\Application\UnknownImportSubject;
 use App\ImportExport\Application\UnreadableImport;
@@ -38,7 +40,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Previews or imports one file (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19): `file` a .csv or .xlsx, `mode` create or
  * upsert, `dryRun` 1 for the preview, `switches[]` each switch of the subject ticked, `choices[<switch>]` the answer of a
- * switch that is a choice (its first when none is sent, 422 for one it does not offer), `pairing` a JSON object pairing
+ * switch that is a choice (the company's when none is sent, else its first; 422 for one it does not offer), `pairing` a JSON object pairing
  * the file's own headings with column keys ('' for a column ignored), sent whole because a heading may hold any
  * character a form field's name would lose. A plain controller rather than a resource, because the body is a file.
  *
@@ -65,6 +67,7 @@ final readonly class ImportController
         private SpreadsheetReader $reader,
         private CompanyGuard $guard,
         private LongRequest $time,
+        private ImportDefaults $defaults,
     ) {
     }
 
@@ -113,7 +116,7 @@ final readonly class ImportController
             }
             $named[(string) $key] = $answer;
         }
-        $answers = $columns->chosen($named) ?? throw self::notOffered('choices');
+        $answers = $columns->chosen($named, $this->defaults->of($company, $columns)) ?? throw self::notOffered('choices');
         $pairing = $this->pairing($request->request->getString('pairing')) ?? throw self::notOffered('pairing');
         // The file's bytes, so the same file sent again is known whatever it is named; bytes that cannot be read back
         // did not arrive whole.
@@ -132,6 +135,8 @@ final readonly class ImportController
                 $switches,
                 $pairing,
                 $answers,
+                // A CSV holds text, written in the company's notation; a workbook's numbers and days are cells of their own.
+                SpreadsheetFormat::Csv === $format ? $this->defaults->notation($company) : new ImportNotation(),
             );
         } catch (UnreadableSpreadsheet $unreadable) {
             // error-codes: UnreadableSpreadsheet

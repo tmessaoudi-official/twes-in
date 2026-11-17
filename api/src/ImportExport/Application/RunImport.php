@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\ImportExport\Application;
 
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\ImportExport\Application\Notation\ImportNotation;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Settings\Application\ReadSetting;
@@ -58,14 +59,15 @@ final readonly class RunImport
      *                                                 read as, or '' for a column ignored; a heading the file lacks is left aside
      * @param array<string, string>       $chosen      the answer of each of the subject's switches that is a choice, as
      *                                                 `ImportSubject::chosen` reads the request
+     * @param ImportNotation              $notation    how the file writes its numbers and days: a CSV's the company's
      *
      * @throws UnreadableImport
      * @throws StepUpRequired   when a row changes what asks who is at the screen again, without a recent proof: the
      *                          whole file is rolled back, and kept once the proof is given
      */
-    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = [], array $chosen = []): ImportReport
+    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = [], array $chosen = [], ImportNotation $notation = new ImportNotation()): ImportReport
     {
-        [$records, $paired] = $this->records($subject, $rows, $pairing);
+        [$records, $paired] = $this->records($subject, $rows, $pairing, $notation);
         $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys(), $chosen);
 
         try {
@@ -76,6 +78,11 @@ final readonly class RunImport
                     $this->runs->holdFile($company->getId(), $declaration->key(), $contentHash);
                 }
                 $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
+                // A company that never takes the same file twice hears it before the file is confirmed, as when it is; one
+                // taken back (« Annuler cet import ») is no longer counted, so it may be imported again.
+                if (null !== $already && ImportSettings::REPEAT_REFUSE === $this->settings->value(new SettingContext($company), ImportSettings::REPEAT_FILE)) {
+                    throw new UnreadableImport(UnreadableImport::ALREADY_IMPORTED);
+                }
                 $report = $this->apply($declaration, $subject, $company, $records, $mode, $actorUserId, $context);
                 if ($dryRun || [] !== $report->rejected) {
                     throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already, $report->changes, $report->unchanged));
@@ -160,7 +167,7 @@ final readonly class RunImport
      *
      * @throws UnreadableImport
      */
-    private function records(ImportSubject $subject, iterable $rows, array $pairing): array
+    private function records(ImportSubject $subject, iterable $rows, array $pairing, ImportNotation $notation): array
     {
         // The platform's, read for each file: an operator's change holds from the next one.
         $maxRows = $this->settings->integer(new SettingContext(), ImportSettings::MAX_ROWS);
@@ -192,7 +199,7 @@ final readonly class RunImport
                 throw new UnreadableImport(UnreadableImport::TOO_MANY_ROWS, [], $maxRows);
             }
             if (!$readable) {
-                $records[] = new ImportRecord($line, [], unreadable: true);
+                $records[] = new ImportRecord($line, [], unreadable: true, notation: $notation);
                 continue;
             }
             $values = [];
@@ -201,7 +208,7 @@ final readonly class RunImport
             }
             // A blank header cell is a column ignored, so only a value past the header row itself has nowhere to go.
             $last = array_key_last(array_filter($cells, static fn (string $cell): bool => '' !== $cell)) ?? 0;
-            $records[] = new ImportRecord($line, $values, $last >= $width ? ['count' => $last + 1, 'expected' => $width] : null);
+            $records[] = new ImportRecord($line, $values, $last >= $width ? ['count' => $last + 1, 'expected' => $width] : null, notation: $notation);
         }
 
         if ([] === $records) {

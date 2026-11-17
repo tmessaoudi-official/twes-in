@@ -86,7 +86,7 @@ final readonly class ImportRunController
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (ImportNotUndoable $refused) {
             // error-codes: ImportNotUndoable
-            return new JsonResponse(['error' => $refused->reason], Response::HTTP_CONFLICT);
+            return new JsonResponse(['error' => $refused->reason, 'stands' => $refused->stands], Response::HTTP_CONFLICT);
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }

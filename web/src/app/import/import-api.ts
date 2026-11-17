@@ -28,7 +28,11 @@ import { codeText, type UnknownRefusal } from '../shared/errors/unknown-refusal'
 
 /** Thrown when the API refuses the request itself; carries the code the screen translates. */
 export class ImportRefused extends Error {
-  constructor(readonly code: ImportError | UnknownRefusal) {
+  constructor(
+    readonly code: ImportError | UnknownRefusal,
+    /** What the refusal names, said with it: the products and places an undo met (`places`). */
+    readonly params: Readonly<Record<string, string>> = {},
+  ) {
     super(codeText(code));
   }
 }
@@ -191,9 +195,19 @@ function refusalOf(error: unknown): Error {
   }
 }
 
-/** An undo refused names why: taken back already, or past its day. */
+/** An undo refused names why: taken back already, past its day, or stock others stand on, each product at its place. */
 function conflictOf(error: HttpErrorResponse): ImportRefused {
-  const reason = (error.error as Record<string, unknown> | null)?.['error'];
+  const answer = error.error as Record<string, unknown> | null;
+  const reason = answer?.['error'];
+  if (reason === 'import_stock_stands') {
+    const stands = Array.isArray(answer?.['stands'])
+      ? (answer['stands'] as Record<string, unknown>[])
+      : [];
+    const places = stands
+      .map((stand) => `${String(stand['reference'])} (${String(stand['location'])})`)
+      .join(', ');
+    return refusedFor(error, new ImportRefused(reason, { places }));
+  }
   return refusedFor(
     error,
     new ImportRefused(
@@ -267,6 +281,8 @@ function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
       labelKey: choice.labelKey,
       noteKey: choice.noteKey,
       choices: choice.choices.map((answer) => ({ key: answer.key, labelKey: answer.labelKey })),
+      ticked: choice.ticked,
+      answer: choice.answer ?? null,
     })),
     lastPairing: answer.lastPairing.map((pair) => ({ heading: pair.heading, column: pair.column })),
     reusesLastPairing: answer.reusesLastPairing,

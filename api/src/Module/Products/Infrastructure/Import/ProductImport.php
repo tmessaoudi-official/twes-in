@@ -45,6 +45,7 @@ use App\Module\Products\Application\GrossUnreachable;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductCheckInput;
+use App\Module\Products\Application\ProductImportSettings;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Application\Stock\ProductFileStock;
@@ -110,6 +111,14 @@ final readonly class ProductImport implements DeclaresImport
     public const string GROSS_BELOW = 'below';
     public const string GROSS_ABOVE = 'above';
     public const string GROSS_REFUSE = 'refuse';
+    /** A price under the cost: pointed out (the default) or refused, said only to whoever reads costs. */
+    public const string BELOW_COST = 'below_cost';
+    public const string BELOW_COST_NOTE = 'note';
+    public const string BELOW_COST_REFUSE = 'refuse';
+    /** A price or cost written finer than four decimals: refused (the default) or rounded half up, each rounding said. */
+    public const string EXCESS_DECIMALS = 'excess_decimals';
+    public const string DECIMALS_REFUSE = 'refuse';
+    public const string DECIMALS_ROUND = 'round';
     /** The unit a new product the row gives none is sold in, as the product form offers it. */
     private const string DEFAULT_UNIT = 'article.default_unit';
 
@@ -229,12 +238,20 @@ final readonly class ProductImport implements DeclaresImport
             ],
             [
                 new ImportSwitch(self::DEFAULT_TAXES, 'import.products.default_taxes_switch', 'import.products.default_taxes_switch_note'),
-                new ImportSwitch(self::UNPRICED_INACTIVE, 'import.products.unpriced_inactive', 'import.products.unpriced_inactive_note'),
+                new ImportSwitch(self::UNPRICED_INACTIVE, 'import.products.unpriced_inactive', 'import.products.unpriced_inactive_note', setting: ProductImportSettings::UNPRICED_INACTIVE),
                 new ImportSwitch(self::UNREACHABLE_GROSS, 'import.products.unreachable_gross', 'import.products.unreachable_gross_note', [
                     new ImportChoice(self::GROSS_BELOW, 'import.products.unreachable_gross_below'),
                     new ImportChoice(self::GROSS_ABOVE, 'import.products.unreachable_gross_above'),
                     new ImportChoice(self::GROSS_REFUSE, 'import.products.unreachable_gross_refuse'),
                 ]),
+                new ImportSwitch(self::BELOW_COST, 'import.products.below_cost', 'import.products.below_cost_note', [
+                    new ImportChoice(self::BELOW_COST_NOTE, 'import.products.below_cost_note_it'),
+                    new ImportChoice(self::BELOW_COST_REFUSE, 'import.products.below_cost_refuse'),
+                ], ProductImportSettings::BELOW_COST),
+                new ImportSwitch(self::EXCESS_DECIMALS, 'import.products.excess_decimals', 'import.products.excess_decimals_note', [
+                    new ImportChoice(self::DECIMALS_REFUSE, 'import.products.excess_decimals_refuse'),
+                    new ImportChoice(self::DECIMALS_ROUND, 'import.products.excess_decimals_round'),
+                ], ProductImportSettings::EXCESS_DECIMALS),
                 ...$stock ? [
                     new ImportSwitch(self::IGNORE_QUANTITIES, 'import.stock.ignore_quantities', 'import.stock.ignore_quantities_note'),
                     new ImportSwitch(self::RECOUNT, 'import.stock.recount', 'import.stock.recount_note'),
@@ -322,13 +339,13 @@ final readonly class ProductImport implements DeclaresImport
                 if (null === $record->value('unit_code')) {
                     $notes->note('unit_code', 'unit_to_confirm', ['code' => $written->getUnit()->getCode()]);
                 }
-                $this->noteBelowCost($written, $record, $seesCosts, $notes);
+                $this->noteBelowCost($written, $record, $seesCosts, $context, $notes);
                 $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
 
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId, costSource: CostChangeSource::Import);
-            $this->noteBelowCost($written, $record, $seesCosts, $notes);
+            $this->noteBelowCost($written, $record, $seesCosts, $context, $notes);
             $after = $this->inFile($company, $written, $context, $record);
             $moved = [
                 'home_location' => $this->settleHome($company, $written, $home, $actorUserId),
@@ -469,7 +486,7 @@ final readonly class ProductImport implements DeclaresImport
         [$adds, $value, $column] = $quantity;
         $location = $record->value('location');
         $change = $adds
-            ? $this->stock->add($company, $product->getId(), $location, $home, $value, $product->getDetails()->costPrice, $actorUserId, $context->runId)
+            ? $this->stock->add($company, $product->getId(), $location, $home, $value, null, $actorUserId, $context->runId)
             : $this->stock->count($company, $product->getId(), $location, $home, $value, $context->ticked(self::RECOUNT), $actorUserId, $context->runId);
         $notes->note($column, 'stock_change', ['location' => $change->place, 'before' => $change->before, 'after' => $change->after]);
 
@@ -593,7 +610,7 @@ final readonly class ProductImport implements DeclaresImport
                 $record->value('description') ?? $held?->description,
                 $productKind,
                 $price,
-                ($seesCosts ? $faults->read(fn (): ?string => $this->costOf($company, $record, $taxIds)) : null) ?? $held?->costPrice,
+                ($seesCosts ? $faults->read(fn (): ?string => $this->costOf($company, $record, $taxIds, $context, $notes)) : null) ?? $held?->costPrice,
                 $record->value('substitution_group') ?? $held?->substitutionGroup,
             ),
             $faults->read(fn (): Uuid => $this->unitId($company, $record, $current, $context), Uuid::v7()),
@@ -629,7 +646,7 @@ final readonly class ProductImport implements DeclaresImport
      */
     private function priceOf(Company $company, ImportRecord $record, ?ProductDetails $held, array|false $taxIds, ImportContext $context, RowNotes $notes, ?bool &$reached): string
     {
-        $net = ImportCells::decimal($record, 'unit_price_net', 4);
+        $net = ImportCells::decimal($record, 'unit_price_net', 4, self::roundedInto($context, $notes));
         if (null === $record->value('unit_price_gross')) {
             return $net ?? $held->unitPriceNet
                 ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required');
@@ -637,7 +654,7 @@ final readonly class ProductImport implements DeclaresImport
         if (null !== $net) {
             throw new RowRejected('unit_price_gross', 'A row gives its price without taxes or with them, not both.', 'price_net_and_gross');
         }
-        $gross = (string) ImportCells::decimal($record, 'unit_price_gross', $this->scales->of($company->getCurrency()));
+        $gross = (string) ImportCells::decimal($record, 'unit_price_gross', $this->scales->of($company->getCurrency()), self::roundedInto($context, $notes));
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,9})(\.[0-9]+)?$/', $gross)) {
             throw new RowRejected('unit_price_gross', 'A price is a number from 0.', 'invalid_price');
         }
@@ -881,16 +898,16 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @throws RowRejected
      */
-    private function costOf(Company $company, ImportRecord $record, array|false $taxIds): ?string
+    private function costOf(Company $company, ImportRecord $record, array|false $taxIds, ImportContext $context, RowNotes $notes): ?string
     {
-        $net = ImportCells::decimal($record, 'cost_price', 4);
+        $net = ImportCells::decimal($record, 'cost_price', 4, self::roundedInto($context, $notes));
         if (null === $record->value('cost_price_gross')) {
             return $net;
         }
         if (null !== $net) {
             throw new RowRejected('cost_price_gross', 'A row gives its cost without taxes or with them, not both.', 'cost_net_and_gross');
         }
-        $gross = (string) ImportCells::decimal($record, 'cost_price_gross', 4);
+        $gross = (string) ImportCells::decimal($record, 'cost_price_gross', 4, self::roundedInto($context, $notes));
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,9})(\.[0-9]+)?$/', $gross)) {
             throw new RowRejected('cost_price_gross', 'A cost is a number from 0.', 'invalid_price');
         }
@@ -937,6 +954,12 @@ final readonly class ProductImport implements DeclaresImport
      * A new product the row gives no sale price for, while the person ticked « Importer désactivés les produits sans
      * prix », unless the row asks it active: that one is refused for its price as before, not switched off unasked.
      */
+    /** Where a price finer than its column holds is rounded and said: the row's notes when the file asks it, else nowhere. */
+    private static function roundedInto(ImportContext $context, RowNotes $notes): ?RowNotes
+    {
+        return self::DECIMALS_ROUND === $context->chosen(self::EXCESS_DECIMALS) ? $notes : null;
+    }
+
     private function unpriced(ImportRecord $record, ?Product $current, ImportContext $context): bool
     {
         $active = $record->value('active');
@@ -947,12 +970,21 @@ final readonly class ProductImport implements DeclaresImport
             && (null === $active || !\in_array(mb_strtolower(TypedText::trimmed($active)), self::YES, true));
     }
 
-    /** A product the row leaves sold under its cost, most often a slip in the sheet, is pointed out. */
-    private function noteBelowCost(Product $written, ImportRecord $record, bool $seesCosts, RowNotes $notes): void
+    /**
+     * A product the row leaves sold under its cost, most often a slip in the sheet, is pointed out, or refused where the
+     * file asks; someone who may not read costs is told nothing of one either way. Refused after the write, which the
+     * run then rolls back with the whole file.
+     *
+     * @throws RowRejected
+     */
+    private function noteBelowCost(Product $written, ImportRecord $record, bool $seesCosts, ImportContext $context, RowNotes $notes): void
     {
         $details = $written->getDetails();
         $touched = null !== $record->value('unit_price_net') || null !== $record->value('unit_price_gross') || null !== $record->value('cost_price') || null !== $record->value('cost_price_gross');
         if ($seesCosts && $touched && null !== $details->costPrice && 0 > Decimal::of($details->unitPriceNet)->compare(Decimal::of($details->costPrice))) {
+            if (self::BELOW_COST_REFUSE === $context->chosen(self::BELOW_COST)) {
+                throw new RowRejected('unit_price_net', 'The price is under the product\'s cost.', 'below_cost', ['cost' => $details->costPrice]);
+            }
             $notes->note('unit_price_net', 'below_cost', ['cost' => $details->costPrice]);
         }
     }
@@ -992,8 +1024,8 @@ final readonly class ProductImport implements DeclaresImport
                 continue;
             }
             $values[$field->getKey()] = $faults->read(static fn (): string|int|float|bool => match ($field->getType()) {
-                CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
-                CustomFieldType::Date => ImportCells::day($cell),
+                CustomFieldType::Number => ImportCells::number($record, $column) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
+                CustomFieldType::Date => ImportCells::day($cell, $record->notation->days),
                 CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
             }, $cell);
@@ -1107,15 +1139,5 @@ final readonly class ProductImport implements DeclaresImport
             \in_array($cell, self::NO, true) => false,
             default => throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
         };
-    }
-
-    private static function number(string $cell): int|float|null
-    {
-        $normalised = str_replace([',', ' ', "\u{00A0}", "\u{202F}"], ['.', '', '', ''], $cell);
-        if (!is_numeric($normalised)) {
-            return null;
-        }
-
-        return 1 === preg_match('/^-?\d+$/', $normalised) ? (int) $normalised : (float) $normalised; // float: a custom number field is stored as a JSON number, never money
     }
 }

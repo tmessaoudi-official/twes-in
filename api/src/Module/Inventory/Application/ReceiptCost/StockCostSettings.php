@@ -25,10 +25,15 @@ use App\Settings\Domain\ValueObject\SettingType;
 final readonly class StockCostSettings implements DeclaresSettings
 {
     public const string COST_ON_RECEIVE = 'stock.cost_on_receive';
+    /** The cost an imported addition naming none takes: the product's own (the default), or its average cost so far. */
+    public const string IMPORT_COST_FALLBACK = 'import.stock_cost_fallback';
+    public const string FALLBACK_PRODUCT = 'product';
+    public const string FALLBACK_AVERAGE = 'average';
 
     public function settings(): iterable
     {
         yield new SettingDefinition('stock.cost_on_receive', SettingType::Enum, CostOnReceive::Suggest->value, SettingChain::Articles, [SettingLevel::Company], 'settings.stock.cost_on_receive', MoveStockForDeliveryNotes::MODULE, choices: ['suggest', 'average', 'last', 'manual']);
+        yield new SettingDefinition('import.stock_cost_fallback', SettingType::Enum, 'product', SettingChain::Articles, [SettingLevel::Company], 'settings.import.stock_cost_fallback', MoveStockForDeliveryNotes::MODULE, choices: ['product', 'average']);
     }
 
     /** The mode a value of the setting says; one it does not know leaves the choice to the person, as the default does. */

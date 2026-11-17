@@ -146,7 +146,7 @@ final readonly class OpeningStockImport implements DeclaresImport
             }
             $change = null === $add
                 ? $this->stock->count($company, $product, $place, (string) $count, $context->ticked(self::RECOUNT), $actorUserId, $context->runId)
-                : $this->stock->add($company, $product, $place, $add, $cost ?? $product->getDetails()->costPrice, $actorUserId, $context->runId);
+                : $this->stock->add($company, $product, $place, $add, $cost, $actorUserId, $context->runId);
             $notes->note($quantityColumn, 'stock_change', ['location' => $change->place, 'before' => $change->before, 'after' => $change->after]);
 
             return $held ? RowImported::Updated : RowImported::Created;

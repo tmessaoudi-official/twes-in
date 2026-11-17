@@ -166,10 +166,12 @@ export class ImportPage {
   protected readonly isCsv = computed(
     () => this.file()?.name.toLowerCase().endsWith('.csv') === true,
   );
-  /** The switches of the file ticked for this run, by key; each is off until ticked. */
+  /** The switches of the file ticked for this run, by key; each starts as the company set it (the guide's `ticked`). */
   protected readonly ticked = signal<readonly string[]>([]);
-  /** The answer chosen for each switch that is a choice, by key; one not chosen is its first. */
+  /** The answer chosen for each switch that is a choice, by key; each starts on the guide's `answer`, the company's. */
   protected readonly chosen = signal<Readonly<Record<string, string>>>({});
+  /** Whether the person has set a switch since this subject opened: a guide read again then leaves their choices. */
+  private switchesSet = false;
   /** A preview that came back with nothing rejected: only then is importing more than a guess. */
   protected readonly previewed = signal(false);
   /**
@@ -288,6 +290,7 @@ export class ImportPage {
       this.previewed.set(false);
       this.ticked.set([]);
       this.chosen.set({});
+      this.switchesSet = false;
       void this.facade.load(companyId, subject);
       void this.facade.loadRecent(companyId);
     });
@@ -327,6 +330,21 @@ export class ImportPage {
         this.pairingFromLast.set(kept.length > 0);
         this.asked.set([]);
         this.encoding.set(this.companyEncoding());
+      });
+    });
+    // Each switch starts where the company set it, read again with the guide until the person sets one.
+    effect(() => {
+      const switches = this.guide()?.switches ?? [];
+      untracked(() => {
+        if (this.switchesSet) return;
+        this.ticked.set(switches.filter((choice) => choice.ticked).map((choice) => choice.key));
+        this.chosen.set(
+          Object.fromEntries(
+            switches.flatMap((choice) =>
+              choice.answer === null ? [] : [[choice.key, choice.answer] as const],
+            ),
+          ),
+        );
       });
     });
   }
@@ -471,6 +489,7 @@ export class ImportPage {
 
   /** A switch changes what the run does, so the preview before it no longer says what an import would do. */
   protected tick(key: string, on: boolean): void {
+    this.switchesSet = true;
     this.ticked.update((keys) =>
       on ? [...keys.filter((other) => other !== key), key] : keys.filter((other) => other !== key),
     );
@@ -480,6 +499,7 @@ export class ImportPage {
 
   /** Another answer changes what the run does, as a switch does. */
   protected choose(key: string, answer: string): void {
+    this.switchesSet = true;
     this.chosen.update((chosen) => ({ ...chosen, [key]: answer }));
     this.previewed.set(false);
     this.facade.forget();

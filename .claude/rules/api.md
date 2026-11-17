@@ -56,7 +56,9 @@ the end of § Lessons here.
   shape or check, an e-mail, a phone, an IBAN, a BIC, a barcode) is set aside by `SetAside` rather than refusing its row: the
   record is written without it and marked « À vérifier » by `Infrastructure/Import/SetAsideMarks` (the `imports` text
   domain), and the report notes `set_aside` on that cell (a phone kept outside its country's ranges under « Garder et marquer » is noted `phone_kept_to_check`, judged by the use case's own `phoneKept` before the write); a subject offers switches,
-  `ImportSwitch`, worded by the screen alone (`ImportColumnsTest` holds every label and note to each language; the
+  `ImportSwitch`, worded by the screen alone, which may name the company setting it starts from (`$setting`, read by
+  `ImportDefaults` for the guide's `ticked` and `answer` and for the run alike, which also gives a CSV the company's
+  notation, `ImportNotation`; a workbook's cells keep their own) (`ImportColumnsTest` holds every label and note to each language; the
   products file's: `default_taxes`, the line defaults for a new product naming no tax, and `unpriced_inactive`, a new
   product with no price created switched off at 0; its `cost_price_gross` column is a cost with taxes, kept less the
   VAT the company gets back), says what a row names for duplicates, `identityOf`, and what is said once per file, `finished`; a

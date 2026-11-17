@@ -233,7 +233,7 @@ final readonly class PurchaseHistoryImport implements DeclaresImport
         if (null === $cell) {
             return null;
         }
-        $written = TypedText::trimmed(ImportCells::day($cell));
+        $written = TypedText::trimmed(ImportCells::day($cell, $record->notation->days));
         $day = WrittenDay::parsed($written, zone: new \DateTimeZone($company->getTimezone()));
         $today = $this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d');
         if (null === $day || $written < self::EARLIEST || $written > $today) {

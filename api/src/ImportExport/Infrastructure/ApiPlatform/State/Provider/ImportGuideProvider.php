@@ -14,6 +14,7 @@ use ApiPlatform\State\ProviderInterface;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportChoice;
 use App\ImportExport\Application\ImportColumn;
+use App\ImportExport\Application\ImportDefaults;
 use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportSettings;
 use App\ImportExport\Application\ImportSwitch;
@@ -44,6 +45,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
         private TranslatorInterface $translator,
         private ImportRunRepository $runs,
         private ReadSetting $settings,
+        private ImportDefaults $defaults,
     ) {
     }
 
@@ -75,11 +77,14 @@ final readonly class ImportGuideProvider implements ProviderInterface
             $column->example,
             $column->note,
         ), $subject->columns);
+        $defaults = $this->defaults->of($company, $subject);
         $guide->switches = array_map(static fn (ImportSwitch $switch): ImportGuideSwitch => new ImportGuideSwitch(
             $switch->key,
             $switch->label,
             $switch->note,
             array_map(static fn (ImportChoice $choice): array => ['key' => $choice->key, 'labelKey' => $choice->label], $switch->choices),
+            [] === $switch->choices && true === ($defaults[$switch->key] ?? false),
+            [] === $switch->choices ? null : $switch->answer(null, \is_string($defaults[$switch->key] ?? null) ? $defaults[$switch->key] : null),
         ), $subject->switches);
         $companySettings = new SettingContext($company);
         $guide->lastPairing = [];

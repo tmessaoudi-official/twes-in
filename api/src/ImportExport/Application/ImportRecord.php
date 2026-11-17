@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application;
 
+use App\ImportExport\Application\Notation\ImportNotation;
+
 /**
  * One row of an import file, under the column keys of its header: only the columns the file has, each cell trimmed.
  * A column the file lacks and a cell it leaves blank read the same, as absent, which is what lets a partial file update
@@ -24,6 +26,8 @@ final readonly class ImportRecord
         public ?array $overflow = null,
         /** Bytes the encoding the file is read in cannot read, so its cells are not text and are never read */
         public bool $unreadable = false,
+        /** How the file writes its numbers and days: a CSV's the company's, a workbook's the default */
+        public ImportNotation $notation = new ImportNotation(),
     ) {
     }
 

@@ -148,6 +148,24 @@ final class OpeningStockImportTest extends ApiTestCase
         self::assertSame('0.2575', $this->em()->getConnection()->fetchOne("SELECT unit_cost FROM stock_movement WHERE source_type = 'receipt'"), 'a cost to the four decimals a price holds');
     }
 
+    /** An addition naming no cost takes the product's cost, or where the company says so its average cost so far. */
+    public function testAnAdditionNamingNoCostMayTakeTheAverageCost(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.cost.read']);
+        $this->import("reference,location_code,stock_add,unit_cost\nVIS-6X40,000,10,\"0,5\"\n");
+        self::assertResponseIsSuccessful();
+        // The client reboots the kernel between requests: the company is read again before a setting names it.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $this->em()->persist(new Setting(SettingAddress::company($company), 'import.stock_cost_fallback', 'average', self::heldNow()));
+        $this->em()->flush();
+
+        $this->import("reference,location_code,stock_add\nVIS-6X40,000,10\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([['unit_cost' => '0.5000', 'cost_typed' => true], ['unit_cost' => '0.5000', 'cost_typed' => false]], $this->em()->getConnection()->fetchAllAssociative("SELECT unit_cost, cost_typed FROM stock_movement WHERE source_type = 'receipt' ORDER BY at, id"), 'the average, not the product’s 0.2000, and no price anybody typed');
+    }
+
     public function testSomebodyWhoCannotReadCostsIsNotAskedForOne(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
@@ -389,7 +407,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->client->request('GET', '/api/companies/'.$this->company->getId()->toRfc4122().'/imports/opening-stock', server: ['HTTP_ACCEPT' => 'application/json']);
 
         self::assertResponseIsSuccessful();
-        self::assertSame([['key' => 'recount', 'labelKey' => 'import.stock.recount', 'noteKey' => 'import.stock.recount_note', 'choices' => []]], $this->json()['switches'] ?? null);
+        self::assertSame([['key' => 'recount', 'labelKey' => 'import.stock.recount', 'noteKey' => 'import.stock.recount_note', 'choices' => [], 'ticked' => false, 'answer' => null]], $this->json()['switches'] ?? null);
     }
 
     /** The other stock keepers hear once that a file counted differences, not once per row (§ 7 2026-10-09 10:40 (10)). */

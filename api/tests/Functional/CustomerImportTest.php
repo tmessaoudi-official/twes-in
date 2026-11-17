@@ -427,6 +427,30 @@ final class CustomerImportTest extends ApiTestCase
         );
     }
 
+    /**
+     * The same file again is told it was imported, then kept as asked (the default); a company may have it refused
+     * (« Paramètres », import.repeat_file), before it is confirmed as when it is, which leaves what the first one made.
+     */
+    public function testACompanyMayRefuseTheSameFileTwice(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->import($this->twoCustomers());
+        self::assertResponseIsSuccessful();
+
+        $this->import($this->twoCustomers(), mode: 'upsert', dryRun: true);
+        self::assertResponseIsSuccessful('told, and kept as asked by default');
+        self::assertNotNull($this->json()['alreadyImportedAt'] ?? null);
+
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->found()), ImportSettings::REPEAT_FILE, SettingLevel::Company, 'refuse', null);
+        foreach ([true, false] as $dryRun) {
+            $this->import($this->twoCustomers(), mode: 'upsert', dryRun: $dryRun);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+            self::assertSame(['error' => 'already_imported', 'columns' => [], 'limit' => null, 'encoding' => 'utf-8'], $this->json());
+        }
+        self::assertSame(2, $this->customers());
+        self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM import_run'));
+    }
+
     /** A shop receiving files from several sources is offered no pairing when its owner says so; the last one stays kept. */
     public function testACompanyThatReusesNoPairingIsOfferedNoneAndGetsItBackWhenItDoes(): void
     {
@@ -545,6 +569,40 @@ final class CustomerImportTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([2], $this->json()['created']);
         self::assertSame('Sonia Ben Ali', $this->customer('CLI-0009')->getProfile()->name);
+    }
+
+    /**
+     * A company whose CSV files write decimals with a comma says so (import.decimal_mark): a point there is refused rather
+     * than guessed at; a workbook's numbers are read as the reader writes them, with a point, whatever its CSV files do.
+     */
+    public function testACsvIsReadInTheCompanysNotationAndAWorkbookInItsOwn(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->found()), ImportSettings::DECIMAL_MARK, SettingLevel::Company, 'comma', null);
+
+        // A point in a comma file is refused, never read as thousands set apart: the second row's e-mail is set aside,
+        // and the row read without it keeps the file's notation.
+        $this->import("number,name,kind,default_discount_rate,email\nCLI-0001,Carthage Conseil,company,\"12,5\",\nCLI-0003,Atlas Négoce,company,2.5,atlas@\n");
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([[3, 'email', 'invalid_email', []], [3, 'default_discount_rate', 'decimal_mark', ['mark' => ',']]], array_map(
+            static fn (mixed $rejection): array => !\is_array($rejection) ? [] : [$rejection['line'], $rejection['column'], $rejection['code'], $rejection['params']],
+            $this->arrayAt($this->json(), 'rejected'),
+        ));
+
+        $this->import("number,name,kind,default_discount_rate\nCLI-0001,Carthage Conseil,company,\"12,5\"\n");
+        self::assertResponseIsSuccessful();
+        $path = (string) tempnam(sys_get_temp_dir(), 'import-test-');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name', 'kind', 'default_discount_rate'], ['CLI-0002', 'Sonia Ben Ali', 'individual', '2.5']]);
+        $contents = (string) file_get_contents($path);
+        unlink($path);
+        $this->import($contents, name: 'customers.xlsx');
+        self::assertResponseIsSuccessful();
+
+        $this->em()->clear();
+        self::assertSame(['12.500', '2.500'], [
+            $this->customer('CLI-0001')->getProfile()->defaultDiscountRate,
+            $this->customer('CLI-0002')->getProfile()->defaultDiscountRate,
+        ]);
     }
 
     /** A workbook declaring a document type is refused whole, with a reason of its own the screen words, and nothing is read. */

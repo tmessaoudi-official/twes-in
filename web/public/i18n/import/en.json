@@ -98,7 +98,15 @@
       "unreachable_gross_note": "Some prices including taxes come from no price before taxes, the currency’s last digit falling between two. Each row concerned says the price kept.",
       "unreachable_gross_below": "The nearest below",
       "unreachable_gross_above": "The nearest above",
-      "unreachable_gross_refuse": "Refuse the row"
+      "unreachable_gross_refuse": "Refuse the row",
+      "below_cost": "Price under the cost",
+      "below_cost_note": "A sale price under the cost is most often a typing slip. Only those who see costs are told of it.",
+      "below_cost_note_it": "Point the row out",
+      "below_cost_refuse": "Refuse the row",
+      "excess_decimals": "Price with more than four decimals",
+      "excess_decimals_note": "A price or a cost keeps four decimals. Rounded, each row concerned says the amount kept.",
+      "excess_decimals_refuse": "Refuse the row",
+      "excess_decimals_round": "Round it and say so"
     },
     "vendors": {
       "number": "Vendor number",
@@ -215,7 +223,8 @@
       "invalid": "The file could not be read.",
       "step_up_required": "Nothing changed: confirm it is you to make this change.",
       "import_undone": "This import is undone already.",
-      "import_final": "This import can no longer be undone: the time to undo it ({{duration}}) is over."
+      "import_final": "This import can no longer be undone: the time to undo it ({{duration}}) is over.",
+      "import_stock_stands": "Nothing was undone: stock from this import was used since, here: {{places}}. Correct those quantities with a movement, or leave the import as it is."
     },
     "refusals": {
       "not_received": "The file did not arrive: choose it again.",
@@ -228,6 +237,7 @@
       "missing_columns": "Missing columns: {{columns}}.",
       "too_many_rows": "The file is longer than {{limit}} rows. Split it into several files.",
       "unreadable_encoding": "The file’s header cannot be read in this encoding: choose the file’s own.",
+      "already_imported": "This file was already imported, and the company refuses the same file twice. To import it again, first undo the earlier import in « Recent imports ».",
       "invalid_pairing": "These headings were paired with a column that no longer exists: {{columns}}. Pair them again under “Your headings”."
     },
     "notes_title": "Good to know",
@@ -244,6 +254,7 @@
       "below_cost": "Sold under its cost price ({{cost}}).",
       "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page.",
       "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept.",
+      "decimals_rounded": "{{written}} rounded to {{kept}}.",
       "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held.",
       "phone_kept_to_check": "“{{value}}” kept as it is: this number is not among those its country hands out. The record is marked “To check”: check it.",
       "date_kept_unknown": "Date “{{date}}” cannot be: the line is kept as “date unknown”.",

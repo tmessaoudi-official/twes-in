@@ -829,6 +829,66 @@ Cheville 10 mm,6191234567897
         self::assertSame([['line' => 2, 'column' => 'unit_price_net', 'code' => 'below_cost', 'params' => ['cost' => '1.0000']]], $this->json()['notes']);
     }
 
+    /**
+     * Where the company says so (« Paramètres », import.products_unpriced_inactive), the switch creating an unpriced
+     * product switched off starts ticked on the screen; a request names the ticks it wants, so one naming none still
+     * creates nothing unpriced.
+     */
+    public function testTheCompanyMayHaveTheUnpricedSwitchStartTicked(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        self::assertSame([false, null], $this->switchDefault('unpriced_inactive'), 'unticked, as before');
+
+        $this->companySetting('import.products_unpriced_inactive', true);
+
+        self::assertSame([true, null], $this->switchDefault('unpriced_inactive'));
+        $this->import("reference,name,unit_code,default_tax_codes\nVIS-1,Vis 1,H87,TVA19\n", dryRun: true);
+        self::assertSame([[2, 'unit_price_net', 'value_required']], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $this->rejections()));
+    }
+
+    /** A price under the cost is pointed out by default; a file may ask it refused, said only to whoever reads costs. */
+    public function testAPriceUnderTheCostMayBeRefusedForWhoeverReadsCosts(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        self::assertSame([false, 'note'], $this->switchDefault('below_cost'));
+        $file = "reference,name,unit_code,unit_price_net,cost_price,default_tax_codes\nVIS-1,Vis 1,H87,0.9,1,TVA19\n";
+
+        $this->import($file, dryRun: true, choices: ['below_cost' => 'refuse']);
+
+        self::assertSame([[2, 'unit_price_net', 'below_cost', ['cost' => '1.0000']]], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 4), $this->rejections()));
+
+        // Someone who may not read costs is told nothing of one, so a price they write is never refused for it.
+        $this->import("reference,name,unit_code,unit_price_net,cost_price,default_tax_codes\nVIS-1,Vis 1,H87,1,1,TVA19\n");
+        self::assertResponseIsSuccessful();
+        $this->company = $this->found();
+        $this->createUser('writer@twes.local', 'password-1234', $this->company, ['product.read', 'product.write'], 'writer');
+        $this->login('writer@twes.local', 'password-1234');
+        $this->import("reference,name,unit_price_net\nVIS-1,Vis 1,0.5\n", mode: 'upsert', choices: ['below_cost' => 'refuse']);
+        self::assertSame([[], []], [$this->json()['rejected'], $this->json()['notes']]);
+        self::assertSame([2], $this->json()['updated'], 'the row kept, its price under a cost nobody here may read');
+    }
+
+    /** A price finer than four decimals is refused by default; a file may ask it rounded, each rounding said. */
+    public function testAPriceFinerThanItsDecimalsMayBeRoundedAndSaid(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        self::assertSame([false, 'refuse'], $this->switchDefault('excess_decimals'));
+        $file = "reference,name,unit_code,unit_price_net,cost_price,default_tax_codes\nVIS-1,Vis 1,H87,\"1,23456\",0.12345,TVA19\n";
+
+        $this->import($file, dryRun: true);
+        self::assertSame([[2, 'unit_price_net', 'too_many_decimals'], [2, 'cost_price', 'too_many_decimals']], array_map(static fn (array $rejection): array => \array_slice($rejection, 0, 3), $this->rejections()));
+
+        $this->import($file, choices: ['excess_decimals' => 'round']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            ['line' => 2, 'column' => 'unit_price_net', 'code' => 'decimals_rounded', 'params' => ['written' => '1.23456', 'kept' => '1.2346']],
+            ['line' => 2, 'column' => 'cost_price', 'code' => 'decimals_rounded', 'params' => ['written' => '0.12345', 'kept' => '0.1235']],
+        ], array_values(array_filter($this->arrayAt($this->json(), 'notes'), static fn (mixed $note): bool => \is_array($note) && 'decimals_rounded' === ($note['code'] ?? null))));
+        $this->em()->clear();
+        self::assertSame(['1.2346', '0.1235'], [$this->product('VIS-1')->getDetails()->unitPriceNet, $this->product('VIS-1')->getDetails()->costPrice]);
+    }
+
     /** In euros the cent is the last digit: 9.99 at 20 % is no net price's, as 8.32 makes 9.98 and 8.33 makes 10.00. */
     public function testInEurosAPriceTaxesIncludedIsCountedToTheCent(): void
     {
@@ -872,6 +932,8 @@ Cheville 10 mm,6191234567897
                 ['key' => 'above', 'labelKey' => 'import.products.unreachable_gross_above'],
                 ['key' => 'refuse', 'labelKey' => 'import.products.unreachable_gross_refuse'],
             ],
+            'ticked' => false,
+            'answer' => 'below',
         ]], $offered, 'the guide offers the choice, its first answer the one taken');
 
         $this->import($file, dryRun: true, choices: ['unreachable_gross' => 'refuse']);
@@ -1467,8 +1529,40 @@ Cheville 10 mm,6191234567897
     /** The company keeps stock of its goods. */
     private function stockKept(): void
     {
-        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, self::heldNow()));
+        $this->companySetting('article.stock_tracking', true);
+    }
+
+    /** A company setting, on the company read again: the client reboots the kernel between requests, which detaches it. */
+    private function companySetting(string $key, bool|string $value): void
+    {
+        $this->company = $this->found();
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), $key, $value, self::heldNow()));
         $this->em()->flush();
+    }
+
+    private function found(): Company
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+
+        return $company;
+    }
+
+    /** @return array{bool, string|null} whether the guide starts a switch ticked, and the answer a choice starts on */
+    private function switchDefault(string $key): array
+    {
+        $this->client->request('GET', $this->companyPath().'/imports/products', server: ['HTTP_ACCEPT' => 'application/json']);
+        self::assertResponseIsSuccessful();
+        foreach ($this->arrayAt($this->json(), 'switches') as $switch) {
+            self::assertIsArray($switch);
+            if ($key === ($switch['key'] ?? null)) {
+                self::assertIsBool($switch['ticked'] ?? null);
+                self::assertTrue(null === $switch['answer'] || \is_string($switch['answer']));
+
+                return [$switch['ticked'], $switch['answer']];
+            }
+        }
+        self::fail(\sprintf('The guide offers no switch %s.', $key));
     }
 
     /** @return list<string> the column keys the guide lists, and its switches */

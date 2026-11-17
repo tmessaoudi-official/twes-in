@@ -248,6 +248,36 @@
           "windows-1252": "Windows-1252 (French)",
           "windows-1256": "Windows-1256 (Arabic)",
           "utf-16": "UTF-16 (Excel’s Unicode text)"
+        },
+        "products_below_cost": {
+          "note": "Point the row out",
+          "refuse": "Refuse the row"
+        },
+        "products_excess_decimals": {
+          "refuse": "Refuse the row",
+          "round": "Round it and say so"
+        },
+        "repeat_file": {
+          "warn": "Point it out",
+          "refuse": "Refuse it"
+        },
+        "stock_cost_fallback": {
+          "product": "The product’s cost",
+          "average": "The average cost"
+        },
+        "undo_stock_conflict": {
+          "keep": "Keep that stock and say so",
+          "refuse": "Refuse the undo"
+        },
+        "decimal_mark": {
+          "auto": "Automatic (point or comma)",
+          "point": "The point (1,234.50)",
+          "comma": "The comma (1.234,50)"
+        },
+        "day_order": {
+          "day_first": "Day, month, year (15/03/2026)",
+          "month_first": "Month, day, year (03/15/2026)",
+          "year_first": "Year, month, day (2026/03/15)"
         }
       }
     },
@@ -335,7 +365,15 @@
     },
     "import": {
       "csv_encoding": "Encoding of imported CSV files",
-      "reuse_last_pairing": "Reuse the last import’s headings"
+      "reuse_last_pairing": "Reuse the last import’s headings",
+      "products_unpriced_inactive": "Import products with no price switched off",
+      "products_below_cost": "Imported price under the cost",
+      "products_excess_decimals": "Imported price with more than four decimals",
+      "repeat_file": "Same file imported twice",
+      "stock_cost_fallback": "Cost of an imported addition with none",
+      "undo_stock_conflict": "Undo an import whose stock was used",
+      "decimal_mark": "Decimal mark of CSV files",
+      "day_order": "Date order of CSV files"
     }
   }
 }
