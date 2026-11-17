@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -9,6 +10,7 @@ import {
   TranslateService,
 } from '@ngx-translate/core';
 import { PluralCompiler } from '../i18n/plural-compiler';
+import { Session } from '../session/session';
 import { RecordMergeDialog, type RecordMergeDialogData } from './record-merge-dialog';
 
 /** The French texts the dialog says; the parity spec holds the shipped files to these keys. */
@@ -220,5 +222,48 @@ describe('RecordMergeDialog, records merged away as aliases', () => {
       'Annulable 24 heures, tant que rien n’est reçu au nom de la fiche gardée.',
     );
     expect(root.textContent).not.toContain('disparaît');
+  });
+});
+
+describe('RecordMergeDialog’s undo window', () => {
+  it('says the working company’s own window, which its merges keep, never the operator’s', () => {
+    TestBed.configureTestingModule({
+      imports: [RecordMergeDialog],
+      providers: [
+        provideTranslateService({ fallbackLang: 'fr' }),
+        provideTranslateCompiler(PluralCompiler),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: MAT_DIALOG_DATA, useValue: DATA },
+        {
+          provide: Session,
+          useValue: {
+            me: signal({
+              user: { id: 'u1' },
+              company: {
+                id: 'c1',
+                countryCode: 'TN',
+                currency: 'TND',
+                recordsUndoableSeconds: 3 * 3600,
+              },
+            }),
+          },
+        },
+      ],
+    });
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('fr', {
+      ...FR,
+      records: {
+        ...FR.records,
+        merge: { ...FR.records.merge, undo_hint: 'Annulable {{duration}}.' },
+      },
+      duration: { hours: '{{count}} h' },
+    });
+    translate.use('fr');
+    const fixture = TestBed.createComponent(RecordMergeDialog);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Annulable 3 h.');
   });
 });

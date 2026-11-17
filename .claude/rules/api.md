@@ -67,7 +67,8 @@ the end of § Lessons here.
   carries its id: `Inventory/Application/ImportStock` is every file's quantities; a file in the shop's own headings
   is read through `pairing`, a JSON object of heading to column (`''` sets a column aside), which the committed run
   keeps and the guide offers again as `lastPairing`; « Annuler cet import », `Application/Undo/UndoImport` at `POST …/import-runs/{id}/undo`, takes back within
-  `app.records.undoable_for` and behind a step-up what the run created that nothing uses, as a `RecordRemoval` of kind
+  the window the run kept when made (`import_run.undoable_until`; NULL for an older run, which reads the operator's
+  `app.records.undoable_for`) and behind a step-up what the run created that nothing uses, as a `RecordRemoval` of kind
   `import` the bin puts back through `RestoreUndoneImport`, the stock it moved through `ImportedStock` (reversals at their
   own cost) and the rows a module wrote through `UndoesImportedRows`, then puts back what a file that replaces a list
   removed (`ImportContext::removed`, kept in `import_run_removal`, handed to the module's `PutsBackImportRemovals`, as
@@ -98,7 +99,9 @@ the end of § Lessons here.
   `DeclaresRecordReferences` in its own `Infrastructure/Records/`, which `RecordReferenceCoverage` holds to every column
   that names one; `RemoveRecords` refuses a record in use, takes the rows a reference says belong to it (`owned`: a
   product's codes, photos, places, settings; a row owned through such a row, a line's tax, is declared `below` it and goes
-  before it), keeps them a day in `record_removal_row` for `RestoreRecords`, and the
+  before it), keeps them in `record_removal_row` for `RestoreRecords` for the company's `records.undoable_for`,
+  `RecordsUndoSettings` (whole hours, an hour up to the operator's `app.records.undoable_for`, which `/auth/me`'s
+  `company.recordsUndoableSeconds` says to every screen through `DurationWords`), stamped when made, and the
   worker makes them final every quarter hour, letting go the files nothing names any more through the Files context's
   `UnnamedFiles`, which the erasure shares; `Merge/MergeRecords` merges records of a subject that says how, its
   `MergedAway`: an alias stays switched off pointing at the record kept (`merged_into_id`, which `RecordReferenceCoverage`

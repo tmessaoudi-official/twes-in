@@ -3,7 +3,7 @@
   <p class="text-sm text-on-surface-variant">
     {{
       'records.recent.intro'
-        | translate: { duration: parameters.recordsUndoableSeconds() | duration }
+        | translate: { duration: durations.recordsUndoableSeconds() | duration }
     }}
   </p>
 
@@ -17,7 +17,7 @@
         <mat-icon aria-hidden="true">history</mat-icon
         >{{
           'records.recent.empty'
-            | translate: { duration: parameters.recordsUndoableSeconds() | duration }
+            | translate: { duration: durations.recordsUndoableSeconds() | duration }
         }}
       </p>
     } @else {

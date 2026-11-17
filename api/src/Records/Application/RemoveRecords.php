@@ -20,7 +20,6 @@ use App\Records\Domain\Repository\RecordRemovalRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -38,8 +37,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
-        #[Autowire(param: 'app.records.undoable_for')]
-        private string $undoableFor,
+        private RecordsUndoWindow $windows,
     ) {
     }
 
@@ -85,7 +83,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
 
             $items = array_map(static fn (Uuid $id): array => ['id' => $id->toRfc4122(), 'label' => $labels[$id->toRfc4122()]], $chosen);
             // The record first: every row copied names it.
-            $removal = new RecordRemoval(Uuid::v7(), $company, $subject->table, $items, $actorUserId, $this->clock->now(), new \DateInterval($this->undoableFor));
+            $removal = new RecordRemoval(Uuid::v7(), $company, $subject->table, $items, $actorUserId, $this->clock->now(), $this->windows->undoableFor($company));
             $this->removals->save($removal);
             $this->store->remove($company->getId(), $removal->getId(), $subject, $chosen, self::of($naming, RecordUse::Owned));
             foreach ($chosen as $id) {
@@ -156,7 +154,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
                 return new ImportedRecordsTaken(null, [], $kept);
             }
 
-            $removal = RecordRemoval::import(Uuid::v7(), $company, $subject->table, $removed, $actorUserId, $this->clock->now(), new \DateInterval($this->undoableFor));
+            $removal = RecordRemoval::import(Uuid::v7(), $company, $subject->table, $removed, $actorUserId, $this->clock->now(), $this->windows->undoableFor($company));
             $this->removals->save($removal);
             $this->store->remove($company->getId(), $removal->getId(), $subject, $removable, [...self::of($naming, RecordUse::Owned), ...$byImport]);
             foreach ($removable as $id) {

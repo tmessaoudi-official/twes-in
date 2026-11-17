@@ -23,6 +23,7 @@ use App\Records\Application\RecordMerge;
 use App\Records\Application\RecordReference;
 use App\Records\Application\RecordStore;
 use App\Records\Application\RecordSubject;
+use App\Records\Application\RecordsUndoWindow;
 use App\Records\Application\RecordUse;
 use App\Records\Application\RemoveRecords;
 use App\Records\Application\UnknownRecords;
@@ -33,7 +34,6 @@ use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
@@ -56,8 +56,7 @@ final readonly class MergeRecords implements DeclaresAuditActions
         private ClockInterface $clock,
         private ConfirmStepUp $stepUp,
         private LiveChanges $liveChanges,
-        #[Autowire(param: 'app.records.undoable_for')]
-        private string $undoableFor,
+        private RecordsUndoWindow $windows,
         /** @var iterable<MergeEffects> */
         #[AutowireIterator('app.record.merge_effects')]
         private iterable $effects = [],
@@ -125,7 +124,7 @@ final readonly class MergeRecords implements DeclaresAuditActions
                 array_map(static fn (Uuid $id): array => ['id' => $id->toRfc4122(), 'label' => $labels[$id->toRfc4122()]], $merged),
                 $actorUserId,
                 $this->clock->now(),
-                new \DateInterval($this->undoableFor),
+                $this->windows->undoableFor($company),
             );
             $this->removals->save($merge);
             // Before anything is pointed elsewhere, while what is merged away still stands as itself.

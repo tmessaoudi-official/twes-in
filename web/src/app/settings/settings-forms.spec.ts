@@ -147,6 +147,26 @@ describe('companySettingsForm', () => {
     });
   });
 
+  it('gives how long a delete stays undoable a whole row, its hint and the operator’s bound', () => {
+    const undo = row({
+      key: 'records.undoable_for',
+      chain: 'parties',
+      type: 'int',
+      defaultValue: 24,
+      value: 24,
+      min: '1',
+      max: '24',
+    });
+    const fields = companySettingsForm([terms, undo]).sections.flatMap((section) => section.fields);
+
+    expect(fields.find((field) => field.id === 'records__undoable_for')).toMatchObject({
+      span: 2,
+      hint: 'settings.records.undoable_for_hint',
+      min: 1,
+      max: 24,
+    });
+  });
+
   it("carries each setting's constraints to its field", () => {
     const fields = companySettingsForm(rows).sections.flatMap((section) => section.fields);
     const byId = Object.fromEntries(fields.map((field) => [field.id, field]));

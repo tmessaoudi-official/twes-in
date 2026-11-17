@@ -13,6 +13,7 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\Notation\ImportNotation;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
+use App\Records\Application\RecordsUndoWindow;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\LiveChange;
@@ -45,6 +46,7 @@ final readonly class RunImport
     public function __construct(
         private Transactions $transactions,
         private ReadSetting $settings,
+        private RecordsUndoWindow $windows,
         private ImportRunRepository $runs,
         private ClockInterface $clock,
         private LiveChanges $changes,
@@ -88,7 +90,7 @@ final readonly class RunImport
                     throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already, $report->changes, $report->unchanged));
                 }
                 $declaration->finished($company, $context, $actorUserId);
-                $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now(), $paired));
+                $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now(), $this->windows->undoableFor($company), $paired));
                 $this->runs->saveCreated($company->getId(), $context->runId, $context->createdRecords());
                 $this->runs->saveRemoved($company->getId(), $context->runId, $context->removedRecords());
                 // Each record is said by its own subject; the run itself is audited by nobody, so it is said here.

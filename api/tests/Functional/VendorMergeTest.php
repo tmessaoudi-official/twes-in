@@ -518,6 +518,16 @@ final class VendorMergeTest extends ApiTestCase
         );
     }
 
+    /** A merge stays undoable for the company's own window, as a delete does (records.undoable_for). */
+    public function testTheMergeKeepsTheCompanysOwnWindow(): void
+    {
+        $this->signedIn();
+        $this->companyChooses($this->company, 'records.undoable_for', 3);
+        $merge = $this->merged($this->vendorId('F-001'), [$this->vendorId('F-002')]);
+
+        self::assertSame(10_800, $this->em()->getConnection()->fetchOne('SELECT EXTRACT(EPOCH FROM effective_at - removed_at)::int FROM record_removal WHERE id = ?', [$this->stringAt($merge, 'id')]));
+    }
+
     /**
      * @param list<string> $merged
      *

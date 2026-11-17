@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Identity\Infrastructure\ApiPlatform\Output\MeFactory;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -19,6 +20,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Records\Application\EndDueRemovals;
 use App\Records\Application\ReadRemovals;
+use App\Records\Application\RecordsUndoWindow;
 use App\Records\Application\RestoreRecords;
 use App\Records\Domain\Exception\RemovalNoLongerPending;
 use App\Settings\Domain\Model\Setting;
@@ -266,6 +268,35 @@ final class RecordRemovalTest extends ApiTestCase
         $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
         self::assertSame('removal_final', $this->json()['error']);
+    }
+
+    /**
+     * A company may keep its deletes undoable for less than the operator does (records.undoable_for): the window is the
+     * one in force when the record went, so another company keeps the operator's, and one saved above an operator value
+     * lowered since reads as the operator's.
+     */
+    public function testACompanysOwnWindowIsTheOneItsDeleteKeeps(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->companyChooses($this->company, 'records.undoable_for', 2);
+        $removal = $this->removed('F-001');
+
+        self::assertSame(7_200, $this->em()->getConnection()->fetchOne('SELECT EXTRACT(EPOCH FROM effective_at - removed_at)::int FROM record_removal WHERE id = ?', [$removal]));
+        $windows = static::getContainer()->get(RecordsUndoWindow::class);
+        self::assertSame(86_400, $windows->seconds($this->createCompany('Globex')), "another company keeps the operator's day");
+    }
+
+    /** Every screen says the window the company's deletes keep: the session says it, and hears it change. */
+    public function testTheSessionSaysTheCompanysWindow(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->getJson('/api/auth/me');
+        self::assertSame(86_400, $this->section($this->json(), 'company')['recordsUndoableSeconds']);
+
+        $this->companyChooses($this->company, 'records.undoable_for', 3);
+        $this->getJson('/api/auth/me');
+        self::assertSame(10_800, $this->section($this->json(), 'company')['recordsUndoableSeconds']);
+        self::assertContains('company_setting', MeFactory::CHANGED_BY, 'a session open elsewhere reads the window again');
     }
 
     /**

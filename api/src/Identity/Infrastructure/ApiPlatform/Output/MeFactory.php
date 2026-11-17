@@ -26,6 +26,7 @@ use App\Licensing\Application\CompanyStandings;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleManifest;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Records\Application\RecordsUndoWindow;
 use App\Settings\Application\PhoneSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
@@ -47,11 +48,12 @@ final readonly class MeFactory
     /**
      * The kinds of change whose writes move what this answers: a company's status, closing, logo or required second
      * factor, a membership or role and its permissions, a module switched, a subscription's standing and the payments
-     * declared towards it, a support grant, the platform's own settings (its phone policy). The shell reads the session
+     * declared towards it, a support grant, the platform's own settings (its phone policy) and a company's (how long a
+     * delete stays undoable, which every screen says). The shell reads the session
      * again on each (`SESSION_KINDS`, web/src/app/shared/session/session-kinds.ts, which `SessionKindsTest` holds to
      * this list): a field added here names the kind its writer says.
      */
-    public const array CHANGED_BY = ['company', 'membership', 'module', 'payment_declaration', 'platform_setting', 'role', 'subscription', 'support_grant'];
+    public const array CHANGED_BY = ['company', 'membership', 'module', 'payment_declaration', 'company_setting', 'platform_setting', 'role', 'subscription', 'support_grant'];
 
     public function __construct(
         private UserRepository $users,
@@ -70,6 +72,7 @@ final readonly class MeFactory
         private CompanyEntry $entry,
         private ScreenProofs $screenProofs,
         private CompanyRepository $companies,
+        private RecordsUndoWindow $windows,
         private PhonePolicy $phonePolicy,
     ) {
     }
@@ -88,7 +91,15 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, \count($passkeys = $this->passkeys->ofUser($user)), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE, $this->screenProofs->ofStepUp($user), \count(array_filter($passkeys, fn (Passkey $passkey): bool => !$this->passkeyHost->madeHere($passkey->getHost()))));
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, \count($passkeys = $this->passkeys->ofUser($user)), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE, $this->screenProofs->ofStepUp($user), \count(array_filter($passkeys, fn (Passkey $passkey): bool => !$this->passkeyHost->madeHere($passkey->getHost()))), $this->recordsUndoableSeconds($context));
+    }
+
+    /** What every screen says of how long a delete stays undoable: the company's window, none without a company. */
+    private function recordsUndoableSeconds(?WorkingContext $context): int
+    {
+        $company = null === $context ? null : $this->companies->ofId(Uuid::fromString($context->companyId));
+
+        return null === $company ? 0 : $this->windows->seconds($company);
     }
 
     private function proofAsked(User $user, ?WorkingContext $context): ?EntryProof

@@ -417,6 +417,10 @@
     "vendors": {
       "merged_names_on_screens": "Merged vendor, as screens name it",
       "merged_names_on_screens_hint": "The books and declarations always keep the vendor recorded; pickers offer the vendor kept."
+    },
+    "records": {
+      "undoable_for": "Time to undo a delete (hours)",
+      "undoable_for_hint": "A delete, a merge or an import can be taken back for this long, at most the time the installation keeps."
     }
   }
 }

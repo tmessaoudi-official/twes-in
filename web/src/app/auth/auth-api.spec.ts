@@ -35,6 +35,7 @@ const owner: Me = {
     closing: null,
     refused: false,
     suspensionReason: null,
+    recordsUndoableSeconds: 7200,
   },
   permissions: ['*'],
   mfa: {
@@ -87,6 +88,7 @@ describe('AuthApi', () => {
     expect(state.user.displayName).toBe('Owner');
     expect(state.company?.role).toBe('owner');
     expect(state.company?.logoVersion).toBe('f1');
+    expect(state.company?.recordsUndoableSeconds).toBe(7200);
     expect(state.permissions).toEqual(['*']);
     expect(state.modules).toEqual(['customers']);
     expect(state.plannedModules).toEqual([

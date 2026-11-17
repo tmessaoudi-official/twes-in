@@ -132,6 +132,8 @@ export interface WorkingCompany {
   refused?: boolean;
   /** What the operator gave as the reason of the refusal or suspension, null when none. */
   suspensionReason?: string | null;
+  /** How long a delete, a merge or an import in this company can be taken back, in seconds: what every screen says. */
+  recordsUndoableSeconds?: number;
 }
 
 /** Until when a closed company is kept (a day) and until when its owner may still reopen it (a moment). */

@@ -60,7 +60,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertSame(['key', 'planned'], $this->required($schemas['MePlannedModule']));
         self::assertSame(['enrolled', 'required', 'totp', 'passkeys', 'recoveryCodes', 'passkeySignIn', 'passkeySignInAllowed', 'passkeysElsewhere'], $this->required($schemas['MeMfa']));
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator', 'demo'], $this->required($schemas['MeUser']));
-        self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role', 'access', 'subscription', 'logoVersion', 'closing', 'refused', 'suspensionReason'], $this->required($schemas['MeCompany']));
+        self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role', 'access', 'subscription', 'logoVersion', 'closing', 'refused', 'suspensionReason', 'recordsUndoableSeconds'], $this->required($schemas['MeCompany']));
         self::assertSame(['retainUntil', 'reopenUntil'], $this->required($schemas['MeClosing']));
         self::assertSame(['email', 'password'], $this->required($schemas['LoginRequest']));
         self::assertSame(['status', 'database', 'build', 'deployment', 'statusUrl', 'passkeys', 'web'], $this->required($schemas['Health']));

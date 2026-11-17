@@ -336,6 +336,7 @@ function toState(me: Me): SignedInState {
             logoVersion: me.company.logoVersion ?? null,
             refused: me.company.refused,
             suspensionReason: me.company.suspensionReason ?? null,
+            recordsUndoableSeconds: me.company.recordsUndoableSeconds,
             closing:
               me.company.closing === null
                 ? null

@@ -13,6 +13,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { RecordRemovalsApi, type RecordRemoval } from '../shared/records/record-removals-api';
+import { Session } from '../shared/session/session';
 import { RecentlyDeletedPage } from './recently-deleted-page';
 
 class StaticLoader implements TranslateLoader {
@@ -21,7 +22,7 @@ class StaticLoader implements TranslateLoader {
       records: {
         recent: {
           title: 'Récemment supprimés',
-          intro: 'Gardé un jour.',
+          intro: 'Gardé {{duration}}.',
           empty: 'Rien de supprimé.',
           restore: 'Remettre',
           removed_at: 'Supprimé le {{moment}}',
@@ -37,6 +38,7 @@ class StaticLoader implements TranslateLoader {
         },
         errors: { network: 'Le serveur ne répond pas.' },
       },
+      duration: { hours: '{{count}} h' },
     });
   }
 }
@@ -118,6 +120,7 @@ describe('RecentlyDeletedPage', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: AuthFacade, useValue: { me } },
+        { provide: Session, useValue: { me } },
         { provide: FormatFacade, useValue: { moment: (value: string) => value } },
         { provide: RecordRemovalsApi, useValue: api },
         { provide: RecordDeletes, useValue: deletes },
@@ -141,6 +144,18 @@ describe('RecentlyDeletedPage', () => {
     ).toEqual(['F-002 Visserie', 'F-003 Quincaillerie du Sud']);
     expect(first.textContent).toContain('Supprimé le 2026-10-20T05:00:00+00:00');
     expect(first.textContent).toContain('Jusqu’au 2026-10-21T05:00:00+00:00');
+  });
+
+  it('says the working company’s own window, which its deletes keep, never the operator’s', async () => {
+    const before = me();
+    me.set({ user: { id: 'u1' }, company: { id: 'c1', recordsUndoableSeconds: 7200 } });
+    try {
+      await open();
+
+      expect(q('recently-deleted-page')!.textContent).toContain('Gardé 2 h.');
+    } finally {
+      me.set(before);
+    }
   });
 
   it('puts a delete back, then reads the list again, refused or not', async () => {

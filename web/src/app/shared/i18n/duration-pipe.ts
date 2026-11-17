@@ -3,6 +3,7 @@
 import { inject, Injectable, Pipe, type PipeTransform } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { WebParameters } from '../build/web-parameters';
+import { Session } from '../session/session';
 
 /**
  * A duration an operator sets, said in the screen's language with its plural form: in hours when it is a whole number
@@ -13,6 +14,7 @@ import { WebParameters } from '../build/web-parameters';
 export class DurationWords {
   private readonly translate = inject(TranslateService);
   private readonly parameters = inject(WebParameters);
+  private readonly session = inject(Session, { optional: true });
 
   of(seconds: number): string {
     const [unit, count] =
@@ -24,9 +26,18 @@ export class DurationWords {
     return this.translate.instant(`duration.${unit}`, { count }) as string;
   }
 
-  /** How long a delete, a merge or an import can be taken back, as a toast or a confirmation says it. */
+  /**
+   * How long a delete, a merge or an import can be taken back, in seconds: the working company's own window, which its
+   * deletes keep (`records.undoable_for`), else the operator's while no company is open.
+   */
+  recordsUndoableSeconds(): number {
+    const own = this.session?.me()?.company?.recordsUndoableSeconds;
+    return own !== undefined && own > 0 ? own : this.parameters.recordsUndoableSeconds();
+  }
+
+  /** The same as a toast or a confirmation says it. */
   recordsUndoable(): string {
-    return this.of(this.parameters.recordsUndoableSeconds());
+    return this.of(this.recordsUndoableSeconds());
   }
 }
 

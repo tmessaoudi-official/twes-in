@@ -4,11 +4,12 @@
  * The kinds of change that move what the session says (`MeFactory::CHANGED_BY` in the API, which `SessionKindsTest`
  * holds this list to): a company's status, closing, logo or required second factor, a membership or role, a module
  * switched, a subscription's standing and the payments declared towards it, a support grant, the platform's own settings
- * (never `setting`, every person's own choice). The shell reads the session again on each, so a decision taken by
+ * and a company's (`company_setting`: how long a delete stays undoable), never `setting`, every person's own choice. The shell reads the session again on each, so a decision taken by
  * another person shows at once.
  */
 export const SESSION_KINDS: readonly string[] = [
   'company',
+  'company_setting',
   'membership',
   'module',
   'payment_declaration',

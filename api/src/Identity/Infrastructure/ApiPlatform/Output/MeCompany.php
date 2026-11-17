@@ -35,6 +35,8 @@ final readonly class MeCompany
         #[ApiProperty(required: true)] public bool $refused = false,
         /** why an operator refused or suspended it, null when they did not say or while it is open */
         #[ApiProperty(required: true)] public ?string $suspensionReason = null,
+        /** how long a delete, a merge or an import in this company can be taken back, in seconds: what every screen says */
+        #[ApiProperty(required: true)] public int $recordsUndoableSeconds = 0,
     ) {
     }
 }

@@ -42,6 +42,7 @@ final readonly class ChangeSettings implements DeclaresAuditActions
     public const string CHANGED = 'setting.changed';
     public const string RESET = 'setting.reset';
     public const string PLATFORM_KIND = 'platform_setting';
+    public const string COMPANY_KIND = 'company_setting';
 
     public function __construct(
         private SettingCatalog $catalog,
@@ -264,6 +265,11 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $setting->getId(), $action, $actorUserId, $changes, $address->company?->getId()));
         if (SettingLevel::Platform === $address->level) {
             $this->liveChanges->stage(self::platformSettingMoved());
+        }
+        // A company's own default reaches its members' sessions (how long a delete stays undoable, which every screen
+        // says), by kind alone; a person's own choice above stays that person's and moves no session.
+        if (SettingLevel::Company === $address->level && null !== $address->company) {
+            $this->liveChanges->stage(new LiveChange(self::COMPANY_KIND, null, $action, $actorUserId, $address->company->getId()));
         }
     }
 

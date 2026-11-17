@@ -88,6 +88,28 @@ final class ChangeSettingsTest extends TestCase
     }
 
     /**
+     * A company's own default moved is said to its members' sessions by kind alone, set or reset, so every open tab reads
+     * again what the session carries of it (how long a delete stays undoable); a person's own choice is not.
+     */
+    public function testACompanyDefaultMovedIsSaidToItsMembersSessionsAndAPersonsOwnIsNot(): void
+    {
+        $this->change->change($this->context, 'presentation.density', SettingLevel::Company, 'compact', $this->userId);
+        $this->change->change($this->context, 'presentation.density', SettingLevel::Company, 'compact', $this->userId);
+        $this->change->change($this->context, 'presentation.language', SettingLevel::User, 'en', $this->userId);
+        $this->change->reset($this->context, 'presentation.density', SettingLevel::Company, $this->userId);
+
+        self::assertEquals(
+            [
+                new LiveChange(ChangeSettings::COMPANY_KIND, null, ChangeSettings::CHANGED, $this->userId, $this->company->getId()),
+                new LiveChange(ChangeSettings::COMPANY_KIND, null, ChangeSettings::RESET, $this->userId, $this->company->getId()),
+            ],
+            array_values(array_filter($this->liveChanges->staged, static fn (LiveChange $change): bool => ChangeSettings::COMPANY_KIND === $change->kind)),
+            'the same value again moves nothing',
+        );
+        self::assertSame('company_setting', ChangeSettings::COMPANY_KIND);
+    }
+
+    /**
      * A person's own choice is not audited, but told to that person's other tabs and devices, set or reset, so they
      * read the person's settings again: their scheme, language or formats follow them without a reload.
      */

@@ -417,6 +417,10 @@
     "vendors": {
       "merged_names_on_screens": "Fournisseur fusionné, nommé à l’écran",
       "merged_names_on_screens_hint": "Les livres et les déclarations gardent toujours le fournisseur enregistré ; le choix d’un fournisseur propose le fournisseur gardé."
+    },
+    "records": {
+      "undoable_for": "Délai d’annulation d’une suppression (heures)",
+      "undoable_for_hint": "Une suppression, une fusion ou un import peut être annulé pendant ce délai, au plus la durée que garde l’installation."
     }
   }
 }

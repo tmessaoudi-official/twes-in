@@ -46,7 +46,7 @@ final readonly class ReadImportRuns
             static fn (ImportRun $run): array => [
                 'run' => $run,
                 'by' => null === $run->getImportedBy() ? null : $names[$run->getImportedBy()->toRfc4122()] ?? null,
-                'undoableUntil' => $run->getAt()->add($window),
+                'undoableUntil' => $run->undoableUntil($window),
             ],
             $runs,
         );

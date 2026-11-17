@@ -26,6 +26,8 @@ use App\ImportExport\Application\RunImport;
 use App\ImportExport\Application\UnreadableImport;
 use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
+use App\Records\Application\RecordsUndoSettings;
+use App\Records\Application\RecordsUndoWindow;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
@@ -63,7 +65,7 @@ final class RunImportTest extends TestCase
         // The platform's cap, set low so a file passes it in a few lines.
         $settings = new InMemorySettings();
         $settings->save(new Setting(SettingAddress::platform(), ImportSettings::MAX_ROWS, 3, $this->clock->now()));
-        $this->settings = new ReadSetting(new ResolveSettings(new SettingCatalog([new ImportSettings()]), $settings));
+        $this->settings = new ReadSetting(new ResolveSettings(new SettingCatalog([new ImportSettings(), new RecordsUndoSettings('PT24H')]), $settings));
     }
 
     public function testRowsAreReadUnderTheirHeaderKeysAndCommittedOnce(): void
@@ -308,7 +310,7 @@ final class RunImportTest extends TestCase
     {
         $subject = $this->declaration->subjectFor($this->company);
 
-        return (new RunImport($this->transactions, $this->settings, $this->runs, $this->clock, $this->changes))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
+        return (new RunImport($this->transactions, $this->settings, new RecordsUndoWindow($this->settings, 'PT24H'), $this->runs, $this->clock, $this->changes))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
     }
 
     private static function hashOf(string $contents): string

@@ -11,8 +11,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
-import { WebParameters } from '../shared/build/web-parameters';
-import { DurationPipe } from '../shared/i18n/duration-pipe';
+import { DurationPipe, DurationWords } from '../shared/i18n/duration-pipe';
 import { AuthFacade } from '../auth/auth-facade';
 import { MomentPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -35,8 +34,8 @@ const REMOVAL_KIND = 'record_removal';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecentlyDeletedPage implements OnInit {
-  /** The operator's durations this screen states, never a fixed hour. */
-  protected readonly parameters = inject(WebParameters);
+  /** How long a delete stays here, the working company's window, never a fixed hour. */
+  protected readonly durations = inject(DurationWords);
   private readonly api = inject(RecordRemovalsApi);
   private readonly deletes = inject(RecordDeletes);
   private readonly auth = inject(AuthFacade);

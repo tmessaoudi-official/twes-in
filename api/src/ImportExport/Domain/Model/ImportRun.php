@@ -79,8 +79,15 @@ class ImportRun implements CompanyOwned
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $undoRemovalId = null;
 
+    /**
+     * Until when it can be taken back: its company's window when it ran, so a change of that window moves no undo
+     * already offered. Null for a run made before the window was kept, which reads the operator's.
+     */
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $undoableUntil;
+
     /** @param array<string, string> $pairing */
-    public function __construct(Uuid $id, Company $company, string $subject, string $contentHash, string $mode, ?Uuid $importedBy, int $created, int $updated, \DateTimeImmutable $at, array $pairing = [])
+    public function __construct(Uuid $id, Company $company, string $subject, string $contentHash, string $mode, ?Uuid $importedBy, int $created, int $updated, \DateTimeImmutable $at, \DateInterval $undoableFor, array $pairing = [])
     {
         if (1 !== preg_match('/^[0-9a-f]{64}$/', $contentHash)) {
             throw new \InvalidArgumentException('A content hash is a SHA-256 in lowercase hexadecimal.');
@@ -94,6 +101,7 @@ class ImportRun implements CompanyOwned
         $this->created = $created;
         $this->updated = $updated;
         $this->at = $at;
+        $this->undoableUntil = $at->add($undoableFor);
         $this->pairing = [] === $pairing ? null : $pairing;
     }
 
@@ -148,10 +156,19 @@ class ImportRun implements CompanyOwned
         return $this->at;
     }
 
-    /** Whether « Annuler cet import » may still take it back: within its day, and not already taken back. */
-    public function isUndoableAt(\DateTimeImmutable $now, \DateInterval $undoableFor): bool
+    /**
+     * Until when « Annuler cet import » may take it back: the window it ran with, or the operator's for a run made
+     * before the window was kept with it.
+     */
+    public function undoableUntil(\DateInterval $operatorWindow): \DateTimeImmutable
     {
-        return null === $this->undoneAt && $now < $this->at->add($undoableFor);
+        return $this->undoableUntil ?? $this->at->add($operatorWindow);
+    }
+
+    /** Whether « Annuler cet import » may still take it back: within its window, and not already taken back. */
+    public function isUndoableAt(\DateTimeImmutable $now, \DateInterval $operatorWindow): bool
+    {
+        return null === $this->undoneAt && $now < $this->undoableUntil($operatorWindow);
     }
 
     public function undo(Uuid $undoId, ?Uuid $by, \DateTimeImmutable $now, ?Uuid $removalId): void

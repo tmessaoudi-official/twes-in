@@ -153,12 +153,51 @@ final class ImportUndoTest extends ApiTestCase
         $run = $this->imported('customers', "number,name\nCLI-0001,Carthage Conseil\n");
 
         // The import made a day and a minute ago; the session stays as it is.
-        $this->em()->getConnection()->executeStatement("UPDATE import_run SET at = at - INTERVAL '24 hours 1 minute' WHERE id = ?", [$run]);
+        $this->em()->getConnection()->executeStatement("UPDATE import_run SET at = at - INTERVAL '24 hours 1 minute', undoable_until = undoable_until - INTERVAL '24 hours 1 minute' WHERE id = ?", [$run]);
         $this->undo($run);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
         self::assertSame('import_final', $this->json()['error']);
         self::assertSame(['CLI-0001'], $this->customerNumbers());
+    }
+
+    /**
+     * An import keeps the window in force when it ran (records.undoable_for), as a delete does: a company choosing
+     * another one afterwards moves no undo already offered.
+     */
+    public function testAnImportKeepsTheWindowItRanWith(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->companyChooses($this->company, 'records.undoable_for', 2);
+        $run = $this->imported('customers', "number,name\nCLI-0001,Carthage Conseil\n");
+        $this->companyChooses($this->company, 'records.undoable_for', 24);
+
+        self::assertSame(7_200, $this->em()->getConnection()->fetchOne('SELECT EXTRACT(EPOCH FROM undoable_until - at)::int FROM import_run WHERE id = ?', [$run]));
+        $this->getJson($this->path('import-runs'));
+        [$listed] = $this->jsonList();
+        $at = new \DateTimeImmutable($this->stringAt($listed, 'at'));
+        self::assertSame(7_200, (new \DateTimeImmutable($this->stringAt($listed, 'undoableUntil')))->getTimestamp() - $at->getTimestamp(), 'the list offers the undo until the window it ran with ends');
+
+        $this->em()->getConnection()->executeStatement("UPDATE import_run SET at = at - INTERVAL '2 hours 1 minute', undoable_until = undoable_until - INTERVAL '2 hours 1 minute' WHERE id = ?", [$run]);
+        $this->undo($run);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('import_final', $this->json()['error']);
+    }
+
+    /** An import run before the window was kept with it reads the operator's day. */
+    public function testAnImportRunBeforeItsWindowWasKeptReadsTheOperatorsDay(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $run = $this->imported('customers', "number,name\nCLI-0001,Carthage Conseil\n");
+        $this->em()->getConnection()->executeStatement("UPDATE import_run SET undoable_until = NULL, at = at - INTERVAL '23 hours' WHERE id = ?", [$run]);
+        $this->getJson($this->path('import-runs'));
+        [$listed] = $this->jsonList();
+        self::assertSame(86_400, (new \DateTimeImmutable($this->stringAt($listed, 'undoableUntil')))->getTimestamp() - (new \DateTimeImmutable($this->stringAt($listed, 'at')))->getTimestamp());
+
+        $this->em()->getConnection()->executeStatement("UPDATE import_run SET at = at - INTERVAL '1 hour 1 minute' WHERE id = ?", [$run]);
+        $this->undo($run);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('import_final', $this->json()['error']);
     }
 
     public function testAnotherCompanysImportIsNotFound(): void
