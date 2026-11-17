@@ -17,6 +17,8 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
+use App\ImportExport\Application\Notation\DayOrder;
+use App\ImportExport\Application\Notation\DecimalMark;
 use App\ImportExport\Application\Undo\ImportNotUndoable;
 use App\ImportExport\Application\UnreadableImport;
 use App\ImportExport\Infrastructure\Http\ImportController;
@@ -106,7 +108,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                 '401' => new Response('Not signed in'),
                 '403' => new Response('`step_up_required`: the file sets or changes what asks who is at the screen (a vendor\'s IBAN or BIC) and the proof is not recent; nothing was stored. A preview never asks', $json(['type' => 'object', 'properties' => ['error' => ['type' => 'string', 'enum' => ['step_up_required']]]])),
                 '404' => new Response('No such subject, its module switched off, or no permission to write it'),
-                '422' => new Response(\sprintf('A value sent refused: a violation on file (its reason one of %s; file_too_large with bytes), or on mode, encoding, switches, choices or pairing (%s); a file refused whole; or an import stopped by rejected rows. Nothing was stored', implode(', ', [...ReceivedFile::REASONS, ImportController::FILE_FORMAT]), ImportController::NOT_OFFERED), $json(['oneOf' => [$report, $refused]])),
+                '422' => new Response(\sprintf('A value sent refused: a violation on file (its reason one of %s; file_too_large with bytes), or on mode, encoding, decimalMark, dayOrder, switches, choices or pairing (%s); a file refused whole; or an import stopped by rejected rows. Nothing was stored', implode(', ', [...ReceivedFile::REASONS, ImportController::FILE_FORMAT]), ImportController::NOT_OFFERED), $json(['oneOf' => [$report, $refused]])),
             ],
             summary: 'Import a CSV or .xlsx file, or preview what it would do',
             parameters: [$company, $subject],
@@ -119,6 +121,8 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                     'dryRun' => ['type' => 'boolean', 'default' => false, 'description' => 'A preview: the same run, rolled back.'],
                     'switches' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'The keys of the subject’s switches ticked, as its guide lists them; any other is ignored.'],
                     'choices' => ['type' => 'object', 'additionalProperties' => ['type' => 'string'], 'description' => 'The answer of each switch that is a choice, by its key, as its guide lists them; its first answer when none is sent, 422 for an answer it does not offer.'],
+                    'decimalMark' => ['type' => 'string', 'enum' => array_map(static fn (DecimalMark $mark): string => $mark->value, DecimalMark::cases()), 'description' => 'The mark this CSV writes decimals with; the company\'s (the guide\'s `decimalMark`) when none is sent. A workbook\'s cells keep their own.'],
+                    'dayOrder' => ['type' => 'string', 'enum' => array_map(static fn (DayOrder $order): string => $order->value, DayOrder::cases()), 'description' => 'The order this CSV writes a day\'s parts in; the company\'s (the guide\'s `dayOrder`) when none is sent.'],
                 ],
             ]))]), true),
         )));

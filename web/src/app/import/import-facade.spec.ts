@@ -77,6 +77,7 @@ describe('ImportFacade', () => {
       lastPairing: [],
       reusesLastPairing: true,
       csvEncoding: null,
+      notation: { decimalMark: 'auto' as const, dayOrder: 'day_first' as const },
     });
 
     it('replaces the guide in place, never showing none between, and keeps the last answer', async () => {
@@ -204,6 +205,7 @@ describe('ImportFacade', () => {
       null,
       [],
       { unreachable_gross: 'above' },
+      null,
     );
   });
 
@@ -223,6 +225,7 @@ describe('ImportFacade', () => {
       'windows-1256',
       [],
       {},
+      null,
     );
   });
 
@@ -243,6 +246,7 @@ describe('ImportFacade', () => {
       null,
       pairing,
       {},
+      null,
     );
   });
 
@@ -281,6 +285,7 @@ describe('ImportFacade', () => {
       null,
       [],
       {},
+      null,
     );
     expect(facade.report()).toEqual(kept);
   });

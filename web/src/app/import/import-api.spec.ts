@@ -215,7 +215,15 @@ describe('ImportApi', () => {
     expect(await reasonOf(violation('file', 'value_required'))).toBe('not_received');
     expect(await reasonOf(violation('file', 'file_not_received'))).toBe('not_received');
     expect(await reasonOf(violation('file', 'file_format'))).toBe('unreadable');
-    for (const field of ['mode', 'encoding', 'switches', 'choices', 'pairing']) {
+    for (const field of [
+      'mode',
+      'encoding',
+      'decimalMark',
+      'dayOrder',
+      'switches',
+      'choices',
+      'pairing',
+    ]) {
       expect(await reasonOf(violation(field, 'unknown_choice'))).toBe('unknown_choice');
     }
     const tooLarge = await answered(violation('file', 'file_too_large', { bytes: 10485760 }));
@@ -320,6 +328,67 @@ describe('ImportApi', () => {
       csvEncoding: null,
     });
     expect((await automatic).csvEncoding).toBeNull();
+  });
+
+  it('reads the notation the company starts a CSV at', async () => {
+    const guide = api.guide('c1', 'customers');
+    http.expectOne('/api/companies/c1/imports/customers').flush({
+      subject: 'customers',
+      identity: ['number'],
+      maxRows: 2000,
+      columns: [],
+      switches: [],
+      lastPairing: [],
+      csvEncoding: null,
+      decimalMark: 'comma',
+      dayOrder: 'year_first',
+    });
+    expect((await guide).notation).toEqual({ decimalMark: 'comma', dayOrder: 'year_first' });
+  });
+
+  it('sends the notation chosen for a CSV, and none for a workbook', async () => {
+    const file = new File(['x'], 'clients.csv', { type: 'text/csv' });
+    const chosen = api.run(
+      'c1',
+      'customers',
+      file,
+      'create',
+      true,
+      [],
+      null,
+      [],
+      {},
+      {
+        decimalMark: 'point',
+        dayOrder: 'month_first',
+      },
+    );
+    const sent = http.expectOne('/api/companies/c1/imports/customers');
+    const body = sent.request.body as FormData;
+    expect([body.get('decimalMark'), body.get('dayOrder')]).toEqual(['point', 'month_first']);
+    sent.flush({
+      committed: false,
+      created: [],
+      updated: [],
+      rejected: [],
+      notes: [],
+      encoding: null,
+    });
+    await chosen;
+
+    const workbook = api.run('c1', 'customers', file, 'create', true);
+    const asked = http.expectOne('/api/companies/c1/imports/customers');
+    const none = asked.request.body as FormData;
+    expect([none.has('decimalMark'), none.has('dayOrder')]).toEqual([false, false]);
+    asked.flush({
+      committed: false,
+      created: [],
+      updated: [],
+      rejected: [],
+      notes: [],
+      encoding: null,
+    });
+    await workbook;
   });
 
   it('reads whether the company offers its last pairing again', async () => {

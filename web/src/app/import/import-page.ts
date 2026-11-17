@@ -27,10 +27,13 @@ import { ImportFacade } from './import-facade';
 import { DurationWords } from '../shared/i18n/duration-pipe';
 import { IMPORT_RUN_KIND } from './import-types';
 import {
+  DAY_ORDERS,
+  DECIMAL_MARKS,
   TEXT_ENCODINGS,
   type ImportColumn,
   type ImportKeptRecord,
   type ImportMode,
+  type ImportNotation,
   type ImportNote,
   type ImportPairing,
   type ImportRefusal,
@@ -162,6 +165,10 @@ export class ImportPage {
   /** What a CSV is read as, when the person chose it; null lets the API find it on the file. */
   protected readonly encoding = signal<TextEncoding | null>(null);
   protected readonly encodings = TEXT_ENCODINGS;
+  /** How a CSV writes its numbers and days for this file, starting from the company's (the guide's `notation`). */
+  protected readonly notation = signal<ImportNotation | null>(null);
+  protected readonly decimalMarks = DECIMAL_MARKS;
+  protected readonly dayOrders = DAY_ORDERS;
   /** Only a CSV has an encoding to choose: a workbook's text is UTF-8 whatever wrote it. */
   protected readonly isCsv = computed(
     () => this.file()?.name.toLowerCase().endsWith('.csv') === true,
@@ -330,6 +337,7 @@ export class ImportPage {
         this.pairingFromLast.set(kept.length > 0);
         this.asked.set([]);
         this.encoding.set(this.companyEncoding());
+        this.notation.set(this.companyNotation());
       });
     });
     // Each switch starts where the company set it, read again with the guide until the person sets one.
@@ -465,6 +473,7 @@ export class ImportPage {
     // Another file may be written in another encoding: it starts again from the company's own, found on the file when
     // the company names none, until chosen again.
     this.encoding.set(this.companyEncoding());
+    this.notation.set(this.companyNotation());
     this.previewed.set(false);
     this.facade.forget();
   }
@@ -478,6 +487,20 @@ export class ImportPage {
   /** The encoding the company reads its CSV files in (« Paramètres »), null when it is found on each file. */
   private companyEncoding(): TextEncoding | null {
     return untracked(() => this.guide()?.csvEncoding ?? null);
+  }
+
+  /** How the company's CSV files write numbers and days (« Paramètres »), which each new file starts from. */
+  private companyNotation(): ImportNotation | null {
+    return untracked(() => this.guide()?.notation ?? null);
+  }
+
+  /** Read with another decimal mark or day order, the file says other things: the preview before no longer stands. */
+  protected chooseNotation(change: Partial<ImportNotation>): void {
+    const shown = this.notation();
+    if (shown === null) return;
+    this.notation.set({ ...shown, ...change });
+    this.previewed.set(false);
+    this.facade.forget();
   }
 
   /** Read in another encoding, the file says other things: the preview before no longer stands. */
@@ -609,6 +632,8 @@ export class ImportPage {
       this.encoding(),
       this.pairing(),
       this.chosen(),
+      // A workbook's numbers and days are cells of their own, read in no notation.
+      this.isCsv() ? this.notation() : null,
     );
     this.askAbout(this.refusal());
   }

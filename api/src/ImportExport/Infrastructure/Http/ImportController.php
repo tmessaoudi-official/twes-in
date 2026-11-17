@@ -14,6 +14,8 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportDefaults;
 use App\ImportExport\Application\ImportMode;
+use App\ImportExport\Application\Notation\DayOrder;
+use App\ImportExport\Application\Notation\DecimalMark;
 use App\ImportExport\Application\Notation\ImportNotation;
 use App\ImportExport\Application\RunImport;
 use App\ImportExport\Application\UnknownImportSubject;
@@ -100,6 +102,17 @@ final readonly class ImportController
             throw self::notOffered('encoding');
         }
         $encoding = SpreadsheetFormat::Csv === $format ? ($encoding ?? $this->reader->encodingOf($file->getPathname(), $format)) : null;
+        // A CSV's notation, as the person chose it for this file; none chosen is the company's. A workbook's numbers and
+        // days are cells of their own, read in none.
+        $mark = $request->request->getString('decimalMark');
+        $decimals = '' === $mark ? null : (DecimalMark::tryFrom($mark) ?? throw self::notOffered('decimalMark'));
+        $order = $request->request->getString('dayOrder');
+        $days = '' === $order ? null : (DayOrder::tryFrom($order) ?? throw self::notOffered('dayOrder'));
+        $notation = new ImportNotation();
+        if (SpreadsheetFormat::Csv === $format) {
+            $companys = $this->defaults->notation($company);
+            $notation = new ImportNotation($decimals ?? $companys->decimals, $days ?? $companys->days);
+        }
 
         $dryRun = $request->request->getBoolean('dryRun');
         $switches = [];
@@ -135,8 +148,7 @@ final readonly class ImportController
                 $switches,
                 $pairing,
                 $answers,
-                // A CSV holds text, written in the company's notation; a workbook's numbers and days are cells of their own.
-                SpreadsheetFormat::Csv === $format ? $this->defaults->notation($company) : new ImportNotation(),
+                $notation,
             );
         } catch (UnreadableSpreadsheet $unreadable) {
             // error-codes: UnreadableSpreadsheet

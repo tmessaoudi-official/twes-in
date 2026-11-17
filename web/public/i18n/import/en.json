@@ -196,6 +196,17 @@
       "read_as": "File read as {{encoding}}. Unreadable letters? Choose the file’s encoding.",
       "from_company": "Offered first: the encoding chosen in the company’s defaults."
     },
+    "notation": {
+      "decimal_mark": "Decimals in the file",
+      "decimal_mark_auto": "Point or comma (guessed)",
+      "decimal_mark_point": "Point, as in 1,234.50",
+      "decimal_mark_comma": "Comma, as in 1.234,50",
+      "day_order": "Dates in the file",
+      "day_order_day_first": "Day first, as in 31/12/2026",
+      "day_order_month_first": "Month first, as in 12/31/2026",
+      "day_order_year_first": "Year first, as in 2026/12/31",
+      "note": "Offered first: what the company chose in its defaults. This choice holds for this file only."
+    },
     "preview": "Preview",
     "store": "Import",
     "preview_first": "Preview first: nothing will be stored.",

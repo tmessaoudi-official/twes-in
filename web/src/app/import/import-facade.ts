@@ -11,6 +11,7 @@ import type {
   ImportError,
   ImportGuide,
   ImportMode,
+  ImportNotation,
   ImportPairing,
   ImportRefusal,
   ImportReport,
@@ -89,6 +90,7 @@ export class ImportFacade {
     encoding: TextEncoding | null = null,
     pairing: readonly ImportPairing[] = [],
     choices: Readonly<Record<string, string>> = {},
+    notation: ImportNotation | null = null,
   ): Promise<void> {
     this.forget();
     await this.state.write(
@@ -107,6 +109,7 @@ export class ImportFacade {
               encoding,
               pairing,
               choices,
+              notation,
             ),
           (error) => error instanceof ImportRefused && error.code === 'step_up_required',
           'step_up.intro_sensitive',

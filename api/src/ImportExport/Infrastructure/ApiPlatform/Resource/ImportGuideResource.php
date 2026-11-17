@@ -12,6 +12,8 @@ namespace App\ImportExport\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
+use App\ImportExport\Application\Notation\DayOrder;
+use App\ImportExport\Application\Notation\DecimalMark;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideColumn;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideSwitch;
 use App\ImportExport\Infrastructure\ApiPlatform\State\Provider\ImportGuideProvider;
@@ -146,4 +148,17 @@ final class ImportGuideResource
     #[ApiProperty(required: true, schema: ['type' => ['string', 'null'], 'enum' => [TextEncoding::Utf8->value, TextEncoding::Windows1252->value, TextEncoding::Windows1256->value, TextEncoding::Utf16->value, null]])]
     #[Groups([self::READ])]
     public ?string $csvEncoding = null;
+
+    /**
+     * The mark the company's CSV files write decimals with, which the screen starts its choice at for one file; a request
+     * naming none is read in it.
+     */
+    #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => [DecimalMark::Automatic->value, DecimalMark::Point->value, DecimalMark::Comma->value]])]
+    #[Groups([self::READ])]
+    public string $decimalMark = DecimalMark::Automatic->value;
+
+    /** The order the company's CSV files write a day's parts in, which the screen starts its choice at for one file. */
+    #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => [DayOrder::DayFirst->value, DayOrder::MonthFirst->value, DayOrder::YearFirst->value]])]
+    #[Groups([self::READ])]
+    public string $dayOrder = DayOrder::DayFirst->value;
 }

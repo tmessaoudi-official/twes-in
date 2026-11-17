@@ -99,6 +99,9 @@ final readonly class ImportGuideProvider implements ProviderInterface
         }
         $encoding = $this->settings->text($companySettings, ImportSettings::CSV_ENCODING);
         $guide->csvEncoding = ImportSettings::AUTOMATIC === $encoding ? null : TextEncoding::from($encoding)->value;
+        $notation = $this->defaults->notation($company);
+        $guide->decimalMark = $notation->decimals->value;
+        $guide->dayOrder = $notation->days->value;
 
         return $guide;
     }

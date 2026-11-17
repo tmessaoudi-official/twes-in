@@ -107,6 +107,7 @@ class StaticLoader implements TranslateLoader {
           read_as:
             'Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier.',
         },
+        notation: { note: 'Ce choix vaut pour ce fichier seulement.' },
       },
       records: { tables: { quote_line: '{{count}} lignes de devis' } },
     });
@@ -160,7 +161,11 @@ const GUIDE: ImportGuide = {
   lastPairing: [],
   reusesLastPairing: true,
   csvEncoding: null,
+  notation: { decimalMark: 'auto', dayOrder: 'day_first' },
 };
+
+/** The notation the screen sends for a CSV no one changed: the company's, as the guide gives it. */
+const NOTATION = GUIDE.notation;
 
 const CLEAN: ImportReport = {
   committed: false,
@@ -389,6 +394,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
@@ -417,6 +423,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
   });
 
@@ -442,6 +449,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
 
@@ -462,6 +470,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'above' },
+      NOTATION,
     );
   });
 
@@ -496,6 +505,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'above' },
+      NOTATION,
     );
 
     (q('import-switch-recount')!.querySelector('input') as HTMLInputElement).click();
@@ -528,6 +538,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
   });
 
@@ -553,6 +564,7 @@ describe('ImportPage', () => {
       'windows-1256',
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
 
     chooseFile('other.csv');
@@ -568,7 +580,45 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
+  });
+
+  it('offers a CSV its notation from the company’s, sends the one chosen, none for a workbook, and a new file starts again', async () => {
+    guide.set({ ...GUIDE, notation: { decimalMark: 'comma', dayOrder: 'year_first' } });
+    chooseFile('stocks.xlsx');
+    await settle();
+    expect(q('import-decimal-mark')).toBeNull();
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[9]).toBeNull();
+
+    chooseFile('stocks.csv');
+    await settle();
+    const checked = (id: string) => (q(id)!.querySelector('input') as HTMLInputElement).checked;
+    expect([checked('import-decimal-mark-comma'), checked('import-day-order-year_first')]).toEqual([
+      true,
+      true,
+    ]);
+    expect(q('import-notation-note')?.textContent).toContain('ce fichier seulement');
+    facade.run.mockImplementation(async () => report.set(CLEAN));
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[9]).toEqual({ decimalMark: 'comma', dayOrder: 'year_first' });
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+
+    (q('import-decimal-mark-point')!.querySelector('input') as HTMLInputElement).click();
+    (q('import-day-order-month_first')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[9]).toEqual({
+      decimalMark: 'point',
+      dayOrder: 'month_first',
+    });
+
+    chooseFile('other.csv');
+    await settle();
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[9]).toEqual({ decimalMark: 'comma', dayOrder: 'year_first' });
   });
 
   // The guide offers the pairing the company's last import kept (lastPairing, company-wide): a teammate's import, in
@@ -960,6 +1010,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),
@@ -1052,6 +1103,7 @@ describe('ImportPage', () => {
       null,
       [],
       { unreachable_gross: 'below' },
+      NOTATION,
     );
   });
 

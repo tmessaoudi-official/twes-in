@@ -10,10 +10,13 @@ import type {
 } from '../api/types.gen';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import {
+  DAY_ORDERS,
+  DECIMAL_MARKS,
   TEXT_ENCODINGS,
   type ImportError,
   type ImportGuide,
   type ImportMode,
+  type ImportNotation,
   type ImportPairing,
   type ImportRefusal,
   type ImportReport,
@@ -83,6 +86,7 @@ export class ImportApi {
     encoding: TextEncoding | null = null,
     pairing: readonly ImportPairing[] = [],
     choices: Readonly<Record<string, string>> = {},
+    notation: ImportNotation | null = null,
   ): Promise<ImportReport> {
     const body = new FormData();
     body.append('file', file, file.name);
@@ -93,6 +97,11 @@ export class ImportApi {
     for (const [key, answer] of Object.entries(choices)) body.append(`choices[${key}]`, answer);
     // None chosen: the API finds it on the file.
     if (encoding !== null) body.append('encoding', encoding);
+    // None sent (a workbook, whose cells carry their own): the API reads a CSV in the company's.
+    if (notation !== null) {
+      body.append('decimalMark', notation.decimalMark);
+      body.append('dayOrder', notation.dayOrder);
+    }
     // One object of headings to columns, which the API reads whole; none sent, each heading names its column itself.
     if (pairing.length > 0) {
       body.append(
@@ -252,7 +261,7 @@ function notKept(error: HttpErrorResponse): Error {
 
 /**
  * What the screen says of a value refused: the file did not arrive, or is no file the import reads; any other value is
- * one only the screen builds (the mode, an encoding, a switch, a choice, the pairing), which a stale screen alone sends.
+ * one only the screen builds (the mode, an encoding, a notation, a switch, a choice, the pairing), which a stale screen alone sends.
  */
 function valueRefusalOf(field: string, reason: string | null): ImportRefusal['reason'] {
   if (field !== 'file') return 'unknown_choice';
@@ -287,6 +296,10 @@ function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
     lastPairing: answer.lastPairing.map((pair) => ({ heading: pair.heading, column: pair.column })),
     reusesLastPairing: answer.reusesLastPairing,
     csvEncoding: encodingOf(answer.csvEncoding),
+    notation: {
+      decimalMark: DECIMAL_MARKS.find((mark) => mark === answer.decimalMark) ?? 'auto',
+      dayOrder: DAY_ORDERS.find((order) => order === answer.dayOrder) ?? 'day_first',
+    },
   };
 }
 

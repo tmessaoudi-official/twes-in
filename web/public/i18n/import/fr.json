@@ -196,6 +196,17 @@
       "read_as": "Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier.",
       "from_company": "Proposé d’abord : l’encodage choisi dans les valeurs par défaut de l’entreprise."
     },
+    "notation": {
+      "decimal_mark": "Décimales du fichier",
+      "decimal_mark_auto": "Point ou virgule (deviné)",
+      "decimal_mark_point": "Point, comme 1,234.50",
+      "decimal_mark_comma": "Virgule, comme 1.234,50",
+      "day_order": "Dates du fichier",
+      "day_order_day_first": "Jour d’abord, comme 31/12/2026",
+      "day_order_month_first": "Mois d’abord, comme 12/31/2026",
+      "day_order_year_first": "Année d’abord, comme 2026/12/31",
+      "note": "Proposé d’abord : ce que l’entreprise a choisi dans ses valeurs par défaut. Ce choix vaut pour ce fichier seulement."
+    },
     "preview": "Prévisualiser",
     "store": "Importer",
     "preview_first": "Prévisualisez d’abord : rien ne sera enregistré.",

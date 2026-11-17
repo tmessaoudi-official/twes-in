@@ -485,6 +485,51 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame('windows-1256', $this->json()['csvEncoding'] ?? null);
     }
 
+    /** The screen starts a CSV's notation at the company's own: automatic decimals and the day first until its owner names others. */
+    public function testTheGuideSaysTheNotationTheCompanyWritesItsFilesIn(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame(['auto', 'day_first'], [$this->json()['decimalMark'] ?? null, $this->json()['dayOrder'] ?? null]);
+
+        $settings = static::getContainer()->get(ChangeSettings::class);
+        $settings->change(new SettingContext($this->found()), ImportSettings::DECIMAL_MARK, SettingLevel::Company, 'comma', null);
+        $settings->change(new SettingContext($this->found()), ImportSettings::DAY_ORDER, SettingLevel::Company, 'year_first', null);
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame(['comma', 'year_first'], [$this->json()['decimalMark'] ?? null, $this->json()['dayOrder'] ?? null]);
+    }
+
+    /**
+     * One CSV may be written otherwise than the company's files: the notation chosen for it on the screen reads it, and
+     * the company's stays for the next. A workbook's cells keep their own whatever is chosen.
+     */
+    public function testACsvIsReadInTheNotationChosenForIt(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->found()), ImportSettings::DECIMAL_MARK, SettingLevel::Company, 'comma', null);
+
+        $this->import("number,name,kind,default_discount_rate\nCLI-0001,Carthage Conseil,company,2.5\n", notation: ['decimalMark' => 'point', 'dayOrder' => 'day_first']);
+        self::assertResponseIsSuccessful();
+
+        $this->import("number,name,kind,default_discount_rate\nCLI-0003,Atlas Négoce,company,2.5\n");
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['decimal_mark'], array_map(static fn (mixed $rejection): mixed => \is_array($rejection) ? $rejection['code'] : null, $this->arrayAt($this->json(), 'rejected')), 'the company\'s notation reads the next file');
+
+        $path = (string) tempnam(sys_get_temp_dir(), 'import-test-');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name', 'kind', 'default_discount_rate'], ['CLI-0002', 'Sonia Ben Ali', 'individual', '2.5']]);
+        $contents = (string) file_get_contents($path);
+        unlink($path);
+        $this->import($contents, name: 'customers.xlsx', notation: ['decimalMark' => 'comma']);
+        self::assertResponseIsSuccessful();
+
+        $this->em()->clear();
+        self::assertSame(['2.500', '2.500'], [
+            $this->customer('CLI-0001')->getProfile()->defaultDiscountRate,
+            $this->customer('CLI-0002')->getProfile()->defaultDiscountRate,
+        ]);
+    }
+
     /** What a company may choose is what a file may be read in, and automatic: nothing else is stored. */
     public function testTheCompanysEncodingIsOneAFileMayBeReadIn(): void
     {
@@ -537,6 +582,8 @@ final class CustomerImportTest extends ApiTestCase
             'a mode no import has' => ['file', ['mode' => 'merge'], 'mode', 'unknown_choice'],
             'a switch that is not a name' => ['file', ['mode' => 'create', 'switches' => [['recount']]], 'switches', 'unknown_choice'],
             'a choice that is not an answer' => ['file', ['mode' => 'create', 'choices' => ['vat' => ['standard']]], 'choices', 'unknown_choice'],
+            'a decimal mark no file writes' => ['file', ['mode' => 'create', 'decimalMark' => 'apostrophe'], 'decimalMark', 'unknown_choice'],
+            'a day order no file writes' => ['file', ['mode' => 'create', 'dayOrder' => 'week_first'], 'dayOrder', 'unknown_choice'],
         ];
         foreach ($sent as $what => [$part, $parameters, $field, $reason]) {
             $this->uploadFile($this->companyPath().'/imports/customers', 'customers.csv', $csv, $part, $parameters);
@@ -823,10 +870,13 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame([[], [2]], [$this->json()['updated'] ?? null, $this->json()['unchanged'] ?? null], 'a blank cell keeps the mark');
     }
 
-    /** @param array<string, string>|null $pairing */
-    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'customers.csv', ?array $pairing = null): void
+    /**
+     * @param array<string, string>|null $pairing
+     * @param array<string, string>      $notation
+     */
+    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'customers.csv', ?array $pairing = null, array $notation = []): void
     {
-        $parameters = ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0'];
+        $parameters = ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', ...$notation];
         if (null !== $pairing) {
             $parameters['pairing'] = json_encode($pairing, \JSON_THROW_ON_ERROR);
         }

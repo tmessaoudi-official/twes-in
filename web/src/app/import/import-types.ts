@@ -26,6 +26,24 @@ export const TEXT_ENCODINGS: readonly TextEncoding[] = [
   'utf-16',
 ];
 
+/** How a CSV writes its decimals: either mark, guessed, or one named, the other then setting thousands apart. */
+export type DecimalMark = 'auto' | 'point' | 'comma';
+
+/** The decimal marks a person may choose for a CSV, in the order the screen offers them. */
+export const DECIMAL_MARKS: readonly DecimalMark[] = ['auto', 'point', 'comma'];
+
+/** The order a CSV writes a day's parts in. */
+export type DayOrder = 'day_first' | 'month_first' | 'year_first';
+
+/** The day orders a person may choose for a CSV, in the order the screen offers them. */
+export const DAY_ORDERS: readonly DayOrder[] = ['day_first', 'month_first', 'year_first'];
+
+/** How one CSV writes its numbers and days, chosen for it starting from the company's own. */
+export interface ImportNotation {
+  decimalMark: DecimalMark;
+  dayOrder: DayOrder;
+}
+
 /** A file refused WHOLE, before any row ran: its reason, and whatever that reason names. */
 export interface ImportRefusal {
   reason:
@@ -115,6 +133,8 @@ export interface ImportGuide {
   reusesLastPairing: boolean;
   /** The encoding the company reads its CSV files in, which the screen starts at; null for one found on the file. */
   csvEncoding: TextEncoding | null;
+  /** How the company's CSV files write numbers and days, which the screen starts one file's choice at. */
+  notation: ImportNotation;
 }
 
 /** One row the file asked for and the rules refused. */
