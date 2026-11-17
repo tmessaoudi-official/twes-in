@@ -28,6 +28,9 @@ export type PlanLabelMode = (typeof PLAN_LABEL_MODES)[number];
 export const STOCK_MAP_VIEWS = ['plan', 'volume'] as const;
 export type StockMapView = (typeof STOCK_MAP_VIEWS)[number];
 /** The rows a list shows per page, the same for every list: `auto` is each list's own first size. */
+/** What a margin in percent is a share of: the price (a margin), or the cost (a markup). */
+export const MARGIN_BASES = ['margin', 'markup'] as const;
+export type MarginBasis = (typeof MARGIN_BASES)[number];
 /** What an expense line coming or going keeps of the others: their nets, or their totals typed taxes included. */
 export const EXPENSE_LINE_CHANGES = ['nets', 'totals'] as const;
 export type ExpenseLineChange = (typeof EXPENSE_LINE_CHANGES)[number];
@@ -151,6 +154,16 @@ export const PRESENTATION = {
     'presentation.page-size',
     'auto',
     oneOf<PageSizeChoice>(...PAGE_SIZE_CHOICES),
+  ),
+  /**
+   * What a margin in percent is said as, on every screen saying one (the products list, a price review, « À
+   * surveiller », a price list's line, the price calculator's first basis): a share of the price until someone
+   * chooses a share of the cost.
+   */
+  marginBasis: defineSetting<MarginBasis>(
+    'presentation.margin-basis',
+    'margin',
+    oneOf<MarginBasis>(...MARGIN_BASES),
   ),
   /**
    * What an expense line added or removed keeps of the others typed taxes included: their nets, each total said again

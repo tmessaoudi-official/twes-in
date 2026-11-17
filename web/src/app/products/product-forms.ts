@@ -38,6 +38,7 @@ import {
   type ProductTracking,
 } from './products-types';
 import { typedText } from '../shared/form/typed-text';
+import type { MarginBasis } from '../shared/settings/settings-registry';
 
 const FIELDS = 'products.fields';
 /** The API's shape of a price, anchored by the form: at most ten digits, then at most four decimals. */
@@ -277,6 +278,16 @@ const COST_COLUMNS: ListDescriptor<ProductListRow>['columns'] = [
   },
 ];
 
+/** The margin in percent as a share of the cost, in the place of the share of the price for whoever reads a markup. */
+const MARKUP_COLUMN: ListDescriptor<ProductListRow>['columns'][number] = {
+  id: 'markupPercent',
+  label: `${FIELDS}.markupPercent`,
+  value: (row) => row.markupPercent ?? '',
+  align: 'end',
+  width: 96,
+  defaultHidden: true,
+};
+
 /**
  * The products list with a hidden column per active custom field of the company for products, the cost columns for a
  * cost reader, and « À vérifier »'s filters: marked or lacking something, and what is lacking, among the reasons the
@@ -286,7 +297,12 @@ export function productsList(
   fields: readonly CustomFieldDefinition[],
   offered: readonly ProductCheckReason[] = [],
   costs = false,
+  basis: MarginBasis = 'margin',
 ): ListDescriptor<ProductListRow> {
+  const costColumns =
+    basis === 'markup'
+      ? COST_COLUMNS.map((column) => (column.id === 'marginPercent' ? MARKUP_COLUMN : column))
+      : COST_COLUMNS;
   const reasons = PRODUCT_CHECK_REASONS.filter((reason) => offered.includes(reason));
   const columns = PRODUCTS_LIST.columns;
   const status = columns.findIndex((column) => column.id === 'status');
@@ -295,7 +311,7 @@ export function productsList(
       ...PRODUCTS_LIST,
       // Beside the prices, before the status.
       columns: costs
-        ? [...columns.slice(0, status), ...COST_COLUMNS, ...columns.slice(status)]
+        ? [...columns.slice(0, status), ...costColumns, ...columns.slice(status)]
         : columns,
       filters: [
         ...(PRODUCTS_LIST.filters ?? []),

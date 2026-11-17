@@ -18,6 +18,7 @@ import type { CustomFieldDefinition } from '../shared/custom-fields/custom-field
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -83,6 +84,7 @@ const laptop: ProductRow = {
   unitPriceGross: null,
   margin: null,
   marginPercent: null,
+  markupPercent: null,
   categoryId: null,
   barcodes: [],
   defaultTaxComponentIds: ['t1'],
@@ -274,6 +276,30 @@ describe('ProductPage', () => {
     return document.body.querySelector<HTMLElement>(`[data-testid="record-menu-${id}"]`);
   }
 
+  it('says the moved margin and opens the calculator on the basis the person reads a margin on', async () => {
+    TestBed.inject(SettingsFacade).set(PRESENTATION.marginBasis, 'markup');
+    product.set({
+      ...laptop,
+      costPrice: '1100.0000',
+      priceReview: {
+        previousCost: '1000.0000',
+        cost: '1100.0000',
+        price: '1250.0000',
+        suggestedPrice: '1375.000',
+        previousMargin: '20.0',
+        margin: '12.0',
+        previousMarkup: '25.0',
+        markup: '13.6',
+      },
+    });
+    await open(laptop.id);
+
+    expect(q('product-price-review-margin')?.textContent?.trim()).toContain(
+      'products.price_review.markup',
+    );
+    expect(q('price-calculator-basis-markup')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
   // docs/SPEC.md § 7, cost and price: a margin a receipt moved stays on the product until someone settles it.
   it('shows the margin a receipt moved and settles it on the version read, said corrigeable', async () => {
     const review = {
@@ -283,6 +309,8 @@ describe('ProductPage', () => {
       suggestedPrice: '1375.000',
       previousMargin: '20.0',
       margin: '12.0',
+      previousMarkup: '25.0',
+      markup: '13.6',
     };
     product.set({ ...laptop, priceReview: review });
     facade.settlePriceReview.mockResolvedValue({
@@ -534,6 +562,8 @@ describe('ProductPage', () => {
         suggestedPrice: '1375.000',
         previousMargin: '20.0',
         margin: '12.0',
+        previousMarkup: '25.0',
+        markup: '13.6',
       },
     });
     await open(laptop.id);

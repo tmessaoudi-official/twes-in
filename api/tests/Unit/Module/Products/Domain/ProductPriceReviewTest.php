@@ -40,6 +40,8 @@ final class ProductPriceReviewTest extends TestCase
         self::assertSame('20.001', $review->suggestedPrice(3));
         // (18.462 − 12) ÷ 18.462 and (18.462 − 13) ÷ 18.462, as percentages of the price.
         self::assertSame(['35.0', '29.6'], [$review->previousMargin(), $review->margin()]);
+        // (18.462 − 12) ÷ 12 and (18.462 − 13) ÷ 13, as percentages of the cost: the markup, for whoever reads that.
+        self::assertSame(['53.9', '42.0'], [$review->previousMarkup(), $review->markup()]);
     }
 
     public function testACostAboveThePriceIsANegativeMargin(): void
@@ -49,6 +51,7 @@ final class ProductPriceReviewTest extends TestCase
         $product->openPriceReview('8.0000', $this->now);
 
         self::assertSame(['20.0', '-25.0'], [$product->priceReview()?->previousMargin(), $product->priceReview()?->margin()]);
+        self::assertSame(['25.0', '-20.0'], [$product->priceReview()?->previousMarkup(), $product->priceReview()?->markup()]);
     }
 
     public function testASecondMoveKeepsTheFirstCostSoTheWholeDriftIsShown(): void

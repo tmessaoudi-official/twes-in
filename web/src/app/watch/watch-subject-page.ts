@@ -19,11 +19,13 @@ import { DataList } from '../shared/list/data-list';
 import type { EmptyState, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
-import { hintKey, permittedList, subjectView } from './watch-subjects';
+import { hintKey, permittedList, subjectView, withMarginBasis } from './watch-subjects';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 import { watchRowView } from './watch-view';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 
 /**
  * One subject of « À surveiller » (docs/SPEC.md § 7, the subject pages): what to act on in it, a page at a time, each
@@ -41,6 +43,8 @@ export class WatchSubjectPage implements OnInit {
   protected readonly emptyState: EmptyState = { icon: 'visibility', title: 'watch.none' };
   private readonly facade = inject(WatchFacade);
   private readonly auth = inject(AuthFacade);
+  /** Whether the reader reads a margin as a share of the price or of the cost. */
+  private readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
   private readonly format = inject(FormatFacade);
   private readonly translate = inject(TranslateService);
   /** Read inside `rows`, so a row's kind is said again when the language changes. */
@@ -60,7 +64,13 @@ export class WatchSubjectPage implements OnInit {
     const view = subjectView(this.kind());
     return view === undefined
       ? undefined
-      : { ...view, list: permittedList(view, (permission) => this.auth.hasPermission(permission)) };
+      : {
+          ...view,
+          list: withMarginBasis(
+            permittedList(view, (permission) => this.auth.hasPermission(permission)),
+            this.marginBasis(),
+          ),
+        };
   });
   /** What the subject asks of this reader, or who does it when the reader may not. */
   protected readonly hint = computed(() =>

@@ -56,6 +56,7 @@ const laptop: ProductRow = {
   unitPriceGross: null,
   margin: null,
   marginPercent: null,
+  markupPercent: null,
   barcodes: [],
   mainPhotoId: null,
   priceReview: null,

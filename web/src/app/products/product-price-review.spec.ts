@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { MarginBasis } from '../shared/settings/settings-registry';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   provideTranslateLoader,
@@ -17,6 +18,7 @@ class StaticLoader implements TranslateLoader {
       products: {
         price_review: {
           margin: 'Marge : {{before}} % → {{after}} %',
+          markup: 'Majoration : {{before}} % → {{after}} %',
           why: 'Coût {{previousCost}} → {{cost}} {{currency}}, prix {{price}} {{currency}}',
           adjust: 'Ajuster le prix à {{price}} {{currency}}',
           keep: 'Garder le prix',
@@ -33,6 +35,8 @@ const review: ProductPriceReview = {
   suggestedPrice: '20.001',
   previousMargin: '35.0',
   margin: '29.6',
+  previousMarkup: '53.9',
+  markup: '42.0',
 };
 
 // docs/SPEC.md § 7, cost and price: a margin a receipt moved is shown, before and now, until someone settles it.
@@ -42,6 +46,7 @@ describe('ProductPriceReviewNotice', () => {
   async function render(
     mayDecide: boolean,
     given: ProductPriceReview = review,
+    basis: MarginBasis = 'margin',
   ): Promise<HTMLElement> {
     TestBed.configureTestingModule({
       imports: [ProductPriceReviewNotice],
@@ -64,6 +69,7 @@ describe('ProductPriceReviewNotice', () => {
     fixture.componentRef.setInput('scale', 3);
     fixture.componentRef.setInput('currency', 'TND');
     fixture.componentRef.setInput('mayDecide', mayDecide);
+    fixture.componentRef.setInput('basis', basis);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -81,6 +87,12 @@ describe('ProductPriceReviewNotice', () => {
       'Coût 12,000 → 13,000 TND, prix 18,462 TND',
     );
     expect(root.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it('says the moved margin as a share of the cost to a person who reads a markup', async () => {
+    const root = await render(true, review, 'markup');
+
+    expect(text(root, 'product-price-review-margin')).toBe('Majoration : 53,9 % → 42,0 %');
   });
 
   it('keeps the sign of a margin the cost turned negative', async () => {

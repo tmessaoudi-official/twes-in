@@ -1845,6 +1845,7 @@
       "unitPriceGross": "Unit price incl. taxes",
       "margin": "Margin",
       "marginPercent": "Margin %",
+      "markupPercent": "Markup %",
       "description": "Description",
       "tracking": "Traceability",
       "substitutionGroup": "Substitution group",
@@ -2094,6 +2095,7 @@
     },
     "price_review": {
       "margin": "The margin went from {{before}}% to {{after}}%.",
+      "markup": "The markup went from {{before}}% to {{after}}%.",
       "why": "The cost price went from {{previousCost}} to {{cost}} {{currency}}, under a net unit price that stayed at {{price}} {{currency}}.",
       "adjust": "Set the price to {{price}} {{currency}}",
       "keep": "Keep the price",
@@ -3334,6 +3336,7 @@
       "unit_price": "Net unit price",
       "figures": "Current price {{shelf}} · {{change}} against the current price",
       "figures_cost": "Current price {{shelf}} · cost {{cost}} · margin {{margin}} (on this price) · {{change}} against the current price",
+      "figures_cost_markup": "Current price {{shelf}} · cost {{cost}} · markup {{margin}} (on the cost) · {{change}} against the current price",
       "below_cost": "Below cost: this price sells at a loss.",
       "add": "Add a price",
       "remove": "Remove",

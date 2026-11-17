@@ -68,6 +68,8 @@ import {
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
 import { UnofferedProducts } from '../shared/unoffered/unoffered-products';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 
 const SCOPES: readonly PriceListScope[] = ['everyone', 'group', 'customer'];
 
@@ -159,6 +161,8 @@ export class PriceListsPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
+  /** Whether the person reads a margin as a share of the price or of the cost. */
+  private readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
   private readonly live = inject(LiveChanges);
   private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
@@ -554,10 +558,18 @@ export class PriceListsPage implements OnInit {
       // sentence holds no <bdi>.
       change: figures.changePercent === null ? '—' : this.format.signed(figures.changePercent, 1),
       cost: figures.cost === null ? '' : this.format.amount(figures.cost, null),
-      margin: percent(figures.marginPercent),
+      // The margin as the person reads it: a share of this price, or of the cost.
+      margin: percent(
+        this.marginBasis() === 'markup' ? figures.markupPercent : figures.marginPercent,
+      ),
     };
     return {
-      key: figures.cost === null ? 'price_lists.prices.figures' : 'price_lists.prices.figures_cost',
+      key:
+        figures.cost === null
+          ? 'price_lists.prices.figures'
+          : this.marginBasis() === 'markup'
+            ? 'price_lists.prices.figures_cost_markup'
+            : 'price_lists.prices.figures_cost',
       params,
     };
   }

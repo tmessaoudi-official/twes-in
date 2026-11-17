@@ -18,6 +18,8 @@ export interface RowFigures {
   changePercent: string | null;
   /** The share of the price that is profit, in percent at one decimal; null without a price or a readable cost. */
   marginPercent: string | null;
+  /** The profit as a share of the cost (the markup), in percent at one decimal; null without a price or a cost above nothing. */
+  markupPercent: string | null;
   /** The price is under the cost, which is a sale at a loss. */
   belowCost: boolean;
 }
@@ -34,6 +36,7 @@ export function rowFigures(price: string, product: ProductFigures | null): RowFi
     // What the price adds to the shelf price is a markup on it, counted the same exact way.
     changePercent: typed !== null && shelf !== null ? markupOf(shelf, typed, 1) : null,
     marginPercent: typed !== null && cost !== null ? marginOf(cost, typed, 1) : null,
+    markupPercent: typed !== null && cost !== null ? markupOf(cost, typed, 1) : null,
     belowCost: typed !== null && cost !== null && isBelow(typed, cost),
   };
 }

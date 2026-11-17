@@ -1845,6 +1845,7 @@
       "unitPriceGross": "Prix unitaire TTC",
       "margin": "Marge",
       "marginPercent": "Marge %",
+      "markupPercent": "Majoration %",
       "description": "Description",
       "tracking": "Traçabilité",
       "substitutionGroup": "Groupe de substitution",
@@ -2094,6 +2095,7 @@
     },
     "price_review": {
       "margin": "La marge est passée de {{before}} % à {{after}} %.",
+      "markup": "La majoration est passée de {{before}} % à {{after}} %.",
       "why": "Le prix de revient est passé de {{previousCost}} à {{cost}} {{currency}}, sous un prix unitaire HT resté à {{price}} {{currency}}.",
       "adjust": "Ajuster le prix à {{price}} {{currency}}",
       "keep": "Garder le prix",
@@ -3334,6 +3336,7 @@
       "unit_price": "Prix net unitaire",
       "figures": "Prix actuel {{shelf}} · {{change}} par rapport au prix actuel",
       "figures_cost": "Prix actuel {{shelf}} · coût {{cost}} · marge {{margin}} (sur ce prix) · {{change}} par rapport au prix actuel",
+      "figures_cost_markup": "Prix actuel {{shelf}} · coût {{cost}} · majoration {{margin}} (sur le coût) · {{change}} par rapport au prix actuel",
       "below_cost": "Sous le coût : ce prix vend à perte.",
       "add": "Ajouter un prix",
       "remove": "Retirer",

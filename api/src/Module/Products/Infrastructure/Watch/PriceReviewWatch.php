@@ -86,6 +86,8 @@ final readonly class PriceReviewWatch implements DeclaresWatch
                 'price' => $review->price,
                 'previousMargin' => $review->previousMargin(),
                 'margin' => $review->margin(),
+                // The same moves as shares of the cost, for a reader who reads a markup; a cost of nothing has none.
+                ...array_filter(['previousMarkup' => $review->previousMarkup(), 'markup' => $review->markup()], static fn (?string $markup): bool => null !== $markup),
             ]);
         }, $rows), $total, $request);
     }

@@ -105,6 +105,7 @@
       "folded_sections": "Folded menu sections",
       "settings_list": "Settings list",
       "stock_map_view": "Stock map view",
+      "margin_basis": "Margin in percent",
       "expense_line_change": "Expense line added or removed",
       "expense_line_change_hint": "What the other lines typed with tax keep: their net amount, or the total typed.",
       "receive_serials": "Serial numbers when receiving",
@@ -206,6 +207,10 @@
         "stock-map-view": {
           "plan": "2D plan",
           "volume": "3D volume"
+        },
+        "margin-basis": {
+          "margin": "Share of the price (margin)",
+          "markup": "Share of the cost (markup)"
         },
         "expense-line-change": {
           "nets": "Keep the net amounts",

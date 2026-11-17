@@ -19,6 +19,7 @@ import { announceSaved } from '../shared/testing/live';
 import type { UnreadPart } from '../shared/errors/unknown-refusal';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -60,6 +61,7 @@ const laptop: ProductRow = {
   unitPriceGross: null,
   margin: null,
   marginPercent: null,
+  markupPercent: null,
   categoryId: 'k1',
   barcodes: [],
   defaultTaxComponentIds: [],
@@ -312,6 +314,18 @@ describe('ProductsPage', () => {
 
     expect(q('products-bulk-labels')).not.toBeNull();
     expect(q('products-merge')).toBeNull();
+  });
+
+  it('lists the margin as the person reads it, a share of the price or of the cost', async () => {
+    const ids = (): string[] =>
+      (fixture.componentInstance as unknown as { list: () => { columns: { id: string }[] } })
+        .list()
+        .columns.map((column) => column.id);
+    expect(ids()).toContain('marginPercent');
+    TestBed.inject(SettingsFacade).set(PRESENTATION.marginBasis, 'markup');
+    await settle();
+    expect(ids()).toContain('markupPercent');
+    expect(ids()).not.toContain('marginPercent');
   });
 
   it('says why the list could not be read', async () => {

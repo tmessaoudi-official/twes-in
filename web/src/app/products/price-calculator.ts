@@ -11,6 +11,7 @@ import {
   Injector,
   input,
   type Signal,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -310,7 +311,9 @@ export class PriceCalculator {
   private readonly translate = inject(TranslateService);
 
   protected readonly bases: readonly PercentBasis[] = ['margin', 'markup'];
-  protected readonly basis = signal<PercentBasis>('margin');
+  /** The basis the calculator opens on: the one the person reads a margin on. */
+  readonly firstBasis = input<PercentBasis>('margin');
+  protected readonly basis = linkedSignal<PercentBasis>(() => this.firstBasis());
   protected readonly wanted = signal('');
   /** The cost and the net price as decimal strings, null while either is not an amount: money is never a float. */
   protected readonly cost = signal<string | null>(null);

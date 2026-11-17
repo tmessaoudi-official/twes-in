@@ -115,6 +115,15 @@ describe('PriceCalculator', () => {
     expect(q('price-calculator-wanted')).toBeNull();
   });
 
+  it('opens on the basis the person reads a margin on', async () => {
+    await open('60.000', '70.000');
+    fixture.componentRef.setInput('firstBasis', 'markup');
+    fixture.detectChanges();
+
+    await want('40');
+    expect(text('price-calculator-target')).toBe('~84.000 TND');
+  });
+
   it('finds the price for the margin wanted, or the markup, and puts it in the form on request', async () => {
     await open('60.000', '70.000');
 

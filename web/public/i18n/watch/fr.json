@@ -131,6 +131,8 @@
       "date": "Date",
       "previousMargin": "Marge avant",
       "margin": "Marge",
+      "previousMarkup": "Majoration avant",
+      "markup": "Majoration",
       "price": "Prix unitaire HT",
       "cost": "Prix de revient",
       "reasons": "À vérifier",

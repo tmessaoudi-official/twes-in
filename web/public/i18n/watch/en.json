@@ -131,6 +131,8 @@
       "date": "Date",
       "previousMargin": "Margin before",
       "margin": "Margin",
+      "previousMarkup": "Markup before",
+      "markup": "Markup",
       "price": "Net unit price",
       "cost": "Cost price",
       "reasons": "To check",

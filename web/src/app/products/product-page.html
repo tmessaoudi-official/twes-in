@@ -84,6 +84,7 @@
             [currency]="currency()"
             [mayDecide]="editable()"
             [busy]="busy()"
+            [basis]="marginBasis()"
             (decide)="settlePriceReview($event)"
           />
         }
@@ -136,6 +137,7 @@
                   [readOnly]="!editable()"
                   [companyId]="company()?.id ?? null"
                   [packs]="packCounts()"
+                  [firstBasis]="marginBasis()"
                 />
               </mat-card-content>
             </mat-card>

@@ -189,14 +189,19 @@ final class ProductResource
     #[Groups([self::READ])]
     public ?string $marginPercent = null;
 
+    /** The margin as a percentage of the cost (the markup), to one decimal; null also for a cost of nothing. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $markupPercent = null;
+
     /**
      * The margin a receipt's cost moved under the price: the cost the price was set against, the cost now, the price, the
-     * price that keeps the margin, at the currency's decimals, and the margin before and now as percentages of the price. Null when nothing moved it, and for a caller without
+     * price that keeps the margin, at the currency's decimals, and the margin before and now as percentages of the price and of the cost (null for a cost of nothing). Null when nothing moved it, and for a caller without
      * product.cost.read. Settled at POST .../price-review.
      *
-     * @var array{previousCost: string, cost: string, price: string, suggestedPrice: string, previousMargin: string, margin: string}|null
+     * @var array{previousCost: string, cost: string, price: string, suggestedPrice: string, previousMargin: string, margin: string, previousMarkup: ?string, markup: ?string}|null
      */
-    #[ApiProperty(writable: false, schema: ['anyOf' => [['type' => 'object', 'required' => ['previousCost', 'cost', 'price', 'suggestedPrice', 'previousMargin', 'margin'], 'properties' => ['previousCost' => ['type' => 'string'], 'cost' => ['type' => 'string'], 'price' => ['type' => 'string'], 'suggestedPrice' => ['type' => 'string'], 'previousMargin' => ['type' => 'string'], 'margin' => ['type' => 'string']]], ['type' => 'null']]])]
+    #[ApiProperty(writable: false, schema: ['anyOf' => [['type' => 'object', 'required' => ['previousCost', 'cost', 'price', 'suggestedPrice', 'previousMargin', 'margin', 'previousMarkup', 'markup'], 'properties' => ['previousCost' => ['type' => 'string'], 'cost' => ['type' => 'string'], 'price' => ['type' => 'string'], 'suggestedPrice' => ['type' => 'string'], 'previousMargin' => ['type' => 'string'], 'margin' => ['type' => 'string'], 'previousMarkup' => ['type' => ['string', 'null']], 'markup' => ['type' => ['string', 'null']]]], ['type' => 'null']]])]
     #[Groups([self::READ])]
     public ?array $priceReview = null;
 
@@ -322,8 +327,9 @@ final class ProductResource
         $margin = $withCosts ? Margin::of($details->unitPriceNet, $details->costPrice) : null;
         $resource->margin = $margin?->amount;
         $resource->marginPercent = $margin?->percent;
+        $resource->markupPercent = $margin?->markup;
         $review = $withCosts ? $product->priceReview() : null;
-        $resource->priceReview = null === $review ? null : ['previousCost' => $review->previousCost, 'cost' => $review->cost, 'price' => $review->price, 'suggestedPrice' => $review->suggestedPrice($priceScale), 'previousMargin' => $review->previousMargin(), 'margin' => $review->margin()];
+        $resource->priceReview = null === $review ? null : ['previousCost' => $review->previousCost, 'cost' => $review->cost, 'price' => $review->price, 'suggestedPrice' => $review->suggestedPrice($priceScale), 'previousMargin' => $review->previousMargin(), 'margin' => $review->margin(), 'previousMarkup' => $review->previousMarkup(), 'markup' => $review->markup()];
         $resource->categoryId = $product->getCategory()?->getId()->toRfc4122();
         $resource->substitutionGroup = $details->substitutionGroup;
         $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);

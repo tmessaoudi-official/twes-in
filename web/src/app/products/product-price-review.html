@@ -7,14 +7,8 @@
     <mat-icon aria-hidden="true">sell</mat-icon>
     <div class="flex min-w-0 flex-col gap-1">
       <p class="font-medium" data-testid="product-price-review-margin">
-        {{
-          'products.price_review.margin'
-            | translate
-              : {
-                  before: percent(review().previousMargin),
-                  after: percent(review().margin),
-                }
-        }}
+        @let shown = moved();
+        {{ shown.key | translate: { before: shown.before, after: shown.after } }}
       </p>
       <p class="text-sm opacity-80" data-testid="product-price-review-why">
         {{

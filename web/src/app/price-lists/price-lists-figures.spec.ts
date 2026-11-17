@@ -13,6 +13,7 @@ describe('rowFigures', () => {
       cost: '534.0000',
       changePercent: '-10.1',
       marginPercent: '33.3',
+      markupPercent: '49.8',
       belowCost: false,
     });
   });
@@ -21,6 +22,7 @@ describe('rowFigures', () => {
     const figures = rowFigures('400', product);
     expect(figures?.belowCost).toBe(true);
     expect(figures?.marginPercent).toBe('-33.5');
+    expect(figures?.markupPercent).toBe('-25.1');
   });
 
   it('does not flag a price equal to the cost', () => {
@@ -34,6 +36,7 @@ describe('rowFigures', () => {
       cost: null,
       changePercent: '-55.1',
       marginPercent: null,
+      markupPercent: null,
       belowCost: false,
     });
   });
@@ -45,6 +48,7 @@ describe('rowFigures', () => {
       cost: '534.0000',
       changePercent: null,
       marginPercent: null,
+      markupPercent: null,
       belowCost: false,
     });
   });

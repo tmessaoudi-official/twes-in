@@ -356,6 +356,7 @@ describe('ProductsApi', () => {
       unitPriceGross: null,
       margin: null,
       marginPercent: null,
+      markupPercent: null,
       categoryId: null,
       barcodes: [],
       defaultTaxComponentIds: [],

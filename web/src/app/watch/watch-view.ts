@@ -101,7 +101,7 @@ export function watchRowView(
   for (const name of ['price', 'cost', 'previousCost'] as const) {
     if (name in params) cells[name] = figures.amount(text(params, name), null);
   }
-  for (const name of ['previousMargin', 'margin'] as const) {
+  for (const name of ['previousMargin', 'margin', 'previousMarkup', 'markup'] as const) {
     if (name in params) cells[name] = `${figures.decimal(text(params, name))} %`;
   }
   // A quantity with its unit, which the API names as the screens do: « -3 kg » is not « -3 » pieces.

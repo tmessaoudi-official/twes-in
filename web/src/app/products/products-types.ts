@@ -86,9 +86,13 @@ export interface ProductRow {
   costPrice: string | null;
   /** What one unit sells for taxes included, counted by the API at the currency's decimals; null when its taxes cannot be. */
   unitPriceGross: string | null;
-  /** The net price less the cost, and that as a percentage of the price, said only to a cost reader; null without a cost. */
+  /**
+   * The net price less the cost, and that as a percentage of the price and of the cost (the markup), said only to a
+   * cost reader; null without a cost, a percentage also without a price or a cost above nothing.
+   */
   margin: string | null;
   marginPercent: string | null;
+  markupPercent: string | null;
   categoryId: string | null;
   /** The codes it answers to, unit first; written on their own (`ProductsApi.replaceBarcodes`). */
   barcodes: ProductBarcode[];
@@ -136,6 +140,9 @@ export interface ProductPriceReview {
   suggestedPrice: string;
   previousMargin: string;
   margin: string;
+  /** The same margins as percentages of the cost; null for a cost of nothing. */
+  previousMarkup: string | null;
+  markup: string | null;
 }
 
 /**
@@ -218,6 +225,7 @@ export type ProductInput = Omit<
   | 'unitPriceGross'
   | 'margin'
   | 'marginPercent'
+  | 'markupPercent'
   | 'barcodes'
   | 'mainPhotoId'
   | 'mergedInto'

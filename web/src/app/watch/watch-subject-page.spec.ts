@@ -17,6 +17,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -215,6 +216,35 @@ describe('WatchSubjectPage', () => {
     const page = fixture.nativeElement.textContent as string;
     expect(page).toContain('Il revient à qui peut modifier le stock.');
     expect(page).not.toContain('Comptez');
+  });
+
+  it('says a moved margin as a share of the cost to a person who reads a markup', async () => {
+    const moved: WatchRow = {
+      kind: 'product.margin_moved',
+      subjectId: 'p1',
+      params: {
+        product: 'Perceuse',
+        reference: 'ART-001',
+        previousCost: '1000.0000',
+        cost: '1100.0000',
+        price: '1250.0000',
+        previousMargin: '20.0',
+        margin: '12.0',
+        previousMarkup: '25.0',
+        markup: '13.6',
+      },
+    };
+    await open('product.margin_moved', [moved]);
+    expect(fixture.nativeElement.textContent).toContain('12,0 %');
+
+    TestBed.inject(SettingsFacade).set(PRESENTATION.marginBasis, 'markup');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const shown = fixture.nativeElement.textContent as string;
+    expect(shown).toContain('13,6 %');
+    expect(shown).toContain('25,0 %');
+    expect(shown).not.toContain('12,0 %');
   });
 
   it('offers no way elsewhere on a subject that has none', async () => {

@@ -63,6 +63,8 @@ import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
 import { ReadFailed } from '../shared/feedback/read-failed';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
@@ -109,6 +111,8 @@ export class ProductPage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  /** Whether the person reads a margin as a share of the price or of the cost: the price review and the calculator say it so. */
+  protected readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
   private readonly router = inject(Router);
   private readonly deletes = inject(RecordDeletes);
   private readonly format = inject(FormatFacade);

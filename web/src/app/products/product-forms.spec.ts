@@ -73,6 +73,7 @@ const laptop: ProductRow = {
   unitPriceGross: null,
   margin: null,
   marginPercent: null,
+  markupPercent: null,
   categoryId: 'k2',
   barcodes: [],
   defaultTaxComponentIds: ['t-vat'],
@@ -214,6 +215,21 @@ describe('product forms', () => {
   });
 
   // docs/SPEC.md § 7: prix TTC, marge and marge % hidden until placed; a field the person cannot read is no column.
+  it('reads the margin as a share of the cost for a person who reads a markup, in the same place', () => {
+    const columns = productsList([], [], true, 'markup').columns;
+    const ids = columns.map((column) => column.id);
+    expect(ids.slice(ids.indexOf('margin'), ids.indexOf('margin') + 2)).toEqual([
+      'margin',
+      'markupPercent',
+    ]);
+    expect(ids).not.toContain('marginPercent');
+    const markup = columns.find((column) => column.id === 'markupPercent');
+    expect(markup?.label).toBe('products.fields.markupPercent');
+    expect(markup?.defaultHidden).toBe(true);
+    const row = { ...laptop, categoryName: null, unitName: '' };
+    expect(markup?.value({ ...row, marginPercent: '20.0', markupPercent: '25.0' })).toBe('25.0');
+  });
+
   it('offers the price taxes included to everyone and the cost and margins to a cost reader only, all hidden', () => {
     const ids = (costs: boolean) => productsList([], [], costs).columns.map((column) => column.id);
     expect(ids(false)).not.toEqual(expect.arrayContaining(['cost']));

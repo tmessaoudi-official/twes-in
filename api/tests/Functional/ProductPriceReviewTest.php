@@ -39,12 +39,12 @@ final class ProductPriceReviewTest extends ApiTestCase
 
         $this->getJson($this->path());
         self::assertResponseIsSuccessful();
-        self::assertSame(['previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'suggestedPrice' => '1375.000', 'previousMargin' => '20.0', 'margin' => '12.0'], $this->review());
+        self::assertSame(['previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'suggestedPrice' => '1375.000', 'previousMargin' => '20.0', 'margin' => '12.0', 'previousMarkup' => '25.0', 'markup' => '13.6'], $this->review());
         self::assertSame('1250.0000', $this->json()['unitPriceNet'] ?? null, 'the price is the company\'s to move');
         $this->getJson($this->path('watch/product.margin_moved'));
         self::assertResponseIsSuccessful();
         self::assertSame([$this->productId], array_column($this->jsonList(), 'subjectId'));
-        self::assertSame(['product' => 'Perceuse', 'reference' => 'ART-001', 'previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'previousMargin' => '20.0', 'margin' => '12.0'], $this->jsonList()[0]['params'] ?? null);
+        self::assertSame(['product' => 'Perceuse', 'reference' => 'ART-001', 'previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'previousMargin' => '20.0', 'margin' => '12.0', 'previousMarkup' => '25.0', 'markup' => '13.6'], $this->jsonList()[0]['params'] ?? null);
 
         $this->receive('1200');
         $this->getJson($this->path());
@@ -244,7 +244,7 @@ final class ProductPriceReviewTest extends ApiTestCase
 
         self::assertSame([['kind' => 'product.margin_moved', 'id' => $this->productId, 'params' => []]], $this->effects());
         $this->getJson($this->path());
-        self::assertSame(['previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'suggestedPrice' => '1375.000', 'previousMargin' => '20.0', 'margin' => '12.0'], $this->review());
+        self::assertSame(['previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'suggestedPrice' => '1375.000', 'previousMargin' => '20.0', 'margin' => '12.0', 'previousMarkup' => '25.0', 'markup' => '13.6'], $this->review());
         self::assertSame(['import', 'import'], $this->em()->getConnection()->fetchFirstColumn('SELECT source FROM product_cost_change WHERE product_id = ? ORDER BY new_cost', [$this->productId]));
     }
 

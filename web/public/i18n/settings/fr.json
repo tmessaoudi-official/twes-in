@@ -105,6 +105,7 @@
       "folded_sections": "Sections repliées des menus",
       "settings_list": "Liste des réglages",
       "stock_map_view": "Vue du plan du stock",
+      "margin_basis": "Marge en pourcentage",
       "expense_line_change": "Ligne ajoutée ou retirée d’une dépense",
       "expense_line_change_hint": "Ce que gardent les autres lignes saisies TTC : leur montant HT, ou le total saisi.",
       "receive_serials": "Saisie des numéros de série à la réception",
@@ -206,6 +207,10 @@
         "stock-map-view": {
           "plan": "Plan 2D",
           "volume": "Volume 3D"
+        },
+        "margin-basis": {
+          "margin": "Part du prix (marge)",
+          "markup": "Part du coût (majoration)"
         },
         "expense-line-change": {
           "nets": "Garder les montants HT",

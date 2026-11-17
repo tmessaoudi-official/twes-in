@@ -43,6 +43,8 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { typedText } from '../shared/form/typed-text';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
 import { UnreadParts } from '../shared/feedback/unread-parts';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
@@ -76,6 +78,8 @@ export class ProductsPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
   private readonly deletes = inject(RecordDeletes);
+  /** Whether the person reads a margin as a share of the price or of the cost. */
+  private readonly marginBasis = inject(SettingsFacade).value(PRESENTATION.marginBasis);
 
   /** Rows are selected for what the selection bar offers on them: their labels on one sheet, and a merge. */
   protected readonly list = computed(() => ({
@@ -83,6 +87,7 @@ export class ProductsPage implements OnInit {
       this.facade.customFields(),
       this.offeredReasons() ?? [],
       this.auth.hasPermission('product.cost.read'),
+      this.marginBasis(),
     ),
     selection: { countKey: 'products.selected' },
   }));

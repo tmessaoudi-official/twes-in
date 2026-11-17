@@ -115,12 +115,12 @@ final class ProductsTest extends ApiTestCase
         $this->getJson($this->path());
 
         self::assertResponseIsSuccessful();
-        $figures = static fn (array $row): array => [$row['reference'] ?? null, $row['unitPriceGross'] ?? null, $row['margin'] ?? null, $row['marginPercent'] ?? null];
+        $figures = static fn (array $row): array => [$row['reference'] ?? null, $row['unitPriceGross'] ?? null, $row['margin'] ?? null, $row['marginPercent'] ?? null, $row['markupPercent'] ?? null];
         self::assertSame([
-            ['ART-001', '1487.500', '250.0000', '20.0'],
-            ['ART-002', '0.000', '-12.5000', null],
-            ['ART-003', '1250.000', null, null],
-        ], array_map($figures, $this->jsonList()), 'a price of nothing leaves no percentage, a cost of nothing no margin');
+            ['ART-001', '1487.500', '250.0000', '20.0', '25.0'],
+            ['ART-002', '0.000', '-12.5000', null, '-100.0'],
+            ['ART-003', '1250.000', null, null, null],
+        ], array_map($figures, $this->jsonList()), 'a price of nothing leaves no share of the price, a cost of nothing no margin; the markup is a share of the cost');
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
@@ -128,9 +128,9 @@ final class ProductsTest extends ApiTestCase
         $this->login('clerk@twes.local', 'password-1234');
         $this->getJson($this->path());
         self::assertSame([
-            ['ART-001', '1487.500', null, null],
-            ['ART-002', '0.000', null, null],
-            ['ART-003', '1250.000', null, null],
+            ['ART-001', '1487.500', null, null, null],
+            ['ART-002', '0.000', null, null, null],
+            ['ART-003', '1250.000', null, null, null],
         ], array_map($figures, $this->jsonList()), 'a margin tells the cost');
     }
 

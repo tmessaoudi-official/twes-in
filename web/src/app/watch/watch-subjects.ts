@@ -3,6 +3,7 @@
 import { countAddress } from '../inventory/inventory-types';
 import type { IconName } from '../shared/icons/icons';
 import type { ListColumn, ListDescriptor, RowAction } from '../shared/list/list-types';
+import type { MarginBasis } from '../shared/settings/settings-registry';
 import type { WatchRowView } from './watch-view';
 
 /**
@@ -44,6 +45,32 @@ export function permittedList(
     return permission === undefined || may(permission);
   });
   return kept.length === actions.length ? view.list : { ...view.list, actions: kept };
+}
+
+/** The columns of a margin as a share of the price, and of the same margin as a share of the cost. */
+const MARKUP_COLUMNS: Readonly<Record<string, string>> = {
+  previousMargin: 'previousMarkup',
+  margin: 'markup',
+};
+
+/**
+ * A subject's table as a reader who reads a margin as a share of the cost sees it: each margin column says the markup,
+ * in the same place and width. A table with no margin is handed back as it is.
+ */
+export function withMarginBasis(
+  list: ListDescriptor<WatchRowView>,
+  basis: MarginBasis,
+): ListDescriptor<WatchRowView> {
+  if (basis === 'margin' || !list.columns.some((column) => column.id in MARKUP_COLUMNS))
+    return list;
+  return {
+    ...list,
+    columns: list.columns.map((column) => {
+      const markup = MARKUP_COLUMNS[column.id];
+      // Its own id, words and value, in the column's place, width and priority.
+      return markup === undefined ? column : { ...column, ...cell(markup) };
+    }),
+  };
 }
 
 /**

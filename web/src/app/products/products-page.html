@@ -117,6 +117,11 @@
           {{ 'products.margin_percent' | translate: { percent: decimal(row.marginPercent) } }}
         }
       </ng-template>
+      <ng-template appDataListCell="markupPercent" let-row>
+        @if (row.markupPercent !== null) {
+          {{ 'products.margin_percent' | translate: { percent: decimal(row.markupPercent) } }}
+        }
+      </ng-template>
     </app-data-list>
   </section>
 </app-page-tabs>

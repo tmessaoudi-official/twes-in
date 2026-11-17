@@ -1845,6 +1845,7 @@
       "unitPriceGross": "سعر الوحدة باعتبار الأداءات",
       "margin": "الهامش",
       "marginPercent": "الهامش %",
+      "markupPercent": "نسبة الزيادة %",
       "description": "الوصف",
       "tracking": "التتبّع",
       "substitutionGroup": "مجموعة البدائل",
@@ -2094,6 +2095,7 @@
     },
     "price_review": {
       "margin": "انتقل الهامش من {{before}}% إلى {{after}}%.",
+      "markup": "انتقلت نسبة الزيادة من {{before}}% إلى {{after}}%.",
       "why": "انتقل سعر الكلفة من {{previousCost}} إلى {{cost}} {{currency}}، بينما بقي سعر الوحدة دون اعتبار الأداءات {{price}} {{currency}}.",
       "adjust": "تعديل السعر إلى {{price}} {{currency}}",
       "keep": "الإبقاء على السعر",
@@ -3334,6 +3336,7 @@
       "unit_price": "سعر الوحدة الصافي",
       "figures": "السعر الحالي {{shelf}} · {{change}} مقارنة بالسعر الحالي",
       "figures_cost": "السعر الحالي {{shelf}} · الكلفة {{cost}} · الهامش {{margin}} (على هذا السعر) · {{change}} مقارنة بالسعر الحالي",
+      "figures_cost_markup": "السعر الحالي {{shelf}} · الكلفة {{cost}} · نسبة الزيادة {{margin}} (على الكلفة) · {{change}} مقارنة بالسعر الحالي",
       "below_cost": "دون الكلفة: هذا السعر يبيع بخسارة.",
       "add": "إضافة سعر",
       "remove": "سحب",

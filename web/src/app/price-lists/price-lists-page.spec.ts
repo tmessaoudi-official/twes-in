@@ -13,6 +13,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -47,6 +48,8 @@ class StaticLoader implements TranslateLoader {
         prices: {
           figures: 'Prix actuel {{shelf}} · {{change}}',
           figures_cost: 'Prix actuel {{shelf}} · coût {{cost}} · marge {{margin}} · {{change}}',
+          figures_cost_markup:
+            'Prix actuel {{shelf}} · coût {{cost}} · majoration {{margin}} · {{change}}',
           below_cost: 'Sous le coût',
         },
       },
@@ -773,6 +776,19 @@ describe('PriceListsPage', () => {
       await settle();
 
       expect(query('price-row-0-figures')?.textContent?.replace(/\s/g, ' ')).toContain('+12,4 %');
+    });
+
+    it('says the margin as a share of the cost to a person who reads a markup', async () => {
+      TestBed.inject(SettingsFacade).set(PRESENTATION.marginBasis, 'markup');
+      figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: '534.0000' }]]));
+      const { page, row, settle, query } = await withARow();
+      row.controls.unitPriceNet.setValue('800');
+      page.chooseProduct(row, stylo);
+      await settle();
+
+      expect(query('price-row-0-figures')?.textContent?.replace(/\s/g, ' ')).toContain(
+        'majoration 49,8 %',
+      );
     });
 
     it('warns when the price is under the cost, and only then', async () => {

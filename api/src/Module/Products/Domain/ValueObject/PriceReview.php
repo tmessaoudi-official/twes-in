@@ -48,4 +48,16 @@ final readonly class PriceReview
     {
         return Margin::percentOf($this->price, $this->cost);
     }
+
+    /** The margin before, as a percentage of the cost it was set against: null for a cost of nothing. */
+    public function previousMarkup(): ?string
+    {
+        return Margin::markupOf($this->price, $this->previousCost);
+    }
+
+    /** The margin now, as a percentage of the cost now. */
+    public function markup(): ?string
+    {
+        return Margin::markupOf($this->price, $this->cost);
+    }
 }

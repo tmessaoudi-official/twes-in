@@ -688,6 +688,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     unitPriceGross: raw.unitPriceGross ?? null,
     margin: raw.margin ?? null,
     marginPercent: raw.marginPercent ?? null,
+    markupPercent: raw.markupPercent ?? null,
     categoryId: raw.categoryId ?? null,
     barcodes: (raw.barcodes ?? []).map(toBarcode),
     defaultTaxComponentIds: (raw.defaultTaxComponentIds ?? []).filter(
