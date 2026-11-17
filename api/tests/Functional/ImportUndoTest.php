@@ -380,6 +380,43 @@ final class ImportUndoTest extends ApiTestCase
         self::assertSame(['P-NEW'], self::strings($this->em()->getConnection()->fetchFirstColumn("SELECT p.reference FROM product_barcode b JOIN product p ON p.id = b.product_id WHERE b.code = 'SF-1'")));
     }
 
+    /** A vendor linked again since the replace, with its code, is put back once: never a second link or a second code. */
+    public function testAVendorLinkedAgainSinceIsPutBackOnce(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-001,SF-1\n");
+        $run = $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-002,\n", 'upsert', ['mode' => 'replace']);
+        $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-001,SF-1\n", 'upsert');
+
+        $this->undo($run);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->arrayAt($this->json(), 'rowsKept'));
+        self::assertSame(['F-001'], $this->vendorsOf('P-OLD'));
+        self::assertSame(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM product_barcode WHERE code = 'SF-1'"));
+    }
+
+    /**
+     * An undone replace leaves nothing in the bin (its links are no records the bin keeps) and stays undone: a second undo
+     * is refused, so the vendors it put back are never put back twice.
+     */
+    public function testAnUndoneReplaceIsUndoneOnce(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-001,SF-1\n");
+        $run = $this->imported('product-vendors', "product_reference,vendor_number,vendor_code\nP-OLD,F-002,\n", 'upsert', ['mode' => 'replace']);
+        $this->undo($run);
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['removal'] ?? null);
+
+        $this->undo($run);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('import_undone', $this->json()['error']);
+        self::assertSame(['F-001'], $this->vendorsOf('P-OLD'));
+        self::assertSame(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM product_barcode WHERE code = 'SF-1'"));
+    }
+
     /** @param list<string> $permissions */
     private function signedIn(array $permissions, bool $prove = true): void
     {
@@ -391,8 +428,11 @@ final class ImportUndoTest extends ApiTestCase
         }
     }
 
-    /** Imports the file, committed, and answers the import's id. */
-    /** @param array<string, string> $choices */
+    /**
+     * Imports the file, committed, and answers the import's id.
+     *
+     * @param array<string, string> $choices
+     */
     private function imported(string $subject, string $contents, string $mode = 'create', array $choices = []): string
     {
         $this->import($subject, $contents, $mode, choices: $choices);

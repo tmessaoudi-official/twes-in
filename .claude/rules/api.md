@@ -58,7 +58,8 @@ the end of § Lessons here.
   domain), and the report notes `set_aside` on that cell (a phone kept outside its country's ranges under « Garder et marquer » is noted `phone_kept_to_check`, judged by the use case's own `phoneKept` before the write); a subject offers switches,
   `ImportSwitch`, worded by the screen alone, which may name the company setting it starts from (`$setting`, read by
   `ImportDefaults` for the guide's `ticked` and `answer` and for the run alike, which also gives a CSV the company's
-  notation, `ImportNotation`; a workbook's cells keep their own) (`ImportColumnsTest` holds every label and note to each language; the
+  notation, `Application/Notation/ImportNotation`, the guide's `decimalMark` and `dayOrder`, which a request's own may
+  replace for one file; a workbook's cells keep their own) (`ImportColumnsTest` holds every label and note to each language; the
   products file's: `default_taxes`, the line defaults for a new product naming no tax, and `unpriced_inactive`, a new
   product with no price created switched off at 0; its `cost_price_gross` column is a cost with taxes, kept less the
   VAT the company gets back), says what a row names for duplicates, `identityOf`, and what is said once per file, `finished`; a
@@ -68,7 +69,9 @@ the end of § Lessons here.
   keeps and the guide offers again as `lastPairing`; « Annuler cet import », `Application/Undo/UndoImport` at `POST …/import-runs/{id}/undo`, takes back within
   `app.records.undoable_for` and behind a step-up what the run created that nothing uses, as a `RecordRemoval` of kind
   `import` the bin puts back through `RestoreUndoneImport`, the stock it moved through `ImportedStock` (reversals at their
-  own cost) and the rows a module wrote through `UndoesImportedRows`; « Imports récents » is `GET …/import-runs`),
+  own cost) and the rows a module wrote through `UndoesImportedRows`, then puts back what a file that replaces a list
+  removed (`ImportContext::removed`, kept in `import_run_removal`, handed to the module's `PutsBackImportRemovals`, as
+  the product-vendors file's « Remplacer » drops each vendor no row names), saying what cannot come back; « Imports récents » is `GET …/import-runs`),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
   `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up, and its contacts to check, `ContactsToCheckWatch` (the profile's and each establishment's, as `StoredContacts::toCheck` judges them, records with no mark of their own); a part counting from the clock rather than the company's day also says when it next changes with nothing written, `ComesDueWithTime`, and the summary's `readAgainIn`, seconds from now, carries the earliest, or the next day, which the web's `WatchFacade` reads again at; `WatchKindsTest` holds every part whose constructor takes the clock to it),
   `Texts` (« Textes »: any text the screens, the mails and the printed documents show, worded otherwise for the installation by
