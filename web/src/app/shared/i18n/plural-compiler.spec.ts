@@ -2,6 +2,7 @@
 
 import { TranslateDefaultParser } from '@ngx-translate/core';
 import { PluralCompiler } from './plural-compiler';
+import vectors from './screen-text-vectors.json';
 
 describe('PluralCompiler', () => {
   const compiler = new PluralCompiler();
@@ -20,6 +21,14 @@ describe('PluralCompiler', () => {
     expect(say(en, 'en', { count: 0 })).toBe('0 days left');
     expect(say(en, 'en', { count: 1 })).toBe('1 day left');
   });
+
+  // The API fills the texts it writes from the screens' files (a report file's headings) the same way.
+  it.each(vectors.vectors)(
+    'fills « $text » in $language as the API does',
+    ({ language, text, params, said }) => {
+      expect(say(text, language, params)).toBe(said);
+    },
+  );
 
   it('reads a count that came as a decimal string, and takes « other » when there is none', () => {
     expect(say(days, 'fr', { days: '1' })).toBe('1 jour restant');

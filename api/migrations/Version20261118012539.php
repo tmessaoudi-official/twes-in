@@ -14,7 +14,8 @@ use Doctrine\Migrations\AbstractMigration;
 
 /**
  * The owner may open the company to support for one operator by name. Every grant already there names no one and keeps
- * opening to every operator; deleting the named account deletes its grant, since clearing the name would widen it.
+ * opening to every operator. What deleting the named account does is the next migration's: the grant is kept and opens
+ * to no one.
  */
 final class Version20261118012539 extends AbstractMigration
 {

@@ -17,7 +17,9 @@ use App\Module\Expenses\Domain\Repository\ExpenseRepository;
 use App\Module\Expenses\Domain\ValueObject\ExpenseAmounts;
 use App\Module\Expenses\Domain\ValueObject\ExpenseDetails;
 use App\Module\Reports\Application\ReportComparison;
+use App\Module\Reports\Application\ReportExportSettings;
 use App\Module\Reports\Application\ReportPeriod;
+use App\Shared\Application\Languages;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
@@ -209,6 +211,70 @@ final class ReportsTest extends ApiTestCase
         $this->client->request('GET', $this->path().'/reports/expenses-by-category/export.xlsx?from=2026-09-01&to=2026-09-30');
         self::assertResponseIsSuccessful();
         self::assertStringStartsWith('PK', $this->client->getInternalResponse()->getContent(), 'a workbook is a zip archive');
+    }
+
+    /**
+     * A company that asks for it gets its files headed in the words its screen shows, its own wording included, in the
+     * language the screen speaks: the period compared said after each figure's word, the totals line named.
+     */
+    public function testTheFileIsHeadedInTheScreensWordsWhenTheCompanyAsks(): void
+    {
+        $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $file = $this->path().'/reports/expenses-by-category/export.csv?from=2026-09-01&to=2026-09-30&compare=previous';
+        self::assertSame('category,net,taxes,gross,expenses,net.previous,taxes.previous,gross.previous,expenses.previous', $this->fileLines($file)[0], 'keys until the company asks otherwise');
+
+        $this->sendJson('PUT', $this->path().'/settings/'.ReportExportSettings::HEADERS, ['level' => 'company', 'value' => ReportExportSettings::WORDS]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path().'/texts/fr/screen:reports/reports.columns.net', ['value' => 'Net HT', 'version' => 0]);
+        self::assertResponseIsSuccessful();
+
+        self::assertSame([
+            ['Catégorie', 'Net HT', 'Taxes', 'TTC', 'Dépenses', 'Net HT (Période comparée)', 'Taxes (Période comparée)', 'TTC (Période comparée)', 'Dépenses (Période comparée)'],
+            ['Énergie', '100.000', '0.000', '100.000', '1', '40.000', '0.000', '40.000', '1'],
+            ['Total', '100.000', '0.000', '100.000', '1', '40.000', '0.000', '40.000', '1'],
+        ], array_map(static fn (string $line): array => str_getcsv($line, escape: ''), $this->fileLines($file)));
+        self::assertSame(
+            ['Category', 'Net', 'Taxes', 'Gross', 'Expenses', 'Net (Period compared)', 'Taxes (Period compared)', 'Gross (Period compared)', 'Expenses (Period compared)'],
+            str_getcsv($this->fileLines($file, 'en')[0], escape: ''),
+            'the language the screen asks for; the company worded only the French',
+        );
+    }
+
+    /** Every report's file is worded in every language the screens speak: no key, no value left unfilled, no heading twice. */
+    public function testEveryReportsFileIsWordedInEveryLanguage(): void
+    {
+        $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $this->sendJson('PUT', $this->path().'/settings/'.ReportExportSettings::HEADERS, ['level' => 'company', 'value' => ReportExportSettings::WORDS]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path().'/reports');
+        self::assertResponseIsSuccessful();
+        $reports = $this->arrayAt($this->json(), 'reports');
+        self::assertGreaterThan(10, \count($reports), 'the owner reads every report');
+
+        foreach (static::getContainer()->get(Languages::class)->interface() as $language) {
+            foreach ($reports as $report) {
+                self::assertIsArray($report);
+                self::assertIsString($key = $report['key'] ?? null);
+                $period = true === ($report['periodic'] ?? null) ? '?from=2026-09-01&to=2026-09-30&compare=previous' : '';
+                $headings = str_getcsv($this->fileLines($this->path().'/reports/'.$key.'/export.csv'.$period, $language)[0], escape: '');
+                foreach ($headings as $heading) {
+                    self::assertIsString($heading);
+                    self::assertDoesNotMatchRegularExpression('/^[a-z0-9_.()=,]+$|\{|reports\./', $heading, "$key in $language");
+                }
+                self::assertSame($headings, array_values(array_unique($headings)), "$key in $language: a heading twice");
+            }
+        }
+    }
+
+    /** @return list<string> the file's lines, its byte-order mark and blank lines left out */
+    private function fileLines(string $file, string $language = 'fr'): array
+    {
+        $this->client->request('GET', $file, server: ['HTTP_ACCEPT_LANGUAGE' => $language]);
+        self::assertResponseIsSuccessful($file);
+
+        return array_values(array_filter(explode("\n", ltrim($this->client->getInternalResponse()->getContent(), "\xEF\xBB\xBF")), static fn (string $line): bool => '' !== trim($line)));
     }
 
     /** @return iterable<string, array{int, int}> */

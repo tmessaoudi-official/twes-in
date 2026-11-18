@@ -317,6 +317,12 @@
           "kept": "The vendor kept",
           "recorded": "The vendor recorded"
         }
+      },
+      "reports": {
+        "export_headers": {
+          "keys": "Column keys",
+          "words": "The screen’s words"
+        }
       }
     },
     "overrides": {
@@ -421,6 +427,10 @@
     "records": {
       "undoable_for": "Time to undo a delete (hours)",
       "undoable_for_hint": "A delete, a merge or an import can be taken back for this long, at most the time the installation keeps."
+    },
+    "reports": {
+      "export_headers": "Report file headings",
+      "export_headers_hint": "The screen’s words read well; the keys keep the formulas and programs reading the file working."
     }
   }
 }

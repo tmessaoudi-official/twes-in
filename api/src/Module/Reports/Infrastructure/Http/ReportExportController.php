@@ -20,16 +20,20 @@ use App\Module\Reports\Application\InvalidReportRequest;
 use App\Module\Reports\Application\ReportCatalogue;
 use App\Module\Reports\Application\ReportColumn;
 use App\Module\Reports\Application\ReportColumnKind;
+use App\Module\Reports\Application\ReportExportSettings;
 use App\Module\Reports\Application\ReportResult;
 use App\Module\Reports\Application\RunReport;
 use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportContexts;
 use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportRequest;
+use App\Settings\Application\ReadSetting;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
 use App\Shared\Infrastructure\Storage\ScratchFiles;
+use App\Tenancy\Domain\Model\Company;
+use App\Texts\Application\ScreenWords;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -46,12 +50,17 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * The file is the report's own figures, as a spreadsheet reads them: a header of the columns' keys, each with the values
  * that make it say what it counts (`late_1(from=1,to=30)`), the figures of the period compared beside the period's
- * under `<key>.previous` when there is one, and the totals last. Like a list's file it leaves the company, so it waits
+ * under `<key>.previous` when there is one, and the totals last. A company may ask for the words its screen shows
+ * instead (`reports.export_headers`), in the language the screen speaks: each column's word, filled in with its values,
+ * the period compared said after it in brackets, and the totals line named. Like a list's file it leaves the company, so it waits
  * for the person to have proved who they are in the last few minutes, and every file handed out is on record.
  */
 #[AsController]
 final readonly class ReportExportController implements BulkFile, DeclaresAuditActions
 {
+    /** The report screens' own texts, which word a file's headings when the company asks for words. */
+    private const string TEXTS = 'screen:reports';
+
     public function __construct(
         private ReportContexts $contexts,
         private ReportCatalogue $catalogue,
@@ -61,6 +70,8 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
         private ConfirmStepUp $stepUp,
         private AuditTrail $audit,
         private ScratchFiles $scratch,
+        private ReadSetting $settings,
+        private ScreenWords $words,
     ) {
     }
 
@@ -93,7 +104,7 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
         // The writer's contract is a path, because a .xlsx is a zip archive and a zip has to be seekable.
         $path = $this->scratch->path('twes-report-');
         try {
-            $this->writer->write($path, $spreadsheet, self::lines($result), self::textColumns($result));
+            $this->writer->write($path, $spreadsheet, self::lines($result, $this->headings($reading->company, $request->getLocale())), self::textColumns($result));
         } catch (UnwritableSpreadsheet $failure) {
             @unlink($path);
             throw $this->scratch->unprepared($failure);
@@ -115,15 +126,39 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
         return $response;
     }
 
-    /** @return \Generator<int, list<string>> the header, every row, then the totals */
-    private static function lines(ReportResult $result): \Generator
+    /**
+     * How the file names its columns and its totals line: by keys, or by the screen's words.
+     *
+     * @return array{\Closure(ReportColumn): string, \Closure(ReportColumn): string, string} a column, the same column of the
+     *                                                                                       period compared, the totals line
+     */
+    private function headings(Company $company, string $language): array
     {
+        if (!ReportExportSettings::inWords($this->settings, $company)) {
+            return [self::heading(...), static fn (ReportColumn $column): string => self::heading($column).'.previous', 'total'];
+        }
+        $say = $this->words->of($company, $language, self::TEXTS);
+        // The screen's own rule: the brackets of a series (late_1, late_2) share one word, their days telling them apart.
+        $word = static fn (ReportColumn $column): string => $say('reports.columns.'.preg_replace('/_\d+$/', '', $column->key), $column->params) ?? self::heading($column);
+        $previous = $say('reports.previous') ?? 'previous';
+
+        return [$word, static fn (ReportColumn $column): string => $word($column).' ('.$previous.')', $say('reports.total') ?? 'total'];
+    }
+
+    /**
+     * @param array{\Closure(ReportColumn): string, \Closure(ReportColumn): string, string} $named
+     *
+     * @return \Generator<int, list<string>> the header, every row, then the totals
+     */
+    private static function lines(ReportResult $result, array $named): \Generator
+    {
+        [$heading, $previousHeading, $totalLine] = $named;
         $compared = null !== $result->comparison;
         $counted = array_values(array_filter($result->columns, static fn (ReportColumn $column): bool => $column->kind->counts()));
 
-        $header = array_map(self::heading(...), $result->columns);
+        $header = array_map($heading, $result->columns);
         if ($compared) {
-            array_push($header, ...array_map(static fn (ReportColumn $column): string => self::heading($column).'.previous', $counted));
+            array_push($header, ...array_map($previousHeading, $counted));
         }
         yield $header;
 
@@ -137,7 +172,7 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
 
         $totals = array_map(static fn (ReportColumn $column): string => self::cell($result->totals[$column->key] ?? null), $result->columns);
         // The first column names the line: it is a label or a day, which no total adds up.
-        $totals[0] = 'total';
+        $totals[0] = $totalLine;
         if ($compared) {
             array_push($totals, ...array_map(static fn (ReportColumn $column): string => self::cell($result->previousTotals[$column->key] ?? null), $counted));
         }

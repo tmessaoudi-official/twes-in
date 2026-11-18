@@ -185,14 +185,15 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'vendors.merged_names_on_screens': 'settings.vendors.merged_names_on_screens_hint',
   'document.inactive_party_at_issue': 'settings.document.inactive_party_at_issue_hint',
   'records.undoable_for': 'settings.records.undoable_for_hint',
+  'reports.export_headers': 'settings.reports.export_headers_hint',
 };
 
 /**
  * Settings that take a whole row of the two-column grid: one declared alone among pairs, which would otherwise move
  * every field after it into the other column. The watermark's spread follows its strength and copies, a pair, and
  * leaves the logo's width and height side by side; whether a customer deactivated since its draft is still issued, and
- * how screens name a merged vendor and how long a delete stays undoable, are declared last and close their section on a
- * row each.
+ * how screens name a merged vendor, how long a delete stays undoable and how a report's file is headed, are declared
+ * last and close their section on a row each.
  */
 const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'document.watermark_spread',
@@ -200,6 +201,7 @@ const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'delivery_note.mixed_customers_invoicing',
   'vendors.merged_names_on_screens',
   'records.undoable_for',
+  'reports.export_headers',
 ]);
 
 function fieldOf(row: SettingRow): FormField {

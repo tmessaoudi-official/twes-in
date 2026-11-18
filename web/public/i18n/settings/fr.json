@@ -317,6 +317,12 @@
           "kept": "Le fournisseur gardé",
           "recorded": "Le fournisseur enregistré"
         }
+      },
+      "reports": {
+        "export_headers": {
+          "keys": "Clés des colonnes",
+          "words": "Mots de l’écran"
+        }
       }
     },
     "overrides": {
@@ -421,6 +427,10 @@
     "records": {
       "undoable_for": "Délai d’annulation d’une suppression (heures)",
       "undoable_for_hint": "Une suppression, une fusion ou un import peut être annulé pendant ce délai, au plus la durée que garde l’installation."
+    },
+    "reports": {
+      "export_headers": "En-têtes des fichiers de rapport",
+      "export_headers_hint": "Les mots de l’écran se lisent mieux, les clés gardent les formules et les programmes qui lisent le fichier."
     }
   }
 }

@@ -1,0 +1,84 @@
+{
+  "about": "A screen text filled in, as the web's PluralCompiler and ngx-translate fill it and as the API fills one it writes (Texts/Application/ScreenMessage): both read these.",
+  "vectors": [
+    { "language": "fr", "text": "HT", "params": {}, "said": "HT" },
+    {
+      "language": "fr",
+      "text": "{{from}} à {{to}} jours de retard",
+      "params": { "from": 1, "to": 30 },
+      "said": "1 à 30 jours de retard"
+    },
+    {
+      "language": "fr",
+      "text": "{{ from }} à {{to}} jours",
+      "params": { "from": 31 },
+      "said": "31 à {{to}} jours"
+    },
+    {
+      "language": "fr",
+      "text": "Plus de {{after}} {after, plural, one {jour} other {jours}} de retard",
+      "params": { "after": 1 },
+      "said": "Plus de 1 jour de retard"
+    },
+    {
+      "language": "fr",
+      "text": "Plus de {{after}} {after, plural, one {jour} other {jours}} de retard",
+      "params": { "after": 0 },
+      "said": "Plus de 0 jour de retard"
+    },
+    {
+      "language": "fr",
+      "text": "Plus de {{after}} {after, plural, one {jour} other {jours}} de retard",
+      "params": { "after": 90 },
+      "said": "Plus de 90 jours de retard"
+    },
+    {
+      "language": "en",
+      "text": "{after, plural, =0 {Due today} one {{{after}} day late} other {{{after}} days late}}",
+      "params": { "after": 0 },
+      "said": "Due today"
+    },
+    {
+      "language": "en",
+      "text": "{after, plural, =0 {Due today} one {{{after}} day late} other {{{after}} days late}}",
+      "params": { "after": 1 },
+      "said": "1 day late"
+    },
+    {
+      "language": "en",
+      "text": "{after, plural, one {day} other {days}}",
+      "params": {},
+      "said": "days"
+    },
+    {
+      "language": "ar",
+      "text": "أكثر من {after, plural, zero {صفر} one {يوم} two {يومين} few {{{after}} أيام} many {{{after}} يومًا} other {{{after}} يوم}}",
+      "params": { "after": 2 },
+      "said": "أكثر من يومين"
+    },
+    {
+      "language": "ar",
+      "text": "أكثر من {after, plural, zero {صفر} one {يوم} two {يومين} few {{{after}} أيام} many {{{after}} يومًا} other {{{after}} يوم}}",
+      "params": { "after": 5 },
+      "said": "أكثر من 5 أيام"
+    },
+    {
+      "language": "ar",
+      "text": "أكثر من {after, plural, zero {صفر} one {يوم} two {يومين} few {{{after}} أيام} many {{{after}} يومًا} other {{{after}} يوم}}",
+      "params": { "after": 90 },
+      "said": "أكثر من 90 يومًا"
+    },
+    {
+      "language": "ar",
+      "text": "أكثر من {after, plural, zero {صفر} one {يوم} two {يومين} few {{{after}} أيام} many {{{after}} يومًا} other {{{after}} يوم}}",
+      "params": { "after": 0 },
+      "said": "أكثر من صفر"
+    },
+    {
+      "language": "fr",
+      "text": "Broken {after, plural, one {jour} other {jours}",
+      "params": { "after": 2 },
+      "said": "Broken {after, plural, one {jour} other {jours}"
+    }
+  ]
+}
