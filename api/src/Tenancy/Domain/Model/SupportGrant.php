@@ -134,6 +134,12 @@ class SupportGrant
         return $this->operator;
     }
 
+    /** Whether it named an operator whose account was deleted since: it then opens to no one. */
+    public function lostItsOperator(): bool
+    {
+        return $this->operatorNamed && null === $this->operator;
+    }
+
     /** Whether this account is one the grant opens to: anyone when it names no one, else the one it names, if still there. */
     public function opensTo(Uuid $userId): bool
     {

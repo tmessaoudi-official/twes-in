@@ -102,7 +102,7 @@ final readonly class SupportAccessController
     }
 
     /**
-     * @return array{startsAt: ?string, endsAt: ?string, reason: ?string, operator: ?array{id: string, name: string}, operators: list<array{id: string, name: string}>, hours: list<int>, defaultHours: int, reasonMax: int}
+     * @return array{startsAt: ?string, endsAt: ?string, reason: ?string, operator: ?array{id: string, name: string}, operatorGone: bool, operators: list<array{id: string, name: string}>, hours: list<int>, defaultHours: int, reasonMax: int}
      *
      * @throws OwnerOnly
      */
@@ -115,6 +115,8 @@ final readonly class SupportAccessController
             'endsAt' => $grant?->getEndsAt()->format(\DateTimeInterface::ATOM),
             'reason' => $grant?->getReason(),
             'operator' => null === $named ? null : self::person($named),
+            // Named, and that account deleted since: it opens to no one, which the page says rather than « every operator ».
+            'operatorGone' => true === $grant?->lostItsOperator(),
             // By the name the activity log already shows the owner on each page support reads, and nothing more.
             'operators' => array_map(self::person(...), $this->support->operators($company, $this->guard->account()->getId())),
             'hours' => $this->support->windows()->offered,

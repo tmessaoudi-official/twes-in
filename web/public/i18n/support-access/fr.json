@@ -9,6 +9,7 @@
     "owner_only": "Seul le propriétaire de la société ouvre l’accès du support.",
     "open_until": "Le support peut lire la société jusqu’au {{until}}.",
     "open_to": "{{operator}} peut lire la société jusqu’au {{until}}.",
+    "open_to_gone": "L’opérateur nommé n’a plus de compte, personne ne peut donc lire la société jusqu’au {{until}}.",
     "for": "Durée de l’accès",
     "hours": "{{count}} {count, plural, one {heure} other {heures}}",
     "operator": "Qui peut lire",

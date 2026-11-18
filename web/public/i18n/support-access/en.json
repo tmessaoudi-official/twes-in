@@ -9,6 +9,7 @@
     "owner_only": "Only the company’s owner opens support access.",
     "open_until": "Support may read the company until {{until}}.",
     "open_to": "{{operator}} may read the company until {{until}}.",
+    "open_to_gone": "The operator named no longer has an account, so no one may read the company until {{until}}.",
     "for": "Length of the access",
     "hours": "{{count}} {count, plural, one {hour} other {hours}}",
     "operator": "Who may read",

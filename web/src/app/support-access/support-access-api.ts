@@ -17,6 +17,8 @@ export interface SupportAccessState {
   readonly reason: string | null;
   /** The one operator it is open to, null while it is open to every operator, or closed. */
   readonly operator: SupportOperator | null;
+  /** True when it named an operator whose account was deleted since: it is then open to no one. */
+  readonly operatorGone: boolean;
   /** The operators the owner may name: exactly those a grant would let in. */
   readonly operators: readonly SupportOperator[];
   /** The windows offered, in hours. */

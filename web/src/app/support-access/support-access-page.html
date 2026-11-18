@@ -31,6 +31,14 @@
             <mat-icon aria-hidden="true">support_agent</mat-icon>
             {{ 'support_page.open_to' | translate: { operator: named.name, until: closesAt } }}
           </p>
+        } @else if (current.operatorGone) {
+          <p
+            class="m-0 flex items-center gap-2 font-medium"
+            data-testid="support-access-open-to-gone"
+          >
+            <mat-icon aria-hidden="true">support_agent</mat-icon>
+            {{ 'support_page.open_to_gone' | translate: { until: closesAt } }}
+          </p>
         } @else {
           <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open">
             <mat-icon aria-hidden="true">support_agent</mat-icon>

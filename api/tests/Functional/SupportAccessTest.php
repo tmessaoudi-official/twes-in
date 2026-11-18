@@ -529,6 +529,12 @@ final class SupportAccessTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/me/companies');
         self::assertSame([], $this->jsonList());
+
+        // The owner's page says so, never that it opens to every operator.
+        $this->as(self::OWNER);
+        $this->getJson($this->path('/support-access'));
+        self::assertResponseIsSuccessful();
+        self::assertSame([null, true], [$this->json()['operator'] ?? null, $this->json()['operatorGone'] ?? null]);
     }
 
     private function userId(string $email): string

@@ -45,6 +45,7 @@ const CLOSED: SupportAccessState = {
   endsAt: null,
   reason: null,
   operator: null,
+  operatorGone: false,
   operators: [],
   hours: [1, 24, 72],
   defaultHours: 24,
@@ -56,6 +57,7 @@ const OPEN: SupportAccessState = {
   endsAt: new Date(Date.now() + 23 * 3_600_000).toISOString(),
   reason: null,
   operator: null,
+  operatorGone: false,
   operators: [],
   hours: [1, 24, 72],
   defaultHours: 24,
@@ -318,6 +320,15 @@ describe('SupportAccessPage', () => {
     await settle();
 
     expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null, 'op-2');
+  });
+
+  it('says it is open to no one once the operator named has no account, never to every operator', async () => {
+    api.read.mockResolvedValue({ ...OPEN, operatorGone: true });
+    await open();
+
+    expect(q('support-access-open-to-gone')?.textContent).toContain('support_page.open_to_gone');
+    expect(q('support-access-open')).toBeNull();
+    expect(q('support-access-open-to')).toBeNull();
   });
 
   it('asks no choice of operator when no operator could be named', async () => {
