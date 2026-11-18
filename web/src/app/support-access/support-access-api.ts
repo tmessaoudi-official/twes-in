@@ -15,6 +15,10 @@ export interface SupportAccessState {
   readonly endsAt: string | null;
   /** What the owner said is wrong when opening it, null when they said nothing or it is closed. */
   readonly reason: string | null;
+  /** The one operator it is open to, null while it is open to every operator, or closed. */
+  readonly operator: SupportOperator | null;
+  /** The operators the owner may name: exactly those a grant would let in. */
+  readonly operators: readonly SupportOperator[];
   /** The windows offered, in hours. */
   readonly hours: readonly number[];
   /** The window checked first, the operator's (`app.support.default_window_hours`). */
@@ -23,9 +27,21 @@ export interface SupportAccessState {
   readonly reasonMax: number;
 }
 
+/** A platform operator, by the name the activity log already shows the owner. */
+export interface SupportOperator {
+  readonly id: string;
+  readonly name: string;
+}
+
 /** Why the API refused, as the page translates it. */
 export type SupportAccessError =
-  'network' | 'not_found' | 'owner_only' | 'support_window' | 'support_reason' | 'step_up_required';
+  | 'network'
+  | 'not_found'
+  | 'owner_only'
+  | 'support_window'
+  | 'support_reason'
+  | 'support_operator'
+  | 'step_up_required';
 
 export class SupportAccessRefused extends Error {
   constructor(readonly code: SupportAccessError | UnknownRefusal) {
@@ -46,15 +62,18 @@ export class SupportAccessApi {
   }
 
   /**
-   * Opens the company to support from now for that many hours, saying what is wrong if the owner wrote it; a window
-   * still open is replaced.
+   * Opens the company to support from now for that many hours, saying what is wrong if the owner wrote it, to the one
+   * operator named or to every operator (null); a window still open is replaced.
    */
   async grant(
     companyId: string,
     hours: number,
     reason: string | null,
+    operator: string | null,
   ): Promise<SupportAccessState> {
-    return this.call(() => this.http.post<SupportAccessState>(path(companyId), { hours, reason }));
+    return this.call(() =>
+      this.http.post<SupportAccessState>(path(companyId), { hours, reason, operator }),
+    );
   }
 
   async end(companyId: string): Promise<void> {
@@ -90,6 +109,7 @@ function refusal(error: unknown): SupportAccessRefused {
       code === 'owner_only' ||
         code === 'support_window' ||
         code === 'support_reason' ||
+        code === 'support_operator' ||
         code === 'step_up_required'
         ? code
         : unknownRefusal(error),

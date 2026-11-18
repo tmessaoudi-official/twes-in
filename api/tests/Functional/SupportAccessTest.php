@@ -19,9 +19,11 @@ use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\SupportGrant;
 use App\Tests\Support\RecordingRealtimePublisher;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * « Accès support » (docs/SPEC.md § 8 row 67): the owner lets the platform's operators read the company for an hour, a
@@ -384,6 +386,131 @@ final class SupportAccessTest extends ApiTestCase
 
         $actions = $this->connection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'support_grant' ORDER BY action");
         self::assertSame(['support_access.ended', 'support_access.granted', 'support_access.granted'], $actions);
+    }
+
+    /**
+     * The owner may name the one operator who comes in. The page offers exactly those a grant would let in, by the name
+     * the activity log already shows the owner; every other operator meets the company as a stranger does, in its
+     * switcher too.
+     */
+    public function testTheOwnerNamesTheOperatorAndOnlyTheyReadTheCompany(): void
+    {
+        $named = $this->createUser('named-operator@twes.local', self::PASSWORD, operator: true);
+        $this->createUser('password-only@twes.local', self::PASSWORD, operator: true, authenticator: false);
+
+        $this->as(self::OWNER);
+        $this->getJson($this->path('/support-access'));
+        self::assertResponseIsSuccessful();
+        $offered = $this->json()['operators'];
+        self::assertIsArray($offered);
+        self::assertEqualsCanonicalizing([
+            ['id' => $named->getId()->toRfc4122(), 'name' => $named->getDisplayName()],
+            ['id' => $this->userId(self::OPERATOR), 'name' => 'Operator'],
+        ], $offered, 'the operators a grant lets in, by name only');
+        self::assertNull($this->json()['operator']);
+
+        $this->stepUp(self::PASSWORD);
+        $this->postJson($this->path('/support-access'), ['hours' => 24, 'operator' => $named->getId()->toRfc4122()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['id' => $named->getId()->toRfc4122(), 'name' => $named->getDisplayName()], $this->json()['operator']);
+        $changes = $this->connection()->fetchOne("SELECT changes FROM audit_log WHERE action = 'support_access.granted'");
+        self::assertIsString($changes);
+        $recorded = json_decode($changes, true);
+        self::assertIsArray($recorded);
+        self::assertSame(['endsAt', 'operator'], $recorded['fields'] ?? null);
+
+        $this->as(self::OPERATOR);
+        $this->getJson('/api/me/companies');
+        self::assertSame([], $this->jsonList());
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->path('/customers'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->as('named-operator@twes.local');
+        $this->getJson('/api/me/companies');
+        self::assertCount(1, $this->jsonList());
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path('/customers'));
+        self::assertResponseIsSuccessful();
+    }
+
+    /** Opening it again to another operator closes it to the one already inside, on their very next request. */
+    public function testOpeningItToAnotherOperatorClosesItToTheOneInside(): void
+    {
+        $named = $this->createUser('named-operator@twes.local', self::PASSWORD, operator: true);
+        $this->grant(24);
+        $this->as(self::OPERATOR);
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path('/customers'));
+        self::assertResponseIsSuccessful();
+        $inside = $this->client->getCookieJar()->all();
+
+        $this->as(self::OWNER);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson($this->path('/support-access'), ['hours' => 24, 'operator' => $named->getId()->toRfc4122()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        // The operator's own session, still signed in, as it was before the owner changed the grant.
+        $this->client->getCookieJar()->clear();
+        foreach ($inside as $cookie) {
+            $this->client->getCookieJar()->set($cookie);
+        }
+        $this->getJson($this->path('/customers'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/auth/me');
+        self::assertResponseIsSuccessful();
+        $me = $this->json();
+        self::assertSame([], $me['permissions']);
+        $company = $me['company'];
+        self::assertTrue(null === $company || (\is_array($company) && $this->companyId() !== $company['id']), 'the company closed to them is still their working one');
+        $this->getJson('/api/me/companies');
+        self::assertSame([], $this->jsonList());
+    }
+
+    /**
+     * A name the grant could not let in is refused on its field before the proof is asked: someone not an operator, an
+     * operator without a second factor, an operator who is a member (they read as their role says), or not an account.
+     */
+    public function testANameAGrantCouldNotLetInIsRefusedOnItsField(): void
+    {
+        $passwordOnly = $this->createUser('password-only@twes.local', self::PASSWORD, operator: true, authenticator: false);
+        $memberOperator = $this->createUser('member-operator@twes.local', self::PASSWORD, $this->company, ['customer.read'], 'clerk', operator: true);
+
+        $this->as(self::OWNER);
+        foreach ([$this->userId(self::MANAGER), $passwordOnly->getId()->toRfc4122(), $memberOperator->getId()->toRfc4122(), '01900000-0000-7000-8000-000000000000', 'someone', 42] as $operator) {
+            $this->postJson($this->path('/support-access'), ['hours' => 24, 'operator' => $operator]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, (string) json_encode($operator));
+            self::assertSame(['support_operator', []], $this->refusalOf('operator'), (string) json_encode($operator));
+        }
+        self::assertEquals(0, $this->connection()->fetchOne('SELECT COUNT(*) FROM support_grant'));
+    }
+
+    /** The switcher's limit counts the grants this operator may read, never one opened to someone else before them. */
+    public function testTheSwitcherCountsOnlyTheGrantsOpenedToThisOperator(): void
+    {
+        $named = $this->createUser('named-operator@twes.local', self::PASSWORD, operator: true);
+        $first = $this->createCompany('Aaa first');
+        $owner = $this->createUser('first-owner@twes.local', self::PASSWORD, $first);
+        $this->em()->persist(new SupportGrant($first, $owner, 24, self::heldNow(), operator: $named));
+        $this->em()->flush();
+        $this->grant(24);
+
+        $access = static::getContainer()->get(SupportAccess::class);
+        $offered = $access->grantsFor(Uuid::fromString($this->userId(self::OPERATOR)), 1);
+        self::assertCount(1, $offered);
+        self::assertSame('Acme', $offered[0]->getCompany()->getName());
+        self::assertSame('Aaa first', $access->grantsFor($named->getId(), 1)[0]->getCompany()->getName());
+    }
+
+    private function userId(string $email): string
+    {
+        $id = $this->connection()->fetchOne('SELECT id FROM "user" WHERE email = ?', [$email]);
+        self::assertIsString($id);
+
+        return $id;
     }
 
     private function grant(int $hours): void

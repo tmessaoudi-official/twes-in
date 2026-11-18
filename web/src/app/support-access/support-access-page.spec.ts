@@ -44,6 +44,8 @@ const CLOSED: SupportAccessState = {
   startsAt: null,
   endsAt: null,
   reason: null,
+  operator: null,
+  operators: [],
   hours: [1, 24, 72],
   defaultHours: 24,
   reasonMax: 500,
@@ -53,6 +55,8 @@ const OPEN: SupportAccessState = {
   startsAt: new Date(Date.now() - 3_600_000).toISOString(),
   endsAt: new Date(Date.now() + 23 * 3_600_000).toISOString(),
   reason: null,
+  operator: null,
+  operators: [],
   hours: [1, 24, 72],
   defaultHours: 24,
   reasonMax: 500,
@@ -64,7 +68,12 @@ describe('SupportAccessPage', () => {
     read: vi.fn<(companyId: string) => Promise<SupportAccessState>>(),
     grant:
       vi.fn<
-        (companyId: string, hours: number, reason: string | null) => Promise<SupportAccessState>
+        (
+          companyId: string,
+          hours: number,
+          reason: string | null,
+          operator: string | null,
+        ) => Promise<SupportAccessState>
       >(),
     end: vi.fn<(companyId: string) => Promise<void>>(),
   };
@@ -141,7 +150,7 @@ describe('SupportAccessPage', () => {
     q('support-access-grant')!.click();
     await settle();
 
-    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 72, null);
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 72, null, null);
     expect(q('support-access-open')).not.toBeNull();
     expect(effectToasts()).toEqual(['support_access.granted:corrigeable']);
     // The banner reads the session, which says until when.
@@ -165,7 +174,7 @@ describe('SupportAccessPage', () => {
     q('support-access-grant')!.click();
     await settle();
 
-    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, said);
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, said, null);
     expect(q('support-access-reason-said')?.textContent).toContain(said);
     expect(field.value).toBe('');
     expect(unsaved.count()).toBe(0);
@@ -181,7 +190,7 @@ describe('SupportAccessPage', () => {
     q('support-access-grant')!.click();
     await settle();
 
-    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null);
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null, null);
   });
 
   // Row 215: the field cut a paste at 500 unsaid, and a reason the API refused was said only after the step-up.
@@ -270,6 +279,69 @@ describe('SupportAccessPage', () => {
     expect(stepUp.request).toHaveBeenCalledWith('step_up.intro_change');
     expect(api.grant).toHaveBeenCalledTimes(2);
     expect(q('support-access-open')).not.toBeNull();
+  });
+
+  // B2: the owner may name the one operator who comes in; naming no one is what support always was.
+  it('offers every operator first, then each one a grant lets in, and opens it to the one chosen', async () => {
+    const operators = [
+      { id: 'op-1', name: 'Sami' },
+      { id: 'op-2', name: 'Lina' },
+    ];
+    api.read.mockResolvedValue({ ...CLOSED, operators });
+    api.grant.mockResolvedValue({ ...OPEN, operators, operator: operators[1]! });
+    await open();
+
+    const every = q('support-access-operator-any')?.querySelector('input') as HTMLInputElement;
+    expect(every.checked).toBe(true);
+    expect(q('support-access-operator-op-1')?.textContent).toContain('Sami');
+    (q('support-access-operator-op-2')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null, 'op-2');
+    expect(q('support-access-open-to')?.textContent).toContain('support_page.open_to');
+    expect(q('support-access-open')).toBeNull();
+    // Opening it again starts from whom it is open to now.
+    const named = q('support-access-operator-op-2')?.querySelector('input') as HTMLInputElement;
+    expect(named.checked).toBe(true);
+  });
+
+  it('starts from whom it is open to now, so opening it again never quietly widens it', async () => {
+    const operators = [{ id: 'op-2', name: 'Lina' }];
+    api.read.mockResolvedValue({ ...OPEN, operators, operator: operators[0]! });
+    await open();
+
+    const named = q('support-access-operator-op-2')?.querySelector('input') as HTMLInputElement;
+    expect(named.checked).toBe(true);
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null, 'op-2');
+  });
+
+  it('asks no choice of operator when no operator could be named', async () => {
+    await open();
+
+    expect(q('support-access-operator')).toBeNull();
+  });
+
+  it('says a name no longer offered was refused, and reads again whom it may name', async () => {
+    api.read.mockResolvedValue({ ...CLOSED, operators: [{ id: 'op-1', name: 'Sami' }] });
+    api.grant.mockReset().mockRejectedValue(new SupportAccessRefused('support_operator'));
+    await open();
+    expect(api.read).toHaveBeenCalledOnce();
+    (q('support-access-operator-op-1')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+
+    q('support-access-grant')!.click();
+    await settle();
+
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said.map(({ kind, key }) => `${kind}:${key}`)).toEqual([
+      'failure:support_page.refused.support_operator',
+    ]);
+    expect(api.read).toHaveBeenCalledTimes(2);
   });
 
   it('says nothing changed when the owner does not give the proof', async () => {

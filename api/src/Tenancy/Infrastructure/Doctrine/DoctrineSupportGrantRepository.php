@@ -35,11 +35,12 @@ final readonly class DoctrineSupportGrantRepository implements SupportGrantRepos
         return $live[0] ?? null;
     }
 
-    public function liveAt(\DateTimeImmutable $now, int $limit): array
+    public function liveAt(\DateTimeImmutable $now, int $limit, Uuid $reader): array
     {
         /** @var list<SupportGrant> $live */
-        $live = $this->entityManager->createQuery('SELECT g, c FROM '.SupportGrant::class.' g JOIN g.company c WHERE '.self::LIVE.' ORDER BY c.name ASC, c.id ASC')
+        $live = $this->entityManager->createQuery('SELECT g, c FROM '.SupportGrant::class.' g JOIN g.company c WHERE '.self::LIVE.' AND (g.operator IS NULL OR g.operator = :reader) ORDER BY c.name ASC, c.id ASC')
             ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->setParameter('reader', $reader, 'uuid')
             ->setMaxResults($limit)
             ->getResult();
 

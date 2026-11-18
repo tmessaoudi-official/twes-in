@@ -8,8 +8,11 @@
     "activity": "journal d’activité",
     "owner_only": "Seul le propriétaire de la société ouvre l’accès du support.",
     "open_until": "Le support peut lire la société jusqu’au {{until}}.",
+    "open_to": "{{operator}} peut lire la société jusqu’au {{until}}.",
     "for": "Durée de l’accès",
     "hours": "{{count}} {count, plural, one {heure} other {heures}}",
+    "operator": "Qui peut lire",
+    "operator_any": "Tout opérateur de la plateforme",
     "grant": "Ouvrir l’accès",
     "grant_again": "Rouvrir pour cette durée",
     "end": "Fermer l’accès maintenant",
@@ -20,7 +23,8 @@
       "owner_only": "Seul le propriétaire ouvre l’accès du support.",
       "support_window": "Choisissez l’une des durées proposées.",
       "support_reason": "Ce qui ne va pas est trop long pour le support : raccourcissez-le.",
-      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement.",
+      "support_operator": "Cet opérateur ne peut plus être choisi : choisissez-en un autre, ou tout opérateur."
     }
   }
 }

@@ -39,7 +39,7 @@ final class InMemoryUsers implements UserRepository
 
     public function platformOperators(): array
     {
-        $operators = array_values(array_filter($this->users, static fn (User $user): bool => $user->isPlatformOperator()));
+        $operators = array_values(array_filter($this->users, static fn (User $user): bool => $user->isPlatformOperator() && $user->isActive()));
         usort($operators, static fn (User $a, User $b): int => strcmp($a->getEmail()->value, $b->getEmail()->value));
 
         return $operators;

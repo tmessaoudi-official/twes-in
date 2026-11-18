@@ -181,7 +181,7 @@ that scripts can compute codes. You can also add it to any authenticator app to 
   operator runs the platform.
 - Being Demo's owner is development data only: an operator keeps no standing access to a company. A company's owner
   lets support in from **Settings → Support access** (*Paramètres → Accès du support*) for 1, 24 or 72 hours (the
-  operator may offer fewer or shorter windows, `app.support.windows_hours`, never longer); the company then appears in the operator's company switcher marked **Support**, read-only (no write, no export, no cost
+  operator may offer fewer or shorter windows, `app.support.windows_hours`, never longer), to every operator or to the one it names (only operators with a second factor of their own who are not members are offered); the company then appears in that operator's company switcher marked **Support**, read-only (no write, no export, no cost
   price), under a banner saying until when, and every page read is in its activity log. To try it, use a company
   the operator is not a member of, such as one opened from **Platform** for a new owner.
 

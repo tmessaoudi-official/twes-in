@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\Http;
 
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Identity\Domain\Model\User;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Tenancy\Application\Support\InvalidSupportOperator;
 use App\Tenancy\Application\Support\ManageSupportAccess;
 use App\Tenancy\Application\Support\OwnerOnly;
 use App\Tenancy\Domain\Exception\InvalidSupportReason;
@@ -47,7 +49,7 @@ final readonly class SupportAccessController
     {
         $company = $this->company($companyId);
 
-        return $this->answer(fn (): Response => new JsonResponse($this->described($this->support->current($company, $this->guard->account()->getId()))));
+        return $this->answer(fn (): Response => new JsonResponse($this->described($this->support->current($company, $this->guard->account()->getId()), $company)));
     }
 
     #[Route('/api/companies/{companyId}/support-access', name: 'api_support_access_grant', defaults: ['_api_respond' => true], methods: ['POST'])]
@@ -57,10 +59,10 @@ final readonly class SupportAccessController
         try {
             $body = $request->toArray();
         } catch (\Throwable $unreadable) {
-            throw new BadRequestHttpException('The body is a JSON object naming the hours, and what is wrong if the owner says.', $unreadable);
+            throw new BadRequestHttpException('The body is a JSON object naming the hours, what is wrong if the owner says, and the operator if they name one.', $unreadable);
         }
 
-        return $this->answer(fn (): Response => new JsonResponse($this->described($this->support->grant($company, $this->guard->account()->getId(), $body['hours'] ?? null, $body['reason'] ?? null)), Response::HTTP_CREATED));
+        return $this->answer(fn (): Response => new JsonResponse($this->described($this->support->grant($company, $this->guard->account()->getId(), $body['hours'] ?? null, $body['reason'] ?? null, $body['operator'] ?? null), $company), Response::HTTP_CREATED));
     }
 
     #[Route('/api/companies/{companyId}/support-access', name: 'api_support_access_end', defaults: ['_api_respond' => true], methods: ['DELETE'])]
@@ -92,21 +94,38 @@ final readonly class SupportAccessController
             throw DomainRule::refused('hours', 'Choose one of the lengths offered.', 'support_window', previous: $window);
         } catch (InvalidSupportReason $reason) {
             throw DomainRule::refused('reason', \sprintf('What is wrong is said in %d characters at most.', SupportGrant::REASON_MAX), 'support_reason', ['max' => SupportGrant::REASON_MAX], $reason);
+        } catch (InvalidSupportOperator $operator) {
+            throw DomainRule::refused('operator', 'Choose one of the operators offered, or every operator.', 'support_operator', previous: $operator);
         } catch (StepUpRequired) {
             return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
         }
     }
 
-    /** @return array{startsAt: ?string, endsAt: ?string, reason: ?string, hours: list<int>, defaultHours: int, reasonMax: int} */
-    private function described(?SupportGrant $grant): array
+    /**
+     * @return array{startsAt: ?string, endsAt: ?string, reason: ?string, operator: ?array{id: string, name: string}, operators: list<array{id: string, name: string}>, hours: list<int>, defaultHours: int, reasonMax: int}
+     *
+     * @throws OwnerOnly
+     */
+    private function described(?SupportGrant $grant, Company $company): array
     {
+        $named = $grant?->getOperator();
+
         return [
             'startsAt' => $grant?->getStartsAt()->format(\DateTimeInterface::ATOM),
             'endsAt' => $grant?->getEndsAt()->format(\DateTimeInterface::ATOM),
             'reason' => $grant?->getReason(),
+            'operator' => null === $named ? null : self::person($named),
+            // By the name the activity log already shows the owner on each page support reads, and nothing more.
+            'operators' => array_map(self::person(...), $this->support->operators($company, $this->guard->account()->getId())),
             'hours' => $this->support->windows()->offered,
             'defaultHours' => $this->support->windows()->first,
             'reasonMax' => SupportGrant::REASON_MAX,
         ];
+    }
+
+    /** @return array{id: string, name: string} */
+    private static function person(User $user): array
+    {
+        return ['id' => $user->getId()->toRfc4122(), 'name' => $user->getDisplayName()];
     }
 }

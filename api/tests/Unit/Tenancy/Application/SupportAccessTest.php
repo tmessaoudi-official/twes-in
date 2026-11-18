@@ -133,6 +133,60 @@ final class SupportAccessTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter()->vote($this->token($operator), $this->company, ['customer.read']));
     }
 
+    /** The owner names who comes in: the grant opens to that operator alone, and every other meets a stranger's company. */
+    public function testAGrantNamingAnOperatorOpensToThemAloneEverywhereItIsAsked(): void
+    {
+        $named = $this->user('named@example.test', operator: true, secondFactor: true);
+        $other = $this->user('other@example.test', operator: true, secondFactor: true);
+        $this->grants->save(new SupportGrant($this->company, $this->owner, 24, $this->clock->now(), operator: $named));
+
+        self::assertNotNull($this->access()->grantOf($named->getId(), $this->company->getId()));
+        self::assertNull($this->access()->grantOf($other->getId(), $this->company->getId()), 'another operator');
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter()->vote($this->token($named), $this->company, ['customer.read']));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter()->vote($this->token($other), $this->company, ['customer.read']));
+        self::assertCount(1, $this->access()->grantsFor($named->getId(), 10));
+        self::assertSame([], $this->access()->grantsFor($other->getId(), 10), "the other operator's switcher");
+    }
+
+    /** Naming no one keeps what support always was: any operator with a second factor who is not a member. */
+    public function testAGrantNamingNoOneOpensToEveryOperatorAsBefore(): void
+    {
+        $grant = new SupportGrant($this->company, $this->owner, 24, $this->clock->now());
+        $this->grants->save($grant);
+        $first = $this->user('first@example.test', operator: true, secondFactor: true);
+        $second = $this->user('second@example.test', operator: true, secondFactor: true);
+
+        self::assertNull($grant->getOperator());
+        self::assertSame($grant, $this->access()->grantOf($first->getId(), $this->company->getId()));
+        self::assertSame($grant, $this->access()->grantOf($second->getId(), $this->company->getId()));
+    }
+
+    /** An operator deactivated reads nothing through a grant, even on a session opened before. */
+    public function testADeactivatedOperatorReadsNothingThroughAGrant(): void
+    {
+        $this->grants->save(new SupportGrant($this->company, $this->owner, 24, $this->clock->now()));
+        $resting = $this->user('resting@example.test', operator: true, secondFactor: true);
+        $resting->setActive(false, new \DateTimeImmutable());
+
+        self::assertNull($this->access()->grantOf($resting->getId(), $this->company->getId()));
+        self::assertSame([], $this->access()->grantsFor($resting->getId(), 10));
+    }
+
+    /** Whom the owner may name: the operators a grant would let in, so a name offered is never one that reads nothing. */
+    public function testTheOperatorsOfferedAreThoseAGrantWouldLetIn(): void
+    {
+        $able = $this->user('able@example.test', operator: true, secondFactor: true);
+        $this->user('password-only@example.test', operator: true, secondFactor: false);
+        $this->user('customer@example.test', operator: false, secondFactor: true);
+        $member = $this->user('member@example.test', operator: true, secondFactor: true);
+        $this->memberships->save(new Membership($member, $this->company, new Role(Role::MEMBER, ['invoice.read'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
+        $resting = $this->user('resting@example.test', operator: true, secondFactor: true);
+        $resting->setActive(false, new \DateTimeImmutable());
+        $this->users->save($resting);
+
+        self::assertSame([$able->getId()->toRfc4122()], array_map(static fn (User $operator): string => $operator->getId()->toRfc4122(), $this->access()->operatorsFor($this->company->getId())));
+    }
+
     private function user(string $email, bool $operator, bool $secondFactor): User
     {
         $user = new User(Email::fromString($email), 'Someone', 'fr', new \DateTimeImmutable());

@@ -125,9 +125,10 @@ final class RefusalReasonsTest extends KernelTestCase
         // What the erasure is asked to take, said by the erasure page beside the parts it offers.
         'no_part' => 'web/src/app/data-erasure/data-erasure-api.ts',
         'unknown_part' => 'web/src/app/data-erasure/data-erasure-api.ts',
-        // The support window's length and what is wrong, said by the owner's support page beside its two fields.
+        // The support window's length, what is wrong and whom it opens to, said by the owner's support page beside its fields.
         'support_window' => 'web/src/app/support-access/support-access-api.ts',
         'support_reason' => 'web/src/app/support-access/support-access-api.ts',
+        'support_operator' => 'web/src/app/support-access/support-access-api.ts',
         // A document refused its number is said wherever it was issued from, by the one interceptor saying numbering.
         'no_numbering_series' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',
         'series_number_taken' => 'web/src/app/shared/errors/numbering-refused-interceptor.ts',

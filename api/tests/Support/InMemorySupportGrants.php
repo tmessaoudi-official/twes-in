@@ -29,9 +29,9 @@ final class InMemorySupportGrants implements SupportGrantRepository
         return null;
     }
 
-    public function liveAt(\DateTimeImmutable $now, int $limit): array
+    public function liveAt(\DateTimeImmutable $now, int $limit, Uuid $reader): array
     {
-        return \array_slice(array_values(array_filter($this->grants, static fn (SupportGrant $grant): bool => $grant->isLiveAt($now))), 0, $limit);
+        return \array_slice(array_values(array_filter($this->grants, static fn (SupportGrant $grant): bool => $grant->isLiveAt($now) && $grant->opensTo($reader))), 0, $limit);
     }
 
     public function save(SupportGrant $grant): void

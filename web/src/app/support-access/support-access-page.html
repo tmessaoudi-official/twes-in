@@ -26,10 +26,17 @@
   } @else if (state(); as current) {
     <section class="flex max-w-xl flex-col gap-3 rounded-card border border-outline-variant p-4">
       @if (until(); as closesAt) {
-        <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open">
-          <mat-icon aria-hidden="true">support_agent</mat-icon>
-          {{ 'support_page.open_until' | translate: { until: closesAt } }}
-        </p>
+        @if (current.operator; as named) {
+          <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open-to">
+            <mat-icon aria-hidden="true">support_agent</mat-icon>
+            {{ 'support_page.open_to' | translate: { operator: named.name, until: closesAt } }}
+          </p>
+        } @else {
+          <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open">
+            <mat-icon aria-hidden="true">support_agent</mat-icon>
+            {{ 'support_page.open_until' | translate: { until: closesAt } }}
+          </p>
+        }
         @if (current.reason; as said) {
           <p class="m-0" data-testid="support-access-reason-said">
             {{ 'support_access.reason_said' | translate }} <bdi>{{ said }}</bdi>
@@ -63,6 +70,27 @@
           </mat-radio-button>
         }
       </mat-radio-group>
+      @if (current.operators.length > 0) {
+        <mat-radio-group
+          class="flex flex-col gap-1"
+          [value]="operator()"
+          (change)="operator.set($event.value)"
+          [attr.aria-label]="'support_page.operator' | translate"
+          data-testid="support-access-operator"
+        >
+          <mat-radio-button [value]="null" data-testid="support-access-operator-any">
+            {{ 'support_page.operator_any' | translate }}
+          </mat-radio-button>
+          @for (able of current.operators; track able.id) {
+            <mat-radio-button
+              [value]="able.id"
+              [attr.data-testid]="'support-access-operator-' + able.id"
+            >
+              <bdi>{{ able.name }}</bdi>
+            </mat-radio-button>
+          }
+        </mat-radio-group>
+      }
       <mat-form-field class="w-full">
         <mat-label>{{ 'support_access.reason' | translate }}</mat-label>
         <textarea

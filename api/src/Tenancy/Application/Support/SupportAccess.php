@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Support;
 
 use App\Identity\Application\Mfa\SecondFactors;
+use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Tenancy\Domain\Model\SupportGrant;
 use App\Tenancy\Domain\Repository\MembershipRepository;
@@ -47,37 +48,58 @@ final readonly class SupportAccess
     /** The grant through which this account reads the company, or null when it reads it otherwise or not at all. */
     public function grantOf(Uuid $userId, Uuid $companyId): ?SupportGrant
     {
-        $user = $this->users->ofId($userId);
-        if (null === $user || !$user->isPlatformOperator() || !$this->secondFactors->has($user)) {
+        if (!$this->mayRead($this->users->ofId($userId), $companyId)) {
             return null;
         }
-        // An operator who is also a member works as a member, with what their role grants.
-        if (null !== $this->memberships->ofUserInCompany($userId, $companyId)) {
-            return null;
-        }
+        $grant = $this->grants->liveIn($companyId, $this->clock->now());
 
-        return $this->grants->liveIn($companyId, $this->clock->now());
+        // A grant naming another operator lets this one in no more than no grant at all.
+        return null !== $grant && $grant->opensTo($userId) ? $grant : null;
     }
 
     /**
-     * Every company this account may read through a grant, which its switcher offers beside its memberships.
+     * Every company this account may read through a grant, which its switcher offers beside its memberships: those
+     * opened to every operator, and those opened to this one by name.
      *
      * @return list<SupportGrant>
      */
     public function grantsFor(Uuid $userId, int $limit): array
     {
         $user = $this->users->ofId($userId);
-        if (null === $user || !$user->isPlatformOperator() || !$this->secondFactors->has($user)) {
+        if (!$this->able($user)) {
             return [];
         }
 
-        return $this->grants->liveAt($this->clock->now(), $limit);
+        return $this->grants->liveAt($this->clock->now(), $limit, $userId);
+    }
+
+    /**
+     * The operators an owner may open the company to by name: exactly those a grant would let in, so a name offered is
+     * never one that reads nothing.
+     *
+     * @return list<User>
+     */
+    public function operatorsFor(Uuid $companyId): array
+    {
+        return array_values(array_filter($this->users->platformOperators(), fn (User $operator): bool => $this->mayRead($operator, $companyId)));
     }
 
     /** Until when members and support see that support may read the company, null while it may not. */
     public function liveUntil(Uuid $companyId): ?\DateTimeImmutable
     {
         return $this->grants->liveIn($companyId, $this->clock->now())?->getEndsAt();
+    }
+
+    /** An active platform operator proving who they are with a second factor of their own. */
+    private function able(?User $user): bool
+    {
+        return null !== $user && $user->isActive() && $user->isPlatformOperator() && $this->secondFactors->has($user);
+    }
+
+    /** Able, and no member of the company: an operator who is also a member works as a member, with what their role grants. */
+    private function mayRead(?User $user, Uuid $companyId): bool
+    {
+        return null !== $user && $this->able($user) && null === $this->memberships->ofUserInCompany($user->getId(), $companyId);
     }
 
     public static function permits(string $permission): bool

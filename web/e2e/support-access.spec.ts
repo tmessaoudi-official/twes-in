@@ -11,7 +11,7 @@ import { sendProving } from './step-up';
 import { toast } from './toast';
 
 // « Accès du support » through the whole stack (docs/SPEC.md § 8 row 67): the owner of a company the operator is NOT a
-// member of opens it to support for a day; the operator finds it in their switcher, reads it under a banner and is
+// member of opens it to support for a day, to one operator named; that operator finds it in their switcher, reads it under a banner and is
 // refused a write; the owner sees the visit in the activity log and closes the access, which takes the company out of
 // the operator's switcher again. The seed makes the operator Demo's owner, so the company is made here. Each run
 // leaves one company and one account behind: neither is deleted.
@@ -129,16 +129,23 @@ test('an owner opens the company to support for a day, support reads it read-onl
   // What is wrong, so the operator opens the company knowing where to look (workflow hunt SUP-1).
   const wrong = 'La facture du 3 mars s’imprime sans le timbre';
   await theirPage.getByTestId('support-access-reason').fill(wrong);
+  // Every operator is offered first; the owner names the one who comes in (B2), by the name their journal shows.
+  const whom = theirPage.getByTestId('support-access-operator');
+  await expect(whom.getByTestId('support-access-operator-any').locator('input')).toBeChecked();
+  await whom.getByRole('radio', { name: 'Operator Codes', exact: true }).check();
   await theirPage.getByTestId('support-access-grant').click();
   await theirPage.getByTestId('step-up-password').fill(THEIR_PASSWORD);
   await theirPage.getByTestId('step-up-confirm').click();
-  await expect(theirPage.getByTestId('support-access-open')).toBeVisible();
+  await expect(theirPage.getByTestId('support-access-open-to')).toContainText('Operator Codes');
   await expect(theirPage.getByTestId('support-access-reason-said')).toContainText(wrong);
   await expect(theirPage.getByTestId('support-banner')).toBeVisible();
 
   expect(await companies(operatorPage)).toContainEqual(
     expect.objectContaining({ name, role: 'support' }),
   );
+  // The operator it does not name meets the company as a stranger does.
+  expect((await companies(page)).map((row) => row.name)).not.toContain(name);
+  expect((await api(page, 'GET', `/api/companies/${companyId}/customers`, null)).status).toBe(404);
   // Opened from « Accès du support » on /platform, where an operator in no company finds it.
   await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toBeVisible();
   await expect(operatorPage.getByTestId(`platform-grant-reason-${name}`)).toContainText(wrong);

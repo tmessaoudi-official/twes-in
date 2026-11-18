@@ -18,11 +18,12 @@ interface SupportGrantRepository
     public function liveIn(Uuid $companyId, \DateTimeImmutable $now): ?SupportGrant;
 
     /**
-     * Every grant live at that moment, across companies: what an operator's switcher offers.
+     * Every grant live at that moment, across companies, that opens to that reader: those naming no operator and those
+     * naming them. What an operator's switcher offers, the limit counted after that choice.
      *
      * @return list<SupportGrant>
      */
-    public function liveAt(\DateTimeImmutable $now, int $limit): array;
+    public function liveAt(\DateTimeImmutable $now, int $limit, Uuid $reader): array;
 
     public function save(SupportGrant $grant): void;
 }

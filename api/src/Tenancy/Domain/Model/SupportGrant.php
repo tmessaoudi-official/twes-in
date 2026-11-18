@@ -57,17 +57,26 @@ class SupportGrant
     #[ORM\JoinColumn(name: 'ended_by_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $endedBy = null;
 
+    /**
+     * The one operator the owner opened it to, null when it opens to every operator. Deleting that account deletes the
+     * grant with it: clearing it instead would open the company to every operator.
+     */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'operator_id', nullable: true, onDelete: 'CASCADE')]
+    private ?User $operator;
+
     /** What the owner says is wrong, so support opens the company knowing where to look; null when they said nothing. */
     #[ORM\Column(length: self::REASON_MAX, nullable: true)]
     private ?string $reason;
 
     /**
-     * @param list<int> $offered the windows the operator offers, HOURS unless it says otherwise
+     * @param list<int> $offered  the windows the operator offers, HOURS unless it says otherwise
+     * @param ?User     $operator the one operator it opens to, whom the application has found able to read it; null for every operator
      *
      * @throws InvalidSupportWindow when the hours are not one offered, or longer than the longest of HOURS
      * @throws InvalidSupportReason when the reason is longer than REASON_MAX
      */
-    public function __construct(Company $company, User $grantedBy, int $hours, \DateTimeImmutable $now, ?string $reason = null, array $offered = self::HOURS)
+    public function __construct(Company $company, User $grantedBy, int $hours, \DateTimeImmutable $now, ?string $reason = null, array $offered = self::HOURS, ?User $operator = null)
     {
         if (!\in_array($hours, $offered, true) || $hours < 1 || $hours > max(self::HOURS)) {
             throw new InvalidSupportWindow(\sprintf('Support access lasts %s hours, not %d.', implode(', ', $offered), $hours));
@@ -77,6 +86,7 @@ class SupportGrant
             throw new InvalidSupportReason(\sprintf('What is wrong is said in at most %d characters.', self::REASON_MAX));
         }
         $this->reason = $reason;
+        $this->operator = $operator;
         $this->id = Uuid::v7();
         $this->company = $company;
         $this->grantedBy = $grantedBy;
@@ -112,6 +122,17 @@ class SupportGrant
     public function getReason(): ?string
     {
         return $this->reason;
+    }
+
+    public function getOperator(): ?User
+    {
+        return $this->operator;
+    }
+
+    /** Whether this account is one the grant opens to: anyone when it names no one, else the one it names. */
+    public function opensTo(Uuid $userId): bool
+    {
+        return null === $this->operator || $this->operator->getId()->equals($userId);
     }
 
     public function getEndedAt(): ?\DateTimeImmutable

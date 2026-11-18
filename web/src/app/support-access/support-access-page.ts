@@ -69,6 +69,11 @@ export class SupportAccessPage {
   private readonly firstWindow = computed(() => this.state()?.defaultHours ?? null);
   /** The window chosen, the first one offered until the owner picks another. */
   protected readonly hours = linkedSignal(() => this.firstWindow());
+  /**
+   * Whom it opens to, by operator id, null for every operator: whom it is open to now until the owner picks another, so
+   * opening it again never quietly widens it.
+   */
+  protected readonly operator = linkedSignal(() => this.state()?.operator?.id ?? null);
   /** What is wrong, as the owner types it for support to read on opening the company. */
   protected readonly reason = signal('');
   protected readonly busy = signal(false);
@@ -116,7 +121,7 @@ export class SupportAccessPage {
       const reason = typed === '' ? null : typed;
       this.state.set(
         await this.stepUp.retrying(
-          () => this.api.grant(companyId, hours, reason),
+          () => this.api.grant(companyId, hours, reason, this.operator()),
           (error) => error instanceof SupportAccessRefused && error.code === 'step_up_required',
           'step_up.intro_change',
         ),
@@ -167,6 +172,9 @@ export class SupportAccessPage {
   }
 
   private refused(error: unknown): void {
+    // The operator named stopped being one a grant lets in meanwhile: the list is read again to choose from.
+    if (error instanceof SupportAccessRefused && error.code === 'support_operator')
+      void this.reload();
     if (saidAlready(error)) return;
     const code = error instanceof SupportAccessRefused ? error.code : 'network';
     const { key, params } = refusalKey('support_page.refused', code);

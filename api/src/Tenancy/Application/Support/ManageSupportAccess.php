@@ -51,6 +51,7 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
         private ClockInterface $clock,
         private ConfirmStepUp $stepUp,
         private SupportWindows $windows,
+        private SupportAccess $access,
     ) {
     }
 
@@ -58,6 +59,20 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
     public function windows(): SupportWindows
     {
         return $this->windows;
+    }
+
+    /**
+     * Whom the owner may name, the operators a grant would let in: the support page offers them by name.
+     *
+     * @return list<User>
+     *
+     * @throws OwnerOnly
+     */
+    public function operators(Company $company, Uuid $userId): array
+    {
+        $this->owner($company, $userId);
+
+        return $this->access->operatorsFor($company->getId());
     }
 
     /** @throws OwnerOnly */
@@ -69,15 +84,17 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
     }
 
     /**
-     * Opens a new window from now; one still live is ended first, so there is only ever one. What the person can fix,
-     * the owner and the window, is said before the proof is asked.
+     * Opens a new window from now, to every operator or to the one named; one still live is ended first, so there is only
+     * ever one, and an operator it no longer names is out on their next request. What the person can fix, the owner, the
+     * window and whom it opens to, is said before the proof is asked.
      *
      * @throws OwnerOnly
      * @throws InvalidSupportWindow
      * @throws InvalidSupportReason
+     * @throws InvalidSupportOperator
      * @throws StepUpRequired
      */
-    public function grant(Company $company, Uuid $userId, mixed $hours, mixed $reason = null): SupportGrant
+    public function grant(Company $company, Uuid $userId, mixed $hours, mixed $reason = null, mixed $operator = null): SupportGrant
     {
         $owner = $this->owner($company, $userId);
         if (!\is_int($hours)) {
@@ -87,7 +104,7 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
             throw new InvalidSupportReason('What is wrong is said in words.');
         }
         $now = $this->clock->now();
-        $grant = new SupportGrant($company, $owner, $hours, $now, $reason, $this->windows->offered);
+        $grant = new SupportGrant($company, $owner, $hours, $now, $reason, $this->windows->offered, $this->named($company, $operator));
         if (!$this->stepUp->isRecent($userId)) {
             throw new StepUpRequired();
         }
@@ -127,6 +144,27 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
         return $live;
     }
 
+    /**
+     * The operator named, found among those a grant would let in, so a grant never names someone it opens to no one.
+     *
+     * @throws InvalidSupportOperator
+     */
+    private function named(Company $company, mixed $operator): ?User
+    {
+        if (null === $operator) {
+            return null;
+        }
+        if (\is_string($operator) && Uuid::isValid($operator)) {
+            foreach ($this->access->operatorsFor($company->getId()) as $able) {
+                if ($able->getId()->equals(Uuid::fromString($operator))) {
+                    return $able;
+                }
+            }
+        }
+
+        throw new InvalidSupportOperator('Support access opens to an operator it lets in, or to every operator.');
+    }
+
     /** @throws OwnerOnly */
     private function owner(Company $company, Uuid $userId): User
     {
@@ -140,7 +178,13 @@ final readonly class ManageSupportAccess implements DeclaresAuditActions
 
     private function record(SupportGrant $grant, string $action, User $owner): void
     {
-        $fields = self::GRANTED === $action && null !== $grant->getReason() ? ['endsAt', 'reason'] : ['endsAt'];
+        $fields = ['endsAt'];
+        if (self::GRANTED === $action && null !== $grant->getReason()) {
+            $fields[] = 'reason';
+        }
+        if (self::GRANTED === $action && null !== $grant->getOperator()) {
+            $fields[] = 'operator';
+        }
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $grant->getId(), $action, $owner->getId(), ['fields' => $fields], $grant->getCompany()->getId()));
     }
 
