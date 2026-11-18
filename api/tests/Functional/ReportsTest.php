@@ -241,7 +241,10 @@ final class ReportsTest extends ApiTestCase
         );
     }
 
-    /** Every report's file is worded in every language the screens speak: no key, no value left unfilled, no heading twice. */
+    /**
+     * Every report's file is worded in every language the screens speak, under its default options and under each
+     * option's other choices, which bring columns of their own: no key, no value left unfilled, no heading twice.
+     */
     public function testEveryReportsFileIsWordedInEveryLanguage(): void
     {
         $this->login('owner@twes.local', 'password-1234');
@@ -257,13 +260,22 @@ final class ReportsTest extends ApiTestCase
             foreach ($reports as $report) {
                 self::assertIsArray($report);
                 self::assertIsString($key = $report['key'] ?? null);
-                $period = true === ($report['periodic'] ?? null) ? '?from=2026-09-01&to=2026-09-30&compare=previous' : '';
-                $headings = str_getcsv($this->fileLines($this->path().'/reports/'.$key.'/export.csv'.$period, $language)[0], escape: '');
-                foreach ($headings as $heading) {
-                    self::assertIsString($heading);
-                    self::assertDoesNotMatchRegularExpression('/^[a-z0-9_.()=,]+$|\{|reports\./', $heading, "$key in $language");
+                $asked = true === ($report['periodic'] ?? null) ? ['from' => '2026-09-01', 'to' => '2026-09-30', 'compare' => 'previous'] : [];
+                $others = [];
+                foreach (\is_array($report['options'] ?? null) ? $report['options'] : [] as $option) {
+                    self::assertIsArray($option);
+                    self::assertIsString($name = $option['name'] ?? null);
+                    self::assertIsArray($choices = $option['choices'] ?? null);
+                    $others[$name] = end($choices);
                 }
-                self::assertSame($headings, array_values(array_unique($headings)), "$key in $language: a heading twice");
+                foreach ([$asked, [...$asked, ...$others]] as $query) {
+                    $headings = str_getcsv($this->fileLines($this->path().'/reports/'.$key.'/export.csv?'.http_build_query($query), $language)[0], escape: '');
+                    foreach ($headings as $heading) {
+                        self::assertIsString($heading);
+                        self::assertDoesNotMatchRegularExpression('/^[a-z0-9_.()=,]+$|\{|reports\./', $heading, "$key in $language");
+                    }
+                    self::assertSame($headings, array_values(array_unique($headings)), "$key in $language: a heading twice");
+                }
             }
         }
     }
