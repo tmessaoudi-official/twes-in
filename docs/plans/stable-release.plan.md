@@ -609,7 +609,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S9.9 | Signed tag and shop update | S | todo | - | - |
 | S9.10 | Post-tag acceptance at the shop | M | todo | - | - |
 | S9.11 | Alarm 2026-12-10 | S | todo | - | - |
-| S9.12 | Interim patch for 2026-12-15: the TN 2027 values and the seven built fixes (ruled 2026-11-01); the measured pace puts the tag after that date (2026-11-18), so it is built and rehearsed early enough to ship on time | M | todo | - | api/config/fiscal/TN.yaml, docs/fiscal/TN.md |
+| S9.12 | Interim patch for 2026-12-15: the TN 2027 values and the seven built fixes (ruled 2026-11-01); the measured pace puts the tag after that date (2026-11-18), so it starts by 2026-12-01 (a rehearsal on the shop's files, then the developer's tag), right after S0.10t; the 2027 values are not yet in docs/fiscal/TN.md (Needs research) | M | todo | - | api/config/fiscal/TN.yaml, docs/fiscal/TN.md |
 | S7.13 | Accent presets off the status hues (rouge dE 1.7 from danger; rose, orange, vert close): each moved, a company keeps its preset in the new shade; danger buttons carry their own outline (ruled 2026-11-01) | M | done | 7fa4a4935 | web/src/app/shared/theme/**, api/src/Settings/** |
 <!-- /progress-block -->
 ### Blocked
@@ -623,6 +623,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 - RESOLVED 2026-11-08 15:43 (named in the line, « Effacer ce filtre »; SPEC § 7): S5.37 (a shown wording): when a list's address holds a refused filter, whether its own field is marked refused with the value kept and « Effacer » offered on that one filter, or « Effacer tout » alone stays enough; and the field's words if marked. Built only once answered.
 - S2.1: the output of `twes doctor --network` run at the shop (TODO.md 6A or 6B), which S2.2's Tailscale ruling and S2.3's host values wait on.
 ### Needs research
+- S9.12: the Tunisian 2027 finance law's values (rates, thresholds, stamp), sourced in docs/fiscal/TN.md before the interim is built; `grep 2027 docs/fiscal/TN.md` found none on 2026-11-18.
 ### Fragile
 ### Known issues
 - B2's grant naming one operator is read only by this release: an update rolled back to the previous release runs it on this schema, which ignores `support_grant.operator_id`, so a grant live at that moment opens to every operator until it ends (72 hours at most) or the owner closes it. Nothing is lost; closing and reopening it after the next update names the operator again [Inferred: the previous release's SupportAccess reads no operator].
