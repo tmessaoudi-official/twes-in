@@ -319,3 +319,7 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   does not: `prepare.php` reads the bootstrap before it makes `twes_test_stress`, and the racers read it at once against one
   database, where two `CREATE OR REPLACE FUNCTION` collide (« tuple concurrently updated »). S1.7's test doors reddened
   master's api job on both; the bootstrap now skips them for `prepare.php` and makes them under a lock (2026-11-15).
+- A `DeclaresSettings` class is built by `SettingCatalog`, so it can never inject `ReadSetting` (or anything reading the
+  catalog): the catalog then recurses into itself, and the OpenAPI export, PHPUnit and the web's types all go red at once.
+  A reader goes in a class of its own (`RecordsUndoWindow` beside `RecordsUndoSettings`), or a static method taking
+  `ReadSetting`, as `QuoteSettings` does (2026-11-17, B56).
