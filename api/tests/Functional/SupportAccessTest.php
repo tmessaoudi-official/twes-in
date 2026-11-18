@@ -468,6 +468,9 @@ final class SupportAccessTest extends ApiTestCase
         self::assertTrue(null === $company || (\is_array($company) && $this->companyId() !== $company['id']), 'the company closed to them is still their working one');
         $this->getJson('/api/me/companies');
         self::assertSame([], $this->jsonList());
+        // Their banner no longer says they read it: the grant is still live, but not for them.
+        $this->getJson('/api/auth/me');
+        self::assertNull($this->json()['supportAccessUntil']);
     }
 
     /**
@@ -503,6 +506,29 @@ final class SupportAccessTest extends ApiTestCase
         self::assertCount(1, $offered);
         self::assertSame('Acme', $offered[0]->getCompany()->getName());
         self::assertSame('Aaa first', $access->grantsFor($named->getId(), 1)[0]->getCompany()->getName());
+    }
+
+    /**
+     * The named operator's account deleted keeps the grant, a record the company keeps (TenancyFiscalRecords), and opens
+     * it to no one: forgetting whom it named never opens it to every operator.
+     */
+    public function testAGrantWhoseOperatorIsDeletedIsKeptAndOpensToNoOne(): void
+    {
+        $named = $this->createUser('named-operator@twes.local', self::PASSWORD, operator: true);
+        $this->as(self::OWNER);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson($this->path('/support-access'), ['hours' => 72, 'operator' => $named->getId()->toRfc4122()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->connection()->executeStatement('DELETE FROM "user" WHERE id = ?', [$named->getId()->toRfc4122()]);
+        self::assertEquals(1, $this->connection()->fetchOne('SELECT COUNT(*) FROM support_grant WHERE operator_id IS NULL AND operator_named'));
+
+        $this->em()->clear();
+        $this->as(self::OPERATOR);
+        $this->getJson($this->path('/customers'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/me/companies');
+        self::assertSame([], $this->jsonList());
     }
 
     private function userId(string $email): string

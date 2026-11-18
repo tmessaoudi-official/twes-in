@@ -57,13 +57,17 @@ class SupportGrant
     #[ORM\JoinColumn(name: 'ended_by_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $endedBy = null;
 
-    /**
-     * The one operator the owner opened it to, null when it opens to every operator. Deleting that account deletes the
-     * grant with it: clearing it instead would open the company to every operator.
-     */
+    /** The one operator the owner opened it to; null when it names no one, or once that account is deleted. */
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(name: 'operator_id', nullable: true, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(name: 'operator_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $operator;
+
+    /**
+     * Whether it names an operator, kept apart from whom: the grant is a record the company keeps, so deleting that
+     * account clears the name and keeps the row, and a grant that named someone then opens to no one, never to all.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $operatorNamed;
 
     /** What the owner says is wrong, so support opens the company knowing where to look; null when they said nothing. */
     #[ORM\Column(length: self::REASON_MAX, nullable: true)]
@@ -87,6 +91,7 @@ class SupportGrant
         }
         $this->reason = $reason;
         $this->operator = $operator;
+        $this->operatorNamed = null !== $operator;
         $this->id = Uuid::v7();
         $this->company = $company;
         $this->grantedBy = $grantedBy;
@@ -129,10 +134,14 @@ class SupportGrant
         return $this->operator;
     }
 
-    /** Whether this account is one the grant opens to: anyone when it names no one, else the one it names. */
+    /** Whether this account is one the grant opens to: anyone when it names no one, else the one it names, if still there. */
     public function opensTo(Uuid $userId): bool
     {
-        return null === $this->operator || $this->operator->getId()->equals($userId);
+        if (!$this->operatorNamed) {
+            return true;
+        }
+
+        return null !== $this->operator && $this->operator->getId()->equals($userId);
     }
 
     public function getEndedAt(): ?\DateTimeImmutable
