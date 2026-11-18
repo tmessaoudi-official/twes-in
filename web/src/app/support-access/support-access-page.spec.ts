@@ -284,7 +284,7 @@ describe('SupportAccessPage', () => {
     expect(q('support-access-closed')).not.toBeNull();
     const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
     expect(said.map(({ kind, key }) => `${kind}:${key}`)).toEqual([
-      'failure:support_access.refused.step_up_required',
+      'failure:support_page.refused.step_up_required',
     ]);
   });
 

@@ -30,12 +30,12 @@ describe('an answer a reader does not know', () => {
   });
 
   it("is said in the one sentence naming its code; a known code in the screen's own words", () => {
-    expect(refusalKey('support_access.refused', { unknown: 'brand_new' })).toEqual({
+    expect(refusalKey('support_page.refused', { unknown: 'brand_new' })).toEqual({
       key: UNKNOWN_REFUSAL,
       params: { code: 'brand_new' },
     });
-    expect(refusalKey('support_access.refused', 'owner_only')).toEqual({
-      key: 'support_access.refused.owner_only',
+    expect(refusalKey('support_page.refused', 'owner_only')).toEqual({
+      key: 'support_page.refused.owner_only',
       params: {},
     });
   });

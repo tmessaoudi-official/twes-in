@@ -1,0 +1,26 @@
+{
+  "support_page": {
+    "title": "Accès du support",
+    "intro": "Ouvrez {{company}} au support de la plateforme quand vous lui demandez de l’aide : il voit alors vos écrans comme vous, sans rien pouvoir y changer.",
+    "reads": "Il lit tout ce que la société contient, en lecture seule.",
+    "never": "Il n’exporte rien, n’imprime aucune sélection de documents et ne voit pas les prix de revient.",
+    "logged": "Son arrivée et chaque page qu’il lit sont inscrites au",
+    "activity": "journal d’activité",
+    "owner_only": "Seul le propriétaire de la société ouvre l’accès du support.",
+    "open_until": "Le support peut lire la société jusqu’au {{until}}.",
+    "for": "Durée de l’accès",
+    "hours": "{{count}} {count, plural, one {heure} other {heures}}",
+    "grant": "Ouvrir l’accès",
+    "grant_again": "Rouvrir pour cette durée",
+    "end": "Fermer l’accès maintenant",
+    "reason_hint": "Ce que le support doit regarder, par exemple « la facture du 3 mars s’imprime sans le timbre ». Il le lit en ouvrant l’entreprise.",
+    "refused": {
+      "network": "La demande n’a pas abouti. Réessayez.",
+      "not_found": "Cette société n’est plus accessible.",
+      "owner_only": "Seul le propriétaire ouvre l’accès du support.",
+      "support_window": "Choisissez l’une des durées proposées.",
+      "support_reason": "Ce qui ne va pas est trop long pour le support : raccourcissez-le.",
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+    }
+  }
+}

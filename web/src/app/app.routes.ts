@@ -44,6 +44,7 @@ import { FORM_REFUSAL_TEXTS } from './shared/form/form-refusal-texts';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { MFA_LOCKOUT_TEXTS } from './auth/mfa-lockout-texts';
 import { MEMBERS_TEXTS } from './company/members-texts';
+import { SUPPORT_ACCESS_TEXTS } from './support-access/support-access-texts';
 import { ROLES_TEXTS } from './company/roles-texts';
 import { CHECK_TEXTS } from './shared/check/check-texts';
 import { PURCHASE_HISTORY_TEXTS } from './shared/i18n/purchase-history-texts';
@@ -810,7 +811,10 @@ export const routes: Routes = [
           {
             path: 'company/support-access',
             title: 'nav.support_access',
-            canActivate: [permissionGuard(SETTINGS_NAV, '/company/support-access')],
+            canActivate: [
+              permissionGuard(SETTINGS_NAV, '/company/support-access'),
+              textsOpened(SUPPORT_ACCESS_TEXTS),
+            ],
             loadComponent: () =>
               import('./support-access/support-access-page').then((m) => m.SupportAccessPage),
           },

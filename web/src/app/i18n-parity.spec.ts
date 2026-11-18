@@ -30,6 +30,9 @@ import frPhoneScanner from '../../public/i18n/phone-scanner/fr.json';
 import arMembers from '../../public/i18n/members/ar.json';
 import enMembers from '../../public/i18n/members/en.json';
 import frMembers from '../../public/i18n/members/fr.json';
+import arSupportAccess from '../../public/i18n/support-access/ar.json';
+import enSupportAccess from '../../public/i18n/support-access/en.json';
+import frSupportAccess from '../../public/i18n/support-access/fr.json';
 import arRecords from '../../public/i18n/records/ar.json';
 import enRecords from '../../public/i18n/records/en.json';
 import frRecords from '../../public/i18n/records/fr.json';
@@ -162,6 +165,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'purchase-history': { fr: frPurchaseHistory, en: enPurchaseHistory, ar: arPurchaseHistory },
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
   members: { fr: frMembers, en: enMembers, ar: arMembers },
+  'support-access': { fr: frSupportAccess, en: enSupportAccess, ar: arSupportAccess },
   records: { fr: frRecords, en: enRecords, ar: arRecords },
   reports: { fr: frReports, en: enReports, ar: arReports },
   roles: { fr: frRoles, en: enRoles, ar: arRoles },

@@ -1,34 +1,34 @@
 <section class="flex max-w-3xl flex-col gap-6">
   <h1 class="text-title" data-testid="support-access-title">
-    {{ 'support_access.title' | translate }}
+    {{ 'support_page.title' | translate }}
   </h1>
   <p class="m-0 max-w-prose">
-    {{ 'support_access.intro' | translate: { company: company()?.name ?? '' } }}
+    {{ 'support_page.intro' | translate: { company: company()?.name ?? '' } }}
   </p>
   <ul class="m-0 flex max-w-prose list-disc flex-col gap-1 ps-6">
-    <li>{{ 'support_access.reads' | translate }}</li>
-    <li>{{ 'support_access.never' | translate }}</li>
+    <li>{{ 'support_page.reads' | translate }}</li>
+    <li>{{ 'support_page.never' | translate }}</li>
     <li>
-      {{ 'support_access.logged' | translate }}
+      {{ 'support_page.logged' | translate }}
       <a
         routerLink="/company/activity"
         class="font-medium text-accent-text"
         data-testid="support-access-activity"
-        >{{ 'support_access.activity' | translate }}</a
+        >{{ 'support_page.activity' | translate }}</a
       >
     </li>
   </ul>
 
   @if (ownerOnly()) {
     <p class="m-0" data-testid="support-access-owner-only">
-      {{ 'support_access.owner_only' | translate }}
+      {{ 'support_page.owner_only' | translate }}
     </p>
   } @else if (state(); as current) {
     <section class="flex max-w-xl flex-col gap-3 rounded-card border border-outline-variant p-4">
       @if (until(); as closesAt) {
         <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open">
           <mat-icon aria-hidden="true">support_agent</mat-icon>
-          {{ 'support_access.open_until' | translate: { until: closesAt } }}
+          {{ 'support_page.open_until' | translate: { until: closesAt } }}
         </p>
         @if (current.reason; as said) {
           <p class="m-0" data-testid="support-access-reason-said">
@@ -43,7 +43,7 @@
           (click)="end()"
           data-testid="support-access-end"
         >
-          {{ 'support_access.end' | translate }}
+          {{ 'support_page.end' | translate }}
         </button>
       } @else {
         <p class="m-0" data-testid="support-access-closed">
@@ -54,12 +54,12 @@
         class="flex flex-col gap-1"
         [value]="hours()"
         (change)="hours.set($event.value)"
-        [attr.aria-label]="'support_access.for' | translate"
+        [attr.aria-label]="'support_page.for' | translate"
         data-testid="support-access-hours"
       >
         @for (choice of current.hours; track choice) {
           <mat-radio-button [value]="choice" [attr.data-testid]="'support-access-hours-' + choice">
-            {{ 'support_access.hours' | translate: { count: choice } }}
+            {{ 'support_page.hours' | translate: { count: choice } }}
           </mat-radio-button>
         }
       </mat-radio-group>
@@ -81,7 +81,7 @@
             <bdi>{{ reasonLength() }} / {{ current.reasonMax }}</bdi></mat-error
           >
         }
-        <mat-hint>{{ 'support_access.reason_hint' | translate }}</mat-hint>
+        <mat-hint>{{ 'support_page.reason_hint' | translate }}</mat-hint>
         <mat-hint align="end" data-testid="support-access-reason-count"
           ><bdi>{{ reasonLength() }} / {{ current.reasonMax }}</bdi></mat-hint
         >
@@ -94,7 +94,7 @@
         (click)="grant()"
         data-testid="support-access-grant"
       >
-        {{ (until() === null ? 'support_access.grant' : 'support_access.grant_again') | translate }}
+        {{ (until() === null ? 'support_page.grant' : 'support_page.grant_again') | translate }}
       </button>
     </section>
   }

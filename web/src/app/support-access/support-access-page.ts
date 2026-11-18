@@ -169,7 +169,7 @@ export class SupportAccessPage {
   private refused(error: unknown): void {
     if (saidAlready(error)) return;
     const code = error instanceof SupportAccessRefused ? error.code : 'network';
-    const { key, params } = refusalKey('support_access.refused', code);
+    const { key, params } = refusalKey('support_page.refused', code);
     this.feedback.failure(key, params);
   }
 }
