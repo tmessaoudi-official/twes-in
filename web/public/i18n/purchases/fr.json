@@ -102,7 +102,9 @@
       "cancel_title": "Annuler la commande ?",
       "cancel_message": "Rien n’en sera plus attendu ni reçu.",
       "confirm_cancel": "Annuler la commande",
-      "keep": "Garder la commande"
+      "keep": "Garder la commande",
+      "pdf_without_prices": "Télécharger le PDF (sans prix)",
+      "pdf_draft_without_prices": "Aperçu du PDF (sans prix)"
     },
     "receipts": {
       "title": "Réceptions",

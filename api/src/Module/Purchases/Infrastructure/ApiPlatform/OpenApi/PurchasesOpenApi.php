@@ -36,11 +36,11 @@ final readonly class PurchasesOpenApi implements OpenApiFactoryInterface
             tags: ['PurchaseOrder'],
             responses: [
                 '200' => new Response(
-                    'The PDF with its prices: a sent order as it was sent; a draft or a cancelled order rendered across a watermark',
+                    'The PDF, with its prices for a cost reader and without them (no price, total or vendor code) for anyone else the company lets print it: a sent order as it was sent; a draft or a cancelled order rendered across a watermark',
                     new \ArrayObject(['application/pdf' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary']))]),
                 ),
                 '401' => new Response('Not signed in'),
-                '404' => new Response('No such order in this company, no purchase.read or product.cost.read, or the module is switched off'),
+                '404' => new Response('No such order in this company, no purchase.read, no product.cost.read where the company does not let others print it without its prices, or the module is switched off'),
                 '503' => new Response('The renderer could not produce the PDF'),
             ],
             summary: 'An order to a vendor as a PDF',

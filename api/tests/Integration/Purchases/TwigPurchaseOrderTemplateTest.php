@@ -124,6 +124,25 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
         self::assertStringNotContainsString('Vendor ref.', $html);
     }
 
+    /**
+     * Printed for whoever may not read costs, the order keeps what to send and how much, and leaves out every cost: no
+     * price, no net, no total and no vendor code, judged by the values themselves, and it says so under its title.
+     */
+    public function testAnOrderPrintedWithoutPricesShowsNoCostAndSaysSo(): void
+    {
+        foreach (['fr' => 'Sans prix', 'en' => 'Without prices', 'ar' => 'بدون أسعار'] as $language => $said) {
+            $html = $this->html(null, $language, prices: false);
+
+            foreach (['BCF-2026-10-00001', 'VIS-6', 'Fil de fer', $said] as $expected) {
+                self::assertStringContainsString($expected, $html, $language);
+            }
+            foreach (['0,250', '0.250', '0,3333', '0.3333', '125,000', '125.000', '126,000', '126.000', 'QDS/61-A', 'Réf. fournisseur', 'Vendor ref.', 'مرجع المزوّد', 'Total HT', 'Montants en TND', 'Amounts in TND'] as $cost) {
+                self::assertStringNotContainsString($cost, $html, $language.': '.$cost);
+            }
+        }
+        self::assertStringNotContainsString('Sans prix', $this->html(null, 'fr'), 'a priced order says nothing of it');
+    }
+
     public function testTheCompanysFormatsWinOverTheLanguageAndTheUnitsAreSummed(): void
     {
         $html = $this->html(null, 'fr', 'ymd', 'comma-dot', [new QuantityTotal('Pièce', 0, '500'), new QuantityTotal('Kilogramme', 3, '3')]);
@@ -138,7 +157,7 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
      * @param PurchaseOrderPage::DRAFT|PurchaseOrderPage::CANCELLED|null $watermark
      * @param list<QuantityTotal>                                        $quantities
      */
-    private function html(?string $watermark, string $language, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = []): string
+    private function html(?string $watermark, string $language, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = [], bool $prices = true): string
     {
         self::bootKernel();
         $template = static::getContainer()->get(PurchaseOrderTemplate::class);
@@ -148,7 +167,7 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
         self::assertInstanceOf(VendorSnapshot::class, $vendor);
         self::assertInstanceOf(SellerSnapshot::class, $buyer);
 
-        return $template->html(new PurchaseOrderPage($this->order, PurchaseOrderTotals::of($this->order, 3), $vendor, $buyer, $watermark, $language, $dateFormat, $numberFormat, quantities: $quantities, names: PrintedNames::in($language, $this->units(), [])));
+        return $template->html(new PurchaseOrderPage($this->order, PurchaseOrderTotals::of($this->order, 3), $vendor, $buyer, $watermark, $language, $dateFormat, $numberFormat, quantities: $quantities, names: PrintedNames::in($language, $this->units(), []), prices: $prices));
     }
 
     private static function printing(): PurchaseOrderPrint

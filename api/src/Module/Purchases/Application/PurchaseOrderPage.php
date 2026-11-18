@@ -32,6 +32,8 @@ final readonly class PurchaseOrderPage
      * @param string                           $language   a language the catalogue prints documents in
      * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
      * @param PrintedNames                     $names      what it calls its units
+     * @param bool                             $prices     false for whoever may not read costs: no price, net, total or
+     *                                                     vendor code, and the page says so
      */
     public function __construct(
         public PurchaseOrder $order,
@@ -46,6 +48,7 @@ final readonly class PurchaseOrderPage
         public DocumentDesign $design = new DocumentDesign(),
         public array $quantities = [],
         public PrintedNames $names = new PrintedNames([], []),
+        public bool $prices = true,
     ) {
     }
 }

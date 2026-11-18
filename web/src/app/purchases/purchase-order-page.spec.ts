@@ -135,6 +135,7 @@ function orderIn(status: PurchaseOrderStatus): PurchaseOrderRow {
         : [],
     receivers: status === 'partly_received' ? 'Sami Ben Ali' : null,
     receiverRule: 'optional',
+    printable: true,
   };
 }
 
@@ -466,9 +467,33 @@ describe('PurchaseOrderPage', () => {
 
     fixture.destroy();
     granted.delete('product.cost.read');
-    order.set(orderIn('sent'));
+    order.set({ ...orderIn('sent'), printable: false });
     await open('o1');
     expect(await offered()).toEqual(['cancel', 'receive']);
+  });
+
+  it('offers whoever may not read costs the order without its prices once the company lets them print it', async () => {
+    granted.delete('product.cost.read');
+    order.set({ ...orderIn('sent'), printable: true });
+    await open('o1');
+
+    expect(q('document-action-pdf')?.getAttribute('href')).toBe(
+      '/api/companies/c1/purchase-orders/o1/pdf',
+    );
+    expect(q('document-action-pdf')?.textContent).toContain('purchases.actions.pdf_without_prices');
+
+    fixture.destroy();
+    order.set({ ...orderIn('draft'), printable: true });
+    await open('o1');
+    expect(q('document-action-pdf')?.textContent).toContain(
+      'purchases.actions.pdf_draft_without_prices',
+    );
+
+    fixture.destroy();
+    granted.add('product.cost.read');
+    order.set({ ...orderIn('sent'), printable: true });
+    await open('o1');
+    expect(q('document-action-pdf')?.textContent).not.toContain('without_prices');
   });
 
   it('names each line by the vendor’s own code for its product, in a draft as on a sent order', async () => {
@@ -492,7 +517,7 @@ describe('PurchaseOrderPage', () => {
 
   it('offers nothing on a sent order to whoever neither writes orders nor receives goods', async () => {
     granted.clear();
-    order.set(orderIn('sent'));
+    order.set({ ...orderIn('sent'), printable: false });
     await open('o1');
 
     expect(await offered()).toEqual([]);

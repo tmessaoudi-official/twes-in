@@ -345,10 +345,7 @@ export class PurchaseOrderPage {
       },
       {
         id: 'pdf',
-        label:
-          this.current()?.status === 'draft'
-            ? 'purchases.actions.pdf_draft'
-            : 'purchases.actions.pdf',
+        label: this.pdfLabel(),
         icon: 'picture_as_pdf',
         href: this.pdfUrl() ?? undefined,
         shown: this.pdfUrl() !== null,
@@ -412,13 +409,25 @@ export class PurchaseOrderPage {
     await this.router.navigate(['/purchases']);
   }
 
-  /** The printed order carries its prices, which are costs: only a cost reader is offered it. */
+  /**
+   * The printed order carries its prices, which are costs: a cost reader is offered it, and anyone else only when the
+   * company lets them print it without its prices, which the order says.
+   */
   protected readonly pdfUrl = computed(() => {
     const companyId = this.company()?.id;
     const current = this.current();
-    return companyId && current && this.seesCost()
+    return companyId && current?.printable === true
       ? this.facade.pdfUrl(companyId, current.id)
       : null;
+  });
+
+  /** A draft's PDF is a preview; whoever may not read costs is told the copy carries no price. */
+  private readonly pdfLabel = computed(() => {
+    const draft = this.current()?.status === 'draft';
+    if (this.seesCost()) return draft ? 'purchases.actions.pdf_draft' : 'purchases.actions.pdf';
+    return draft
+      ? 'purchases.actions.pdf_draft_without_prices'
+      : 'purchases.actions.pdf_without_prices';
   });
 
   constructor() {

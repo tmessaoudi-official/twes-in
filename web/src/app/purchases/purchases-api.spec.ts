@@ -189,6 +189,7 @@ describe('PurchasesApi', () => {
       ...answered,
       receivers: 'Sami Ben Ali',
       receiverRule: 'required',
+      printable: true,
       receipts: [
         { ...answered.receipts[0], receivedBy: { name: 'Sami Ben Ali', memberId: 'u7' } },
         { ...answered.receipts[0], id: 'r2', receivedBy: null },
@@ -200,7 +201,11 @@ describe('PurchasesApi', () => {
       { name: 'Sami Ben Ali', contactId: 'u7' },
       null,
     ]);
-    expect([order.receivers, order.receiverRule]).toEqual(['Sami Ben Ali', 'required']);
+    expect([order.receivers, order.receiverRule, order.printable]).toEqual([
+      'Sami Ben Ali',
+      'required',
+      true,
+    ]);
   });
 
   it('puts right who received a receipt, and offers the members in the shared contact shape', async () => {

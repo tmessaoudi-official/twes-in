@@ -323,6 +323,12 @@
           "keys": "Column keys",
           "words": "The screen’s words"
         }
+      },
+      "purchase_order": {
+        "print_for_non_cost_readers": {
+          "refused": "Refused",
+          "without_prices": "Printed without prices"
+        }
       }
     },
     "overrides": {
@@ -431,6 +437,10 @@
     "reports": {
       "export_headers": "Report file headings",
       "export_headers_hint": "The screen’s words read well; the keys keep the formulas and programs reading the file working."
+    },
+    "purchase_order": {
+      "print_for_non_cost_readers": "Purchase orders for those who cannot see costs",
+      "print_for_non_cost_readers_hint": "Without prices, totals or vendor references, the order is marked “Without prices”."
     }
   }
 }

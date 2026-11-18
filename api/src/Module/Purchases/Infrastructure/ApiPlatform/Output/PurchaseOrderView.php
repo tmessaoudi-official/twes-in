@@ -13,6 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Purchases\Application\OrderProducts;
 use App\Module\Purchases\Application\OrderVendors;
+use App\Module\Purchases\Application\Printing\PurchaseOrderPrintSettings;
 use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
@@ -53,6 +54,7 @@ final readonly class PurchaseOrderView
         }
         $company = $orders[0]->getCompany();
         $seesCost = $this->guard->may($company, ProductPermission::COST_READ);
+        $printable = $seesCost || PurchaseOrderPrintSettings::printsWithoutPrices($this->settings, $company);
         $scale = $this->scales->of($company->getCurrency());
         $named = [];
         foreach ($orders as $order) {
@@ -75,8 +77,9 @@ final readonly class PurchaseOrderView
         $recorded = VendorNameSettings::RECORDED === $this->settings->value(new SettingContext($company), VendorNameSettings::MERGED_NAMES);
         $standing = $recorded ? [] : $this->vendors->standingFor($company, array_values($vendors));
 
-        return array_map(static function (PurchaseOrder $order) use ($seesCost, $scale, $tracking, $standing): PurchaseOrderResource {
+        return array_map(static function (PurchaseOrder $order) use ($seesCost, $printable, $scale, $tracking, $standing): PurchaseOrderResource {
             $resource = PurchaseOrderResource::of($order, $seesCost, $scale, $tracking);
+            $resource->printable = $printable;
             $resource->vendorName = $standing[$order->getVendorId()->toRfc4122()]->name ?? $resource->vendorName;
 
             return $resource;

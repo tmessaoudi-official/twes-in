@@ -102,7 +102,9 @@
       "cancel_title": "Cancel the order?",
       "cancel_message": "Nothing more will be expected or received from it.",
       "confirm_cancel": "Cancel the order",
-      "keep": "Keep the order"
+      "keep": "Keep the order",
+      "pdf_without_prices": "Download the PDF (without prices)",
+      "pdf_draft_without_prices": "Preview the PDF (without prices)"
     },
     "receipts": {
       "title": "Receipts",

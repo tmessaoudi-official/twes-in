@@ -474,6 +474,59 @@ final class PurchaseOrdersTest extends ApiTestCase
     }
 
     /**
+     * A company may let whoever may not read costs print an order without them: no price, no net, no total and no vendor
+     * code, which are costs too, and the page says « Sans prix » so nobody reads them as lost. A cost reader still prints
+     * every price, and each order says whether its reader may print it, which the screen offers the PDF by.
+     */
+    public function testACompanyMayLetWhoeverMayNotReadCostsPrintAnOrderWithoutItsPrices(): void
+    {
+        $this->codes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('SUD-VIS6'), 1, $this->vendorEntity($this->vendor))]);
+        $this->signedIn('buyer', self::BUYER);
+        $id = $this->draft();
+        $prices = ['0,250', '2,500', 'SUD-VIS6'];
+
+        $this->signedIn('writer', self::WRITER);
+        $this->getJson($this->path($id));
+        self::assertFalse($this->boolAt($this->json(), 'printable'), 'by default whoever may not read costs prints nothing');
+        $this->getJson($this->path());
+        self::assertSame([false], array_column($this->jsonList(), 'printable'), 'the list says the same');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->companyChooses($this->company, 'purchase_order.print_for_non_cost_readers', 'without_prices');
+
+        $this->getJson($this->path($id));
+        self::assertTrue($this->boolAt($this->json(), 'printable'));
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame('application/pdf', $response->headers->get('content-type'));
+        $bare = (string) $response->getContent();
+        foreach (['Bon de commande', 'Sans prix', 'VIS-6', 'Vis 6 mm', 'Quincaillerie du Sud'] as $expected) {
+            self::assertStringContainsString($expected, $bare);
+        }
+        foreach ($prices as $cost) {
+            self::assertStringNotContainsString($cost, $bare, 'a cost printed for whoever may not read it');
+        }
+
+        $this->signedIn('buyer', self::BUYER);
+        $this->getJson($this->path($id));
+        self::assertTrue($this->boolAt($this->json(), 'printable'));
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseIsSuccessful();
+        $priced = (string) $this->client->getResponse()->getContent();
+        foreach ($prices as $cost) {
+            self::assertStringContainsString($cost, $priced, 'a cost reader still prints every price');
+        }
+        self::assertStringNotContainsString('Sans prix', $priced);
+
+        $this->companyChooses($this->company, 'purchase_order.print_for_non_cost_readers', 'refused');
+        $this->signedIn('writer', self::WRITER);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
      * A sent order prints as it was sent, as a quote does: its design, its language and the names of its units stay
      * whatever the company's settings become, unless the company keeps the names live. A draft, and an order sent before
      * orders kept how they print, read today's settings.

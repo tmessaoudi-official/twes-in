@@ -47,10 +47,12 @@ final readonly class PrintPurchaseOrder
     }
 
     /**
+     * @param bool $prices false for whoever may not read costs, whom the company lets print its orders without them
+     *
      * @throws PurchaseOrderNotFound
      * @throws PdfRenderingFailed
      */
-    public function pdf(Company $company, Uuid $id): PrintedPurchaseOrder
+    public function pdf(Company $company, Uuid $id, bool $prices): PrintedPurchaseOrder
     {
         $order = $this->orders->ofIdInCompany($id, $company->getId()) ?? throw new PurchaseOrderNotFound();
         $buyer = $order->getBuyerSnapshot() ?? SellerSnapshot::of($order->getCompany(), $order->getEstablishment());
@@ -80,6 +82,7 @@ final readonly class PrintPurchaseOrder
             $printing->print->design,
             QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines()), $names),
             $names,
+            $prices,
         ))));
     }
 

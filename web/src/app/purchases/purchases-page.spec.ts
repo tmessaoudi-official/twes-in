@@ -57,6 +57,7 @@ function order(id: string, patch: Partial<PurchaseOrderRow>): PurchaseOrderRow {
     receipts: [],
     receivers: null,
     receiverRule: null,
+    printable: true,
     ...patch,
   };
 }

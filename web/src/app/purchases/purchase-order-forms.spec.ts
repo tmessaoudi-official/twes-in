@@ -50,6 +50,7 @@ const order: PurchaseOrderRow = {
   receipts: [],
   receivers: null,
   receiverRule: null,
+  printable: true,
 };
 
 describe('purchase order forms', () => {

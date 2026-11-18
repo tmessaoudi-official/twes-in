@@ -36,6 +36,7 @@ purchase_order:
     expected_on: 'تاريخ التسليم المرجو'
     reference: 'المرجع'
     remarks: 'ملاحظات'
+    without_prices: 'بدون أسعار'
 invoice:
     title: 'فاتورة'
     deposit_title: 'فاتورة تسبقة'

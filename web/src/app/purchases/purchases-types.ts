@@ -133,6 +133,11 @@ export interface PurchaseOrderRow {
   receivers: string | null;
   /** Whether the company's receipts name who received; null on a list, which records no receipt. */
   receiverRule: ReceiverRule | null;
+  /**
+   * Whether its reader may download the printed order: always a cost reader, and the others without its prices when
+   * the company lets them, so the screen offers only what the PDF answers.
+   */
+  printable: boolean;
 }
 
 export interface PurchaseOrderInput {

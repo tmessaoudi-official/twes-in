@@ -57,6 +57,8 @@
     <h1>{{ 'purchase_order.title'|trans({}, t, locale) }}</h1>
     {% if order.number %}<strong><bdi>{{ order.number }}</bdi></strong>{% endif %}
   </div>
+  {#- Printed for whoever may not read costs: the prices, totals and vendor codes are costs, left out, and the page says so. #}
+  {%- if not page.prices %}<p class="muted">{{ 'purchase_order.without_prices'|trans({}, t, locale) }}</p>{% endif %}
 
   <dl class="facts">
     {% if order.issueDate %}<div><dt>{{ 'purchase_order.issue_date'|trans({}, t, locale) }}</dt><dd>{{ order.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
@@ -64,7 +66,7 @@
   </dl>
 
   {#- The vendor's own codes get a column only when a line has one. #}
-  {%- set vendorCodes = order.lines|filter(line => line.vendorCode is not null)|length > 0 %}
+  {%- set vendorCodes = page.prices and order.lines|filter(line => line.vendorCode is not null)|length > 0 %}
   <table>
     <thead>
       <tr>
@@ -73,8 +75,10 @@
         <th>{{ 'line.description'|trans({}, t, locale) }}</th>
         <th class="number">{{ 'line.quantity'|trans({}, t, locale) }}</th>
         <th>{{ 'line.unit'|trans({}, t, locale) }}</th>
+        {%- if page.prices %}
         <th class="number">{{ 'line.unit_price'|trans({}, t, locale) }}</th>
         <th class="number">{{ 'line.net'|trans({}, t, locale) }}</th>
+        {%- endif %}
       </tr>
     </thead>
     <tbody>
@@ -86,8 +90,10 @@
           <td><bdi>{{ line.description|nl2br }}</bdi></td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
           <td>{{ page.names.unit(line.unit) }}</td>
+          {%- if page.prices %}
           <td class="number">{% if line.unitPriceNet is not null %}{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
           <td class="number">{% if net is not null %}{{ net|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
+          {%- endif %}
         </tr>
       {%- endfor %}
     </tbody>
@@ -95,7 +101,7 @@
   {%- include 'pdf/_quantities.html.twig' with {quantities: page.quantities, t: t, locale: locale, numberFormat: page.numberFormat} only %}
 
   {#- An order a line of which has no price yet comes to no total: a partial sum would read as the whole. #}
-  {%- if page.totals.total is not null %}
+  {%- if page.prices and page.totals.total is not null %}
     <table class="totals">
       <tr class="grand"><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
     </table>

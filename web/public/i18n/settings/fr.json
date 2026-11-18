@@ -323,6 +323,12 @@
           "keys": "Clés des colonnes",
           "words": "Mots de l’écran"
         }
+      },
+      "purchase_order": {
+        "print_for_non_cost_readers": {
+          "refused": "Refusé",
+          "without_prices": "Imprimé sans prix"
+        }
       }
     },
     "overrides": {
@@ -431,6 +437,10 @@
     "reports": {
       "export_headers": "En-têtes des fichiers de rapport",
       "export_headers_hint": "Les mots de l’écran se lisent mieux, les clés gardent les formules et les programmes qui lisent le fichier."
+    },
+    "purchase_order": {
+      "print_for_non_cost_readers": "Bon de commande pour qui ne voit pas les coûts",
+      "print_for_non_cost_readers_hint": "Sans prix, sans total ni référence fournisseur, le bon porte la mention « Sans prix »."
     }
   }
 }

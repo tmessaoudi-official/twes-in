@@ -36,6 +36,7 @@ purchase_order:
     expected_on: 'Livraison souhaitée'
     reference: 'Réf.'
     remarks: 'Remarques'
+    without_prices: 'Sans prix'
 invoice:
     title: 'Facture'
     deposit_title: 'Facture d’acompte'

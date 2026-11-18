@@ -174,6 +174,8 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'article.price_on_cost_change': 'settings.article.price_on_cost_change_hint',
   'delivery_note.mixed_customers_invoicing':
     'settings.delivery_note.mixed_customers_invoicing_hint',
+  'purchase_order.print_for_non_cost_readers':
+    'settings.purchase_order.print_for_non_cost_readers_hint',
   'reminders.enabled': 'settings.reminders.enabled_hint',
   'reminders.stages': 'settings.reminders.stages_hint',
   'reminders.hour': 'settings.reminders.hour_hint',
@@ -191,14 +193,15 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
 /**
  * Settings that take a whole row of the two-column grid: one declared alone among pairs, which would otherwise move
  * every field after it into the other column. The watermark's spread follows its strength and copies, a pair, and
- * leaves the logo's width and height side by side; whether a customer deactivated since its draft is still issued, and
- * how screens name a merged vendor, how long a delete stays undoable and how a report's file is headed, are declared
- * last and close their section on a row each.
+ * leaves the logo's width and height side by side; whether a customer deactivated since its draft is still issued,
+ * whether an order prints for whoever may not read costs, how screens name a merged vendor, how long a delete stays
+ * undoable and how a report's file is headed, are declared last and close their section on a row each.
  */
 const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'document.watermark_spread',
   'document.inactive_party_at_issue',
   'delivery_note.mixed_customers_invoicing',
+  'purchase_order.print_for_non_cost_readers',
   'vendors.merged_names_on_screens',
   'records.undoable_for',
   'reports.export_headers',

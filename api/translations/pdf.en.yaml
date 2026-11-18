@@ -36,6 +36,7 @@ purchase_order:
     expected_on: 'Expected on'
     reference: 'Ref.'
     remarks: 'Remarks'
+    without_prices: 'Without prices'
 invoice:
     title: 'Invoice'
     deposit_title: 'Deposit invoice'

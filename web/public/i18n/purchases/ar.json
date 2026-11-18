@@ -102,7 +102,9 @@
       "cancel_title": "إلغاء الطلبية؟",
       "cancel_message": "لن يُنتظر منها ولن يُستلم أي شيء بعد الآن.",
       "confirm_cancel": "إلغاء الطلبية",
-      "keep": "الإبقاء على الطلبية"
+      "keep": "الإبقاء على الطلبية",
+      "pdf_without_prices": "تنزيل PDF (بدون أسعار)",
+      "pdf_draft_without_prices": "معاينة PDF (بدون أسعار)"
     },
     "receipts": {
       "title": "الاستلامات",

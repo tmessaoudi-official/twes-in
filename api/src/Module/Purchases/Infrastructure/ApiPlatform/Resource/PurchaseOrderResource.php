@@ -327,6 +327,15 @@ final class PurchaseOrderResource
     public ?string $receiverRule = null;
 
     /**
+     * Whether its reader may download the printed order: always with product.cost.read, without its prices when the
+     * company lets the others print it (purchase_order.print_for_non_cost_readers), so a screen offers only what the PDF
+     * answers.
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public bool $printable = false;
+
+    /**
      * @param array<string, string> $tracking each named product's tracking today, by product id
      */
     public static function of(PurchaseOrder $order, bool $seesCost, int $scale, array $tracking): self

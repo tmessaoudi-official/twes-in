@@ -323,6 +323,12 @@
           "keys": "مفاتيح الأعمدة",
           "words": "كلمات الشاشة"
         }
+      },
+      "purchase_order": {
+        "print_for_non_cost_readers": {
+          "refused": "مرفوضة",
+          "without_prices": "تُطبع بدون أسعار"
+        }
       }
     },
     "overrides": {
@@ -431,6 +437,10 @@
     "reports": {
       "export_headers": "رؤوس أعمدة ملفات التقارير",
       "export_headers_hint": "كلمات الشاشة أسهل قراءة، والمفاتيح تُبقي الصيغ والبرامج التي تقرأ الملف تعمل."
+    },
+    "purchase_order": {
+      "print_for_non_cost_readers": "طلبية لدى مزوّد لمن لا يرى الكلفة",
+      "print_for_non_cost_readers_hint": "دون أسعار ولا مجاميع ولا مراجع المزوّد، وتحمل الطلبية عبارة « بدون أسعار »."
     }
   }
 }

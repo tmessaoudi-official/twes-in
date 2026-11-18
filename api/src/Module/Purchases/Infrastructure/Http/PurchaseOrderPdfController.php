@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Purchases\Infrastructure\Http;
 
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Module\Purchases\Application\Printing\PurchaseOrderPrintSettings;
 use App\Module\Purchases\Application\PrintPurchaseOrder;
 use App\Module\Purchases\Application\PurchaseOrderNotFound;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermission;
+use App\Settings\Application\ReadSetting;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -25,14 +27,15 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * An order to a vendor as a PDF, with purchase.read and product.cost.read: the prices it prints are costs, which nobody
- * else reads, so whoever may not read them is answered as if there were no such order. A plain controller rather than a
+ * else reads, so whoever may not read them is answered as if there were no such order, unless the company lets them
+ * print it without its prices (purchase_order.print_for_non_cost_readers). A plain controller rather than a
  * resource, as the answer is bytes; the module guard still applies through this class's namespace. Documented in
  * PurchasesOpenApi.
  */
 #[AsController]
 final readonly class PurchaseOrderPdfController
 {
-    public function __construct(private PrintPurchaseOrder $print, private CompanyGuard $guard)
+    public function __construct(private PrintPurchaseOrder $print, private CompanyGuard $guard, private ReadSetting $settings)
     {
     }
 
@@ -41,12 +44,13 @@ final readonly class PurchaseOrderPdfController
     {
         $ids = ['companyId' => $companyId, 'purchaseOrderId' => $purchaseOrderId];
         $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), PurchaseOrderPermission::READ);
-        if (!$this->guard->may($company, ProductPermission::COST_READ)) {
+        $prices = $this->guard->may($company, ProductPermission::COST_READ);
+        if (!$prices && !PurchaseOrderPrintSettings::printsWithoutPrices($this->settings, $company)) {
             throw new NotFoundHttpException('No such purchase order.');
         }
 
         try {
-            $printed = $this->print->pdf($company, CompanyPath::identifier($ids, 'purchaseOrderId'));
+            $printed = $this->print->pdf($company, CompanyPath::identifier($ids, 'purchaseOrderId'), $prices);
         } catch (PurchaseOrderNotFound $absent) {
             throw new NotFoundHttpException('No such purchase order.', $absent);
         } catch (PdfRenderingFailed $failure) {
