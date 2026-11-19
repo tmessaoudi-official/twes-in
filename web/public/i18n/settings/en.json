@@ -441,6 +441,10 @@
     "purchase_order": {
       "print_for_non_cost_readers": "Purchase orders for those who cannot see costs",
       "print_for_non_cost_readers_hint": "Without prices, totals or vendor references, the order is marked “Without prices”."
+    },
+    "members": {
+      "admin_grants_admin": "Admins give the admin role",
+      "admin_grants_admin_hint": "Otherwise only owners make someone an admin, by invitation or a change of role; admins still give the other roles."
     }
   }
 }

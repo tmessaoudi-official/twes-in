@@ -441,6 +441,10 @@
     "purchase_order": {
       "print_for_non_cost_readers": "Bon de commande pour qui ne voit pas les coûts",
       "print_for_non_cost_readers_hint": "Sans prix, sans total ni référence fournisseur, le bon porte la mention « Sans prix »."
+    },
+    "members": {
+      "admin_grants_admin": "L’admin donne le rôle admin",
+      "admin_grants_admin_hint": "Sinon, seuls les propriétaires font d’un membre un admin, par invitation ou par changement de rôle ; l’admin donne toujours les autres rôles."
     }
   }
 }

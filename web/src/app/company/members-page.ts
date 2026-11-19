@@ -35,7 +35,7 @@ import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
 import { MemberDevicesDialog, type MemberDevicesOf } from './member-devices/member-devices-dialog';
-import { type Actor, mayGrant, mayRemove } from './role-bounds';
+import { type Actor, mayRemove } from './role-bounds';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { RefusalPipe } from '../shared/errors/refusal-pipe';
 
@@ -276,14 +276,13 @@ export class MembersPage implements OnInit {
   /** Lifting a member's password lock is the owner's alone, whatever a custom role grants, as the API holds it. */
   protected readonly isOwner = computed(() => this.auth.me()?.company?.role === 'owner');
   protected readonly mayReadActivity = computed(() => this.auth.hasPermission('audit.read'));
-  /** The person acting, as the API's role bounds read them: their role here and what it grants, unnarrowed. */
+  /** The person acting, as the API's role bounds read them: their role here. */
   private readonly actor = computed<Actor>(() => {
     const me = this.auth.me();
-    return { role: me?.company?.role ?? '', permissions: me?.permissions ?? [] };
+    return { role: me?.company?.role ?? '' };
   });
-  private readonly grantable = computed(() =>
-    this.roles().filter((role) => mayGrant(this.actor(), role)),
-  );
+  /** The roles the API says this reader may give, so nothing is offered that it would then refuse. */
+  private readonly grantable = computed(() => this.roles().filter((role) => role.grantable));
 
   /** Whether a role may be taken from whoever holds it: removing them, or changing it for another. */
   private mayTake(roleName: string): boolean {
@@ -296,7 +295,7 @@ export class MembersPage implements OnInit {
    */
   private mayGive(roleName: string): boolean {
     const role = this.roles().find((each) => each.name === roleName);
-    return role === undefined || mayGrant(this.actor(), role);
+    return role === undefined || role.grantable;
   }
 
   protected readonly form = new FormGroup({
@@ -329,6 +328,12 @@ export class MembersPage implements OnInit {
         // An account's lock changes outside the company, by a guess, the operator or the mailed link: it is said here too.
         ['membership', 'invitation', 'role', 'account'],
         () => this.members.load(companyId),
+        this.destroyRef,
+      );
+      this.live.reloadOn(
+        // Who may give which role moves with the company's choice, the roles and the reader's own role.
+        ['setting', 'role', 'membership'],
+        () => this.rolesFacade.load(companyId),
         this.destroyRef,
       );
       await Promise.all([this.members.load(companyId), this.rolesFacade.load(companyId)]);

@@ -9,20 +9,22 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Member;
 
+use App\Settings\Application\ReadSetting;
 use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Who in a company grants and removes which role (docs/SPEC.md § 7, 2026-09-15): the roles' order, owner above admin
- * above member, bounds it.
+ * Who in a company grants and removes which role: the roles' order, owner above admin above member, bounds it, and a
+ * company may keep the admin role to its owners (`members.admin_grants_admin`).
  */
 final readonly class RoleBounds
 {
     private const int OWNER_RANK = 3;
     private const int ADMIN_RANK = 2;
 
-    public function __construct(private MembershipRepository $memberships)
+    public function __construct(private MembershipRepository $memberships, private CompanyRepository $companies, private ReadSetting $settings)
     {
     }
 
@@ -35,16 +37,31 @@ final readonly class RoleBounds
      */
     public function assertMayGrant(Uuid $companyId, ?Uuid $actorUserId, Role $role): void
     {
+        if (!$this->mayGrant($companyId, $actorUserId, $role)) {
+            throw new RoleNotManageable(\sprintf('Your role in this company does not grant the %s role.', $role->getName()));
+        }
+    }
+
+    /** Whether the actor may give this role, what the roles list tells the screen before it offers one. */
+    public function mayGrant(Uuid $companyId, ?Uuid $actorUserId, Role $role): bool
+    {
         $actor = $this->actorRank($companyId, $actorUserId);
         if (null === $actor || self::OWNER_RANK === $actor) {
-            return;
+            return true;
         }
-        $roleName = $role->getName();
-        if ($role->isBuiltIn() ? self::ADMIN_RANK === $actor && self::rank($roleName) <= self::ADMIN_RANK : $this->holdsEverythingOf($companyId, $actorUserId, $role)) {
-            return;
+        if (!$role->isBuiltIn()) {
+            return $this->holdsEverythingOf($companyId, $actorUserId, $role);
         }
+        $rank = self::rank($role->getName());
 
-        throw new RoleNotManageable(\sprintf('Your role in this company does not grant the %s role.', $roleName));
+        return self::ADMIN_RANK === $actor && ($rank < self::ADMIN_RANK || (self::ADMIN_RANK === $rank && $this->adminGrantsAdmin($companyId)));
+    }
+
+    private function adminGrantsAdmin(Uuid $companyId): bool
+    {
+        $company = $this->companies->ofId($companyId);
+
+        return null !== $company && AdminGrantsSettings::adminGrantsAdmin($this->settings, $company);
     }
 
     private function holdsEverythingOf(Uuid $companyId, ?Uuid $actorUserId, Role $role): bool

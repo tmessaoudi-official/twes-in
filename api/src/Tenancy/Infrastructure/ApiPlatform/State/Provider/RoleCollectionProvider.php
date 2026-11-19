@@ -30,6 +30,6 @@ final readonly class RoleCollectionProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
-        return array_map(static fn (RoleView $view) => RoleResource::of($view), $this->roles->list($company));
+        return array_map(static fn (RoleView $view) => RoleResource::of($view), $this->roles->list($company, $this->guard->account()->getId()));
     }
 }

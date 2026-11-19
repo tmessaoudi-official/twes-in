@@ -11,10 +11,14 @@ namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Invitation\InviteRequest;
 use App\Tenancy\Application\Invitation\InviteToCompany;
 use App\Tenancy\Application\Invitation\MailInvitation;
+use App\Tenancy\Application\Member\AdminGrantsSettings;
 use App\Tenancy\Application\Member\AlreadyAMember;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
@@ -32,6 +36,7 @@ use App\Tests\Support\InMemoryInvitations;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryNotifications;
 use App\Tests\Support\InMemoryRoles;
+use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryUsers;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -77,7 +82,7 @@ final class InviteToCompanyTest extends TestCase
             $this->companies,
             $this->users,
             $roles,
-            new RoleBounds($this->memberships),
+            new RoleBounds($this->memberships, $this->companies, new ReadSetting(new ResolveSettings(new SettingCatalog([new AdminGrantsSettings()]), new InMemorySettings()))),
             $this->invitations,
             $this->memberships,
             $this->queue,

@@ -18,6 +18,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\TypedText;
+use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
@@ -63,16 +64,17 @@ final readonly class ManageRoles implements DeclaresAuditActions
         private Transactions $transactions,
         private ClockInterface $clock,
         private RecordVersions $versions,
+        private RoleBounds $bounds,
     ) {
     }
 
     /** @return list<RoleView> */
-    public function list(Company $company): array
+    public function list(Company $company, ?Uuid $readerUserId): array
     {
         $counts = $this->memberships->countByRole($company->getId());
 
         return array_map(
-            static fn (Role $role): RoleView => new RoleView(
+            fn (Role $role): RoleView => new RoleView(
                 $role->getId()->toRfc4122(),
                 $role->getName(),
                 $role->isBuiltIn(),
@@ -80,6 +82,7 @@ final readonly class ManageRoles implements DeclaresAuditActions
                 \in_array(Permission::WILDCARD, $role->getPermissions(), true),
                 $counts[$role->getId()->toRfc4122()] ?? 0,
                 $role->getVersion(),
+                $this->bounds->mayGrant($company->getId(), $readerUserId, $role),
             ),
             $this->roles->forCompany($company->getId()),
         );
@@ -104,7 +107,7 @@ final readonly class ManageRoles implements DeclaresAuditActions
             $this->roles->save($role);
             $this->record($company, $role, self::CREATED, $actorUserId);
 
-            return new RoleView($role->getId()->toRfc4122(), $role->getName(), false, $role->getPermissions(), false, 0, $role->getVersion());
+            return new RoleView($role->getId()->toRfc4122(), $role->getName(), false, $role->getPermissions(), false, 0, $role->getVersion(), $this->bounds->mayGrant($company->getId(), $actorUserId, $role));
         });
     }
 
@@ -146,6 +149,7 @@ final readonly class ManageRoles implements DeclaresAuditActions
                 false,
                 $this->memberships->countByRole($company->getId())[$role->getId()->toRfc4122()] ?? 0,
                 $role->getVersion(),
+                $this->bounds->mayGrant($company->getId(), $actorUserId, $role),
             );
         });
     }

@@ -193,5 +193,7 @@ function toRow(raw: RoleRoleRead): RoleRow {
     memberCount: raw.memberCount ?? 0,
     // Every read carries it; a 0 would be refused by the API rather than taken for a version.
     version: raw.version ?? 0,
+    // Not given unless the API says so: offering a role it then refuses asks a proof for nothing.
+    grantable: raw.grantable === true,
   };
 }

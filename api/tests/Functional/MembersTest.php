@@ -372,6 +372,53 @@ final class MembersTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * An admin grants the admin role, as by default, unless the company keeps it to its owners; owners grant it either
+     * way. Each role the list answers says whether its reader may give it, so the screen offers only what is accepted.
+     */
+    public function testACompanyMayKeepGrantingTheAdminRoleToItsOwners(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $first = $this->builtInMember('first@twes.local', Role::MEMBER);
+        $second = $this->builtInMember('second@twes.local', Role::MEMBER);
+        // The built-in admin, bounded by its rank, holding the company's settings as the shipped one does: the members
+        // screen reads the roles with them.
+        $this->builtInMember('admin@twes.local', Role::ADMIN);
+        $em = $this->em();
+        $admin = $em->getRepository(Role::class)->findOneBy(['name' => Role::ADMIN, 'company' => null]);
+        self::assertInstanceOf(Role::class, $admin);
+        $admin->redefinePermissions([...$admin->getPermissions(), 'company.settings']);
+        $em->flush();
+        $this->signInAs('admin@twes.local');
+        $this->stepUp('password-1234');
+        $grantable = function (): array {
+            $this->getJson(\sprintf('/api/companies/%s/roles', $this->company->getId()->toRfc4122()));
+            self::assertResponseIsSuccessful();
+            $roles = array_column($this->jsonList(), 'grantable', 'name');
+
+            return [$roles[Role::OWNER] ?? null, $roles[Role::ADMIN] ?? null, $roles[Role::MEMBER] ?? null];
+        };
+        self::assertSame([false, true, true], $grantable(), 'by default an admin gives the admin role');
+        $this->sendJson('PUT', $this->rolePath($first), ['role' => Role::ADMIN]);
+        self::assertResponseIsSuccessful();
+
+        $this->companyChooses($this->company, 'members.admin_grants_admin', false);
+
+        self::assertSame([false, false, true], $grantable());
+        $this->sendJson('PUT', $this->rolePath($second), ['role' => Role::ADMIN]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'kept to the owners');
+        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::ADMIN]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'nor invited by an admin');
+        $this->sendJson('PUT', $this->rolePath($second), ['role' => Role::ACCOUNTANT]);
+        self::assertResponseIsSuccessful('the roles below are still the admin\'s to give');
+
+        $this->signInAs('owner@twes.local');
+        $this->stepUp('password-1234');
+        self::assertSame([true, true, true], $grantable(), 'an owner gives every role');
+        $this->sendJson('PUT', $this->rolePath($second), ['role' => Role::ADMIN]);
+        self::assertResponseIsSuccessful();
+    }
+
     /** A company keeps an owner: the last one is never lowered, but an owner steps down beside another (hunt F7). */
     public function testTheLastOwnerIsNeverLoweredAndAnOwnerStepsDownBesideAnother(): void
     {

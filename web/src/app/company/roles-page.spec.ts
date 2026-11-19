@@ -83,6 +83,7 @@ const owner: RoleRow = {
   wildcard: true,
   permissions: [],
   memberCount: 2,
+  grantable: true,
   version: 1,
 };
 const member: RoleRow = {
@@ -92,6 +93,7 @@ const member: RoleRow = {
   wildcard: false,
   permissions: ['user.read'],
   memberCount: 1,
+  grantable: true,
   version: 1,
 };
 const barista: RoleRow = {
@@ -101,6 +103,7 @@ const barista: RoleRow = {
   wildcard: false,
   permissions: ['stock.read'],
   memberCount: 0,
+  grantable: true,
   version: 1,
 };
 

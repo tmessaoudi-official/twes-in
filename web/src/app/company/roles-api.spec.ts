@@ -108,7 +108,7 @@ describe('RolesApi refusals', () => {
     });
   });
 
-  it('reads the version of each role it lists', async () => {
+  it('reads the version of each role it lists, and whether its reader may give it', async () => {
     const listed = api.list('c1');
     http.expectOne({ method: 'GET', url: '/api/companies/c1/roles' }).flush([
       {
@@ -119,10 +119,25 @@ describe('RolesApi refusals', () => {
         permissions: [],
         memberCount: 0,
         version: 4,
+        grantable: true,
+      },
+      {
+        id: 'r2',
+        name: 'admin',
+        builtIn: true,
+        wildcard: false,
+        permissions: [],
+        memberCount: 1,
+        version: 1,
+        grantable: false,
       },
     ]);
 
-    expect((await listed)[0]?.version).toBe(4);
+    const rows = await listed;
+    expect(rows.map((row) => [row.version, row.grantable])).toEqual([
+      [4, true],
+      [1, false],
+    ]);
   });
 
   it('sends back the version a revision was opened at', async () => {

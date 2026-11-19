@@ -125,7 +125,12 @@ describe('MembersPage', () => {
     }),
     hasPermission: vi.fn(),
   };
-  const role = (name: string, builtIn: boolean, permissions: readonly string[] = []): RoleRow => ({
+  const role = (
+    name: string,
+    builtIn: boolean,
+    permissions: readonly string[] = [],
+    grantable = true,
+  ): RoleRow => ({
     id: `r-${name}`,
     name,
     builtIn,
@@ -133,6 +138,7 @@ describe('MembersPage', () => {
     permissions,
     memberCount: 0,
     version: 1,
+    grantable,
   });
   const companyRoles = signal<readonly RoleRow[]>([]);
   const roles = {
@@ -210,6 +216,17 @@ describe('MembersPage', () => {
 
     expect(members.load).toHaveBeenCalledExactlyOnceWith('c1');
   });
+
+  it.each(['setting', 'role', 'membership'])(
+    'reads the roles again on a %s change, which moves who may give which',
+    async (kind) => {
+      roles.load.mockClear();
+
+      await announceSaved(kind, 'x1');
+
+      expect(roles.load).toHaveBeenCalledExactlyOnceWith('c1');
+    },
+  );
 
   it('shows every member it was given', () => {
     expect(text('member-owner@example.test')).toContain('Owner');
@@ -725,12 +742,13 @@ describe('MembersPage', () => {
 
     beforeEach(() => {
       actor.set({ role: 'admin', permissions: ['user.read', 'user.write', 'customer.read'] });
+      // What the API answers an admin: the owner's role and one holding more than theirs are not theirs to give.
       companyRoles.set([
-        role('owner', true),
+        role('owner', true, [], false),
         role('admin', true),
         role('member', true),
         role('barista', false, ['customer.read']),
-        role('manager', false, ['company.settings']),
+        role('manager', false, ['company.settings'], false),
       ]);
     });
 
@@ -788,6 +806,31 @@ describe('MembersPage', () => {
         (option) => option.textContent?.trim(),
       );
       expect(offered).toEqual(['Administrateur', 'Membre', 'barista']);
+    });
+
+    /** The company keeps the admin role to its owners: the API answers it as not the admin's to give. */
+    const keptToOwners = (): void =>
+      companyRoles.update((all) =>
+        all.map((each) => (each.name === 'admin' ? { ...each, grantable: false } : each)),
+      );
+
+    it('offers no admin role in the dialog once the company keeps it to its owners', async () => {
+      keptToOwners();
+      rows.set([owner, me, plain]);
+      fixture.detectChanges();
+
+      expect(await dialogRoles('u2')).toEqual(['Membre', 'barista']);
+    });
+
+    it('offers no admin role in the invitation form once the company keeps it to its owners', async () => {
+      keptToOwners();
+      fixture.nativeElement.querySelector('[data-testid="member-role"]').click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const offered = [...document.querySelectorAll('[role="option"] [data-option-label]')].map(
+        (option) => option.textContent?.trim(),
+      );
+      expect(offered).toEqual(['Membre', 'barista']);
     });
   });
 

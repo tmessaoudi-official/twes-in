@@ -17,6 +17,8 @@ export interface RoleRow {
   readonly memberCount: number;
   /** The version read, which a revision sends back; the API refuses it once someone saved a later one. */
   readonly version: number;
+  /** Whether the person reading may give it, as the API decides it (its role's rank, the company's choice). */
+  readonly grantable: boolean;
 }
 
 /** One heading of the matrix, and the permissions under it. */

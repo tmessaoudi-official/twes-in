@@ -21,6 +21,8 @@ final readonly class RoleView
         public bool $wildcard,
         public int $memberCount,
         public int $version,
+        /** Whether the person reading may give it, so the screen offers only what the API accepts. */
+        public bool $grantable,
     ) {
     }
 }

@@ -134,6 +134,11 @@ final class RoleResource
     #[Groups([self::READ])]
     public int $memberCount = 0;
 
+    /** Whether the person reading may give it: what the members screen offers, as the API decides it. */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public bool $grantable = false;
+
     /**
      * The version read; a revision sends back the one it was opened at, and one saved since answers 409. A role
      * decides what everyone holding it may do, so a form opened before a permission was taken away must not give it back.
@@ -152,6 +157,7 @@ final class RoleResource
         $resource->permissions = $view->permissions;
         $resource->wildcard = $view->wildcard;
         $resource->memberCount = $view->memberCount;
+        $resource->grantable = $view->grantable;
         $resource->version = $view->version;
 
         return $resource;

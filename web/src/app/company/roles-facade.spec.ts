@@ -14,6 +14,7 @@ const seller: RoleRow = {
   wildcard: false,
   permissions: ['customer.read'],
   memberCount: 2,
+  grantable: true,
   version: 1,
 };
 
