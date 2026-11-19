@@ -44,7 +44,9 @@
       "watermark_spread": "Watermark layout",
       "watermark_spread_hint": "No effect while it prints once.",
       "inactive_party_at_issue": "Customer or vendor deactivated since the draft",
-      "inactive_party_at_issue_hint": "A credit note is always issued; a merged customer or vendor is always refused."
+      "inactive_party_at_issue_hint": "A credit note is always issued; a merged customer or vendor is always refused.",
+      "drafts_offer_cancel": "Offer to abandon a draft",
+      "drafts_offer_cancel_hint": "Abandoning, closing as not pursued or cancelling keeps a record of the draft; a draft another document names can only be kept that way."
     },
     "credit": {
       "limit": "Customer credit limit",
@@ -166,6 +168,10 @@
         "inactive_party_at_issue": {
           "allowed": "Issue anyway",
           "refused": "Refuse to issue"
+        },
+        "drafts_offer_cancel": {
+          "always": "Always, beside Delete",
+          "when_delete_refused": "Only when it cannot be deleted"
         }
       },
       "presentation": {

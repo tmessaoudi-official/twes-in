@@ -875,8 +875,9 @@ final class DeliveryNotesTest extends ApiTestCase
         // of whether the person ended this session (the connected devices screen), made on every signed-in request, and the
         // invoices carrying the page's notes, which each note links to, read once for the page with their lines; plus
         // three for whether the person may open those invoices: the invoices module's state, their role and the
-        // company's standing, read once for the page.
-        self::assertLessThanOrEqual(16, $statements[6]);
+        // company's standing, read once for the page; plus one for whether the company offers a draft's cancel only once
+        // its delete is refused (document.drafts_offer_cancel), once a page.
+        self::assertLessThanOrEqual(17, $statements[6]);
     }
 
     private function changeReceiverRule(Customer $customer, string $rule): void

@@ -144,6 +144,7 @@ const products: ProductOption[] = [
 const draft: DeliveryNoteRow = {
   id: 'n1',
   version: 1,
+  offersCancel: true,
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -2496,6 +2497,27 @@ describe('DeliveryNotePage', () => {
       note.set(draft);
       await open('n1');
       expect(await menuEntry('delete')).toBeNull();
+    });
+
+    it('offers a draft nothing names its delete alone where the company chose so, and its cancel to a validator who may not delete it', async () => {
+      const inMenu = (id: string) =>
+        document.body.querySelector(`[data-testid="document-menu-${id}"]`);
+      note.set({ ...draft, offersCancel: false });
+      await open('n1');
+      expect(await menuEntry('delete')).not.toBeNull();
+      expect(inMenu('cancel')).toBeNull();
+
+      fixture.destroy();
+      granted.delete('delivery_note.write');
+      await open('n1');
+      expect(await menuEntry('cancel')).not.toBeNull();
+      expect(inMenu('delete')).toBeNull();
+    });
+
+    it('offers a validated note its cancel whatever its drafts offer', async () => {
+      note.set({ ...validated, offersCancel: false });
+      await open('n1');
+      expect(await menuEntry('cancel')).not.toBeNull();
     });
   });
 });

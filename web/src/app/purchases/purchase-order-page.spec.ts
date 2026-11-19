@@ -82,6 +82,7 @@ function orderIn(status: PurchaseOrderStatus): PurchaseOrderRow {
   return {
     id: 'o1',
     version: 4,
+    offersCancel: true,
     number: status === 'draft' ? null : 'BC-2026-0007',
     status,
     vendorId: 'v1',
@@ -356,6 +357,17 @@ describe('PurchaseOrderPage', () => {
     expect(q('purchase-line-0-product-error')?.textContent).toContain(
       'purchases.lines.errors.productId',
     );
+  });
+
+  it('offers a draft its delete alone where the company offers its cancel once a delete is refused, and a sent order its cancel', async () => {
+    order.set({ ...orderIn('draft'), offersCancel: false });
+    await open('o1');
+    expect(await offered()).toEqual(['delete', 'pdf', 'save', 'send']);
+
+    fixture.destroy();
+    order.set({ ...orderIn('sent'), offersCancel: false });
+    await open('o1');
+    expect(await offered()).toContain('cancel');
   });
 
   it('sends a draft once confirmed, saving what is shown at the version it was opened at', async () => {

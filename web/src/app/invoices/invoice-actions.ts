@@ -107,6 +107,12 @@ export const invoiceMay = {
     (!isCreditNote(invoice) || rights.credit),
   abandon: (invoice: InvoiceRow, rights: InvoiceRights) =>
     invoice.status === 'draft' && invoiceMay.touch(invoice, rights),
+  /**
+   * Abandoning a draft is offered beside its delete, which takes the same right, unless the company offers it only once
+   * the delete would be refused and nothing names this draft (document.drafts_offer_cancel), as the API says.
+   */
+  abandonDraft: (invoice: InvoiceRow, rights: InvoiceRights) =>
+    invoiceMay.abandon(invoice, rights) && invoice.offersCancel,
   pay: (invoice: InvoiceRow, rights: InvoiceRights) => stillOwed(invoice) && rights.pay,
   /** Money paid beyond an invoice is kept to the customer's credit once the invoice is paid in full, never before. */
   overpay: (invoice: InvoiceRow, rights: InvoiceRights) => paidInFull(invoice) && rights.pay,
@@ -367,7 +373,7 @@ export class InvoiceActions {
             keepLabel: 'invoices.actions.keep',
           }),
         },
-        shown: (invoice) => invoiceMay.abandon(invoice, rights),
+        shown: (invoice) => invoiceMay.abandonDraft(invoice, rights),
         run: (invoice) => void this.abandon(invoice, changed),
       },
       {
@@ -380,7 +386,8 @@ export class InvoiceActions {
         // another record names (the quote it came from, a recurring invoice's model) is refused, the toast saying by what.
         effect: { kind: 'annulable' },
         shown: (invoice) => invoiceMay.abandon(invoice, rights),
-        run: (invoice) => void this.remove(invoice, options.gone ?? (() => changed(invoice))),
+        run: (invoice) =>
+          void this.remove(invoice, options.gone ?? (() => changed(invoice)), changed),
       },
     ];
   }
@@ -644,13 +651,23 @@ export class InvoiceActions {
   }
 
   /** Deletes a draft, which « Annuler » or « Récemment supprimés » puts back as it was. */
-  private async remove(invoice: InvoiceRow, gone: () => void): Promise<void> {
+  /**
+   * Deletes a draft. One offering its delete alone that comes back refused was named since it was read: it is read
+   * again, so its abandon is offered. Only an invoice's draft can be named so; a quote's, a note's or an order's never
+   * is, which their pages need not read again for.
+   */
+  private async remove(
+    invoice: InvoiceRow,
+    gone: () => void,
+    changed: (invoice: InvoiceRow) => void,
+  ): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.facade.busy()) return;
     const removed = await this.deletes.remove(companyId, 'invoice', [
       { id: invoice.id, label: invoice.number ?? invoice.customerName },
     ]);
     if (removed) gone();
+    else if (!invoice.offersCancel) changed(invoice);
   }
 
   /** Voids a draft for good; asked first by whoever runs it, from its preview. */

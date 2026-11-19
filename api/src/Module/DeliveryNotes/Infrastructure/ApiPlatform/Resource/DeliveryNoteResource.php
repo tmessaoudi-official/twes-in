@@ -490,6 +490,15 @@ final class DeliveryNoteResource
     public string $total = '0';
 
     /**
+     * Whether a draft offers its cancel beside its delete, as the company chose (document.drafts_offer_cancel): false
+     * only for a draft nothing names where the company offers the cancel once a delete would be refused. True on what
+     * is no draft, whose cancel this does not decide, and by default, so an answer never hides an action.
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public bool $offersCancel = true;
+
+    /**
      * @param list<CarryingInvoice>                              $invoices
      * @param array{quoteId: string, number: string|null}|null   $quote
      * @param array{invoiceId: string, number: string|null}|null $invoice

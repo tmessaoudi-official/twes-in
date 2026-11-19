@@ -507,6 +507,8 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
     version: raw.version ?? 0,
     number: raw.number ?? null,
     status: QUOTE_STATUSES.find((status) => status === raw.status) ?? 'draft',
+    // An answer that does not say it offers the cancel: none hides an action.
+    offersCancel: raw.offersCancel !== false,
     expired: raw.expired ?? false,
     customerId: raw.customerId ?? '',
     recordedCustomerName: raw.customerSnapshot?.name ?? null,

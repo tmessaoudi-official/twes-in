@@ -188,6 +188,7 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'members.admin_grants_admin': 'settings.members.admin_grants_admin_hint',
   'document.inactive_party_at_issue': 'settings.document.inactive_party_at_issue_hint',
   'customer.merge_main_contact': 'settings.customer.merge_main_contact_hint',
+  'document.drafts_offer_cancel': 'settings.document.drafts_offer_cancel_hint',
   'records.undoable_for': 'settings.records.undoable_for_hint',
   'reports.export_headers': 'settings.reports.export_headers_hint',
 };
@@ -197,8 +198,8 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
  * every field after it into the other column. The watermark's spread follows its strength and copies, a pair, and
  * leaves the logo's width and height side by side; whether a customer deactivated since its draft is still issued,
  * which main contact a merge of customers keeps, whether an order prints for whoever may not read costs, how screens
- * name a merged vendor, whether admins give the admin role, how long a delete stays undoable and how a report's file
- * is headed, are declared last and close their section on a row each.
+ * name a merged vendor, when a draft offers to be abandoned, whether admins give the admin role, how long a delete
+ * stays undoable and how a report's file is headed, are declared last and close their section on a row each.
  */
 const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'document.watermark_spread',
@@ -207,6 +208,7 @@ const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'delivery_note.mixed_customers_invoicing',
   'purchase_order.print_for_non_cost_readers',
   'vendors.merged_names_on_screens',
+  'document.drafts_offer_cancel',
   'members.admin_grants_admin',
   'records.undoable_for',
   'reports.export_headers',

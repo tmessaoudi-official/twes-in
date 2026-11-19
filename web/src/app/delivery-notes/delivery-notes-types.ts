@@ -210,6 +210,11 @@ export interface DeliveryNoteRow {
   /** Null until the note is validated. */
   number: string | null;
   status: DeliveryNoteStatus;
+  /**
+   * Whether a draft offers its cancel beside its delete: false only for a draft nothing names, where the company offers
+   * it once a delete would be refused (document.drafts_offer_cancel); true on what is no draft.
+   */
+  offersCancel: boolean;
   customerId: string;
   establishmentId: string | null;
   /** The customer's name as the note recorded it when validated; null for a draft, which has recorded nothing. */

@@ -259,6 +259,8 @@ describe('DeliveryNotesApi', () => {
       version: 4,
       number: 'BL-2026-00001',
       status: 'validated',
+      // The API sent none: an answer that does not say it hides no cancel.
+      offersCancel: true,
       customerId: 'k1',
       establishmentId: null,
       receivedBy: null,

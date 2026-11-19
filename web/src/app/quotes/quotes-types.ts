@@ -86,6 +86,11 @@ export interface QuoteRow {
   /** Null until the quote is sent. */
   number: string | null;
   status: QuoteStatus;
+  /**
+   * Whether a draft offers its cancel beside its delete: false only for a draft nothing names, where the company offers
+   * it once a delete would be refused (document.drafts_offer_cancel); true on what is no draft.
+   */
+  offersCancel: boolean;
   /** A sent quote past its validity day, worked out by the API on the company's day. */
   expired: boolean;
   customerId: string;

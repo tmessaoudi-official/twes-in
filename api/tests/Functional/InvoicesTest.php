@@ -1647,8 +1647,9 @@ final class InvoicesTest extends ApiTestCase
         // the costs issued lines froze (product.cost.read) is one more membership read, once a page.
         // One more for the read of whether the person ended this session, made on every signed-in request. Two more for
         // the notes handing over the issued invoices' goods, once a page whatever its rows: whether the delivery notes
-        // module is on, then the notes themselves (their sums only when a note delivers any).
-        self::assertLessThanOrEqual(17, $statements[6]);
+        // module is on, then the notes themselves (their sums only when a note delivers any). One more for whether the
+        // company offers a draft's cancel only once its delete is refused (document.drafts_offer_cancel), once a page.
+        self::assertLessThanOrEqual(18, $statements[6]);
     }
 
     /**

@@ -29,6 +29,7 @@ import type { InvoiceLine, InvoiceRow } from './invoices-types';
 const base: InvoiceRow = {
   id: 'i1',
   version: 1,
+  offersCancel: true,
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,
@@ -347,11 +348,38 @@ describe('InvoiceActions', () => {
   it('leaves the screen as it is when the draft is refused, being named by another record', async () => {
     deletes.remove.mockResolvedValue(false);
     const gone = vi.fn();
-    onRecord(actions().declare({ gone }), draft, false)
+    const changed = vi.fn();
+    onRecord(actions().declare({ gone, changed }), draft, false)
       .find((action) => action.id === 'delete')!
       .run?.();
     await vi.waitFor(() => expect(deletes.remove).toHaveBeenCalled());
     await Promise.resolve();
+    expect(gone).not.toHaveBeenCalled();
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it('offers a draft its delete alone where the company offers the cancel only once a delete is refused', () => {
+    const deleteAlone: InvoiceRow = { ...draft, offersCancel: false };
+
+    expect(onPage(deleteAlone)).toEqual([
+      'pdf:rare',
+      'duplicate:rare',
+      'make-recurring:rare',
+      'delete:rare',
+    ]);
+    expect(onRow(deleteAlone)).toEqual(onPage(deleteAlone));
+  });
+
+  it('reads a draft offering its delete alone again once that delete is refused, so its cancel is offered', async () => {
+    deletes.remove.mockResolvedValue(false);
+    const deleteAlone: InvoiceRow = { ...draft, offersCancel: false };
+    const gone = vi.fn();
+    const changed = vi.fn();
+    onRecord(actions().declare({ gone, changed }), deleteAlone, false)
+      .find((action) => action.id === 'delete')!
+      .run?.();
+
+    await vi.waitFor(() => expect(changed).toHaveBeenCalledWith(deleteAlone));
     expect(gone).not.toHaveBeenCalled();
   });
 

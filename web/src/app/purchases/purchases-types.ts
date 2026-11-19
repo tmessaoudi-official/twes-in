@@ -138,6 +138,11 @@ export interface PurchaseOrderRow {
    * the company lets them, so the screen offers only what the PDF answers.
    */
   printable: boolean;
+  /**
+   * Whether a draft offers its cancel beside its delete: false only for a draft nothing names, where the company offers
+   * it once a delete would be refused (document.drafts_offer_cancel); true on what is no draft.
+   */
+  offersCancel: boolean;
 }
 
 export interface PurchaseOrderInput {

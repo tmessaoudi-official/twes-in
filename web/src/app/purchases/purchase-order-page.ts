@@ -293,9 +293,17 @@ export class PurchaseOrderPage {
   protected readonly canClose = computed(
     () => this.current()?.status === 'partly_received' && this.mayWrite(),
   );
+  /**
+   * A draft or a sent order is cancelled by whoever writes orders; a draft's cancel is left out where the company offers
+   * it only once a delete is refused and the API says nothing names it, its delete, which takes the same right, offered.
+   */
   protected readonly canCancel = computed(() => {
-    const status = this.current()?.status;
-    return (status === 'draft' || status === 'sent') && this.mayWrite();
+    const current = this.current();
+    const status = current?.status;
+    return (
+      (status === 'sent' || (status === 'draft' && current?.offersCancel !== false)) &&
+      this.mayWrite()
+    );
   });
 
   /**

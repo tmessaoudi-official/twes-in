@@ -412,6 +412,8 @@ function toOrder(
     receivers: raw.receivers ?? null,
     receiverRule: RECEIVER_RULES.find((rule) => rule === raw.receiverRule) ?? null,
     printable: raw.printable === true,
+    // An answer that does not say it offers the cancel: none hides an action.
+    offersCancel: raw.offersCancel !== false,
   };
 }
 

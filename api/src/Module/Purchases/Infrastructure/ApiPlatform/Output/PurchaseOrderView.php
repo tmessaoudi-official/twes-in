@@ -16,8 +16,10 @@ use App\Module\Purchases\Application\OrderVendors;
 use App\Module\Purchases\Application\Printing\PurchaseOrderPrintSettings;
 use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
+use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
 use App\Module\Vendors\Application\VendorNameSettings;
+use App\Records\Application\DraftCancels;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -29,7 +31,7 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
  */
 final readonly class PurchaseOrderView
 {
-    public function __construct(private OrderProducts $products, private OrderVendors $vendors, private CompanyGuard $guard, private CurrencyScales $scales, private ReadSetting $settings)
+    public function __construct(private OrderProducts $products, private OrderVendors $vendors, private CompanyGuard $guard, private CurrencyScales $scales, private ReadSetting $settings, private DraftCancels $drafts)
     {
     }
 
@@ -77,8 +79,12 @@ final readonly class PurchaseOrderView
         $recorded = VendorNameSettings::RECORDED === $this->settings->value(new SettingContext($company), VendorNameSettings::MERGED_NAMES);
         $standing = $recorded ? [] : $this->vendors->standingFor($company, array_values($vendors));
 
-        return array_map(static function (PurchaseOrder $order) use ($seesCost, $printable, $scale, $tracking, $standing): PurchaseOrderResource {
+        $drafts = array_values(array_map(static fn (PurchaseOrder $order) => $order->getId(), array_filter($orders, static fn (PurchaseOrder $order): bool => PurchaseOrderStatus::Draft === $order->getStatus())));
+        $deleteAlone = $this->drafts->notOffered($company, 'purchase_order', $drafts);
+
+        return array_map(static function (PurchaseOrder $order) use ($seesCost, $printable, $scale, $tracking, $standing, $deleteAlone): PurchaseOrderResource {
             $resource = PurchaseOrderResource::of($order, $seesCost, $scale, $tracking);
+            $resource->offersCancel = !isset($deleteAlone[$order->getId()->toRfc4122()]);
             $resource->printable = $printable;
             $resource->vendorName = $standing[$order->getVendorId()->toRfc4122()]->name ?? $resource->vendorName;
 

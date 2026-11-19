@@ -34,6 +34,7 @@ const line: PurchaseOrderLine = {
 const order: PurchaseOrderRow = {
   id: 'o1',
   version: 2,
+  offersCancel: true,
   number: null,
   status: 'draft',
   vendorId: 'v1',

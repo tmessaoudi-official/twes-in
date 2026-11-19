@@ -349,6 +349,11 @@ export interface InvoiceRow {
   deposit: boolean;
   /** The quote it was drafted from, a deposit or the invoice of the whole; null otherwise. */
   quoteId: string | null;
+  /**
+   * Whether a draft offers to be abandoned beside its delete: false only for a draft nothing names, where the company
+   * offers it once a delete would be refused (document.drafts_offer_cancel); true on what is no draft.
+   */
+  offersCancel: boolean;
   /** The delivery notes its lines were taken from, by number; none for whoever may not open delivery notes. */
   deliveryNotes: SourceNote[];
   /** The notes that are not cancelled handing over its goods once issued, drafts included, oldest first; none unseen. */

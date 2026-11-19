@@ -18,6 +18,10 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Module\Vendors\Domain\Model\Vendor;
+use App\Module\Vendors\Domain\ValueObject\VendorProfile;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,6 +29,8 @@ use Symfony\Component\HttpFoundation\Response;
  * A draft is deleted freely: an invoice, a quote or a delivery note not yet issued, sent or validated goes with its lines
  * and their taxes, and « Restaurer » puts every row back as it was. What was issued, sent or validated is never a
  * draft, and is not found. A draft another record names (the quote it came from) stays, and cancelling it stays offered.
+ * Every draft offers its cancel beside its delete, unless the company offers it only once a delete would be refused
+ * (document.drafts_offer_cancel): then each answer, a page's rows as an item, says which drafts nothing names.
  */
 final class DraftRemovalTest extends ApiTestCase
 {
@@ -35,7 +41,14 @@ final class DraftRemovalTest extends ApiTestCase
         'delivery_note' => ['delivery_note_line', 'delivery_note_line_tax'],
     ];
 
+    /** Each document's address under its company. */
+    private const array PATHS = ['invoice' => 'invoices', 'quote' => 'quotes', 'delivery_note' => 'delivery-notes', 'purchase_order' => 'purchase-orders'];
+
+    private const array EVERY_DOCUMENT = ['invoice.read', 'invoice.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'purchase.read', 'purchase.write'];
+
     private Company $company;
+
+    private string $vendorId;
 
     private string $customerId;
 
@@ -54,9 +67,12 @@ final class DraftRemovalTest extends ApiTestCase
         $now = self::heldNow();
         $customer = Customer::create($this->company, 'C-001', self::aTunisianBusiness('Carthage Conseil'), null, $standard, [], $now);
         $product = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6', null, ProductKind::Goods, '0.500'), $piece, null, [$this->taxId('FODEC'), $this->taxId('TVA19')], $now);
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Quincaillerie du Sud'), $now);
         $this->em()->persist($customer);
         $this->em()->persist($product);
+        $this->em()->persist($vendor);
         $this->em()->flush();
+        $this->vendorId = $vendor->getId()->toRfc4122();
         $this->customerId = $customer->getId()->toRfc4122();
         $this->productId = $product->getId()->toRfc4122();
     }
@@ -149,6 +165,65 @@ final class DraftRemovalTest extends ApiTestCase
         self::assertSame($before, $this->rowsOf('invoice', $draft));
     }
 
+    /** By default every draft offers its cancel beside its delete, on its own answer and on its list's alike. */
+    public function testEveryDraftOffersItsCancelByDefault(): void
+    {
+        $this->signedIn(self::EVERY_DOCUMENT);
+        foreach ($this->aDraftOfEach() as $subject => $draft) {
+            self::assertSame([true, true], $this->offersCancel($subject, $draft), $subject);
+        }
+    }
+
+    /**
+     * Where the company offers a draft's cancel only once its delete would be refused, a draft nothing names offers its
+     * delete alone, and that delete goes; the cancel is still taken by the API, the setting changing what is offered.
+     */
+    public function testWhereTheCompanyChoseSoADraftNothingNamesOffersItsDeleteAlone(): void
+    {
+        $this->signedIn(self::EVERY_DOCUMENT);
+        $this->aCompanySetting('document.drafts_offer_cancel', 'when_delete_refused');
+        $drafts = $this->aDraftOfEach();
+        foreach ($drafts as $subject => $draft) {
+            self::assertSame([false, false], $this->offersCancel($subject, $draft), $subject);
+
+            $this->postJson($this->path('record-removals'), ['subject' => $subject, 'ids' => [$draft]]);
+
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, "$subject: what the answer says is offered is what a delete does");
+        }
+        $another = $this->anInvoice();
+        $this->postJson($this->path("invoices/$another/cancel"), null);
+        self::assertResponseIsSuccessful('the cancel itself is still accepted');
+    }
+
+    /** A draft whose delete would be refused, the one a quote went into, offers its cancel whatever the company chose. */
+    public function testADraftAnotherRecordNamesOffersItsCancelSo(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'quote.read', 'quote.write']);
+        $this->aCompanySetting('document.drafts_offer_cancel', 'when_delete_refused');
+        $quote = $this->aQuote();
+        foreach (['send' => null, 'accept' => ['answeredOn' => null], 'invoice' => null] as $step => $body) {
+            $this->postJson($this->path("quotes/$quote/$step"), $body);
+            self::assertResponseIsSuccessful($step);
+        }
+        $draft = $this->stringAt($this->json(), 'invoiceId');
+
+        self::assertSame([true, true], $this->offersCancel('invoice', $draft));
+        $this->postJson($this->path('record-removals'), ['subject' => 'invoice', 'ids' => [$draft]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'offered because its delete is refused');
+    }
+
+    /** What is no draft any more keeps its cancel as it was: a validated note is cancelled, never deleted. */
+    public function testWhatIsNoDraftKeepsItsCancel(): void
+    {
+        $this->signedIn([...self::EVERY_DOCUMENT, 'delivery_note.validate']);
+        $this->aCompanySetting('document.drafts_offer_cancel', 'when_delete_refused');
+        $note = $this->aDeliveryNote();
+        $this->postJson($this->path("delivery-notes/$note/validate"), null);
+        self::assertResponseIsSuccessful();
+
+        self::assertSame([true, true], $this->offersCancel('delivery_note', $note));
+    }
+
     /** Whoever may read invoices but not write them meets the 404 a stranger would. */
     public function testDeletingADraftTakesTheRightToWriteIt(): void
     {
@@ -207,6 +282,51 @@ final class DraftRemovalTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return $this->stringAt($this->json(), 'id');
+    }
+
+    private function aPurchaseOrder(): string
+    {
+        $this->postJson($this->path('purchase-orders'), ['vendorId' => $this->vendorId, 'lines' => [['productId' => $this->productId, 'quantity' => '10']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->json(), 'id');
+    }
+
+    /** @return array<string, string> a draft of each document, by subject */
+    private function aDraftOfEach(): array
+    {
+        return ['invoice' => $this->anInvoice(), 'quote' => $this->aQuote(), 'delivery_note' => $this->aDeliveryNote(), 'purchase_order' => $this->aPurchaseOrder()];
+    }
+
+    /**
+     * Whether the document offers its cancel, on its own answer and on the first page of its list.
+     *
+     * @return array{bool, bool}
+     */
+    private function offersCancel(string $subject, string $id): array
+    {
+        $this->getJson($this->path(self::PATHS[$subject]."/$id"));
+        self::assertResponseIsSuccessful($subject);
+        $own = $this->json()['offersCancel'] ?? null;
+        $this->getJson($this->path(self::PATHS[$subject].'?itemsPerPage=100'));
+        self::assertResponseIsSuccessful($subject);
+        $listed = null;
+        foreach ($this->arrayAt($this->json(), 'member') as $row) {
+            if (\is_array($row) && $id === ($row['id'] ?? null)) {
+                $listed = $row['offersCancel'] ?? null;
+            }
+        }
+        self::assertIsBool($own, "$subject: its answer says it");
+        self::assertIsBool($listed, "$subject: its row says it");
+
+        return [$own, $listed];
+    }
+
+    private function aCompanySetting(string $key, mixed $value): void
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? $this->company;
+        $this->em()->persist(new Setting(SettingAddress::company($company), $key, $value, self::heldNow()));
+        $this->em()->flush();
     }
 
     private function taxId(string $code): \Symfony\Component\Uid\Uuid

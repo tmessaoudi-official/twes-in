@@ -672,6 +672,15 @@ final class InvoiceResource
     public ?string $footer = null;
 
     /**
+     * Whether a draft offers its cancel beside its delete, as the company chose (document.drafts_offer_cancel): false
+     * only for a draft nothing names where the company offers the cancel once a delete would be refused. True on what
+     * is no draft, whose cancel this does not decide, and by default, so an answer never hides an action.
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public bool $offersCancel = true;
+
+    /**
      * @param bool                     $withCosts     whether the caller may read costs (product.cost.read), which each issued line froze
      * @param array<string, string>    $sourceRoom    what a draft's lines may take of their delivery note lines, by note line id
      * @param list<SourceDeliveryNote> $deliveryNotes the delivery notes its lines were taken from, each once, by number

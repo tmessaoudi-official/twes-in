@@ -19,6 +19,7 @@ const options: InvoiceOptions = {
 const draft: InvoiceRow = {
   id: 'i1',
   version: 1,
+  offersCancel: true,
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,

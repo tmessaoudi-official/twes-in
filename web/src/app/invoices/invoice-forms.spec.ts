@@ -101,6 +101,7 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
   return {
     id: 'i1',
     version: 1,
+    offersCancel: true,
     type: 'invoice',
     correctsInvoiceId: null,
     creditNoteReason: null,

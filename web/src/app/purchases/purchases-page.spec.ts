@@ -41,6 +41,7 @@ function order(id: string, patch: Partial<PurchaseOrderRow>): PurchaseOrderRow {
   return {
     id,
     version: 1,
+    offersCancel: true,
     number: null,
     status: 'draft',
     vendorId: 'v1',

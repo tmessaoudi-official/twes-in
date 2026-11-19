@@ -711,6 +711,8 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     creditNoteReason: raw.creditNoteReason ?? null,
     deposit: raw.deposit ?? false,
     quoteId: raw.quoteId ?? null,
+    // An answer that does not say it offers the cancel: none hides an action.
+    offersCancel: raw.offersCancel !== false,
     deliveryNotes: (raw.deliveryNotes ?? []).map((note) => ({
       deliveryNoteId: note.deliveryNoteId,
       number: note.number,

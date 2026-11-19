@@ -44,7 +44,9 @@
       "watermark_spread": "Répartition du filigrane",
       "watermark_spread_hint": "Sans effet quand il est imprimé une seule fois.",
       "inactive_party_at_issue": "Client ou fournisseur désactivé depuis le brouillon",
-      "inactive_party_at_issue_hint": "Un avoir est toujours émis ; un client ou un fournisseur fusionné est toujours refusé."
+      "inactive_party_at_issue_hint": "Un avoir est toujours émis ; un client ou un fournisseur fusionné est toujours refusé.",
+      "drafts_offer_cancel": "Proposer d’abandonner un brouillon",
+      "drafts_offer_cancel_hint": "Abandonner, classer sans suite ou annuler garde la trace du brouillon ; un brouillon qu’un autre document nomme ne peut être que gardé ainsi."
     },
     "credit": {
       "limit": "Plafond de crédit du client",
@@ -166,6 +168,10 @@
         "inactive_party_at_issue": {
           "allowed": "Émettre quand même",
           "refused": "Refuser l’émission"
+        },
+        "drafts_offer_cancel": {
+          "always": "Toujours, avec Supprimer",
+          "when_delete_refused": "Seulement s’il ne peut pas être supprimé"
         }
       },
       "presentation": {

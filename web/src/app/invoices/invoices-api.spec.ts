@@ -315,6 +315,16 @@ describe('InvoicesApi', () => {
     });
   });
 
+  it('reads whether a draft offers its cancel, an answer saying nothing offering it', async () => {
+    const alone = api.invoice('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1').flush({ ...issued, offersCancel: false });
+    expect(await alone).toMatchObject({ offersCancel: false });
+
+    const unsaid = api.invoice('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1').flush({ ...issued, offersCancel: undefined });
+    expect(await unsaid).toMatchObject({ offersCancel: true });
+  });
+
   it('reads who received the goods and whether the customer’s invoices name them; a list row reads no rule', async () => {
     const named = api.invoice('c1', 'i1');
     http.expectOne('/api/companies/c1/invoices/i1').flush({

@@ -17,9 +17,11 @@ use App\Module\DeliveryNotes\Application\Invoicing\InvoicedLines;
 use App\Module\DeliveryNotes\Application\Quotes\DeliverableQuotes;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Records\Application\DraftCancels;
 use App\Settings\Application\ReadSetting;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\Uid\Uuid;
@@ -36,7 +38,7 @@ final readonly class DeliveryNoteView
     private const string QUOTES = 'quotes';
     private const string QUOTE_READ = 'quote.read';
 
-    public function __construct(private DeliveryNoteTotals $totals, private InvoicedLines $invoiced, private CompanyGuard $guard, private ModuleStates $modules, private DeliverableQuotes $quotes, private DeliverableInvoices $deliverable, private ReadSetting $settings)
+    public function __construct(private DeliveryNoteTotals $totals, private InvoicedLines $invoiced, private CompanyGuard $guard, private ModuleStates $modules, private DeliverableQuotes $quotes, private DeliverableInvoices $deliverable, private ReadSetting $settings, private DraftCancels $drafts)
     {
     }
 
@@ -65,8 +67,15 @@ final readonly class DeliveryNoteView
 
         $quoteOfLine = $this->quotesDelivered($notes);
         $invoiceOfLine = $mayOpen ? $this->invoicesDelivered($notes) : [];
+        $drafts = array_values(array_map(static fn (DeliveryNote $note) => $note->getId(), array_filter($notes, static fn (DeliveryNote $note): bool => DeliveryNoteStatus::Draft === $note->getStatus())));
+        $deleteAlone = $this->drafts->notOffered($company, 'delivery_note', $drafts);
 
-        return array_map(fn (DeliveryNote $note): DeliveryNoteResource => DeliveryNoteResource::of($note, $this->totals->of($note), self::carryingNote($note, $carrying), self::quoteOf($note, $quoteOfLine), self::invoiceOf($note, $invoiceOfLine), $withReceiverRule ? DeliveryNoteSettings::receiverRule($this->settings, $note) : null), $notes);
+        return array_map(function (DeliveryNote $note) use ($carrying, $quoteOfLine, $invoiceOfLine, $withReceiverRule, $deleteAlone): DeliveryNoteResource {
+            $resource = DeliveryNoteResource::of($note, $this->totals->of($note), self::carryingNote($note, $carrying), self::quoteOf($note, $quoteOfLine), self::invoiceOf($note, $invoiceOfLine), $withReceiverRule ? DeliveryNoteSettings::receiverRule($this->settings, $note) : null);
+            $resource->offersCancel = !isset($deleteAlone[$note->getId()->toRfc4122()]);
+
+            return $resource;
+        }, $notes);
     }
 
     /**

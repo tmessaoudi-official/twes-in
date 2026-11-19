@@ -523,6 +523,8 @@ function toNote(
     version: raw.version ?? 0,
     number: raw.number ?? null,
     status: DELIVERY_NOTE_STATUSES.find((status) => status === raw.status) ?? 'draft',
+    // An answer that does not say it offers the cancel: none hides an action.
+    offersCancel: raw.offersCancel !== false,
     customerId: raw.customerId ?? '',
     establishmentId: raw.establishmentId ?? null,
     recordedCustomerName: raw.customerSnapshot?.name ?? null,

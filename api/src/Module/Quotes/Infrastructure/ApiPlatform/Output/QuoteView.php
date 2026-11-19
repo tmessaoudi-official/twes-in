@@ -20,6 +20,7 @@ use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Records\Application\DraftCancels;
 use App\Settings\Application\ReadSetting;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Psr\Clock\ClockInterface;
@@ -43,6 +44,7 @@ final readonly class QuoteView
         private CompanyGuard $guard,
         private ModuleStates $modules,
         private ReadSetting $settings,
+        private DraftCancels $drafts,
     ) {
     }
 
@@ -68,8 +70,10 @@ final readonly class QuoteView
         $counts = $this->manage->attachmentCounts($company, $quotes);
         $deposits = $this->invoices->depositsOf($company, array_map(static fn (Quote $quote) => $quote->getId(), $quotes));
         $deliveries = $this->deliveriesOf($quotes);
+        $drafts = array_values(array_map(static fn (Quote $quote) => $quote->getId(), array_filter($quotes, static fn (Quote $quote): bool => QuoteStatus::Draft === $quote->getStatus())));
+        $deleteAlone = $this->drafts->notOffered($company, 'quote', $drafts);
 
-        return array_map(fn (Quote $quote): QuoteResource => QuoteResource::of(
+        return array_map(fn (Quote $quote): QuoteResource => self::offeringCancel(!isset($deleteAlone[$quote->getId()->toRfc4122()]), QuoteResource::of(
             $quote,
             $this->totals->of($quote),
             $this->today($quote),
@@ -77,7 +81,7 @@ final readonly class QuoteView
             $deposits[$quote->getId()->toRfc4122()] ?? [],
             $deliveries[$quote->getId()->toRfc4122()] ?? null,
             $withReceiverRule ? QuoteSettings::receiverRule($this->settings, $quote->getCustomer()) : null,
-        ), $quotes);
+        )), $quotes);
     }
 
     /**
@@ -104,5 +108,12 @@ final readonly class QuoteView
     private function today(Quote $quote): \DateTimeImmutable
     {
         return new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($quote->getCompany()->getTimezone()))->format('Y-m-d'), new \DateTimeZone('UTC'));
+    }
+
+    private static function offeringCancel(bool $offered, QuoteResource $resource): QuoteResource
+    {
+        $resource->offersCancel = $offered;
+
+        return $resource;
     }
 }

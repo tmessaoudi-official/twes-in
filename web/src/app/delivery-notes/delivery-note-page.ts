@@ -712,9 +712,20 @@ export class DeliveryNotePage {
     await this.router.navigate(['/delivery-notes']);
   }
 
+  /**
+   * A draft or a validated note is cancelled by whoever validates notes. A draft's cancel is left out where the company
+   * offers it only once a delete is refused and the API says nothing names it, but only for whoever is offered its delete:
+   * a validator who may not write notes keeps the one way to end it.
+   */
   protected readonly canCancel = computed(() => {
-    const status = this.current()?.status;
-    return (status === 'draft' || status === 'validated') && this.mayValidate();
+    const current = this.current();
+    const status = current?.status;
+    if (status === 'validated') return this.mayValidate();
+    return (
+      status === 'draft' &&
+      this.mayValidate() &&
+      (current?.offersCancel !== false || !this.mayWrite())
+    );
   });
 
   protected async openOnMap(): Promise<void> {

@@ -19,6 +19,7 @@ const options: DeliveryNoteOptions = {
 const draft: DeliveryNoteRow = {
   id: 'n1',
   version: 1,
+  offersCancel: true,
   number: null,
   status: 'draft',
   customerId: 'k1',

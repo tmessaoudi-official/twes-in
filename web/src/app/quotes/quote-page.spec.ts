@@ -110,6 +110,7 @@ const products: ProductOption[] = [
 const draft: QuoteRow = {
   id: 'q1',
   version: 1,
+  offersCancel: true,
   number: null,
   status: 'draft',
   expired: false,
@@ -1586,6 +1587,14 @@ describe('QuotePage', () => {
       quote.set(draft);
       await open('q1');
       expect(await menuEntry('delete')).toBeNull();
+    });
+
+    it('offers a draft nothing names its delete alone where the company offers its cancel once a delete is refused', async () => {
+      quote.set({ ...draft, offersCancel: false });
+      await open('q1');
+
+      expect(await menuEntry('delete')).not.toBeNull();
+      expect(document.body.querySelector('[data-testid="document-menu-cancel"]')).toBeNull();
     });
   });
 });

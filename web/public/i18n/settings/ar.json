@@ -44,7 +44,9 @@
       "watermark_spread": "توزيع العلامة المائية",
       "watermark_spread_hint": "لا أثر له حين تُطبع مرة واحدة.",
       "inactive_party_at_issue": "حريف أو مزوّد عُطِّل منذ المسودة",
-      "inactive_party_at_issue_hint": "تُصدَر الفاتورة التعديلية دائمًا، ويُرفض الحريف أو المزوّد المدمج دائمًا."
+      "inactive_party_at_issue_hint": "تُصدَر الفاتورة التعديلية دائمًا، ويُرفض الحريف أو المزوّد المدمج دائمًا.",
+      "drafts_offer_cancel": "اقتراح التخلّي عن المسودة",
+      "drafts_offer_cancel_hint": "التخلّي أو التصنيف دون متابعة أو الإلغاء يُبقي أثر المسودة، والمسودة التي تذكرها وثيقة أخرى لا تُبقى إلا بهذه الطريقة."
     },
     "credit": {
       "limit": "سقف ائتمان الحريف",
@@ -166,6 +168,10 @@
         "inactive_party_at_issue": {
           "allowed": "الإصدار رغم ذلك",
           "refused": "رفض الإصدار"
+        },
+        "drafts_offer_cancel": {
+          "always": "دائمًا، مع الحذف",
+          "when_delete_refused": "فقط إن تعذّر حذفها"
         }
       },
       "presentation": {

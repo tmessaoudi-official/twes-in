@@ -554,7 +554,8 @@ export class QuotePage {
         destructive: true,
         disabled: busy,
         run: () => void this.cancel(),
-        shown: status === 'draft' && this.mayWrite(),
+        // Beside the delete, which takes the same right, unless the company offers it only once a delete is refused.
+        shown: status === 'draft' && this.mayWrite() && this.current()?.offersCancel !== false,
         confirm: {
           kind: 'definitif',
           title: 'quotes.actions.cancel_title',

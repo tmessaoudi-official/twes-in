@@ -20,8 +20,10 @@ use App\Module\Invoices\Application\SourceDeliveryNote;
 use App\Module\Invoices\Application\SourceDeliveryNoteLines;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Model\InvoiceLine;
+use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Records\Application\DraftCancels;
 use App\Settings\Application\ReadSetting;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -46,6 +48,7 @@ final readonly class InvoiceView
         private ModuleStates $modules,
         private DeliveryNotesOfInvoices $deliveries,
         private ReadSetting $settings,
+        private DraftCancels $drafts,
     ) {
     }
 
@@ -59,7 +62,10 @@ final readonly class InvoiceView
     {
         $rule = InvoiceReceiverSettings::ruleFor($this->settings, $invoice->getCustomer());
 
-        return $this->delivered(InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts, $sourceRoom, $this->notesOf($company, [$invoice])[0], $rule), $invoice, $this->deliveriesOf($company, [$invoice]));
+        $resource = $this->delivered(InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts, $sourceRoom, $this->notesOf($company, [$invoice])[0], $rule), $invoice, $this->deliveriesOf($company, [$invoice]));
+        $resource->offersCancel = [] === $this->deleteAlone($company, [$invoice]);
+
+        return $resource;
     }
 
     /**
@@ -71,8 +77,28 @@ final readonly class InvoiceView
     {
         $notes = $this->notesOf($company, $invoices);
         $deliveries = $this->deliveriesOf($company, $invoices);
+        $deleteAlone = $this->deleteAlone($company, $invoices);
 
-        return array_map(fn (Invoice $invoice, array $its): InvoiceResource => $this->delivered(InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts, [], $its), $invoice, $deliveries), $invoices, $notes);
+        return array_map(function (Invoice $invoice, array $its) use ($withCosts, $deliveries, $deleteAlone): InvoiceResource {
+            $resource = $this->delivered(InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts, [], $its), $invoice, $deliveries);
+            $resource->offersCancel = !isset($deleteAlone[$invoice->getId()->toRfc4122()]);
+
+            return $resource;
+        }, $invoices, $notes);
+    }
+
+    /**
+     * The drafts among the invoices whose cancel the company does not offer beside their delete (DraftCancels).
+     *
+     * @param list<Invoice> $invoices
+     *
+     * @return array<string, true>
+     */
+    private function deleteAlone(Company $company, array $invoices): array
+    {
+        $drafts = array_values(array_map(static fn (Invoice $invoice) => $invoice->getId(), array_filter($invoices, static fn (Invoice $invoice): bool => InvoiceStatus::Draft === $invoice->getStatus())));
+
+        return $this->drafts->notOffered($company, 'invoice', $drafts);
     }
 
     /**

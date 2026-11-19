@@ -529,6 +529,15 @@ final class QuoteResource
     #[Groups([self::READ])]
     public string $total = '0';
 
+    /**
+     * Whether a draft offers its cancel beside its delete, as the company chose (document.drafts_offer_cancel): false
+     * only for a draft nothing names where the company offers the cancel once a delete would be refused. True on what
+     * is no draft, whose cancel this does not decide, and by default, so an answer never hides an action.
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public bool $offersCancel = true;
+
     /** @param \DateTimeImmutable $today the company's day, which says whether a sent quote has expired */
     /** @param list<QuoteDeposit> $deposits */
     public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount, array $deposits = [], ?QuoteDeliveries $deliveries = null, ?ReceiverRule $receiverRule = null): self

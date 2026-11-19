@@ -38,6 +38,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
         private Transactions $transactions,
         private ClockInterface $clock,
         private RecordsUndoWindow $windows,
+        private RecordUses $uses,
     ) {
     }
 
@@ -67,7 +68,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
                     throw new \LogicException(\sprintf('%s.%s is %s, which deleting a %s does not handle yet.', $reference->table, $reference->column, $reference->onDelete->value, $subject->table));
                 }
             }
-            $used = $this->store->uses($company->getId(), $chosen, self::of($naming, RecordUse::Uses));
+            $used = $this->uses->of($company->getId(), $subject->table, $chosen);
             if ([] !== $used) {
                 $records = [];
                 foreach ($chosen as $id) {
