@@ -329,6 +329,12 @@
           "refused": "Refused",
           "without_prices": "Printed without prices"
         }
+      },
+      "customer": {
+        "merge_main_contact": {
+          "kept_main_wins": "Keep the one of the record kept",
+          "refuse_while_both_have_one": "Refuse the merge"
+        }
       }
     },
     "overrides": {
@@ -445,6 +451,10 @@
     "members": {
       "admin_grants_admin": "Admins give the admin role",
       "admin_grants_admin_hint": "Otherwise only owners make someone an admin, by invitation or a change of role; admins still give the other roles."
+    },
+    "customer": {
+      "merge_main_contact": "Merging customers that each have a primary contact",
+      "merge_main_contact_hint": "Either way a customer has one primary contact. Undoing the merge puts each one back."
     }
   }
 }

@@ -128,7 +128,8 @@
       "cost_pending": "Rien n’est fusionné, car une réception de « {{reference}} » attend son coût. Saisissez-le d’abord.",
       "costs_unseen": "Rien n’est fusionné, car du stock passe dans la fiche gardée à sa valeur, et seule une personne qui voit les coûts peut le fusionner.",
       "serial_held": "Rien n’est fusionné, car la fiche gardée a déjà le numéro de série « {{code}} ».",
-      "lot_dated_otherwise": "Rien n’est fusionné, car le lot « {{code}} » a une autre date dans la fiche gardée, et un lot n’a qu’une date."
+      "lot_dated_otherwise": "Rien n’est fusionné, car le lot « {{code}} » a une autre date dans la fiche gardée, et un lot n’a qu’une date.",
+      "main_contacts": "Rien n’est fusionné, car plusieurs de ces fiches ont un contact principal, et l’entreprise a choisi de ne pas les fusionner ainsi. Laissez un seul contact principal parmi elles, puis fusionnez."
     }
   }
 }

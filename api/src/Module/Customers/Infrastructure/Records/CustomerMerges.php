@@ -9,20 +9,27 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Records;
 
+use App\Module\Customers\Application\CustomerMergeSettings;
 use App\Records\Application\Merge\MergeActor;
 use App\Records\Application\Merge\MergeChanges;
 use App\Records\Application\Merge\MergeEffects;
+use App\Records\Application\Merge\MergeRefused;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * A customer has one main contact at most, so the contacts that move to the customer kept bring no second one: the
  * kept customer's own stays the main one, or, where it has none, the first merged away customer's, in the order chosen.
- * The others are noted under the merge, so undoing it makes each the main contact of its customer again.
+ * The others are noted under the merge, so undoing it makes each the main contact of its customer again. Where the
+ * company chose `customer.merge_main_contact` « refuse », customers of which more than one has a main contact are not
+ * merged at all, until one main contact is left among them.
  */
 final readonly class CustomerMerges implements MergeEffects
 {
-    public function __construct(private Connection $connection, private MergeChanges $changes)
+    public function __construct(private Connection $connection, private MergeChanges $changes, private ReadSetting $settings, private CompanyRepository $companies)
     {
     }
 
@@ -34,6 +41,9 @@ final readonly class CustomerMerges implements MergeEffects
     public function merging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, MergeActor $actor, \DateTimeImmutable $at): void
     {
         $main = $this->mainContacts($companyId, [$keptId, ...$mergedIds]);
+        if (\count($main) > 1 && $this->refusedWhileBothHaveOne($companyId)) {
+            throw new MergeRefused('main_contacts', 'More than one of these customers has a main contact, and the company chose not to merge them so: leave one main contact among them first.');
+        }
         $staying = $main[$keptId->toRfc4122()] ?? null;
         $demoted = [];
         foreach ($mergedIds as $mergedId) {
@@ -53,6 +63,13 @@ final readonly class CustomerMerges implements MergeEffects
     public function unmerging(Uuid $companyId, Uuid $mergeId, Uuid $keptId, array $mergedIds, ?Uuid $actorUserId, \DateTimeImmutable $at): void
     {
         // Undoing the merge puts each contact back, main or not, with every link it noted.
+    }
+
+    private function refusedWhileBothHaveOne(Uuid $companyId): bool
+    {
+        $company = $this->companies->ofId($companyId) ?? throw new \LogicException('A merge acts for a company that exists.');
+
+        return CustomerMergeSettings::REFUSE_WHILE_BOTH_HAVE_ONE === $this->settings->text(new SettingContext($company), CustomerMergeSettings::MAIN_CONTACT);
     }
 
     /**

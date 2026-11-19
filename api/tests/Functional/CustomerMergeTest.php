@@ -117,6 +117,50 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertEqualsCanonicalizing([$merged, $other], $connection->fetchFirstColumn("SELECT entity_id::text FROM audit_log WHERE action = 'customer.merged'"));
     }
 
+    /**
+     * Where the company chose so, customers that each have a main contact are not merged, rather than the kept one's
+     * winning: nothing moves until the person leaves one main contact among them, after which the merge goes through.
+     */
+    public function testWhereTheCompanyChoseSoCustomersThatEachHaveAMainContactAreNotMerged(): void
+    {
+        $this->signedIn();
+        [$kept, $merged, $other] = [$this->customerId('C-001'), $this->customerId('C-002'), $this->customerId('C-003')];
+        $keptPrimary = $this->aContact($kept, 'Amel', primary: true);
+        $mergedPrimary = $this->aContact($merged, 'Karim', primary: true);
+        $this->aCompanySetting('customer.merge_main_contact', 'refuse_while_both_have_one');
+
+        $this->postJson($this->path('record-merges'), ['subject' => 'customer', 'keptId' => $kept, 'ids' => [$merged, $other]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['error' => 'merge_refused', 'reason' => 'main_contacts'], $this->json());
+        $connection = $this->em()->getConnection();
+        self::assertSame([null, null], [$connection->fetchOne('SELECT merged_into_id FROM customer WHERE id = ?', [$merged]), $connection->fetchOne('SELECT merged_into_id FROM customer WHERE id = ?', [$other])]);
+        self::assertSame([$kept, $merged], [$this->customerOf('contact', $keptPrimary), $this->customerOf('contact', $mergedPrimary)]);
+        self::assertSame([true, true], [$connection->fetchOne('SELECT is_primary FROM contact WHERE id = ?', [$keptPrimary]), $connection->fetchOne('SELECT is_primary FROM contact WHERE id = ?', [$mergedPrimary])]);
+
+        $connection->executeStatement('UPDATE contact SET is_primary = false WHERE id = ?', [$mergedPrimary]);
+        $this->merged($kept, [$merged, $other]);
+
+        self::assertSame([$kept, $kept], [$this->customerOf('contact', $keptPrimary), $this->customerOf('contact', $mergedPrimary)]);
+        self::assertSame([true, false], [$connection->fetchOne('SELECT is_primary FROM contact WHERE id = ?', [$keptPrimary]), $connection->fetchOne('SELECT is_primary FROM contact WHERE id = ?', [$mergedPrimary])]);
+    }
+
+    /** The one main contact among the customers merged stays main under either choice, whichever customer brought it. */
+    public function testOneMainContactAmongTheCustomersIsMergedUnderEitherChoice(): void
+    {
+        $this->signedIn();
+        foreach (['kept_main_wins' => ['C-001', 'C-002'], 'refuse_while_both_have_one' => ['C-004', 'C-003']] as $choice => [$keptNumber, $mergedNumber]) {
+            [$kept, $merged] = [$this->customerId($keptNumber), $this->customerId($mergedNumber)];
+            $mergedPrimary = $this->aContact($merged, 'Karim '.$choice, primary: true);
+            $this->aCompanySetting('customer.merge_main_contact', $choice);
+
+            $this->merged($kept, [$merged]);
+
+            self::assertSame($kept, $this->customerOf('contact', $mergedPrimary), $choice);
+            self::assertTrue($this->em()->getConnection()->fetchOne('SELECT is_primary FROM contact WHERE id = ?', [$mergedPrimary]), $choice);
+        }
+    }
+
     public function testADraftPutBackFromTheBinAfterItsCustomerWasMergedAwayTakesNoNumberUntilItNamesTheCustomerKept(): void
     {
         // The bin keeps the draft as it was deleted, so a merge made meanwhile never moved it: numbered as it stands, it
@@ -833,6 +877,15 @@ final class CustomerMergeTest extends ApiTestCase
         // A request in between rebooted the kernel: the company is read again from this entity manager.
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? $this->company;
         $this->em()->persist(new Setting(SettingAddress::customer($company, Uuid::fromString($customer)), $key, $value, self::heldNow()));
+        $this->em()->flush();
+    }
+
+    /** The company's own choice, written as its settings page saves one, replacing any earlier. */
+    private function aCompanySetting(string $key, mixed $value): void
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? $this->company;
+        $this->em()->getConnection()->executeStatement("DELETE FROM setting WHERE company_id = ? AND level = 'company' AND key = ?", [$company->getId()->toRfc4122(), $key]);
+        $this->em()->persist(new Setting(SettingAddress::company($company), $key, $value, self::heldNow()));
         $this->em()->flush();
     }
 

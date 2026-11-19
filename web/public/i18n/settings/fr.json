@@ -329,6 +329,12 @@
           "refused": "Refusé",
           "without_prices": "Imprimé sans prix"
         }
+      },
+      "customer": {
+        "merge_main_contact": {
+          "kept_main_wins": "Garder celui de la fiche gardée",
+          "refuse_while_both_have_one": "Refuser la fusion"
+        }
       }
     },
     "overrides": {
@@ -445,6 +451,10 @@
     "members": {
       "admin_grants_admin": "L’admin donne le rôle admin",
       "admin_grants_admin_hint": "Sinon, seuls les propriétaires font d’un membre un admin, par invitation ou par changement de rôle ; l’admin donne toujours les autres rôles."
+    },
+    "customer": {
+      "merge_main_contact": "Fusion de clients ayant chacun un contact principal",
+      "merge_main_contact_hint": "Dans les deux cas, une fiche n’a qu’un contact principal. Annuler la fusion remet chacun à sa place."
     }
   }
 }

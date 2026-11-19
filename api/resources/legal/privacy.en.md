@@ -27,7 +27,7 @@
 
 - Account data, for as long as the account exists; after it is closed: to be completed.
 - Invoices and accounting records, ten years.
-- The activity journal: twelve months, or up to three years if the company chooses. It is read by the members whose role allows it (the owner and the administrator by default); the address you sign in from is shown only to whoever manages the team.
+- The activity journal: twelve months, or up to three years if the company chooses. It is read by the members whose role allows it (the owner and the administrator by default); the address you sign in from is shown only to the roles given that permission, by default those that manage the team.
 
 ## Your rights
 

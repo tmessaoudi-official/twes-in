@@ -279,10 +279,15 @@ describe('RecordDeletes', () => {
     expect(lastParams()).toEqual({ reference: 'VIS-6' });
     api.merge.mockRejectedValueOnce(new RemovalRefused('merge_refused', [], null, [], 'weather'));
     expect(await deletes.merge('c1', 'product', KEPT, MERGE.items)).toBe(false);
+    api.merge.mockRejectedValueOnce(
+      new RemovalRefused('merge_refused', [], null, [], 'main_contacts'),
+    );
+    expect(await deletes.merge('c1', 'customer', KEPT, MERGE.items)).toBe(false);
 
     expect(failureToasts()).toEqual([
       'records.merge_refused.cost_pending',
       'records.errors.merge_refused',
+      'records.merge_refused.main_contacts',
     ]);
   });
 

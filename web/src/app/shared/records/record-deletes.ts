@@ -53,13 +53,15 @@ const MISMATCH_COLUMNS = ['identifiers'] as const;
 
 /**
  * What a module refuses a merge for, each said in words: a receipt waiting for its cost, goods only whoever reads
- * costs carries, a serial number the record kept already holds, a lot of one code dated otherwise.
+ * costs carries, a serial number the record kept already holds, a lot of one code dated otherwise, customers that
+ * each have a main contact where the company chose not to merge them so.
  */
 const MERGE_REFUSALS = [
   'cost_pending',
   'costs_unseen',
   'serial_held',
   'lot_dated_otherwise',
+  'main_contacts',
 ] as const;
 
 /**

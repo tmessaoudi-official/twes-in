@@ -128,7 +128,8 @@
       "cost_pending": "Nothing is merged, because a receipt of “{{reference}}” is waiting for its cost. Enter it first.",
       "costs_unseen": "Nothing is merged, because stock goes to the record kept at its value, and only someone who sees costs can merge it.",
       "serial_held": "Nothing is merged, because the record kept already has the serial number “{{code}}”.",
-      "lot_dated_otherwise": "Nothing is merged, because the lot “{{code}}” has another date in the record kept, and a lot has one date."
+      "lot_dated_otherwise": "Nothing is merged, because the lot “{{code}}” has another date in the record kept, and a lot has one date.",
+      "main_contacts": "Nothing is merged, because more than one of these records has a primary contact, and the company chose not to merge them so. Leave one primary contact among them, then merge."
     }
   }
 }
