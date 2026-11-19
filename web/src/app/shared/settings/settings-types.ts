@@ -22,8 +22,9 @@ export type SettingLevel =
   | 'role'
   | 'user';
 
+/** `choices`: several of a setting's choices, or none, a list in the order they are declared. */
 export type SettingType =
-  'bool' | 'int' | 'decimal' | 'text' | 'enum' | 'money' | 'colour' | 'json';
+  'bool' | 'int' | 'decimal' | 'text' | 'enum' | 'choices' | 'money' | 'colour' | 'json';
 
 export interface SettingLevelValue {
   level: SettingLevel;

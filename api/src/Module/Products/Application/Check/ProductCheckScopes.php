@@ -7,13 +7,16 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Application;
+namespace App\Module\Products\Application\Check;
 
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
 use App\Module\Products\Domain\ValueObject\ProductCheckScope;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Domain\Exception\InvalidFilter;
 use App\Tenancy\Domain\Model\Company;
 
@@ -26,16 +29,23 @@ final readonly class ProductCheckScopes
     /** The module that keeps stock, named by its key: products never name another module's classes. */
     public const string STOCK_MODULE = 'inventory';
 
-    public function __construct(private ModuleStates $modules, private ExcludedTaxFamilies $regimes)
+    public function __construct(private ModuleStates $modules, private ExcludedTaxFamilies $regimes, private ReadSetting $settings)
     {
     }
 
+    /**
+     * Less what the company leaves out (article.check_left_out): read through its definition, which offers only the
+     * reasons that may be left out and skips a stored value outside them.
+     */
     public function of(Company $company, bool $seesCosts): ProductCheckScope
     {
+        $leftOut = array_map(ProductCheckReason::from(...), $this->settings->choices(new SettingContext($company), ProductCheckSettings::LEFT_OUT));
+
         return new ProductCheckScope(
             keepsStock: $this->modules->isEnabled($company->getId(), self::STOCK_MODULE),
             chargesVat: !\in_array(TaxFamily::Vat, $this->regimes->companyRegime($company)->excludedFamilies ?? [], true),
             seesCosts: $seesCosts,
+            leftOut: $leftOut,
         );
     }
 

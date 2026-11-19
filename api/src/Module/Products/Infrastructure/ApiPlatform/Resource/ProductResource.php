@@ -16,7 +16,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
-use App\Module\Products\Application\ProductCheckInput;
+use App\Module\Products\Application\Check\ProductCheckInput;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;

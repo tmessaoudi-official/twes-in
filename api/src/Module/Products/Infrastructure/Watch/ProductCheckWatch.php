@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Watch;
 
-use App\Module\Products\Application\ProductCheckScopes;
+use App\Module\Products\Application\Check\ProductCheckScopes;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\ProductCheckReason;

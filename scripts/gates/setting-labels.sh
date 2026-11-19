@@ -13,7 +13,8 @@
 # they fail independently, so every setting of a chain can be labelled while the heading above them is a raw key.
 # Adding the `venue` chain was exactly that shape.
 #
-# And each CHOICE of an enum setting, which the page's select draws by `settings.choices.<key>.<choice>`: the third
+# And each CHOICE of an enum setting, or of one holding several choices, which the page's select draws by
+# `settings.choices.<key>.<choice>` (read from every literal `choices: [...]`, whatever the type): the third
 # independent half, found when two presentation selects showed raw keys on the company settings page (2026-09-23).
 #
 # It discovers the keys from the source rather than listing them, and carries floors so that a pattern which stops

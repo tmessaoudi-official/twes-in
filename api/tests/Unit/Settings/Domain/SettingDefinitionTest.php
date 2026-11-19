@@ -35,6 +35,9 @@ final class SettingDefinitionTest extends TestCase
         yield 'text longer than allowed' => [self::of(SettingType::Text, '', maxLength: 5), 'abcdef', 'invalid_text', ['max' => 5]];
         yield 'text outside its pattern' => [self::of(SettingType::Text, 'C62', pattern: '/^[A-Z0-9]{3}$/'), 'kilo', 'invalid_unit_code', []];
         yield 'a choice nobody declared' => [self::of(SettingType::Enum, 'light', choices: ['light', 'dark']), 'purple', 'unknown_choice', []];
+        yield 'a choice nobody declared among several' => [self::of(SettingType::Choices, [], choices: ['light', 'dark']), ['dark', 'purple'], 'unknown_choice', []];
+        yield 'one choice where several are listed' => [self::of(SettingType::Choices, [], choices: ['light', 'dark']), 'dark', 'unknown_choice', []];
+        yield 'choices named by key' => [self::of(SettingType::Choices, [], choices: ['light', 'dark']), ['first' => 'dark'], 'unknown_choice', []];
         yield 'a colour name' => [self::of(SettingType::Colour, '#1f6feb'), 'blue', 'not_a_colour', []];
         yield 'a three-digit colour' => [self::of(SettingType::Colour, '#1f6feb'), '#fff', 'not_a_colour', []];
         yield 'a scalar for json' => [self::of(SettingType::Json, null), 'x', 'invalid_value', []];
@@ -82,6 +85,8 @@ final class SettingDefinitionTest extends TestCase
         self::assertNull(self::of(SettingType::Text, '', maxLength: 5)->refusal('abcde'));
         self::assertNull(self::of(SettingType::Text, 'C62', pattern: '/^[A-Z0-9]{3}$/')->refusal('KGM'));
         self::assertNull(self::of(SettingType::Enum, 'light', choices: ['light', 'dark'])->refusal('dark'));
+        self::assertNull(self::of(SettingType::Choices, [], choices: ['light', 'dark'])->refusal([]));
+        self::assertNull(self::of(SettingType::Choices, [], choices: ['light', 'dark'])->refusal(['dark', 'light']));
         self::assertNull(self::of(SettingType::Colour, '#1f6feb')->refusal('#A0B1C2'));
         self::assertNull(self::of(SettingType::Json, null)->refusal(['hidden' => ['email']]));
         self::assertNull(self::of(SettingType::Json, null)->refusal([]));
@@ -115,6 +120,22 @@ final class SettingDefinitionTest extends TestCase
     {
         self::assertSame('#a0b1c2', self::of(SettingType::Colour, '#1f6feb')->normalize('#A0B1C2'));
         self::assertSame('dark', self::of(SettingType::Enum, 'light', choices: ['light', 'dark'])->normalize('dark'));
+    }
+
+    /** Several choices are kept once each, in the order the setting declares them, whatever order they were ticked in. */
+    public function testSeveralChoicesAreKeptOnceEachInTheirDeclaredOrder(): void
+    {
+        $several = self::of(SettingType::Choices, [], choices: ['light', 'dark', 'dim']);
+
+        self::assertSame(['light', 'dim'], $several->normalize(['dim', 'light', 'dim']));
+        self::assertSame([], $several->normalize([]));
+        self::assertSame([['unknown_choice', []]], array_map(static fn ($refusal): array => [$refusal->reason, $refusal->params], $several->refusals()));
+    }
+
+    public function testSeveralChoicesDeclareTheirChoices(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        self::of(SettingType::Choices, []);
     }
 
     public function testADefinitionWhoseDefaultItWouldRefuseCannotBeDeclared(): void

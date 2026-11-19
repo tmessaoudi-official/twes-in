@@ -56,4 +56,30 @@ final readonly class ReadSetting
 
         return $value;
     }
+
+    /**
+     * A setting declared as several choices, which always holds a list of them, none included: its declared default
+     * when nobody chose.
+     *
+     * @return list<string>
+     *
+     * @throws UnknownSetting
+     * @throws \UnexpectedValueException when the key is not a setting of several choices, which is a bug in the caller
+     */
+    public function choices(SettingContext $context, string $key): array
+    {
+        $value = $this->value($context, $key);
+        if (!\is_array($value)) {
+            throw new \UnexpectedValueException(\sprintf('%s holds %s, not a list of choices.', $key, get_debug_type($value)));
+        }
+        $choices = [];
+        foreach ($value as $one) {
+            if (!\is_string($one)) {
+                throw new \UnexpectedValueException(\sprintf('%s holds %s among its choices.', $key, get_debug_type($one)));
+            }
+            $choices[] = $one;
+        }
+
+        return $choices;
+    }
 }

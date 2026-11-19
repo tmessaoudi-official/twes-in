@@ -60,7 +60,9 @@
       "reference_format": "Format des références générées",
       "reference_format_hint": "Lettres, chiffres et . _ / - autour d’un seul {SEQ} ou {SEQ:n} (n chiffres) : ART-{SEQ:5} donne ART-00042. Une catégorie peut avoir le sien ; le numéro vient d’un seul compteur de l’entreprise.",
       "price_on_cost_change": "Prix après un nouveau coût",
-      "price_on_cost_change_hint": "Quand une réception change le prix de revient d’un article sous son prix de vente : proposer d’ajuster le prix (la marge s’affiche jusqu’à ce que quelqu’un décide), garder le prix, ou suivre la marge."
+      "price_on_cost_change_hint": "Quand une réception change le prix de revient d’un article sous son prix de vente : proposer d’ajuster le prix (la marge s’affiche jusqu’à ce que quelqu’un décide), garder le prix, ou suivre la marge.",
+      "check_left_out": "Raisons non signalées",
+      "check_left_out_hint": "Ce qu’un article ne signale pas dans « À vérifier » : rien n’est coché par défaut. Une unité, un prix ou un stock qu’un import n’a pas pu confirmer reste toujours signalé."
     },
     "stock": {
       "cost_on_receive": "Ce que fait une réception de stock au coût d’un produit",
@@ -142,6 +144,14 @@
           "offer": "Proposer d’ajuster le prix",
           "keep": "Garder le prix",
           "follow": "Suivre la marge"
+        },
+        "check_left_out": {
+          "price_missing": "Prix de vente manquant",
+          "vendor_missing": "Fournisseur manquant",
+          "vat_missing": "TVA manquante",
+          "cost_missing": "Prix de revient manquant",
+          "barcode_missing": "Code-barres manquant",
+          "category_missing": "Catégorie manquante"
         }
       },
       "document": {

@@ -120,6 +120,48 @@ describe('settings at a level', () => {
     expect(control.errors?.['pattern'], 'digits other than 0 to 9').toBeTruthy();
   });
 
+  // C88: several of a setting's choices are ticked in one field, each named by its choice's label.
+  it('asks a setting of several choices as a multiple select, changed only when what it holds changes', () => {
+    const leftOut = row({
+      key: 'article.check_left_out',
+      chain: 'articles',
+      type: 'choices',
+      defaultValue: [],
+      value: ['vendor_missing'],
+      levels: [{ level: 'company', value: ['vendor_missing'] }],
+      choices: ['price_missing', 'vendor_missing'],
+      overridableLevels: ['company'],
+      writableLevels: ['company'],
+    });
+    const company = { id: 'company', level: 'company', chains: ['articles'] } as const;
+    const [field] = settingsForm([leftOut], company).sections.flatMap((section) => section.fields);
+
+    expect(field).toMatchObject({
+      id: 'article__check_left_out',
+      kind: 'multiselect',
+      options: [
+        { value: 'price_missing', label: 'settings.choices.article.check_left_out.price_missing' },
+        {
+          value: 'vendor_missing',
+          label: 'settings.choices.article.check_left_out.vendor_missing',
+        },
+      ],
+    });
+    expect(field?.required).toBeFalsy();
+    const values = settingsValues([leftOut], 'company');
+    expect(values).toEqual({ article__check_left_out: ['vendor_missing'] });
+    expect(
+      changedSettingsAt([leftOut], { article__check_left_out: ['vendor_missing'] }, 'company'),
+    ).toEqual([]);
+    expect(
+      changedSettingsAt(
+        [leftOut],
+        { article__check_left_out: ['price_missing', 'vendor_missing'] },
+        'company',
+      ),
+    ).toEqual([{ key: 'article.check_left_out', value: ['price_missing', 'vendor_missing'] }]);
+  });
+
   it('renders the settings that level may hold, in the chains asked for', () => {
     const form = settingsForm(rows, customer);
 

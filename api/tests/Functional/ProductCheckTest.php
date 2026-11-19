@@ -12,7 +12,7 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
-use App\Module\Products\Application\ProductCheckScopes;
+use App\Module\Products\Application\Check\ProductCheckScopes;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\Repository\ProductRepository;
@@ -27,6 +27,8 @@ use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Infrastructure\Watch\ProductCheckWatch;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -167,6 +169,74 @@ final class ProductCheckTest extends ApiTestCase
         self::assertContains('NO-BARCODE', array_column($this->jsonList(), 'reference'));
     }
 
+    /**
+     * A reason the company leaves out (article.check_left_out) is said nowhere: not on a product, not by the list's
+     * filter, not offered by it, not in « À surveiller »; a product lacking only that is not to check. What an import
+     * leaves where the file was not certain (a unit, a price, a count) is never left out.
+     */
+    public function testAReasonTheCompanyLeavesOutIsSaidNowhere(): void
+    {
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        $vat = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('TVA19', $this->company->getId());
+        self::assertNotNull($piece);
+        self::assertNotNull($vat);
+        // Lacking a vendor and a barcode alone, both left out below.
+        $category = ProductCategory::create($this->company, 'Quincaillerie', null, self::heldNow());
+        $lacking = Product::create($this->company, 'NO-VENDOR-CODE', new ProductDetails('NO-VENDOR-CODE', null, ProductKind::Goods, '10', '5'), $piece, $category, [$vat->getId()], self::heldNow());
+        $this->em()->persist($category);
+        $this->em()->persist($lacking);
+        $this->em()->flush();
+        $this->aCompanySetting('article.check_left_out', ['vendor_missing', 'barcode_missing']);
+        $this->signedIn(['company.read', 'product.read', 'product.cost.read']);
+
+        $this->getJson($this->path('products/'.$this->ids['BARE']));
+        self::assertSame(['price_missing', 'vat_missing', 'cost_missing', 'category_missing'], $this->json()['checkReasons'] ?? null);
+        $this->getJson($this->path('product-options'));
+        $offered = $this->arrayAt($this->json(), 'checkReasons');
+        foreach (['vendor_missing', 'barcode_missing'] as $reason) {
+            self::assertNotContains($reason, $offered, 'a list offers only what it may be told');
+        }
+        foreach (['price_missing', 'price_not_reached', 'cost_missing', 'category_missing', 'unit_to_confirm'] as $reason) {
+            self::assertContains($reason, $offered);
+        }
+        $this->getJson($this->path('products?checkReason=vendor_missing'));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'refused, as an empty answer would still say something');
+
+        $this->getJson($this->path('products?toCheck=true'));
+        $references = array_column($this->jsonList(), 'reference');
+        self::assertNotContains('NO-VENDOR-CODE', $references, 'lacking only what the company leaves out, it is not to check');
+        self::assertContains('TO-COUNT', $references, 'a count an import left awaited is never left out');
+        $this->getJson($this->path('products?toCheck=false'));
+        self::assertContains('NO-VENDOR-CODE', array_column($this->jsonList(), 'reference'));
+
+        $this->getJson($this->path('watch/'.ProductCheckWatch::TO_CHECK));
+        $rows = $this->jsonList();
+        self::assertNotContains($lacking->getId()->toRfc4122(), array_column($rows, 'subjectId'));
+        $bare = array_column($rows, 'params', 'subjectId')[$this->ids['BARE']] ?? null;
+        self::assertIsArray($bare);
+        self::assertSame('price_missing,vat_missing,category_missing', $bare['reasons'] ?? null);
+    }
+
+    /** Only the reasons a field left empty may be left out; a reason an import's doubt leaves is refused, as an unknown one is. */
+    public function testOnlyAnEmptyFieldsReasonMayBeLeftOut(): void
+    {
+        $this->signedIn(['company.read', 'company.settings', 'product.read']);
+        foreach (['to_count', 'unit_to_confirm', 'price_not_reached', 'colour_missing'] as $reason) {
+            $this->sendJson('PUT', $this->path('settings/article.check_left_out'), ['level' => 'company', 'value' => ['vendor_missing', $reason]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $reason);
+        }
+        $this->sendJson('PUT', $this->path('settings/article.check_left_out'), ['level' => 'company', 'value' => ['category_missing', 'price_missing', 'category_missing']]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['price_missing', 'category_missing'], $this->json()['value'] ?? null, 'kept once each, in the order the reasons are listed');
+
+        // A row holding a doubt, however it was written, leaves nothing out: the definition skips what it refuses.
+        $this->em()->getConnection()->executeStatement("DELETE FROM setting WHERE company_id = ? AND key = 'article.check_left_out'", [$this->company->getId()->toRfc4122()]);
+        $this->aCompanySetting('article.check_left_out', ['unit_to_confirm']);
+        $this->getJson($this->path('products?checkReason=unit_to_confirm'));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['TO-COUNT'], array_column($this->jsonList(), 'reference'));
+    }
+
     public function testAPersonMarksAProductWithANoteAndSaysItsPriceOfNothingIsMeant(): void
     {
         $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read']);
@@ -275,6 +345,13 @@ final class ProductCheckTest extends ApiTestCase
         self::assertNotNull($company);
 
         return $company;
+    }
+
+    /** The company's own choice, written as its settings page saves one. */
+    private function aCompanySetting(string $key, mixed $value): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), $key, $value, self::heldNow()));
+        $this->em()->flush();
     }
 
     private function path(string $resource): string

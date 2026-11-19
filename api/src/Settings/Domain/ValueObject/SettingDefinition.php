@@ -30,7 +30,7 @@ final readonly class SettingDefinition
 
     /**
      * @param list<SettingLevel> $overridableAt the levels a value may be stored at
-     * @param list<string>       $choices       an enum's values
+     * @param list<string>       $choices       an enum's values, or those several choices are made among
      * @param int|string|null    $min           inclusive; an int for an int, a decimal string for a decimal or money
      * @param int|string|null    $max           inclusive, as $min
      * @param string|null        $pattern       a regular expression a text value must match
@@ -73,7 +73,7 @@ final readonly class SettingDefinition
                 throw new \InvalidArgumentException(\sprintf('%s: the %s chain has no %s level.', $key, $chain->value, $level->value));
             }
         }
-        if (SettingType::Enum === $type && [] === $choices) {
+        if ((SettingType::Enum === $type || SettingType::Choices === $type) && [] === $choices) {
             throw new \InvalidArgumentException(\sprintf('%s: an enum declares its choices.', $key));
         }
         // A JSON setting may default to nothing: the screen that owns it knows its empty shape.
@@ -113,7 +113,8 @@ final readonly class SettingDefinition
             SettingType::Int => $this->intRefusal($value),
             SettingType::Decimal, SettingType::Money => $this->decimalRefusal($value),
             SettingType::Text => $this->textRefusal($value),
-            SettingType::Enum => \is_string($value) && \in_array($value, $this->choices, true) ? null : new Refusal('unknown_choice', 'expected one of '.implode(', ', $this->choices)),
+            SettingType::Enum => \is_string($value) && \in_array($value, $this->choices, true) ? null : $this->unknownChoice(),
+            SettingType::Choices => $this->choicesRefusal($value),
             SettingType::Colour => \is_string($value) && 1 === preg_match(self::COLOUR, $value) ? null : new Refusal('not_a_colour', 'expected a colour written #rrggbb'),
             SettingType::Json => $this->jsonRefusal($value),
         };
@@ -132,18 +133,44 @@ final readonly class SettingDefinition
             SettingType::Int => [self::notAWholeNumber(), ...(null === $this->min && null === $this->max ? [] : [$this->outOfBounds(true)])],
             SettingType::Decimal, SettingType::Money => [self::notANumber(), ...(is_numeric($this->min) || is_numeric($this->max) ? [$this->outOfBounds(false)] : [])],
             SettingType::Text => [self::notText(), $this->tooLong(), ...(null === $this->pattern ? [] : [$this->outsidePattern()]), ...($this->phone ? self::phoneRefusals() : [])],
-            SettingType::Enum => [new Refusal('unknown_choice', 'expected one of '.implode(', ', $this->choices))],
+            SettingType::Enum, SettingType::Choices => [$this->unknownChoice()],
             SettingType::Colour => [new Refusal('not_a_colour', 'expected a colour written #rrggbb')],
             SettingType::Json => [new Refusal('invalid_value', 'expected a list or an object')],
         };
     }
 
-    /** The one spelling a value is stored in: what was typed without its ends, a colour in lower case. */
+    /**
+     * The one spelling a value is stored in: what was typed without its ends, a colour in lower case, several choices
+     * once each in the order they are declared, whatever order they were ticked in.
+     */
     public function normalize(mixed $value): mixed
     {
         $value = $this->typed($value);
+        if (SettingType::Choices === $this->type && \is_array($value)) {
+            return array_values(array_filter($this->choices, static fn (string $choice): bool => \in_array($choice, $value, true)));
+        }
 
         return SettingType::Colour === $this->type && \is_string($value) ? strtolower($value) : $value;
+    }
+
+    private function unknownChoice(): Refusal
+    {
+        return new Refusal('unknown_choice', 'expected one of '.implode(', ', $this->choices));
+    }
+
+    /** A list, each of its values one of the choices: a single choice or choices named by key are refused alike. */
+    private function choicesRefusal(mixed $value): ?Refusal
+    {
+        if (!\is_array($value) || !array_is_list($value)) {
+            return $this->unknownChoice();
+        }
+        foreach ($value as $one) {
+            if (!\is_string($one) || !\in_array($one, $this->choices, true)) {
+                return $this->unknownChoice();
+            }
+        }
+
+        return null;
     }
 
     /**

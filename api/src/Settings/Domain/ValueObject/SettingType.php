@@ -20,6 +20,8 @@ enum SettingType: string
     case Decimal = 'decimal';
     case Text = 'text';
     case Enum = 'enum';
+    /** Several of its declared choices, or none: a list kept in the order they are declared, each once. */
+    case Choices = 'choices';
     case Money = 'money';
     case Colour = 'colour';
     case Json = 'json';

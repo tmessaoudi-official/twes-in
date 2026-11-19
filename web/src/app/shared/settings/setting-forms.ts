@@ -99,7 +99,7 @@ export function changedSettingsAt(
     .filter((row) => shown(row, level, false))
     .flatMap((row) => {
       const id = fieldIdOf(row.key);
-      return Object.hasOwn(values, id) && values[id] !== valueAt(row, level)
+      return Object.hasOwn(values, id) && !sameValue(values[id], valueAt(row, level))
         ? [{ key: row.key, value: values[id] }]
         : [];
     });
@@ -149,6 +149,14 @@ export function overridesAt(
   );
 }
 
+/** Two values alike: several choices by what they hold, in the order the API keeps them; anything else as itself. */
+function sameValue(typed: unknown, held: unknown): boolean {
+  if (Array.isArray(typed) && Array.isArray(held)) {
+    return typed.length === held.length && typed.every((value, index) => value === held[index]);
+  }
+  return typed === held;
+}
+
 /** What the level says, else the nearest level above it; a more specific level's value is not this level's. */
 function valueAt(row: SettingRow, level: SettingLevel): unknown {
   const order = CHAIN_LEVELS[row.chain];
@@ -172,6 +180,7 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'document.exemption_reference': 'settings.document.exemption_reference_hint',
   'article.reference_format': 'settings.article.reference_format_hint',
   'article.price_on_cost_change': 'settings.article.price_on_cost_change_hint',
+  'article.check_left_out': 'settings.article.check_left_out_hint',
   'delivery_note.mixed_customers_invoicing':
     'settings.delivery_note.mixed_customers_invoicing_hint',
   'purchase_order.print_for_non_cost_readers':
@@ -199,7 +208,8 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
  * leaves the logo's width and height side by side; whether a customer deactivated since its draft is still issued,
  * which main contact a merge of customers keeps, whether an order prints for whoever may not read costs, how screens
  * name a merged vendor, when a draft offers to be abandoned, whether admins give the admin role, how long a delete
- * stays undoable and how a report's file is headed, are declared last and close their section on a row each.
+ * stays undoable, how a report's file is headed and which « À vérifier » reasons a product leaves out, are declared
+ * last and close their section on a row each.
  */
 const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'document.watermark_spread',
@@ -212,6 +222,7 @@ const WHOLE_ROW_SETTINGS: ReadonlySet<string> = new Set([
   'members.admin_grants_admin',
   'records.undoable_for',
   'reports.export_headers',
+  'article.check_left_out',
 ]);
 
 function fieldOf(row: SettingRow): FormField {
@@ -249,6 +260,16 @@ function fieldOfType(row: SettingRow): FormField {
         label,
         kind: 'select',
         required: true,
+        options: row.choices.map((choice) => ({
+          value: choice,
+          label: `settings.choices.${row.key}.${choice}`,
+        })),
+      };
+    case 'choices':
+      return {
+        id,
+        label,
+        kind: 'multiselect',
         options: row.choices.map((choice) => ({
           value: choice,
           label: `settings.choices.${row.key}.${choice}`,

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
+use App\Module\Products\Application\Check\ProductCheckInput;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use Symfony\Component\Uid\Uuid;

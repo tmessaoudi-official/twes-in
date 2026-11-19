@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Application;
+namespace App\Module\Products\Application\Check;
 
 use App\Shared\Domain\ValueObject\CheckMark;
 

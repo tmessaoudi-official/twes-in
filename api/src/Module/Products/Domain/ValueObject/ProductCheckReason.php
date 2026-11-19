@@ -25,6 +25,16 @@ enum ProductCheckReason: string
     case UnitToConfirm = 'unit_to_confirm';
     case ToCount = 'to_count';
 
+    /**
+     * Whether a company may leave it out (article.check_left_out): a field left empty, which the screens show anyway.
+     * What an import leaves where its file was not certain (a unit given, a price not reached, a stock unknown) is
+     * always said: a doubt is a marker reason, never a guessed record left unflagged.
+     */
+    public function mayBeLeftOut(): bool
+    {
+        return !\in_array($this, [self::UnitToConfirm, self::PriceNotReached, self::ToCount], true);
+    }
+
     /** Goods are bought, scanned and counted; a service is none of these. */
     public function onlyForGoods(): bool
     {
