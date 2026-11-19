@@ -192,7 +192,10 @@
       "write": "Créer, modifier et répondre aux devis"
     },
     "audit": {
-      "read": "Voir le journal d’activité"
+      "read": "Voir le journal d’activité",
+      "address": {
+        "read": "Voir l’adresse d’où chacun se connecte"
+      }
     },
     "accounting": {
       "export": "Exporter les journaux comptables"

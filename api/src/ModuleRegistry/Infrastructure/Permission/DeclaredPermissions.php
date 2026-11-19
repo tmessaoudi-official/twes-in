@@ -40,7 +40,7 @@ final readonly class DeclaredPermissions implements KnownPermissions
     /** What a role may grant outside any module, in the order the screen reads them. */
     private const array UNMODULED = [
         'company' => [ModulePermission::READ, ModulePermission::WRITE, TextsPermission::WRITE],
-        'members' => [MemberPermission::READ, MemberPermission::WRITE, AuditPermission::READ],
+        'members' => [MemberPermission::READ, MemberPermission::WRITE, AuditPermission::READ, AuditPermission::ADDRESS_READ],
         'fiscal' => [FiscalPermission::READ, FiscalPermission::WRITE],
     ];
 

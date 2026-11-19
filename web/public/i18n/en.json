@@ -192,7 +192,10 @@
       "write": "Create, edit and answer quotes"
     },
     "audit": {
-      "read": "See the activity journal"
+      "read": "See the activity journal",
+      "address": {
+        "read": "See the address each sign-in came from"
+      }
     },
     "accounting": {
       "export": "Export the accounting journals"

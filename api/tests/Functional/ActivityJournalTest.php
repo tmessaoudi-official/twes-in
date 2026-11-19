@@ -19,7 +19,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * « Journal d'activité »: the company's audit log read back, for whoever holds audit.read (docs/SPEC.md § 7,
- * 2026-09-26 23:04). What changed is named, never its value; a sign-in address is shown to who manages the team.
+ * 2026-09-26 23:04). What changed is named, never its value; a sign-in address is shown to whoever holds its own permission.
  */
 final class ActivityJournalTest extends ApiTestCase
 {
@@ -87,6 +87,30 @@ final class ActivityJournalTest extends ApiTestCase
         $this->login('owner@twes.local', 'password-1234');
         $this->client->request('GET', $this->path().'?action[]=auth.login&actorId='.$this->clerk->getId()->toRfc4122(), server: ['HTTP_ACCEPT' => 'application/ld+json']);
         self::assertContains('198.51.100.7', array_column($this->jsonList(), 'ip'));
+    }
+
+    /**
+     * A sign-in address is its own permission: managing the team does not show it, and a role may read it without
+     * managing anyone. Who held `user.write` keeps it through the migration that brought it in.
+     */
+    public function testASignInAddressIsShownToWhoeverHoldsItsOwnPermission(): void
+    {
+        $this->entry('user', $this->clerk->getId(), 'auth.login', $this->clerk, [], '-1 hour', ip: '198.51.100.7');
+        $this->createUser('manager@twes.local', 'password-1234', $this->company, ['company.read', 'audit.read', 'user.read', 'user.write'], 'gérant');
+        $this->createUser('watcher@twes.local', 'password-1234', $this->company, ['company.read', 'audit.read', 'audit.address.read'], 'veilleur');
+        $addresses = function (string $email): array {
+            $this->login($email, 'password-1234');
+            $this->client->request('GET', $this->path().'?action[]=auth.login&actorId='.$this->clerk->getId()->toRfc4122(), server: ['HTTP_ACCEPT' => 'application/ld+json']);
+            self::assertResponseIsSuccessful();
+            self::assertNotEmpty($this->jsonList());
+
+            $addresses = array_map(static fn (mixed $ip): ?string => \is_string($ip) ? $ip : null, array_column($this->jsonList(), 'ip'));
+
+            return array_values(array_unique($addresses, \SORT_REGULAR));
+        };
+
+        self::assertSame([null], $addresses('manager@twes.local'), 'managing the team is not reading where people sign in from');
+        self::assertContains('198.51.100.7', $addresses('watcher@twes.local'));
     }
 
     public function testThePersonTheRecordTheActionAndTheDaysNarrowTheJournal(): void
@@ -164,6 +188,11 @@ final class ActivityJournalTest extends ApiTestCase
         self::assertContains('audit.read', SeedPlatform::BUILT_IN_ROLES[Role::ADMIN]);
         self::assertNotContains('audit.read', SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
         self::assertNotContains('audit.read', SeedPlatform::BUILT_IN_ROLES[Role::CLERK]);
+        // Where people sign in from, as before the permission of its own: the administrator alone among the built-in roles.
+        self::assertContains('audit.address.read', SeedPlatform::BUILT_IN_ROLES[Role::ADMIN]);
+        foreach ([Role::MEMBER, Role::CLERK, Role::ACCOUNTANT] as $role) {
+            self::assertNotContains('audit.address.read', SeedPlatform::BUILT_IN_ROLES[$role], $role);
+        }
     }
 
     private function path(): string

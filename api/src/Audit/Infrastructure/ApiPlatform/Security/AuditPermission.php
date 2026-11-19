@@ -16,4 +16,6 @@ namespace App\Audit\Infrastructure\ApiPlatform\Security;
 final class AuditPermission
 {
     public const string READ = 'audit.read';
+    /** Reading the address a sign-in came from, a person's whereabouts: its own permission, apart from managing the team. */
+    public const string ADDRESS_READ = 'audit.address.read';
 }

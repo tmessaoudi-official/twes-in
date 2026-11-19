@@ -20,11 +20,10 @@ use App\Audit\Infrastructure\ApiPlatform\Security\AuditPermission;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 
 /**
  * One page of the company's journal. A sign-in address is a person's whereabouts, so it is left out for a reader who
- * does not manage the team (docs/SPEC.md § 7, 2026-09-26 23:04: owners and admins only).
+ * does not hold `audit.address.read`: the owner and the admin by default, and any role the company gives it to.
  *
  * @implements ProviderInterface<ActivityResource>
  */
@@ -39,7 +38,7 @@ final readonly class ActivityCollectionProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), AuditPermission::READ);
         $search = ActivitySearchReader::read(Paging::parameters($context), Paging::text($operation), $company);
-        $withAddress = $this->guard->may($company, MemberPermission::WRITE);
+        $withAddress = $this->guard->may($company, AuditPermission::ADDRESS_READ);
 
         return $this->paging->paginator(
             $this->read->search($company, $search, $this->paging->request($operation, $context)),

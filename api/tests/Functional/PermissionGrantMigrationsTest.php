@@ -15,6 +15,7 @@ use Doctrine\Migrations\AbstractMigration;
 use DoctrineMigrations\Version20261006100000;
 use DoctrineMigrations\Version20261021131500;
 use DoctrineMigrations\Version20261116150000;
+use DoctrineMigrations\Version20261118120000;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
 
@@ -32,6 +33,7 @@ final class PermissionGrantMigrationsTest extends ApiTestCase
         yield 'credit notes' => [Version20261006100000::class, 'invoice.read', 'invoice.write', 'invoice.credit'];
         yield 'removing customers' => [Version20261021131500::class, 'customer.read', 'customer.write', 'customer.remove'];
         yield 'the home\'s money cards' => [Version20261116150000::class, 'company.read', 'invoice.read', 'invoice.summary.read'];
+        yield 'sign-in addresses' => [Version20261118120000::class, 'audit.read', 'user.write', 'audit.address.read'];
     }
 
     /** @param class-string<AbstractMigration> $migration */
