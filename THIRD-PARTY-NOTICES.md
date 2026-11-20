@@ -53,7 +53,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | myclabs/deep-copy | 1.14.0 | MIT | dev |
 | nikic/php-parser | 5.9.0 | BSD-3-Clause | dev |
 | openspout/openspout | 5.13.0 | MIT | runtime |
-| paragonie/constant_time_encoding | 3.1.4 | MIT | runtime |
+| paragonie/constant_time_encoding | 3.1.5 | MIT | runtime |
 | phar-io/manifest | 2.0.4 | BSD-3-Clause | dev |
 | phar-io/version | 3.2.1 | BSD-3-Clause | dev |
 | phpdocumentor/reflection-common | 2.2.1 | MIT | runtime |
@@ -180,8 +180,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | symfony/yaml | 8.1.11 | MIT | runtime |
 | twig/twig | 3.30.0 | BSD-3-Clause | runtime |
 | web-auth/cose-lib | 4.8.2 | MIT | runtime |
-| web-auth/webauthn-lib | 5.3.12 | MIT | runtime |
-| webmozart/assert | 2.5.0 | MIT | runtime |
+| web-auth/webauthn-lib | 5.3.15 | MIT | runtime |
+| webmozart/assert | 2.5.1 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
 ## web (npm) — 41 runtime, 556 dev

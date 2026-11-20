@@ -173,6 +173,18 @@ final class PasskeySignInTest extends ApiTestCase
         yield 'another account named as its owner' => [static fn (self $test, FakeAuthenticator $known): array => $known->assert($test->signInOptions(), withUserHandle: true, userHandle: FakeAuthenticator::base64Url('someone-else'))];
         yield 'no owner named at all' => [static fn (self $test, FakeAuthenticator $known): array => $known->assert($test->signInOptions())];
         yield 'a challenge it did not ask for' => [static fn (self $test, FakeAuthenticator $known): array => $known->assert($test->signInOptions(), challenge: FakeAuthenticator::base64Url(random_bytes(32)), withUserHandle: true)];
+        // GHSA-rxc4-cg58-jrpw: authenticator data whose extensions open a CBOR byte string declaring PHP_INT_MAX bytes. Before
+        // webauthn-lib 5.3.13 the reader allocated that length before checking it, a fatal error no handler catches, which
+        // in a FrankenPHP worker ends the worker: one request of a few hundred bytes, signed in as nobody, cost a boot.
+        yield 'authenticator data declaring more than it holds' => [static function (self $test, FakeAuthenticator $known): array {
+            $credential = $known->assert($test->signInOptions(), withUserHandle: true);
+            self::assertIsArray($credential['response']);
+            $credential['response']['authenticatorData'] = FakeAuthenticator::base64Url(
+                hash('sha256', 'localhost', true)."\x81\x00\x00\x00\x01\x5b\x7f\xff\xff\xff\xff\xff\xff\xff",
+            );
+
+            return $credential;
+        }];
         yield 'its owner switched it off' => [static function (self $test, FakeAuthenticator $known): array {
             $test->em()->getConnection()->executeStatement('UPDATE "user" SET passkey_sign_in = false WHERE email = ?', [self::EMAIL]);
 
