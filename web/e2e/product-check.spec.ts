@@ -2,6 +2,7 @@
 import { expect, test, type Page, type Response } from '@playwright/test';
 import { aProduct, forget } from './catalogue';
 import { runDigits } from './run';
+import { choose } from './select';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
@@ -63,6 +64,111 @@ test('a product marked « À vérifier » with its note is named on its page, in
     await forget(page, ids);
   }
 });
+
+// C88: a company leaves out the reasons saying a field is empty, chosen in Paramètres; a product lacking only those is
+// then said to lack nothing, the list offers them no more, and the reset brings them back.
+test('the reasons a company leaves out in Paramètres are said nowhere, until the setting is reset', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const reference = `0LEFT-${runDigits()}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forgetLeftOut(page);
+  const ids: string[] = [];
+  try {
+    // Created with a price and nothing else, it lacks a vendor, its VAT, a cost, a barcode and a category.
+    ids.push(await aProduct(page, reference));
+    await page.goto(`/products/${ids[0]}`);
+    await expect(page.getByTestId('product-check-reasons')).toContainText('Code-barres manquant');
+    await expect(page.getByTestId('product-check-reasons')).toContainText('Catégorie manquante');
+
+    await page.goto('/settings');
+    const field = page.getByTestId(`field-${LEFT_OUT_FIELD}`);
+    await expect(field).toBeVisible();
+    // Nothing is left out yet, and the page opens with nothing to save: an unset list is not a change.
+    await expect(page.getByTestId('record-save')).toBeDisabled();
+    for (const reason of LACKING) {
+      await choose(page, `field-${LEFT_OUT_FIELD}`, reason);
+    }
+    await page.getByTestId('record-save').click();
+    await expect(toast(page)).toContainText('Les paramètres ont été enregistrés.');
+    await page.reload();
+    // A closed select names its first choices and counts the rest (« +2 »): each is read as ticked in the open list.
+    await field.click();
+    for (const reason of LACKING) {
+      await expect(page.getByRole('option', { name: reason })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    }
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('record-save')).toBeDisabled();
+
+    // Lacking only what is left out, the product lacks nothing that is said, and is not to check.
+    await page.goto(`/products/${ids[0]}`);
+    await expect(page.getByTestId('product-title')).toContainText(reference);
+    await expect(page.getByTestId('product-check-reasons')).toHaveCount(0);
+    await page.goto(`/products?q=${reference}&toCheck=yes`);
+    await expect(page.getByTestId(`product-${reference}`)).toHaveCount(0);
+    await page.goto(`/products?q=${reference}&toCheck=no`);
+    await expect(page.getByTestId(`product-${reference}`)).toBeVisible();
+    // The list's « À vérifier » filter offers only the reasons still said.
+    const offered = await offeredReasons(page);
+    expect(offered).not.toContain('barcode_missing');
+    expect(offered).not.toContain('category_missing');
+    expect(offered).toContain('price_missing');
+
+    // Reset, every reason is said again.
+    await page.goto('/settings');
+    await page.getByTestId(`settings-reset-${LEFT_OUT}`).click();
+    await expect(page.getByTestId(`settings-override-${LEFT_OUT}`)).toHaveCount(0);
+    await page.goto(`/products/${ids[0]}`);
+    await expect(page.getByTestId('product-check-reasons')).toContainText('Code-barres manquant');
+    expect(await offeredReasons(page)).toContain('barcode_missing');
+  } finally {
+    await forgetLeftOut(page);
+    await forget(page, ids);
+  }
+});
+
+const LEFT_OUT = 'article.check_left_out';
+/** What a product made by `aProduct` lacks, as the settings page and the product name it: all but its price. */
+const LACKING = [
+  'Fournisseur manquant',
+  'TVA manquante',
+  'Prix de revient manquant',
+  'Code-barres manquant',
+  'Catégorie manquante',
+];
+const LEFT_OUT_FIELD = LEFT_OUT.replaceAll('.', '__');
+
+/** The company's own list of reasons left out forgotten, so the shared company says every reason again. */
+async function forgetLeftOut(page: Page): Promise<void> {
+  const status = await page.evaluate(
+    async ([csrf, key]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const response = await fetch(
+        `/api/companies/${me.company.id}/settings/${encodeURIComponent(key)}?level=company`,
+        { method: 'DELETE', headers: { 'csrf-token': csrf } },
+      );
+      return response.status;
+    },
+    [CSRF, LEFT_OUT],
+  );
+  expect([204, 404]).toContain(status);
+}
+
+/** The reasons the products list offers to filter on, as the API answers the list's options. */
+async function offeredReasons(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+    const options = (await (
+      await fetch(`/api/companies/${me.company.id}/product-options`)
+    ).json()) as { checkReasons?: string[] };
+    return options.checkReasons ?? [];
+  });
+}
 
 /** The PUT of the product's own form, so a step reads the record only once that save has answered. */
 function productSaved(page: Page, id: string): Promise<Response> {
