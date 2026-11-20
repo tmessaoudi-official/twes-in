@@ -7,7 +7,8 @@
 > FIRST. This file says HOW work is delivered here. On conflict with the global framework
 > (`~/.claude/CLAUDE.md`) this file wins; on conflict about the product, the spec wins.
 
-twes-in is an invoicing SaaS (Symfony API + Angular admin over PostgreSQL), a clean-room
+twes-in is a modular business platform that started with invoicing (Symfony API + Angular admin over PostgreSQL;
+what it is and who it is for first: `docs/SPEC.md` § 1), a clean-room
 reimplementation inspired by Invoice Ninja, AGPL-3.0-or-later plus a commercial licence.
 
 ## Process — LIGHT (developer ruling, 2026-09-09)
