@@ -104,8 +104,8 @@ export class ProductCategoriesPage implements OnInit {
         undoable: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
-        // A category still holding products or sub-categories cannot go, as the page says: it is not offered.
-        shown: (row) => this.mayWrite() && row.productCount === 0 && row.childCount === 0,
+        // Offered as the API says: never over a product, over a subcategory only where the company takes the links off.
+        shown: (row) => this.mayWrite() && row.offersDelete,
       },
     ],
     // Categories are selected to be merged, which only a person who may change them can do.

@@ -776,7 +776,15 @@ describe('ProductsApi', () => {
       .expectOne('/api/companies/c1/product-categories')
       .flush([{ id: 'k1', name: 'Matériel', productCount: 2, childCount: 1 }]);
     expect(await list).toEqual([
-      { id: 'k1', name: 'Matériel', parentId: null, productCount: 2, childCount: 1, version: 0 },
+      {
+        id: 'k1',
+        name: 'Matériel',
+        parentId: null,
+        productCount: 2,
+        childCount: 1,
+        offersDelete: false,
+        version: 0,
+      },
     ]);
 
     const created = api.createCategory('c1', { name: 'Portables', parentId: 'k1' });
@@ -797,6 +805,7 @@ describe('ProductsApi', () => {
       parentId: null,
       productCount: 0,
       childCount: 0,
+      offersDelete: true,
       version: 6,
     });
     expect(await revised).toMatchObject({ id: 'k 2', version: 6 });

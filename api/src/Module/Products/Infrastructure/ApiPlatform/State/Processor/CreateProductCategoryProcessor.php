@@ -41,6 +41,6 @@ final readonly class CreateProductCategoryProcessor implements ProcessorInterfac
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return ProductCategoryResource::of($category, 0, 0);
+        return ProductCategoryResource::of($category, 0, 0, false);
     }
 }

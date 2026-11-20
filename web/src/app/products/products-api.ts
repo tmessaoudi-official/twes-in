@@ -827,6 +827,7 @@ function toCategory(raw: ProductCategoryProductCategoryRead): ProductCategoryRow
     parentId: raw.parentId ?? null,
     productCount: raw.productCount ?? 0,
     childCount: raw.childCount ?? 0,
+    offersDelete: raw.offersDelete ?? false,
     // Every read carries it; a 0 would be refused by the API rather than taken for a version.
     version: raw.version ?? 0,
   };

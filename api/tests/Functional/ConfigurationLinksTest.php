@@ -15,6 +15,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Records\Application\EndDueRemovals;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Infrastructure\Realtime\LiveChangesAnswer;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Exception\ConstraintViolationException;
@@ -52,6 +53,19 @@ final class ConfigurationLinksTest extends ApiTestCase
         self::assertSame('record_used', $this->json()['error'] ?? null);
     }
 
+    /** The list says which category a delete is offered on, as the company chose: the screen reads it, never guesses. */
+    public function testTheCategoriesListOffersTheDeleteAsTheCompanyChose(): void
+    {
+        $tools = $this->aProductCategory('Outillage');
+        $keys = $this->aProductCategory('Clés', $tools);
+
+        self::assertSame(self::sorted([$tools => false, $keys => true]), $this->offered());
+
+        $this->clearing();
+
+        self::assertSame(self::sorted([$tools => true, $keys => true]), $this->offered());
+    }
+
     public function testClearedTheDeleteEmptiesEachLinkAndSaysHowManyThenTheRestoreWritesThemBack(): void
     {
         $this->clearing();
@@ -67,12 +81,15 @@ final class ConfigurationLinksTest extends ApiTestCase
         ], $this->effects('records.links_cleared'));
         self::assertNull($this->value('expense_category', 'parent_id', $fuel));
         self::assertNull($this->value('vendor', 'default_expense_category_id', $vendor));
+        // The vendors' screens hear it, as the categories' do.
+        self::assertContains('vendor', $this->kindsChanged());
         // Emptied, each is another version, so an editor that had it open saves over it only knowingly.
         self::assertSame([2, 2], [$this->version('expense_category', $fuel), $this->version('vendor', $vendor)]);
 
-        $this->postJson($this->path("record-removals/$removal/restore"), null);
+        $this->postJson($this->path("record-removals/$removal/restore"), null, server: ['HTTP_X_TAB' => 'tab-1']);
 
         self::assertResponseIsSuccessful();
+        self::assertContains('vendor', $this->kindsChanged());
         self::assertSame([], $this->effects('records.links_not_restored'));
         self::assertSame([$transport, $transport], [$this->value('expense_category', 'parent_id', $fuel), $this->value('vendor', 'default_expense_category_id', $vendor)]);
         self::assertSame([3, 3], [$this->version('expense_category', $fuel), $this->version('vendor', $vendor)]);
@@ -199,6 +216,49 @@ final class ConfigurationLinksTest extends ApiTestCase
         self::assertNull($this->value('vendor', 'default_expense_category_id', $vendor));
     }
 
+    /** @return list<string> the kinds the last answer names as changed, for the tab that asked */
+    private function kindsChanged(): array
+    {
+        $named = json_decode($this->client->getResponse()->headers->get(LiveChangesAnswer::HEADER) ?? '[]', true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($named);
+        $kinds = [];
+        foreach ($named as $change) {
+            self::assertIsArray($change);
+            self::assertIsString($change['kind'] ?? null);
+            $kinds[] = $change['kind'];
+        }
+
+        return $kinds;
+    }
+
+    /** @return array<string, mixed> each category's id and whether its delete is offered */
+    private function offered(): array
+    {
+        $this->getJson($this->path('product-categories'));
+        self::assertResponseIsSuccessful();
+        $offered = [];
+        foreach ($this->json() as $row) {
+            self::assertIsArray($row);
+            self::assertIsString($row['id'] ?? null);
+            $offered[$row['id']] = $row['offersDelete'] ?? null;
+        }
+        ksort($offered);
+
+        return $offered;
+    }
+
+    /**
+     * @param array<string, bool> $offered
+     *
+     * @return array<string, bool>
+     */
+    private static function sorted(array $offered): array
+    {
+        ksort($offered);
+
+        return $offered;
+    }
+
     private function clearing(): void
     {
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? $this->company;
@@ -273,7 +333,7 @@ final class ConfigurationLinksTest extends ApiTestCase
 
     private function removed(string $subject, string $id): string
     {
-        $this->postJson($this->path('record-removals'), ['subject' => $subject, 'ids' => [$id]]);
+        $this->postJson($this->path('record-removals'), ['subject' => $subject, 'ids' => [$id]], server: ['HTTP_X_TAB' => 'tab-1']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return $this->stringAt($this->json(), 'id');

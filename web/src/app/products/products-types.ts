@@ -323,6 +323,8 @@ export interface ProductCategoryRow {
   parentId: string | null;
   productCount: number;
   childCount: number;
+  /** Whether its delete is offered, as the API says: never over a product, over a subcategory only where the company takes the links off. */
+  offersDelete: boolean;
   /** The version read, which a revision sends back; one saved since answers `record_changed`. */
   version: number;
 }

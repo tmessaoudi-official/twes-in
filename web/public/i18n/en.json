@@ -1886,7 +1886,7 @@
     },
     "categories": {
       "title": "Product categories",
-      "intro": "Categories file products in a tree. A category that still holds subcategories or products cannot be deleted.",
+      "intro": "Categories file products in a tree. A category that still holds products cannot be deleted; one holding subcategories only where the company chose to take their links off in Settings › Defaults.",
       "add": "Add a category",
       "delete_named": "Delete {{name}}",
       "selected": "{count, plural, =0 {No category selected} one {{{count}} category selected} other {{{count}} categories selected}}",

@@ -90,7 +90,15 @@ describe('ProductsPage', () => {
     busy: signal(false).asReadonly(),
     products: products.asReadonly(),
     categories: signal<readonly ProductCategoryRow[]>([
-      { id: 'k1', name: 'Matériel', parentId: null, productCount: 1, childCount: 0, version: 1 },
+      {
+        id: 'k1',
+        name: 'Matériel',
+        parentId: null,
+        productCount: 1,
+        childCount: 0,
+        offersDelete: false,
+        version: 1,
+      },
     ]).asReadonly(),
     options: signal<ProductOptions | null>({
       currency: 'TND',

@@ -74,6 +74,7 @@ const hardware: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 0,
+  offersDelete: true,
   version: 1,
 };
 const options: ProductOptions = {

@@ -55,6 +55,7 @@ const hardware: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 1,
+  offersDelete: false,
   version: 1,
 };
 const laptops: ProductCategoryRow = {
@@ -63,6 +64,7 @@ const laptops: ProductCategoryRow = {
   parentId: 'k1',
   productCount: 4,
   childCount: 0,
+  offersDelete: false,
   version: 1,
 };
 const archives: ProductCategoryRow = {
@@ -71,6 +73,7 @@ const archives: ProductCategoryRow = {
   parentId: null,
   productCount: 0,
   childCount: 0,
+  offersDelete: true,
   version: 1,
 };
 
@@ -359,11 +362,16 @@ describe('ProductCategoriesPage', () => {
     expect((q('field-name') as HTMLInputElement).value).toBe('Ordinateurs');
   });
 
-  it('offers no delete for a category that still holds products or sub-categories', () => {
-    // The page says such a category cannot go; offering it only to be refused contradicted that (sweep 2026-10-09).
+  it('offers the delete only where the API says it would go, sub-categories or not', async () => {
+    // Offering a delete only to be refused contradicted the page (sweep 2026-10-09): the API says, row by row, what the
+    // company's choice allows (records.configuration_links).
     expect(q('row-more-k2')).toBeNull();
     expect(q('row-more-k1')).toBeNull();
     expect(q('row-more-k3')).not.toBeNull();
+
+    categories.set([{ ...hardware, offersDelete: true }, laptops, archives]);
+    await settle();
+    expect(q('row-more-k1')).not.toBeNull();
   });
 
   it("shows a category's defaults while it is edited, and none for a new one", async () => {

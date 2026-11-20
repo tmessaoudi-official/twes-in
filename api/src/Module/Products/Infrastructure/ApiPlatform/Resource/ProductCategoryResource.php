@@ -88,7 +88,15 @@ final class ProductCategoryResource
     #[Groups([self::READ, RecordVersion::REVISE])]
     public ?int $version = null;
 
-    public static function of(ProductCategory $category, int $productCount, int $childCount): self
+    /**
+     * Whether a delete is offered: never while a product sits under it, and under a subcategory only where the company
+     * has its deletes take the links off (records.configuration_links), so the screen offers what the API would do.
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $offersDelete = true;
+
+    public static function of(ProductCategory $category, int $productCount, int $childCount, bool $linksCleared): self
     {
         $resource = new self();
         $resource->id = $category->getId()->toRfc4122();
@@ -97,6 +105,7 @@ final class ProductCategoryResource
         $resource->parentId = $category->getParent()?->getId()->toRfc4122();
         $resource->productCount = $productCount;
         $resource->childCount = $childCount;
+        $resource->offersDelete = 0 === $productCount && (0 === $childCount || $linksCleared);
 
         return $resource;
     }

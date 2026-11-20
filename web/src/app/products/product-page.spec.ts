@@ -839,6 +839,7 @@ describe('ProductPage', () => {
           parentId: null,
           productCount: 0,
           childCount: 0,
+          offersDelete: true,
           version: 1,
         },
       ]);
@@ -866,6 +867,7 @@ describe('ProductPage', () => {
           parentId: null,
           productCount: 0,
           childCount: 0,
+          offersDelete: true,
           version: 1,
         },
       ]);
