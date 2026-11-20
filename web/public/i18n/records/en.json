@@ -130,6 +130,8 @@
       "serial_held": "Nothing is merged, because the record kept already has the serial number “{{code}}”.",
       "lot_dated_otherwise": "Nothing is merged, because the lot “{{code}}” has another date in the record kept, and a lot has one date.",
       "main_contacts": "Nothing is merged, because more than one of these records has a primary contact, and the company chose not to merge them so. Leave one primary contact among them, then merge."
-    }
+    },
+    "links_cleared": "The link to the deleted record was taken off {{links}}; undoing the delete puts it back.",
+    "links_not_restored": "The link was not put back on {{links}}: it changed since the delete, or the record is gone."
   }
 }

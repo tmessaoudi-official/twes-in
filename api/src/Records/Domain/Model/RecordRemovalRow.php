@@ -48,6 +48,10 @@ class RecordRemovalRow implements CompanyOwned
     #[ORM\Column(type: Types::JSON, options: ['jsonb' => true])]
     private array $snapshot;
 
+    /** The column a delete emptied, when the copy is that link rather than a whole row: its row's id and the value it held. */
+    #[ORM\Column(length: 63, nullable: true)]
+    private ?string $clearedColumn = null;
+
     /** @param array<string, mixed> $snapshot */
     public function __construct(RecordRemoval $removal, string $tableName, int $step, array $snapshot)
     {
@@ -77,6 +81,11 @@ class RecordRemovalRow implements CompanyOwned
     public function getTableName(): string
     {
         return $this->tableName;
+    }
+
+    public function getClearedColumn(): ?string
+    {
+        return $this->clearedColumn;
     }
 
     public function getStep(): int

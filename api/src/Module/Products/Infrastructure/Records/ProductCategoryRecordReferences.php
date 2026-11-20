@@ -32,7 +32,7 @@ final readonly class ProductCategoryRecordReferences implements DeclaresRecordRe
     {
         return [
             RecordReference::uses('product', 'category_id', 'product_category', RecordMerge::Moves, 'A product is filed under its category.'),
-            RecordReference::uses('product_category', 'parent_id', 'product_category', RecordMerge::Moves, 'A subcategory sits under its category.'),
+            RecordReference::cleared('product_category', 'parent_id', 'product_category', RecordMerge::Moves, 'A subcategory sits under its category: a link that sets the tree up, which a delete empties where the company chose so.'),
         ];
     }
 }

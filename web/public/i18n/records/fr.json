@@ -130,6 +130,8 @@
       "serial_held": "Rien n’est fusionné, car la fiche gardée a déjà le numéro de série « {{code}} ».",
       "lot_dated_otherwise": "Rien n’est fusionné, car le lot « {{code}} » a une autre date dans la fiche gardée, et un lot n’a qu’une date.",
       "main_contacts": "Rien n’est fusionné, car plusieurs de ces fiches ont un contact principal, et l’entreprise a choisi de ne pas les fusionner ainsi. Laissez un seul contact principal parmi elles, puis fusionnez."
-    }
+    },
+    "links_cleared": "Le lien vers la fiche supprimée a été retiré de {{links}} ; annuler la suppression le remet.",
+    "links_not_restored": "Le lien n’a pas été remis sur {{links}} : il a changé depuis la suppression, ou la fiche n’est plus là."
   }
 }

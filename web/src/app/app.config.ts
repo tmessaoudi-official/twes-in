@@ -8,6 +8,7 @@ import { liveChangesInterceptor } from './shared/realtime/live-changes-intercept
 import { effectsInterceptor } from './shared/effects/effects-interceptor';
 import { EFFECT_SAYERS } from './shared/effects/effects';
 import { CreditEffects } from './invoices/effects/credit-effects';
+import { RecordEffects } from './shared/records/record-effects';
 import { StockEffects } from './inventory/effects/stock-effects';
 import { PriceEffects } from './products/price-effects';
 import { languageInterceptor } from './shared/i18n/language-interceptor';
@@ -117,6 +118,7 @@ export const appConfig: ApplicationConfig = {
     { provide: EFFECT_SAYERS, useExisting: PriceEffects, multi: true },
     { provide: EFFECT_SAYERS, useExisting: StockEffects, multi: true },
     { provide: EFFECT_SAYERS, useExisting: CreditEffects, multi: true },
+    { provide: EFFECT_SAYERS, useExisting: RecordEffects, multi: true },
     // Proving who is at the screen again is the auth feature's too.
     { provide: StepUpProof, useExisting: AuthFacade },
     // So is holding the sign-in on the customer screen, which the API keeps in the session.

@@ -14,9 +14,14 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Records\Application\Links\ConfigurationLinks;
 use App\Records\Application\Merge\MergeAlias;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -27,9 +32,16 @@ use Symfony\Component\Uid\Uuid;
  * whole delete and says what names it, before anything is deleted, so that no foreign key emptying its column on delete
  * lets it through. The records are locked first, so nothing comes to name one between the count and the delete, except
  * a row naming it with no foreign key, written meanwhile by another request that never reads the record itself.
+ *
+ * A link that only sets something up (declared `cleared`: a subcategory's category, a vendor's default expense
+ * category) refuses the delete as a use does, unless the company has its deletes empty those (ConfigurationLinks): the
+ * delete then empties each, copied for the restore to write back, and says how many in its answer.
  */
 final readonly class RemoveRecords implements DeclaresAuditActions
 {
+    /** The links a delete emptied, one table and column each, with how many rows. */
+    public const string LINKS_CLEARED = 'records.links_cleared';
+
     public function __construct(
         private RecordCatalogue $catalogue,
         private RecordStore $store,
@@ -39,6 +51,9 @@ final readonly class RemoveRecords implements DeclaresAuditActions
         private ClockInterface $clock,
         private RecordsUndoWindow $windows,
         private RecordUses $uses,
+        private ConfigurationLinks $links,
+        private Effects $effects,
+        private LiveChanges $liveChanges,
     ) {
     }
 
@@ -62,13 +77,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
                 throw new MergeAlias(\sprintf('A %s merged into another is not deleted.', $subject->table));
             }
             $naming = $this->catalogue->naming($subject->table);
-            foreach ($naming as $reference) {
-                if (RecordUse::Cleared === $reference->onDelete) {
-                    // A column emptied by the delete would need its value copied and written back, which no subject asks yet.
-                    throw new \LogicException(\sprintf('%s.%s is %s, which deleting a %s does not handle yet.', $reference->table, $reference->column, $reference->onDelete->value, $subject->table));
-                }
-            }
-            $used = $this->uses->of($company->getId(), $subject->table, $chosen);
+            $used = $this->uses->of($company, $subject->table, $chosen);
             if ([] !== $used) {
                 $records = [];
                 foreach ($chosen as $id) {
@@ -86,9 +95,18 @@ final readonly class RemoveRecords implements DeclaresAuditActions
             // The record first: every row copied names it.
             $removal = new RecordRemoval(Uuid::v7(), $company, $subject->table, $items, $actorUserId, $this->clock->now(), $this->windows->undoableFor($company));
             $this->removals->save($removal);
+            // The links first: their foreign keys hold the records until they are emptied. Used, they refused the delete above.
+            $emptied = $this->links->cleared($company) ? $this->store->clear($company->getId(), $removal->getId(), $chosen, self::of($naming, RecordUse::Cleared)) : [];
             $this->store->remove($company->getId(), $removal->getId(), $subject, $chosen, self::of($naming, RecordUse::Owned));
             foreach ($chosen as $id) {
                 $this->audit->record(new AuditEntry($subject->table, $id, $subject->table.'.deleted', $actorUserId, [], $company->getId()));
+            }
+            foreach ($emptied as $links) {
+                $this->effects->said(new Effect(self::LINKS_CLEARED, $removal->getId(), $links));
+                // The records' own table is heard through their audit entries; another's rows changed without one.
+                if ($links['table'] !== $subject->table) {
+                    $this->liveChanges->stage(new LiveChange($links['table'], null, $subject->table.'.deleted', $actorUserId, $company->getId()));
+                }
             }
 
             return $removal;
@@ -111,18 +129,16 @@ final readonly class RemoveRecords implements DeclaresAuditActions
                 return new ImportedRecordsTaken(null, [], []);
             }
             $naming = $this->catalogue->naming($subject->table);
-            foreach ($naming as $reference) {
-                if (RecordUse::Cleared === $reference->onDelete) {
-                    throw new \LogicException(\sprintf('%s.%s is %s, which deleting a %s does not handle yet.', $reference->table, $reference->column, $reference->onDelete->value, $subject->table));
-                }
-            }
+            // An import's undo takes only what nothing names: a link that only sets something up keeps the record too,
+            // whatever the company's deletes do with those.
+            $usedBy = [...self::of($naming, RecordUse::Uses), ...self::of($naming, RecordUse::Cleared)];
             $byImport = array_map(static fn (RecordReference $reference): RecordReference => $reference->rowsOfImport($runId->toRfc4122()), array_values(array_filter($naming, static fn (RecordReference $reference): bool => null !== $reference->importRunColumn)));
             // A record kept names others as any row does: what it names is kept too, until nothing more is. The rows among
             // those still going are left out of each count, since they go with them.
             $using = [];
             $going = $present;
             do {
-                $used = $this->store->uses($company->getId(), $going, self::of($naming, RecordUse::Uses));
+                $used = $this->store->uses($company->getId(), $going, $usedBy);
                 $own = [] === $byImport ? [] : $this->store->uses($company->getId(), $going, $byImport);
                 $merged = MergedAway::Aliased === $subject->mergedAway ? $this->store->mergedAwayAmong($company->getId(), $subject, $going) : [];
                 $found = [];

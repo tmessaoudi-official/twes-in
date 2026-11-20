@@ -9,15 +9,18 @@ declare(strict_types=1);
 
 namespace App\Records\Application;
 
+use App\Records\Application\Links\ConfigurationLinks;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * What names each record so that its delete is refused: the one count a delete makes before it goes, and a screen reads
- * before offering one. It locks nothing; a delete locks the records first and asks again.
+ * before offering one. A link that only sets something up names it too, unless the company has its deletes empty those
+ * (ConfigurationLinks). It locks nothing; a delete locks the records first and asks again.
  */
 final readonly class RecordUses
 {
-    public function __construct(private RecordCatalogue $catalogue, private RecordStore $store)
+    public function __construct(private RecordCatalogue $catalogue, private RecordStore $store, private ConfigurationLinks $links)
     {
     }
 
@@ -27,13 +30,13 @@ final readonly class RecordUses
      * @return array<string, non-empty-list<array{table: string, column: string, count: int}>> by record id, those named
      *                                                                                         by nothing left out
      */
-    public function of(Uuid $companyId, string $subject, array $ids): array
+    public function of(Company $company, string $subject, array $ids): array
     {
         if ([] === $ids) {
             return [];
         }
-        $using = array_values(array_filter($this->catalogue->naming($subject), static fn (RecordReference $reference): bool => RecordUse::Uses === $reference->onDelete));
+        $using = $this->links->using($company, $this->catalogue->naming($subject));
 
-        return $this->store->uses($companyId, $ids, $using);
+        return $this->store->uses($company->getId(), $ids, $using);
     }
 }

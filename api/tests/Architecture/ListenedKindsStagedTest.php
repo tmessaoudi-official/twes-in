@@ -33,7 +33,8 @@ final class ListenedKindsStagedTest extends KernelTestCase
     /** Where the API stages a kind it reads at run time, and where those kinds come from. */
     private const array STAGED_AT_RUN_TIME = [
         'api/src/Audit/Infrastructure/DoctrineAuditTrail.php' => 'the kind of every heard audit entry, read here from AuditVocabulary',
-        'api/src/Records/Application/RestoreRecords.php' => 'the tables a restored merge wrote again, each also a deletable subject audited by its own use case',
+        'api/src/Records/Application/RestoreRecords.php' => 'the tables a restored merge wrote again, or whose links a restore wrote back, each also a deletable subject audited by its own use case',
+        'api/src/Records/Application/RemoveRecords.php' => 'the tables whose links a delete emptied, each a declared reference\'s table and a deletable subject audited by its own use case',
         'api/src/Records/Application/Merge/MergeRecords.php' => 'the tables a merge wrote, each also a deletable subject audited by its own use case',
         'api/src/Erasure/Application/EraseData.php' => 'the kinds the erasure catalogue names for the parts chosen, read here from ErasureCatalogue',
         'api/src/Erasure/Application/UndoErasure.php' => 'the kinds the erasure catalogue names for the parts put back, read here from ErasureCatalogue',

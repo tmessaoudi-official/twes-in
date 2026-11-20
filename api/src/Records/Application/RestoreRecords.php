@@ -24,6 +24,8 @@ use App\Records\Domain\Exception\RemovalNoLongerPending;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
 use App\Records\Domain\ValueObject\RemovalKind;
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
@@ -39,10 +41,14 @@ use Symfony\Component\Uid\Uuid;
  * same way, and every row it pointed at the record kept that still names it is pointed back; undoing one takes the
  * proof merging took, and is refused once the record kept traded since (goods received, an expense in the books). A
  * delete's or an import's restore asks none, since it only puts back what the person's own action took, unless the
- * operator makes every restore ask one (app.step_up.on_restore).
+ * operator makes every restore ask one (app.step_up.on_restore). A link the delete emptied is written back where it is
+ * still empty, and the answer says how many were not.
  */
 final readonly class RestoreRecords implements DeclaresAuditActions
 {
+    /** The links a delete emptied that its restore did not write back, one table and column each, with how many rows. */
+    public const string LINKS_NOT_RESTORED = 'records.links_not_restored';
+
     public function __construct(
         private RecordStore $store,
         private RecordRemovalRepository $removals,
@@ -52,6 +58,7 @@ final readonly class RestoreRecords implements DeclaresAuditActions
         private ConfirmStepUp $stepUp,
         private RecordCatalogue $catalogue,
         private LiveChanges $liveChanges,
+        private Effects $saying,
         /** Whether every restore asks a proof given again, as a merge's undo always does: an operator's choice. */
         #[Autowire(param: 'app.step_up.on_restore')]
         private bool $onRestore,
@@ -101,7 +108,7 @@ final readonly class RestoreRecords implements DeclaresAuditActions
             }
             // The rows first: a refused restore leaves the removal as it was, in memory too. What a merge moved goes back
             // once the records it names stand again.
-            $this->store->restore($company->getId(), $removal->getId());
+            $left = $this->store->restore($company->getId(), $removal->getId());
             if ($merge) {
                 $this->store->moveBack($company->getId(), $removal->getId(), $naming);
                 $merged = $removal->recordIds();
@@ -120,6 +127,13 @@ final readonly class RestoreRecords implements DeclaresAuditActions
             $this->removals->save($removal);
             foreach ($removal->recordIds() as $id) {
                 $this->audit->record(new AuditEntry($removal->getSubject(), $id, $removal->getSubject().($merge ? '.merge_undone' : '.restored'), $actorUserId, [], $company->getId()));
+            }
+            foreach ($left as $links) {
+                $this->saying->said(new Effect(self::LINKS_NOT_RESTORED, $removal->getId(), $links));
+            }
+            // A link the delete emptied, written back or not, changed rows of another table that no audit entry names.
+            foreach (array_unique(array_map(static fn (RecordReference $reference): string => $reference->table, array_filter($naming, static fn (RecordReference $reference): bool => RecordUse::Cleared === $reference->onDelete && $reference->table !== $removal->getSubject()))) as $table) {
+                $this->liveChanges->stage(new LiveChange($table, null, $removal->getSubject().'.restored', $actorUserId, $company->getId()));
             }
             if ($merge) {
                 foreach (array_unique(array_map(static fn (RecordReference $reference): string => $reference->table, array_filter($naming, static fn (RecordReference $reference): bool => \in_array($reference->onMerge, [RecordMerge::Moves, RecordMerge::MovesOrDrops], true)))) as $table) {

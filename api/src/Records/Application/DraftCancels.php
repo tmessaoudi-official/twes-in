@@ -36,7 +36,7 @@ final readonly class DraftCancels
         if (DraftCancelSettings::WHEN_DELETE_REFUSED !== $this->settings->text(new SettingContext($company), DraftCancelSettings::OFFER) || [] === $drafts) {
             return [];
         }
-        $used = $this->uses->of($company->getId(), $subject, $drafts);
+        $used = $this->uses->of($company, $subject, $drafts);
         $alone = [];
         foreach ($drafts as $draft) {
             if (!isset($used[$draft->toRfc4122()])) {

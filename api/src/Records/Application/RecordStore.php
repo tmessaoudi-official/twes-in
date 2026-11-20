@@ -56,6 +56,18 @@ interface RecordStore
     public function remove(Uuid $companyId, Uuid $removalId, RecordSubject $subject, array $ids, array $owned): void;
 
     /**
+     * Empties every link the references hold to the records, but on rows going in the same delete, each row another
+     * version; what each held is copied under the removal, for the restore to write back. Runs before the records go,
+     * whose foreign keys the links would hold.
+     *
+     * @param list<Uuid>            $ids
+     * @param list<RecordReference> $cleared the references the delete empties
+     *
+     * @return list<array{table: string, column: string, count: int}> the rows each reference emptied, those emptying none left out
+     */
+    public function clear(Uuid $companyId, Uuid $removalId, array $ids, array $cleared): array;
+
+    /**
      * Whether the record to keep sits, through the reference that holds a subject's records under one another, under
      * one of those merged into it.
      *
@@ -84,11 +96,14 @@ interface RecordStore
     public function moveBack(Uuid $companyId, Uuid $mergeId, array $naming): void;
 
     /**
-     * Puts every copied row back, all or nothing, and lets the copy go.
+     * Puts every copied row back, all or nothing, then writes back each link the delete emptied where it is still empty,
+     * its row still there and, for a record under another of its kind, no loop made; and lets the copy go.
+     *
+     * @return list<array{table: string, column: string, count: int}> the links not written back, those leaving none left out
      *
      * @throws RemovalConflict when something made since stands in a row's way
      */
-    public function restore(Uuid $companyId, Uuid $removalId): void;
+    public function restore(Uuid $companyId, Uuid $removalId): array;
 
     /**
      * Deletes the copy, and says which files its rows named that nothing names any more, for the caller to let go.

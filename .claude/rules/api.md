@@ -99,7 +99,10 @@ the end of § Lessons here.
   `DeclaresRecordReferences` in its own `Infrastructure/Records/`, which `RecordReferenceCoverage` holds to every column
   that names one; `RemoveRecords` refuses a record in use, takes the rows a reference says belong to it (`owned`: a
   product's codes, photos, places, settings; a row owned through such a row, a line's tax, is declared `below` it and goes
-  before it), keeps them in `record_removal_row` for `RestoreRecords` for the company's `records.undoable_for`,
+  before it; a link that only sets something up is declared `cleared`, a subcategory's category or a vendor's default
+  expense category, a use unless the company's `records.configuration_links`, `Links/ConfigurationLinks`, says « clear »:
+  the delete then empties it, said as the effect `records.links_cleared`, and the restore writes it back where it is still
+  empty and makes no loop, saying the rest as `records.links_not_restored`), keeps them in `record_removal_row` for `RestoreRecords` for the company's `records.undoable_for`,
   `RecordsUndoSettings` (whole hours, an hour up to the operator's `app.records.undoable_for`, which `/auth/me`'s
   `company.recordsUndoableSeconds` says to every screen through `DurationWords`), stamped when made, and the
   worker makes them final every quarter hour, letting go the files nothing names any more through the Files context's

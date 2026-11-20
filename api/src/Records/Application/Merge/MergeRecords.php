@@ -106,9 +106,7 @@ final readonly class MergeRecords implements DeclaresAuditActions
             }
             $naming = $this->catalogue->naming($subject->table);
             foreach ($naming as $reference) {
-                if (RecordUse::Cleared === $reference->onDelete) {
-                    throw new \LogicException(\sprintf('%s.%s is %s, which merging a %s does not handle yet.', $reference->table, $reference->column, $reference->onDelete->value, $subject->table));
-                }
+                // A link a delete may empty moves in a merge as its own declaration says, as a use does.
                 if ($reference->table === $subject->table && \in_array($reference->onMerge, [RecordMerge::Moves, RecordMerge::MovesOrDrops], true) && $this->store->descendsFrom($company->getId(), $kept, $merged, $reference)) {
                     throw new MergeCycle(\sprintf('The %s kept sits under one merged into it.', $subject->table));
                 }

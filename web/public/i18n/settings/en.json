@@ -351,6 +351,12 @@
           "kept_main_wins": "Keep the one of the record kept",
           "refuse_while_both_have_one": "Refuse the merge"
         }
+      },
+      "records": {
+        "configuration_links": {
+          "block_delete": "Refuse the delete",
+          "clear": "Take the links off and delete"
+        }
       }
     },
     "overrides": {
@@ -454,7 +460,9 @@
     },
     "records": {
       "undoable_for": "Time to undo a delete (hours)",
-      "undoable_for_hint": "A delete, a merge or an import can be taken back for this long, at most the time the installation keeps."
+      "undoable_for_hint": "A delete, a merge or an import can be taken back for this long, at most the time the installation keeps.",
+      "configuration_links": "Deleting a category other records are filed under",
+      "configuration_links_hint": "A subcategory, or a vendor’s default expense category. Taking the links off keeps the subcategory or the vendor, with no category; undoing the delete puts them back."
     },
     "reports": {
       "export_headers": "Report file headings",

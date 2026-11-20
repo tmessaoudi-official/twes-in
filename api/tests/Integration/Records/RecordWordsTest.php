@@ -59,7 +59,7 @@ final class RecordWordsTest extends KernelTestCase
         }
         $counted = [];
         foreach ($catalogue->references() as $reference) {
-            if (RecordUse::Uses === $reference->onDelete || RecordMerge::Ignored !== $reference->onMerge) {
+            if (\in_array($reference->onDelete, [RecordUse::Uses, RecordUse::Cleared], true) || RecordMerge::Ignored !== $reference->onMerge) {
                 $counted[$reference->table] = true;
             }
         }

@@ -34,7 +34,7 @@ final readonly class VendorRecords implements DeclaresRecordReferences
     {
         return [
             RecordReference::uses('vendor', 'merged_into_id', 'vendor', RecordMerge::Moves, 'A vendor merged away stands for the vendor it was merged into; merged on, for the vendor kept.'),
-            RecordReference::uses('vendor', 'default_expense_category_id', 'expense_category', RecordMerge::Moves, 'A vendor\'s expenses are filed under its default category; merged, under the category kept.'),
+            RecordReference::cleared('vendor', 'default_expense_category_id', 'expense_category', RecordMerge::Moves, 'A vendor\'s expenses are filed under its default category; merged, under the category kept. A setting, which a delete empties where the company chose so.'),
         ];
     }
 }

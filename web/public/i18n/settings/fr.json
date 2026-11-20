@@ -351,6 +351,12 @@
           "kept_main_wins": "Garder celui de la fiche gardée",
           "refuse_while_both_have_one": "Refuser la fusion"
         }
+      },
+      "records": {
+        "configuration_links": {
+          "block_delete": "Refuser la suppression",
+          "clear": "Retirer les liens et supprimer"
+        }
       }
     },
     "overrides": {
@@ -454,7 +460,9 @@
     },
     "records": {
       "undoable_for": "Délai d’annulation d’une suppression (heures)",
-      "undoable_for_hint": "Une suppression, une fusion ou un import peut être annulé pendant ce délai, au plus la durée que garde l’installation."
+      "undoable_for_hint": "Une suppression, une fusion ou un import peut être annulé pendant ce délai, au plus la durée que garde l’installation.",
+      "configuration_links": "Supprimer une catégorie sous laquelle d’autres fiches sont rangées",
+      "configuration_links_hint": "Une sous-catégorie, ou la catégorie de dépenses par défaut d’un fournisseur. Retirer les liens garde la sous-catégorie ou le fournisseur, sans catégorie ; annuler la suppression les remet."
     },
     "reports": {
       "export_headers": "En-têtes des fichiers de rapport",

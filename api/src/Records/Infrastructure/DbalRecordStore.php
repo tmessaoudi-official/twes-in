@@ -40,6 +40,12 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
     private const int RECORD_STEP = 0;
     private const int OWNED_STEP = 1;
     private const int BELOW_STEP = 2;
+    /**
+     * A link the delete emptied, copied as its row's id and the value it held: written back once everything else stands.
+     * Its own step and its `cleared_column` keep it out of the rows put back whole, and the release before this one,
+     * which inserts every copied row whole, is refused on it (the copy has no company) and so restores nothing half.
+     */
+    private const int CLEARED_STEP = 3;
 
     /** Copies the rows a statement named `gone` returns under the removal, at the step given. */
     private const string COPY = 'INSERT INTO record_removal_row (id, removal_id, company_id, table_name, step, snapshot) SELECT gen_random_uuid(), :removal, :company, :table, %d, to_jsonb(gone) FROM gone';
@@ -137,7 +143,31 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
         }
     }
 
-    public function restore(Uuid $companyId, Uuid $removalId): void
+    public function clear(Uuid $companyId, Uuid $removalId, array $ids, array $cleared): array
+    {
+        $emptied = [];
+        foreach ($cleared as $reference) {
+            if (RecordLink::Id !== $reference->link || null !== $reference->belowTable || null !== $reference->whereColumn) {
+                throw new \LogicException(\sprintf('%s.%s: only a column holding a record\'s id is emptied by its delete.', $reference->table, $reference->column));
+            }
+            [$naming, $parameters] = $this->naming($reference, $companyId, $ids);
+            // A row of the records' own table going in the same delete keeps its link in its own copy, put back with it.
+            if ($reference->table === $reference->subject) {
+                $naming .= ' AND NOT (id = ANY(CAST(:ids AS uuid[])))';
+            }
+            $count = $this->connection->executeStatement(
+                \sprintf("WITH gone AS (UPDATE %1\$s SET %2\$s = NULL%3\$s WHERE %4\$s RETURNING id, OLD.%2\$s AS value) INSERT INTO record_removal_row (id, removal_id, company_id, table_name, step, snapshot, cleared_column) SELECT gen_random_uuid(), :removal, :company, :table, %5\$d, jsonb_build_object('id', gone.id, 'value', gone.value), :column FROM gone", $this->name($reference->table), $this->name($reference->column), $this->versioned($reference->table, ''), $naming, self::CLEARED_STEP),
+                [...$parameters, 'removal' => $removalId->toRfc4122(), 'table' => $reference->table, 'column' => $reference->column],
+            );
+            if ($count > 0) {
+                $emptied[] = ['table' => $reference->table, 'column' => $reference->column, 'count' => (int) $count];
+            }
+        }
+
+        return $emptied;
+    }
+
+    public function restore(Uuid $companyId, Uuid $removalId): array
     {
         $parameters = ['company' => $companyId->toRfc4122(), 'removal' => $removalId->toRfc4122()];
         $table = null;
@@ -145,23 +175,30 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
         $this->connection->beginTransaction();
         try {
             $groups = $this->connection->fetchAllAssociative(
-                'SELECT step, table_name FROM record_removal_row WHERE removal_id = :removal AND company_id = :company GROUP BY step, table_name ORDER BY step',
+                'SELECT step, table_name FROM record_removal_row WHERE removal_id = :removal AND company_id = :company AND cleared_column IS NULL GROUP BY step, table_name ORDER BY step',
                 $parameters,
             );
+            $records = null;
             foreach ($groups as $group) {
                 $table = self::text($group['table_name']);
                 $step = \is_int($group['step']) ? $group['step'] : throw new \LogicException('A copied row names its step.');
+                if (self::RECORD_STEP === $step) {
+                    $records = $table;
+                }
                 $columns = array_map(fn (mixed $column): string => $this->name(self::text($column)), $this->connection->fetchFirstColumn(
-                    'SELECT c.column_name FROM information_schema.columns c WHERE c.table_schema = current_schema() AND c.table_name = :table AND c.is_generated = \'NEVER\' AND EXISTS (SELECT 1 FROM record_removal_row d CROSS JOIN LATERAL jsonb_object_keys(d.snapshot) AS k(name) WHERE d.removal_id = :removal AND d.company_id = :company AND d.table_name = :table AND d.step = :step AND k.name = c.column_name) ORDER BY c.ordinal_position',
+                    'SELECT c.column_name FROM information_schema.columns c WHERE c.table_schema = current_schema() AND c.table_name = :table AND c.is_generated = \'NEVER\' AND EXISTS (SELECT 1 FROM record_removal_row d CROSS JOIN LATERAL jsonb_object_keys(d.snapshot) AS k(name) WHERE d.removal_id = :removal AND d.company_id = :company AND d.table_name = :table AND d.step = :step AND d.cleared_column IS NULL AND k.name = c.column_name) ORDER BY c.ordinal_position',
                     [...$parameters, 'table' => $table, 'step' => $step],
                 ));
                 $this->connection->executeStatement(
-                    \sprintf('INSERT INTO %1$s (%2$s) SELECT %3$s FROM record_removal_row d CROSS JOIN LATERAL jsonb_populate_record(NULL::%1$s, d.snapshot) AS r WHERE d.removal_id = :removal AND d.company_id = :company AND d.table_name = :table AND d.step = :step', $this->name($table), implode(', ', $columns), implode(', ', array_map(static fn (string $column): string => 'r.'.$column, $columns))),
+                    \sprintf('INSERT INTO %1$s (%2$s) SELECT %3$s FROM record_removal_row d CROSS JOIN LATERAL jsonb_populate_record(NULL::%1$s, d.snapshot) AS r WHERE d.removal_id = :removal AND d.company_id = :company AND d.table_name = :table AND d.step = :step AND d.cleared_column IS NULL', $this->name($table), implode(', ', $columns), implode(', ', array_map(static fn (string $column): string => 'r.'.$column, $columns))),
                     [...$parameters, 'table' => $table, 'step' => $step],
                 );
             }
+            $left = $this->writeBack($companyId, $removalId, $records);
             $this->connection->executeStatement('DELETE FROM record_removal_row WHERE removal_id = :removal AND company_id = :company', $parameters);
             $this->connection->commit();
+
+            return $left;
         } catch (UniqueConstraintViolationException|ForeignKeyConstraintViolationException|NotNullConstraintViolationException $inTheWay) {
             $this->connection->rollBack();
 
@@ -171,6 +208,45 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
 
             throw $failure;
         }
+    }
+
+    /**
+     * Writes back each link the delete emptied, in a stable order, where its row is still there and the link still empty:
+     * one set since stays as it was set. A record under another of its kind is not put back under one that now sits
+     * below it, which would make a loop; each check reads the links already written back.
+     *
+     * @return list<array{table: string, column: string, count: int}> the links left, by table and column
+     */
+    private function writeBack(Uuid $companyId, Uuid $removalId, ?string $records): array
+    {
+        $company = $companyId->toRfc4122();
+        $left = [];
+        foreach ($this->connection->fetchAllAssociative(
+            "SELECT table_name, cleared_column, snapshot->>'id' AS id, snapshot->>'value' AS value FROM record_removal_row WHERE removal_id = :removal AND company_id = :company AND cleared_column IS NOT NULL ORDER BY table_name, cleared_column, snapshot->>'id'",
+            ['company' => $company, 'removal' => $removalId->toRfc4122()],
+        ) as $row) {
+            $table = self::text($row['table_name']);
+            $column = self::text($row['cleared_column']);
+            $id = self::text($row['id']);
+            $value = self::text($row['value']);
+            $name = $this->name($table);
+            $link = $this->name($column);
+            $loop = $table === $records && true === $this->connection->fetchOne(
+                \sprintf('WITH RECURSIVE above(id, depth) AS (SELECT CAST(:value AS uuid), 0 UNION ALL SELECT h.%2$s, above.depth + 1 FROM %1$s h JOIN above ON h.id = above.id WHERE h.company_id = :company AND h.%2$s IS NOT NULL AND above.depth < 1000) SELECT EXISTS (SELECT 1 FROM above WHERE id = CAST(:id AS uuid))', $name, $link),
+                ['company' => $company, 'value' => $value, 'id' => $id],
+            );
+            $written = $loop ? 0 : $this->connection->executeStatement(
+                \sprintf('UPDATE %1$s SET %2$s = CAST(:value AS %3$s)%4$s WHERE company_id = :company AND id = CAST(:id AS uuid) AND %2$s IS NULL', $name, $link, $this->columnType($table, $column), $this->versioned($table, '')),
+                ['company' => $company, 'value' => $value, 'id' => $id],
+            );
+            if (0 === (int) $written) {
+                $key = $table.'.'.$column;
+                $left[$key] ??= ['table' => $table, 'column' => $column, 'count' => 0];
+                ++$left[$key]['count'];
+            }
+        }
+
+        return array_values($left);
     }
 
     public function descendsFrom(Uuid $companyId, Uuid $keptId, array $mergedIds, RecordReference $holding): bool
@@ -390,7 +466,8 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
     {
         $parameters = ['company' => $companyId->toRfc4122(), 'removal' => $removalId->toRfc4122()];
         $named = [];
-        foreach ($this->connection->fetchFirstColumn('SELECT DISTINCT table_name FROM record_removal_row WHERE removal_id = :removal AND company_id = :company', $parameters) as $table) {
+        // A link the delete emptied names no file: its copy holds a row's id and the record's.
+        foreach ($this->connection->fetchFirstColumn('SELECT DISTINCT table_name FROM record_removal_row WHERE removal_id = :removal AND company_id = :company AND cleared_column IS NULL', $parameters) as $table) {
             foreach ($this->unnamedFiles->columnsOf(self::text($table)) as $column) {
                 foreach ($this->connection->fetchFirstColumn(
                     'SELECT DISTINCT snapshot->>:column FROM record_removal_row WHERE removal_id = :removal AND company_id = :company AND table_name = :table AND snapshot->>:column IS NOT NULL',

@@ -33,7 +33,7 @@ final readonly class ExpenseCategoryRecordReferences implements DeclaresRecordRe
     {
         return [
             RecordReference::uses('expense', 'category_id', 'expense_category', RecordMerge::Moves, 'An expense is filed under its category.'),
-            RecordReference::uses('expense_category', 'parent_id', 'expense_category', RecordMerge::Moves, 'A subcategory sits under its category.'),
+            RecordReference::cleared('expense_category', 'parent_id', 'expense_category', RecordMerge::Moves, 'A subcategory sits under its category: a link that sets the tree up, which a delete empties where the company chose so.'),
         ];
     }
 }

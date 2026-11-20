@@ -27,6 +27,7 @@ use App\Records\Application\RestoreRecords;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
 use App\Records\Domain\ValueObject\RemovalState;
+use App\Shared\Application\Effects;
 use App\Shared\Application\LiveChanges;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
@@ -122,6 +123,7 @@ final class RestoreRecordsTest extends TestCase
             $this->stepUp(),
             new RecordCatalogue([]),
             $this->createStub(LiveChanges::class),
+            $this->createStub(Effects::class),
             onRestore: $onRestore,
         ))->handle($this->company, $removal->getId(), $this->person);
     }
