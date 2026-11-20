@@ -6,8 +6,9 @@
 # without a fix is shown and does not fail: there is nothing to take yet.
 #   ours         the three published images at :master, <prefix>/twes-in-{api,web,database}, as scripts/release/publish.sh
 #                names them
-#   third-party  every image the compose files of a shop or a server name by digest (scripts/gates/release-overlay.sh
-#                requires one for each it starts), read from the files, so a bump moves one place
+#   third-party  every image the compose files of a shop, a server or the monitor name by digest (scripts/gates/release-overlay.sh
+#                requires one for each a shop or a server starts; the monitor's Gatus and GlitchTip carry theirs, and its
+#                postgres is the tag the database image is built on), read from the files, so a bump moves one place
 # Trivy itself is pinned by its index digest and run as an image, never through aquasecurity/trivy-action: the March
 # 2026 compromise (GHSA-69fq-xp46-6x23) reached the binary 0.69.4, the images 0.69.5 and 0.69.6, and the action's tags.
 # 0.76.2 is past it and past what a crafted database could do to the scanner itself (GHSA-mcj4-mphf-j9ff, a path
@@ -23,7 +24,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ -f "$root/.trivyignore" ]] || { echo "image-scan: found no .trivyignore" >&2; exit 2; }
 
 mapfile -t third < <(grep -hoE '^[[:space:]]*image: [^[:space:]"]+@sha256:[0-9a-f]{64}' \
-  "$root/compose.yaml" "$root/compose.deploy.yaml" "$root/compose.onprem.yaml" | sed 's/^[[:space:]]*image: //' | sort -u)
+  "$root/compose.yaml" "$root/compose.deploy.yaml" "$root/compose.onprem.yaml" "$root/infra/monitor/compose.yaml" | sed 's/^[[:space:]]*image: //' | sort -u)
 ((${#third[@]})) || { echo "image-scan: found no image named by digest in the compose files: the scan would read nothing of theirs" >&2; exit 2; }
 images=("$prefix/twes-in-api:master" "$prefix/twes-in-web:master" "$prefix/twes-in-database:master" "${third[@]}")
 

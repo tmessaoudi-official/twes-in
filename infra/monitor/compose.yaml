@@ -49,7 +49,7 @@ services:
     logging: *logging
     restart: unless-stopped
     labels: *mounts-digest
-    image: twinproduction/gatus:v5.38.0
+    image: twinproduction/gatus:v5.38.0@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
     # gatus.yaml names these as ${…}; Gatus fills them in when it reads the file.
     environment:
       TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name the instance watched answers on}"
@@ -72,7 +72,7 @@ services:
   glitchtip:
     logging: *logging
     restart: unless-stopped
-    image: glitchtip/glitchtip:7.0.0
+    image: glitchtip/glitchtip:7.0.0@sha256:c245745b4179667da3aebd73fb8d4f1fd918f7d68ba07d1fd73ea688933b6e01
     # The web server and the worker in one process, with no Valkey: the database is the cache and the queue, which is
     # enough for one instance's errors.
     command: ./bin/start.sh

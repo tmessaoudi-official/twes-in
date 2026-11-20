@@ -149,8 +149,9 @@ step "instance up behind its edge, archiving, joined to the monitor"
 # Every request from the backup container, on the shared network: it trusts the monitor's authority (CURL_CA_BUNDLE)
 # and is given the instance's.
 ask() { dc exec -T backup curl -sS --max-time 15 "$@"; }
-deep=$(ask -o /dev/null -w '%{http_code}' --cacert /check/instance-root.crt -H "Authorization: Bearer $token" "https://$HOST/api/health/deep")
-[[ "$deep" == 200 ]] || fail "the instance's deep health answered $deep through its edge"
+deep=$(ask -w '\n%{http_code}' --cacert /check/instance-root.crt -H "Authorization: Bearer $token" "https://$HOST/api/health/deep")
+# A red answer names the part that is not well, which the failure repeats.
+[[ "${deep##*$'\n'}" == 200 ]] || fail "the instance's deep health answered ${deep##*$'\n'} through its edge: ${deep%$'\n'*}"
 
 dc exec -T backup twes-backup full >/dev/null || fail "the base backup failed"
 step "a base backup taken"

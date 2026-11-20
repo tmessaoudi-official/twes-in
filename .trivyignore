@@ -89,3 +89,196 @@ CVE-2026-78661 exp:2026-12-16
 
 CVE-2026-97054 exp:2026-12-16
 #   HIGH caddy, centrifugo, gotenberg, database (gosu): Go net/http (GO-2026-6859, fixed in Go 1.27.4 and 1.26.11) — NOT REACHABLE: the race needs a handler that wraps the request body in MaxBytesReader or MaxBytesHandler and reads it while writing the response header. Caddy: no Caddyfile sets request_body (infra/edge, infra/lan, infra/onprem, infra/monitor). Centrifugo: only `= /connection/websocket` is passed on (infra/web/nginx.conf), an upgrade with no body; its HTTP API is internal and key-held. Gotenberg publishes no port and hears only the api. gosu opens no server. The api's FrankenPHP 1.13.6 is built on go1.27.4, so it no longer carries it. No fixed release of caddy:2.11.9-alpine (digest unchanged 2026-11-20) or centrifugo (v6.10.3, 2026-11-08) exists yet; gotenberg 9.9.0 (2026-11-19) is a five-minor update with its own row (S5.67). Re-read 2026-11-20.
+
+# The monitor machine (infra/monitor/compose.yaml), scanned since 2026-11-20: Gatus v5.38.0 and GlitchTip 7.0.0, neither with a
+# newer release that day. Each verdict was read in the image itself (who imports the package, what serves HTTP, which
+# binaries call the flawed path) against the monitor's configuration.
+
+CVE-2026-116587 exp:2026-12-16
+#   HIGH gatus (the monitor): go-jose v4.1.4 — NOT REACHABLE: a crafted RSA JWK; Gatus parses JWKs only for its OIDC sign-in, which infra/monitor/gatus.yaml does not configure (no security: block)
+
+CVE-2026-63209 exp:2026-12-16
+#   HIGH gatus (the monitor): klauspost/compress v1.18.6 — NOT REACHABLE: the overflow is in s2.NewDict on a dictionary the caller supplies; Gatus builds no s2 dictionary from anything it reads
+
+CVE-2026-46603 exp:2026-12-16
+#   HIGH gatus (the monitor): golang.org/x/image v0.40.0 — NOT REACHABLE: a crafted WebP (VP8L) image; Gatus decodes no image it is sent, its badges are written SVG
+
+CVE-2026-116304 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116306 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116307 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116309 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116314 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116315 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116316 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116317 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116319 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116320 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116323 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116325 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116326 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116328 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116330 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116331 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116332 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116335 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-116336 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120139 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120141 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120142 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120143 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120145 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120147 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120148 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120149 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120150 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120151 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-120153 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-14661 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-18447 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-6460 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-6467 exp:2026-12-16
+#   HIGH glitchtip (the monitor): libpq5 17.11 — NOT REACHABLE: PostgreSQL's 2026-11-12 fixes are in the server, its PL languages and the client tools (pg_dump, pg_restore, reindexdb), none of which libpq5 holds; its one libpq item (sslkeylogfile) needs the connection string, which the compose file fixes. The monitor's own glitchtip-db server takes 18.7 with the postgres bump (audit 2026-11-19 row 35)
+
+CVE-2026-85091 exp:2026-12-16
+#   HIGH glitchtip (the monitor): zlib1g — NOT REACHABLE: the overflow is in gzwrite's path; only apt and dpkg call it in this image (every ELF file searched for gzwrite, gzputs, gzprintf, gzclose_w), and neither runs
+
+CVE-2026-111064 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-111066 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-123817 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128124 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128126 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128127 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128128 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128129 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128130 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128131 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+CVE-2026-128132 exp:2026-12-16
+#   HIGH glitchtip (the monitor): aiohttp 3.14.3 — NOT REACHABLE: every fix is in aiohttp's server (Host masks, forms, multipart, WebSocket, upgrades), and GlitchTip serves HTTP through granian (bin/run-granian.sh); aiohttp is only its client, for uptime checks (GLITCHTIP_ENABLE_UPTIME false), Stripe (not configured) and an import from a server the operator names
+
+GHSA-6q48-6c7w-9gw2 exp:2026-12-16
+#   CRITICAL glitchtip (the monitor): certifi 2026.7.22 — NOT REACHABLE in this configuration: the emSign roots are trusted only by requests and sentry-sdk, which make no outbound connection here (see urllib3); mail's STARTTLS reads the system store through Django's SMTP backend
+
+CVE-2026-114605 exp:2026-12-16
+#   HIGH glitchtip (the monitor): dnspython 2.8.0 — NOT REACHABLE: email-validator's deliverability check asks the monitor's own resolver, sign-up is off and only the operator types an address; zone files are never parsed
+
+CVE-2026-128089 exp:2026-12-16
+#   HIGH glitchtip (the monitor): dnspython 2.8.0 — NOT REACHABLE: email-validator's deliverability check asks the monitor's own resolver, sign-up is off and only the operator types an address; zone files are never parsed
+
+CVE-2026-114613 exp:2026-12-16
+#   HIGH glitchtip (the monitor): msgpack 1.1.2 — NOT REACHABLE: imported only by pip's vendored cachecontrol, and pip never runs in the container
+
+GHSA-6v7p-g79w-8964 exp:2026-12-16
+#   HIGH glitchtip (the monitor): msgpack 1.1.2 — NOT REACHABLE: imported only by pip's vendored cachecontrol, and pip never runs in the container
+
+CVE-2026-118669 exp:2026-12-16
+#   HIGH glitchtip (the monitor): oauthlib 3.3.1 — NOT REACHABLE: used by django-allauth's OIDC identity provider and OAuth1 sign-in providers, none configured (registration off, no social provider)
+
+CVE-2026-49272 exp:2026-12-16
+#   HIGH glitchtip (the monitor): oauthlib 3.3.1 — NOT REACHABLE: used by django-allauth's OIDC identity provider and OAuth1 sign-in providers, none configured (registration off, no social provider)
+
+CVE-2026-119194 exp:2026-12-16
+#   HIGH glitchtip (the monitor): pyasn1 0.6.4 — NOT REACHABLE: imported only by google-auth's pure-Python RSA signer, for Google storage or sign-in, neither configured
+
+CVE-2026-119195 exp:2026-12-16
+#   HIGH glitchtip (the monitor): pyasn1 0.6.4 — NOT REACHABLE: imported only by google-auth's pure-Python RSA signer, for Google storage or sign-in, neither configured
+
+CVE-2026-119196 exp:2026-12-16
+#   HIGH glitchtip (the monitor): pyasn1 0.6.4 — NOT REACHABLE: imported only by google-auth's pure-Python RSA signer, for Google storage or sign-in, neither configured
+
+CVE-2026-119197 exp:2026-12-16
+#   HIGH glitchtip (the monitor): pyasn1 0.6.4 — NOT REACHABLE: imported only by google-auth's pure-Python RSA signer, for Google storage or sign-in, neither configured
+
+CVE-2025-47273 exp:2026-12-16
+#   HIGH glitchtip (the monitor): setuptools 70.3.0 — NOT REACHABLE: PackageIndex serves easy_install alone, never run in the container
+
+CVE-2026-97687 exp:2026-12-16
+#   HIGH glitchtip (the monitor): urllib3 2.7.0 — NOT REACHABLE: no HTTPS proxy is set, and its callers (requests, botocore, anymail, sentry-sdk) reach no server here: mail goes through Django's SMTP backend, files stay on the volume, GlitchTip reports to no Sentry
+
+CVE-2026-97689 exp:2026-12-16
+#   HIGH glitchtip (the monitor): urllib3 2.7.0 — NOT REACHABLE: no HTTPS proxy is set, and its callers (requests, botocore, anymail, sentry-sdk) reach no server here: mail goes through Django's SMTP backend, files stay on the volume, GlitchTip reports to no Sentry

@@ -21,6 +21,13 @@ check "a clean scan says so" "$status" 0 "$out" "image-scan: OK"
 check "  a cache named from where it runs reaches docker as that folder" 0 0 "$(mounts)" "$TMPDIR/work/var/cache/trivy:/root/.cache/trivy"
 scans=$(grep -c -x 'image' "$TMPDIR/docker.args")
 ((scans >= 4)); check "  our three images and every one a shop starts by digest are scanned" $? 0 "$scans scans" ""
+# The monitor's own images, on a machine of their own, are read too: each named by tag and index digest, as a shop's are.
+monitor="$(dirname "$SCRIPT")/../../infra/monitor/compose.yaml"
+for name in twinproduction/gatus glitchtip/glitchtip; do
+  pinned=$(grep -oE "^[[:space:]]*image: $name:[^[:space:]@]+@sha256:[0-9a-f]{64}$" "$monitor" | sed 's/^[[:space:]]*image: //')
+  [[ -n "$pinned" ]]; check "  the monitor's $name is named by tag and digest" $? 0 "$pinned" ""
+  [[ -n "$pinned" ]] && grep -qxF -- "$pinned" "$TMPDIR/docker.args"; check "  and is scanned" $? 0 "$pinned" ""
+done
 out=$(run TRIVY_CACHE="$TMPDIR/cache"); check "an absolute cache is handed over as it is" 0 0 "$(mounts)" "$TMPDIR/cache:/root/.cache/trivy"
 
 out=$(run DOCKER_STATUS=3); check "a finding fails the scan" $? 1 "$out" "a fixable CRITICAL or HIGH"
