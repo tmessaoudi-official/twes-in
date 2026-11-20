@@ -166,6 +166,27 @@ final class SubscriptionsTest extends ApiTestCase
         $this->assertChangedSince('terms another operator stopped since');
     }
 
+    /**
+     * One kernel answers every request, as a FrankenPHP worker does: a stop naming no version after one that named a
+     * stale one is still refused for naming none, never read with the value the earlier request left in API Platform's
+     * metadata (GHSA-xmq6-3c6q-fr8m writes request values into cached Parameter metadata in worker mode; DeleteVersion reads the request itself, so it holds even where that metadata keeps the last value, as a vendor sabotage skipping setValue on an absent parameter showed).
+     */
+    public function testAWorkerReadsNoVersionLeftByTheRequestBefore(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(30)]);
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(60)]);
+        $this->client->disableReboot();
+
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=1');
+        $this->assertChangedSince('terms read before the last change');
+        $this->sendJson('DELETE', $this->subscriptionOf($company));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a stop naming no version, after one naming 1');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=2');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     public function testTheTermsNameTheVersionTheyWereReadAtAndNoneReadAsNoneIsZero(): void
     {
         $company = $this->createCompany('Acme');

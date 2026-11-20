@@ -121,6 +121,29 @@ final class RolesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
 
+    /**
+     * One kernel answers every request, as a FrankenPHP worker does: a delete naming no version after one that named a
+     * stale one is still refused for naming none (GHSA-xmq6-3c6q-fr8m writes request values into cached Parameter
+     * metadata in worker mode; DeleteVersion reads the request itself, so it holds even where that metadata keeps the
+     * last value, as a vendor sabotage skipping setValue on an absent parameter showed).
+     */
+    public function testAWorkerReadsNoVersionLeftByTheRequestBefore(): void
+    {
+        $this->signedInAsOwner();
+        $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read']]);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->path($id), ['name' => 'waiter', 'permissions' => ['customer.read', 'product.read'], 'version' => 1]);
+        $this->client->disableReboot();
+
+        $this->sendJson('DELETE', $this->path($id).'?version=1');
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'read before the revision');
+        $this->sendJson('DELETE', $this->path($id));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a delete naming no version, after one naming 1');
+        self::assertSame([['propertyPath' => 'version', 'reason' => 'value_required', 'params' => null]], self::violationsOf($this->json()));
+        $this->sendJson('DELETE', $this->path($id).'?version=2');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     public function testAFormOpenedBeforeAPermissionWasTakenAwayCannotGiveItBack(): void
     {
         // A role decides what every member holding it may do: a form opened before someone took a permission away,
