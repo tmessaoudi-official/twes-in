@@ -355,6 +355,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/access-log.test.sh
+	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/response-headers.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/edge/tests/token-free-logs.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/live-proxy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/api/tests/migrate.test.sh
