@@ -86,3 +86,6 @@ CVE-2026-56862 exp:2026-12-16
 
 CVE-2026-78661 exp:2026-12-16
 #   HIGH caddy: golang.org/x/net/html v0.60.0 — NOT REACHABLE: a denial of service in the HTML parser; Caddy parses HTML only in its templates module, and no Caddyfile (infra/edge, infra/lan, infra/onprem, infra/monitor, the api's log-filter.caddy) uses templates; no Caddy release carries x/net 0.62.0 yet (2.11.9-alpine rebuilt 2026-11-13, read 2026-11-16)
+
+CVE-2026-97054 exp:2026-12-16
+#   HIGH caddy, centrifugo, gotenberg, database (gosu): Go net/http (GO-2026-6859, fixed in Go 1.27.4 and 1.26.11) — NOT REACHABLE: the race needs a handler that wraps the request body in MaxBytesReader or MaxBytesHandler and reads it while writing the response header. Caddy: no Caddyfile sets request_body (infra/edge, infra/lan, infra/onprem, infra/monitor). Centrifugo: only `= /connection/websocket` is passed on (infra/web/nginx.conf), an upgrade with no body; its HTTP API is internal and key-held. Gotenberg publishes no port and hears only the api. gosu opens no server. The api's FrankenPHP 1.13.6 is built on go1.27.4, so it no longer carries it. No fixed release of caddy:2.11.9-alpine (digest unchanged 2026-11-20) or centrifugo (v6.10.3, 2026-11-08) exists yet; gotenberg 9.9.0 (2026-11-19) is a five-minor update with its own row (S5.67). Re-read 2026-11-20.
