@@ -2,7 +2,7 @@
 # twes-in API on FrankenPHP (Caddy + PHP 8.5). Two targets over one base, as the official Symfony Docker image
 # lays them out: dev (compose.yaml, CI's e2e) and prod (compose.prod.yaml, a deployment). The last stage, prod, is
 # what a build that names no target gets.
-FROM dunglas/frankenphp:1.13.5-php8.5-trixie AS base
+FROM dunglas/frankenphp:1.13.6-php8.5-trixie AS base
 
 # Worker mode (https://frankenphp.dev/docs/worker/): the kernel boots once per worker and serves request after request;
 # symfony/runtime's FrankenPhpWorkerRunner resets the services between them and starts a fresh worker every 500. In
