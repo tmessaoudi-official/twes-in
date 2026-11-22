@@ -480,11 +480,12 @@ what was there (`--json`: scope, who, when, the counts), as the journal goes wit
 These are exactly CI's jobs (`.github/workflows/ci.yml`). They need § 1's host toolchain.
 
 ```sh
-make gate-licences    # dependency licences, SPDX headers, executable bits, version pins, and each gate's own test
+make gate-licences    # every line of scripts/gate/licences.list: the gates and each gate's own test, four at a time, every red named
 make gate-api         # php-cs-fixer, PHPStan, PHPUnit against the twes_test database and the compose Gotenberg (both started for it)
 make gate-web         # regenerate the API types, lint, format, unit tests, production build
 make gate             # the three above
-make gate-stamps      # the Decisions Log stamps alone, as the decision-stamps workflow checks a push touching only docs/SPEC.md
+make gate-docs        # the gates of that list alone, none of their tests or the suites: a change touching only docs/SPEC.md, docs/plans or docs/research
+make gate-stamps      # the Decisions Log stamps alone
 make stress           # the race tests (api/tests/Concurrency) on their own database, twes_test_stress, as CI's api job runs them
 make rc-lane          # the API on PHP's release candidate and Symfony's next minor, on a copy: var/rc-lane/summary.md
 make e2e              # Playwright against the running stack (make up first)
@@ -565,6 +566,10 @@ make commit-gated MSG=<message file>       # commits exactly the last green tree
   usual. The main session makes the mark with `touch` and removes it once its batch has landed.
 - A gate refuses at once (exit 3) while another heavy run holds the lock. `SNAPSHOT_GATE_WAIT=1 make gate-snapshot`
   waits for it instead, as builders' short runs, queued on the lock back to back, would otherwise never leave it free.
+- A snapshot that changes only what `ci.yml`'s `paths-ignore` lists (`docs/SPEC.md`, `docs/plans/`, `docs/research/`),
+  read from `ci.yml` itself, is gated by `make gate-docs`, about a minute; any other path, either end of a move
+  included, gets the whole gate, and so does `SNAPSHOT_GATE_FULL=1 make gate-snapshot`. The green line names the scope.
+  CI gates such a push the same way, in the `docs-gates` workflow (`decision-stamps.yml`).
 - Should the script itself be broken, the manual path is the one it takes: `tree=$(git write-tree)` once the gate is green
   on that tree, `commit=$(git commit-tree -S "$tree" -p HEAD -F <message file>)`, then
   `git update-ref refs/heads/master "$commit" "$(git rev-parse HEAD)"`, and `git log --format=%G? -1` reads `G`.

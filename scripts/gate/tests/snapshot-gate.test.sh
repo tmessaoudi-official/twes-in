@@ -162,5 +162,43 @@ bad=$(grep -n 'up -d --wait postgres' "${starts[@]}")
 same "the gate, make check and make mutants each start postgres" "$found" 3
 [[ -z "$bad" ]] && ok "no postgres start recreates a running container" || ko "no postgres start recreates a running container" "$bad"
 
+# A change inside what CI's own paths-ignore lists is gated by the gates alone (make gate-docs, about a minute); anything
+# else, or a list that cannot be read, by the whole gate. The list is ci.yml's, so the two never disagree.
+scoped() {
+  local d=$1; shift
+  (cd "$d" && SNAPSHOT_GATE_LOCK="$d.lock" SNAPSHOT_GATE_CMD="printf '%s' \"\$SNAPSHOT_GATE_SCOPE\" > '$d/scope'" env "$@" bash scripts/gate/snapshot-gate.sh run 2>&1)
+}
+# The repository's own ci.yml, so the list is read as CI has it.
+ci_yml() {
+  mkdir -p "$1/.github/workflows"
+  cp "$HERE/../../../.github/workflows/ci.yml" "$1/.github/workflows/ci.yml"
+  git -C "$1" add .github; git -C "$1" commit -qm ci
+}
+d=$(repo); ci_yml "$d"; mkdir -p "$d/docs/plans" "$d/docs/research/a"
+echo plan > "$d/docs/plans/x.plan.md"; echo spec > "$d/docs/SPEC.md"; echo note > "$d/docs/research/a/b.md"
+git -C "$d" add docs
+out=$(scoped "$d"); same "a change inside CI's paths-ignore is gated as docs" "$(cat "$d/scope")" docs
+has "the green line names the scope" "$out" "green, docs only"
+git -C "$d" commit -qm docs
+echo again >> "$d/docs/plans/x.plan.md"; echo two > "$d/a.txt"; git -C "$d" add -A
+out=$(scoped "$d"); same "a change touching anything else is gated whole" "$(cat "$d/scope")" full
+has "the green line says so" "$out" "green, full"
+git -C "$d" reset -q --hard
+echo more >> "$d/docs/plans/x.plan.md"; git -C "$d" add -A
+scoped "$d" SNAPSHOT_GATE_FULL=1 >/dev/null; same "SNAPSHOT_GATE_FULL=1 gates a docs change whole" "$(cat "$d/scope")" full
+git -C "$d" reset -q --hard
+echo kept > "$d/docs/START.md"; git -C "$d" add -A
+scoped "$d" >/dev/null; same "a doc outside the list is gated whole" "$(cat "$d/scope")" full
+git -C "$d" reset -q --hard; git -C "$d" commit -qm start-md --allow-empty
+git -C "$d" mv a.txt docs/plans/a.txt
+scoped "$d" >/dev/null; same "a file moved into the list counts where it left too" "$(cat "$d/scope")" full
+git -C "$d" reset -q --hard
+d=$(repo); mkdir -p "$d/docs/plans"; echo plan > "$d/docs/plans/x.plan.md"; git -C "$d" add -A
+scoped "$d" >/dev/null; same "without ci.yml's list every change is gated whole" "$(cat "$d/scope")" full
+d=$(repo); git -C "$d" commit -qm nothing --allow-empty
+scoped "$d" >/dev/null; same "a snapshot changing nothing is gated whole" "$(cat "$d/scope")" full
+same "the gate inside runs make gate-docs for docs and make gate otherwise" \
+  "$(grep -cE 'make --no-print-directory gate(-docs)? TOOLS_TMP' "$SCRIPT")" 2
+
 echo "snapshot-gate: $pass passed, $fail failed"
 [[ $fail -eq 0 ]]

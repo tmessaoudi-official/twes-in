@@ -10,3 +10,6 @@ GHSA-7mxx-3cgm-xxv3 exp:2026-12-16
 
 GHSA-875x-g8p7-5w27 exp:2026-12-16
 #   MEDIUM web-auth/webauthn-lib (>4.5.0 as written, patched 4.9.0 by its own record): usernames told apart by an empty allowCredentials from ProfileBasedRequestOptionsBuilder — NOT AFFECTED: fixed in 4.9.0, the range was left open-ended; the builder belongs to the Symfony bundle, not installed, and WebauthnPasskeyCeremonies builds its own request options
+
+GHSA-9h5m-6mj8-8r36 exp:2026-12-16
+#   HIGH egulias/email-validator (>=1.0.0, <=4.0.4, no fixed release): RFCValidation accepts any bytes after a domain-literal, CRLF and a comma included — NOT REACHABLE: every address we mail is the Identity Email value object (signup and password reset take it, the other mails a stored account's or invitation's), which refuses both tails (EmailTest, and probed 2026-11-22 against the locked 4.0.4 with symfony/mime 8.1.10, whose Address refuses the CRLF tail and lets the comma one through); the reply-to the operator sets for support is the one address outside it, never a visitor's

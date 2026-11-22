@@ -1,0 +1,219 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The licence half of the gate (`make gate-licences`, CI's licences job), run by scripts/gate/run-list.sh: one line per
+# check, `<kind> <mode> <command>`. kind: gate (a check of the tree, also what a docs-only change is gated by) or test
+# (a gate's own test, on fixtures of its own). mode: first (alone, before anything, a red stops the list), long (started
+# first: the slowest), parallel, serial (alone, after the others: it starts docker, docker-compose or make, or writes
+# outside its own temporary folder; the runner reds a parallel line that starts one of the three).
+# Each test runs through no-leftovers.sh: TMPDIR outlives every run on the host's tmpfs, and a test leaving a directory
+# per case used its inodes up until no shell on the machine could start.
+
+test first bash scripts/gates/tests/no-leftovers.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/dependency-licences.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/spdx-headers.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/executable-bits.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-tmpdir.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icon-buttons-named.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/password-eyes.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/pastes-kept-whole.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/numbers-as-typed.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/dialog-content-layout.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/value-direction.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/scrollers-contain.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcome-sentences.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-restart.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-init.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
+test long bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/onprem-overlay.test.sh
+test long bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/secrets-overlay.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/action-pins.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-lane.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/e2e-environment.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/tag-release.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/point-master.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/monitor-config.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/design-tokens.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/unscoped-host-selectors.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/permission-labels.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/planned-module-labels.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-texts.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/setting-labels.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/presentation-settings-parity.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/tour-anchors.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/route-permissions.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/effect-kinds.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/row-defaults.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/database-clock.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/app-clock.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/day-parsing.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-issue-shortcut.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-gated.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/role-names.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/interceptor-failures.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-retry.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/read-retry.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/flow-outcomes-forgotten.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/session-forgotten.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-out-exits.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-out-follows.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusals-said.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/unsaved-guarded.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-stances.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/stored-items.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/check.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/mutants.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gate/tests/snapshot-gate.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gate/tests/run-list.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/fiscal-test-door.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/build-extra-ca.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/sort-directions.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/order-ties.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-shapes.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/error-codes.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/folder-cap.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/first-page-imports.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/domain-refusals.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-limits.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-trims.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-emails.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-answers.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/restore-refusals.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-keys-joined.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/reader-network.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/product-pickers-explain.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/language-literals.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/logical-direction.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/additive-migrations.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-commits.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/xml-reads.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/docs-gates-paths.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/e2e-settled-reads.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-clock.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/docs-run-lines.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/count-lines.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/rc-lane.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/chaos.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh scripts/tests/tools-cmd.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
+test long bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh scripts/tests/reset-guard.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/fiscal/tests/fetch-xsd.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/wsl-engine.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow-interval.test.sh
+test long bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/image-scan.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/advisory-feeds.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes-secrets.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/secrets-stay-files.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh infra/web/tests/access-log.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh infra/web/tests/response-headers.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh infra/edge/tests/token-free-logs.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh infra/web/tests/live-proxy.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh infra/api/tests/migrate.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh infra/api/tests/entrypoint.test.sh
+gate parallel php scripts/gates/dependency-licences.php
+gate parallel bash scripts/gates/spdx-headers.sh
+gate parallel bash scripts/gates/executable-bits.sh
+gate parallel bash scripts/gates/test-tmpdir.sh
+gate parallel bash scripts/gates/icon-buttons-named.sh
+gate parallel bash scripts/gates/password-eyes.sh
+gate parallel bash scripts/gates/pastes-kept-whole.sh
+gate parallel bash scripts/gates/numbers-as-typed.sh
+gate parallel bash scripts/gates/dialog-content-layout.sh
+gate parallel bash scripts/gates/dialog-content-layout.sh --element mat-card-content
+gate parallel bash scripts/gates/value-direction.sh
+gate parallel bash scripts/gates/scrollers-contain.sh
+gate parallel bash scripts/gates/outcomes-as-toasts.sh
+gate parallel bash scripts/gates/outcome-sentences.sh
+gate parallel bash scripts/gates/compose-log-rotation.sh
+gate parallel bash scripts/gates/compose-restart.sh
+gate parallel bash scripts/gates/compose-init.sh
+gate parallel bash scripts/gates/deploy-overlay.sh
+gate parallel bash scripts/gates/onprem-overlay.sh
+gate parallel bash scripts/gates/secrets-overlay.sh
+gate parallel bash scripts/gates/action-pins.sh
+gate parallel bash scripts/gates/release-lane.sh
+gate parallel bash scripts/gates/e2e-environment.sh
+gate parallel bash scripts/gates/release-overlay.sh
+gate parallel bash scripts/gates/monitor-config.sh
+gate parallel bash scripts/gates/version-pins.sh
+gate parallel bash scripts/gates/host-tools.sh
+gate parallel bash scripts/gates/design-tokens.sh
+gate parallel bash scripts/gates/unscoped-host-selectors.sh
+gate parallel bash scripts/gates/permission-labels.sh
+gate parallel bash scripts/gates/planned-module-labels.sh
+gate parallel bash scripts/gates/coming-texts.sh
+gate long bash scripts/gates/setting-labels.sh
+gate parallel bash scripts/gates/presentation-settings-parity.sh
+gate parallel bash scripts/gates/tour-anchors.sh
+gate parallel bash scripts/gates/route-permissions.sh
+gate parallel bash scripts/gates/effect-kinds.sh
+gate parallel bash scripts/gates/row-defaults.sh
+gate parallel bash scripts/gates/database-clock.sh
+gate long bash scripts/gates/app-clock.sh
+gate parallel bash scripts/gates/day-parsing.sh
+gate parallel bash scripts/gates/test-issue-shortcut.sh
+gate parallel bash scripts/gates/coming-gated.sh
+gate parallel bash scripts/gates/live-reload.sh
+gate parallel bash scripts/gates/role-names.sh
+gate parallel bash scripts/gates/interceptor-failures.sh
+gate parallel bash scripts/gates/list-retry.sh
+gate parallel bash scripts/gates/read-retry.sh
+gate parallel bash scripts/gates/flow-outcomes-forgotten.sh
+gate parallel bash scripts/gates/session-forgotten.sh
+gate parallel bash scripts/gates/signed-out-exits.sh
+gate parallel bash scripts/gates/signed-out-follows.sh
+gate parallel bash scripts/gates/refusals-said.sh
+gate parallel bash scripts/gates/unsaved-guarded.sh
+gate parallel bash scripts/gates/list-stances.sh
+gate parallel bash scripts/gates/stored-items.sh
+gate parallel bash scripts/gates/icons-declared.sh
+gate parallel bash scripts/gates/float-casts.sh
+gate long bash scripts/gates/fiscal-test-door.sh
+gate parallel bash scripts/gates/build-extra-ca.sh
+gate parallel bash scripts/gates/sort-directions.sh
+gate parallel bash scripts/gates/order-ties.sh
+gate parallel bash scripts/gates/refusal-shapes.sh
+gate parallel bash scripts/gates/error-codes.sh
+gate parallel bash scripts/gates/folder-cap.sh
+gate parallel bash scripts/gates/first-page-imports.sh
+gate parallel bash scripts/gates/domain-refusals.sh
+gate parallel bash scripts/gates/list-limits.sh
+gate parallel bash scripts/gates/typed-trims.sh
+gate parallel bash scripts/gates/typed-emails.sh
+gate parallel bash scripts/gates/refusal-answers.sh
+gate parallel bash scripts/gates/restore-refusals.sh
+gate parallel bash scripts/gates/refusal-keys-joined.sh
+gate parallel bash scripts/gates/reader-network.sh
+gate parallel bash scripts/gates/product-pickers-explain.sh
+gate parallel bash scripts/gates/language-literals.sh
+gate parallel bash scripts/gates/logical-direction.sh
+gate parallel bash scripts/gates/additive-migrations.sh
+gate parallel bash scripts/gates/signed-commits.sh
+gate parallel bash scripts/gates/xml-reads.sh
+gate parallel bash scripts/gates/decision-stamps.sh
+gate parallel bash scripts/gates/docs-gates-paths.sh
+gate parallel bash scripts/gates/screen-texts-budget.sh
+gate parallel bash scripts/gates/e2e-settled-reads.sh
+gate long bash scripts/gates/test-clock.sh
+gate parallel bash scripts/gates/docs-run-lines.sh

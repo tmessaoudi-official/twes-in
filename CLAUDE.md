@@ -33,7 +33,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   red. Never chain a verification step onto `git commit` through a pipe or `&&`.
 - **Gate a snapshot, keep working** (developer ruling, docs/SPEC.md § 7): stage, `make gate-snapshot` in the background,
   go on with the next thing here (never in the gate's worktree), then `make commit-gated MSG=<file>`, which commits only
-  the tree that went green. A red one is fixed on top and gated again. `make e2e` stays serial, the touched specs only.
+  the tree that went green. A red one is fixed on top and gated again. One gate per batch, never one per subject (2026-11-22
+  18:03); a batch touching only `docs/SPEC.md`, `docs/plans/` or `docs/research/` is gated by `make gate-docs`, about a minute. `make e2e` stays serial, the touched specs only.
   Before gating, `make check FILES=<the staged files>` (seconds to minutes), and nothing heavy beside a gate: its web
   suite's five-second cases time out under load (developer ruling, 2026-10-26 16:39; 6 of the day's 16 runs went red for
   what that check or a quiet machine would have spared).
@@ -201,7 +202,8 @@ those three is needed. Run them through `make`, which hands compose the uid, the
 | `make rc-lane` | `twes-in-tools-rc` (`infra/api/rc.Dockerfile`, + compose `postgres`) | trying the next PHP or Symfony by hand: a copy of `api/` outside the tree on PHP's release candidate and Symfony's next minor, its deprecations, PHPStan and the suite on `twes_test_rc*`, under the gate's lock; `var/rc-lane/summary.md`; CI's `rc-lane` workflow, weekly |
 | `make mutants SPEC=…` | `tools`, `web-tools` | applying a sabotage by hand, running its test and restoring the file; it reads each tool's tally, so a mutant that does not compile is INVALID, not killed |
 | `make gate-licences` | `tools` | the gate chain's `php` and `bash` lines, with `logrotate`, `jq`, `perl`, `python3`, `docker` |
-| `make gate-stamps` | `tools` | `bash scripts/gates/decision-stamps.sh` alone; CI's `decision-stamps` workflow runs it on a push touching `docs/SPEC.md`, which `ci.yml` skips |
+| `make gate-docs` | `tools` | the gates of `scripts/gate/licences.list` without their tests: what a change touching only `ci.yml`'s `paths-ignore` (`docs/SPEC.md`, `docs/plans/**`, `docs/research/**`) needs; the snapshot gate picks it for such a change, CI's `docs-gates` workflow (`decision-stamps.yml`) runs it on such a push |
+| `make gate-stamps` | `tools` | `bash scripts/gates/decision-stamps.sh` alone |
 | `make gate-api`, `make test-api` | `tools` (+ compose `postgres`, `gotenberg`: the Factur-X case validates a real file) | `cd api && composer gate`, `vendor/bin/phpunit` |
 | `make gate-web`, `make test-web`, `make api-types` | `web-tools` | `cd web && npm run gate`, `npx ng test`, `npm run api:types` |
 | `make api-openapi` | `tools` | `bin/console api:openapi:export` on host PHP |
@@ -321,7 +323,8 @@ test in `gate-scripts.md` (`scripts/gates/**`, `scripts/tests/**`). Here: what a
   `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
   their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,
   read `git log master..<branch>` of every builder: rows 199, 200 and 213 were built twice the same day.
-- `make gate-licences` stops at its first red, so the gates after it never ran: four snapshot gates in a row went red on
-  a new licence gate each for S1.7. After a red, run the remaining `in-gate-licences` lines directly (from the Makefile,
-  through `make tools`), never `make -i`: the flag reaches the gate tests' own `make reset` and fakes 19 reds. Builders'
+- `make gate-licences` runs every line of `scripts/gate/licences.list`, four at a time, and names every red at the end: it
+  once stopped at its first, and four snapshot gates in a row went red on a new licence gate each for S1.7. A line that
+  starts docker, docker-compose or make is marked `serial` there; the runner reds one doing so beside others. Never
+  `make -i`: the flag reaches the gate tests' own `make reset` and fakes 19 reds. Builders'
   suites beside a gate timed a 5-second web case out at load 17: they hold every suite while the main gate runs (2026-11-15).

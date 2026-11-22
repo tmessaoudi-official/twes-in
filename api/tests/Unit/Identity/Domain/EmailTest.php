@@ -35,6 +35,11 @@ final class EmailTest extends TestCase
         yield 'no local part' => ['@example.test'];
         yield 'space inside' => ['ow ner@example.test'];
         yield 'too long' => [str_repeat('a', 250).'@example.test'];
+        // egulias/email-validator's RFCValidation accepts anything after a domain-literal (GHSA-9h5m-6mj8-8r36, no
+        // fixed release), and symfony/mime's Address lets the comma tail through: every recipient we mail is this
+        // value, so it alone keeps a second recipient or SMTP commands out of an address.
+        yield 'commands after a domain-literal' => ["user@[127.0.0.1]>\r\nRSET\r\nRCPT TO:<attacker@evil.test>"];
+        yield 'a second recipient after a domain-literal' => ['user@[127.0.0.1], attacker@evil.test'];
     }
 
     #[DataProvider('malformed')]

@@ -221,7 +221,7 @@ step "MFA key rotated: unreadable alone, resealed by app:keys:rotate-mfa"
 user=$(get /api/auth/me | jq -r '.user.id // empty')
 kind=$(get /api/me/notification-preferences | jq -r '[.preferences[] | select(.companyId == null) | .type][0] // empty')
 [[ -n "$user" && -n "$kind" ]] || fail "found no operator id ($user) or kind of mail told without a company ($kind)"
-stop_link() { php_in_api 'echo (new App\Inbox\Infrastructure\Mail\HmacMailStopTokens(getenv("APP_SECRET")))->issue(new App\Inbox\Application\MailStop(Symfony\Component\Uid\Uuid::fromString($argv[1]), null, $argv[2]));' "$user" "$kind"; }
+stop_link() { php_in_api 'echo (new App\Inbox\Infrastructure\Mail\HmacMailStopTokens([getenv("APP_SECRET")]))->issue(new App\Inbox\Application\MailStop(Symfony\Component\Uid\Uuid::fromString($argv[1]), null, $argv[2]));' "$user" "$kind"; }
 before=$(stop_link)
 [[ "$(post /api/notification-preferences/stop "{\"token\":\"$before\"}")" == 204 ]] || fail "a stop link made under the current APP_SECRET was refused"
 fact APP_SECRET "$(head -c 36 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 48)"

@@ -1,12 +1,16 @@
-# The Decisions Log stamps of a push that changes docs/SPEC.md. ci.yml leaves a push touching only the spec alone, and
-# the stamps gate is the one check such a push can fail: without this, a bad stamp waited for the next code push.
-name: decision-stamps
+# The gates of a push that changes what ci.yml's paths-ignore lists (docs/SPEC.md, docs/research, docs/plans). ci.yml
+# leaves a push touching only those alone, yet gates read them: the Decisions Log stamps, coming-texts' roadmap rows,
+# docs-run-lines. Every gate of the licence list runs, none of the suites, as `make gate-docs` gates such a change locally.
+name: docs-gates
 
 on:
   push:
     branches: [master, 'claude/**', 'ccr-*', 'cloud/**', 'release/**']
+    # The same list as ci.yml's paths-ignore; scripts/gates/docs-gates-paths.sh holds them equal.
     paths:
       - docs/SPEC.md
+      - docs/research/**
+      - docs/plans/**
 
 # Every job reads the checkout and nothing more (security map F9: the default token's rights depend on a repository setting).
 permissions:
@@ -17,11 +21,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  stamps:
+  gates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # The whole history: each stamp is compared with the commit that wrote it.
         with:
           fetch-depth: 0
-      - run: make gate-stamps
+      - run: make gate-docs

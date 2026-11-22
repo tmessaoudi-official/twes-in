@@ -28,8 +28,29 @@ is_main_tree() {
   [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]
 }
 
+# A change touching only what CI's own paths-ignore lists (ci.yml's push trigger) is gated by every gate of the licence
+# list and none of the suites, `make gate-docs`, about a minute against a whole gate's half hour. The list is read from
+# ci.yml, so the two never disagree; a list that cannot be read, any other path (either end of a move counts), a snapshot
+# changing nothing, or SNAPSHOT_GATE_FULL=1 gets the whole gate.
+scope_of() {
+  local snap=$1 path pattern matched changed=0 patterns=()
+  [[ "${SNAPSHOT_GATE_FULL:-}" == 1 ]] && { echo full; return; }
+  mapfile -t patterns < <(awk '/^    paths-ignore:/ { on = 1; next } on && /^      - / { sub(/^      - /, ""); print; next } on && /^      #/ { next } on { exit }' \
+    .github/workflows/ci.yml 2>/dev/null)
+  ((${#patterns[@]})) || { echo full; return; }
+  while IFS= read -r path; do
+    changed=1 matched=0
+    for pattern in "${patterns[@]}"; do
+      # shellcheck disable=SC2053 # the pattern is a glob: docs/plans/** matches below it
+      [[ "$path" == $pattern ]] && { matched=1; break; }
+    done
+    ((matched)) || { echo full; return; }
+  done < <(git diff --name-only --no-renames "$snap^" "$snap")
+  ((changed)) && echo docs || echo full
+}
+
 run() {
-  local tree snap code log
+  local tree snap code log scope label
   if [[ -e "$main_first" ]] && ! is_main_tree; then
     refuse "the main session goes first while $main_first exists: run make check and the tests of your files, and gate once it is gone" 3
   fi
@@ -52,13 +73,15 @@ run() {
     git worktree add -q --detach "$worktree" "$snap" || refuse "the gate worktree could not be made at $worktree"
   fi
   log=$records/$snap.log
-  echo "snapshot-gate: gating ${snap:0:8} (tree ${tree:0:8}) in $worktree, log $log"
-  (cd "$worktree" && bash -c "${SNAPSHOT_GATE_CMD:-bash scripts/gate/snapshot-gate.sh inside}") > "$log" 2>&1
+  scope=$(scope_of "$snap")
+  label=$([[ $scope == docs ]] && echo "docs only" || echo full)
+  echo "snapshot-gate: gating ${snap:0:8} (tree ${tree:0:8}, $label) in $worktree, log $log"
+  (cd "$worktree" && SNAPSHOT_GATE_SCOPE=$scope bash -c "${SNAPSHOT_GATE_CMD:-bash scripts/gate/snapshot-gate.sh inside}") > "$log" 2>&1
   code=$?
   rm -f "$records/$tree.green" "$records/$tree.red"
   if [[ $code -eq 0 ]]; then
     printf '%s\n' "$snap" > "$records/$tree.green"
-    echo "snapshot-gate: ${snap:0:8} tree ${tree:0:8} green"
+    echo "snapshot-gate: ${snap:0:8} tree ${tree:0:8} green, $label"
   else
     printf '%s\n' "$snap" > "$records/$tree.red"
     echo "snapshot-gate: ${snap:0:8} tree ${tree:0:8} red (exit $code), log $log"
@@ -93,6 +116,10 @@ commit() {
 # make check go on beside it, and a postgres start that leaves the live stack's container as it is.
 inside() {
   local token=_gate
+  if [[ "${SNAPSHOT_GATE_SCOPE:-full}" == docs ]]; then
+    make --no-print-directory gate-docs TOOLS_TMP="/tmp/twes-in-tools-$(id -u)$token" < /dev/null
+    return
+  fi
   grep -qx "TEST_TOKEN=$token" api/.env.test.local 2>/dev/null || printf 'TEST_TOKEN=%s\n' "$token" > api/.env.test.local
   docker compose up -d --wait --no-recreate postgres || return 2
   docker compose up -d --wait gotenberg || return 2

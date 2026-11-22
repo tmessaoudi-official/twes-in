@@ -90,6 +90,7 @@ the end of § Lessons here.
   - `host-tools.sh` (CI names no `setup-php`, `setup-node` or bare host tool, and the Makefile runs one only inside an `in-*` target)
   - `action-pins.sh` (every action a workflow uses is pinned by its release's full commit SHA, the tag as a comment, `docs/UPDATE.md`)
   - `release-lane.sh` (every workflow a push to master runs also runs on a release's branch, `release/**`, where a patch for the shops is built)
+  - `docs-gates-paths.sh` (the paths `ci.yml` skips, its `paths-ignore`, are exactly those `decision-stamps.yml`, the `docs-gates` workflow, runs `make gate-docs` on: a docs-only push still meets every gate that reads those files, the Decisions Log stamps and coming-texts' roadmap rows among them)
   - `build-extra-ca.sh` (every downloading RUN of a Dockerfile under `infra/` mounts the optional secret `extra_ca`, a proxy's CA added for that step only and in no layer; `compose.extra-ca.yaml` hands it to every built service and the Makefile to every `docker build`, only when `CCS_EXTRA_CA_FILE` names a file, and mounts the file read-only into every `tools`-profile service for its runs, with the four variables naming it (OpenSSL, Node, Composer, Python); nothing switches a TLS check off)
   - `monitor-config.sh` (the monitor's compose: only its edge publishes, every value required, sign-up closed, every Gatus line hidden and alerting, no token written out, its heartbeats the backups' own)
   - `deploy-overlay.sh` (only the deploy edge publishes a port, every address derived from `TWES_HOST`, every value required, HSTS for the host alone, Gotenberg shut in as `lib/pdf-renderer.sh` says: no JavaScript, no URL but its own files, on an internal network only the api and the workers join)
@@ -123,3 +124,7 @@ the end of § Lessons here.
   the Makefile hands Playwright the new one: Caddy answers an empty 200, read by WebKit as « The string did not match the
   expected pattern » in `inACompany`. Compare `docker compose exec -T lan printenv LAN_HOST` with `ip -4 route get 1.1.1.1`,
   and recreate the five with `--no-build` (not `make up-images`, which builds the dirty tree) (2026-11-13).
+- A `php -r` snippet naming application code (`staging-check.sh`'s stop link and TOTP code, `make operator-code`) is read by
+  no PHPStan and run only where its script runs: staging-check, weekly and on its own paths, went red six days after a
+  constructor took a key ring instead of a string. After changing a signature, `git grep` its class name in `scripts/`
+  and the Makefile too (2026-11-22, plan row S5.79).
