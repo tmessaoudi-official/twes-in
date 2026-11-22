@@ -17,7 +17,15 @@ runs against the public CVE databases. The four lens reports (file:line evidence
 - **Code**: four read-only reviews against OWASP Top 10:2025 and API Security Top 10:2023: access control; authentication,
   sessions and cryptography; injection, SSRF and errors; supply chain, configuration, integrity and logging.
 - **Named recent vulnerabilities**: PHP2Shell (CVE-2026-109618, CVE-2026-109619, 2026-10-21): the release's api runs
-  PHP 8.5.12 under FrankenPHP 1.13.1, the fixed release; upload progress is also turned off (8ee7a7ff). React2Shell
+  PHP 8.5.12 under FrankenPHP 1.13.1, the fixed release; upload progress is also turned off (8ee7a7ff). phpAfterShell
+  (CVE-2026-126714, GHSA-fm2m-fjf5-v3cp, 2026-11-19, critical): an interrupted write of PHP's `files` session handler
+  leaves the old session's tail behind, deserialized at the next read; fixed in 8.5.13, which master runs (FrankenPHP
+  1.13.6). The release out (v2026.10.30.1) runs 8.5.12, ZTS, but writes no session file: its sessions are rows of
+  PostgreSQL (`PostgresSessionHandler`, since 2026-09-09) and upload progress, the advisory's unauthenticated way in, is
+  off, both read at that tag and in its image. Proved on master's images on 2026-11-22: an operator's sign-in with its
+  second factor and the advisory's upload-progress multipart left no `sess_*` file in the api or the worker and one more
+  row in `sessions`, while a session forced through the `files` handler in the same container is found. Not reachable;
+  the next release carries 8.5.13 (developer ruling 2026-11-22). React2Shell
   (CVE-2025-55182): no React or Next.js in the tree. PHP-CGI argument injection (CVE-2024-4577): no php-cgi.
 
 Not done: no attack was sent to a running stack (OWASP ZAP is the next step, never rushed), and no exploit was
