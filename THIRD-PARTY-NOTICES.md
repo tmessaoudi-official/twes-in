@@ -384,7 +384,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @parcel/watcher-linux-x64-musl | 2.6.0 | MIT | dev |
 | @parcel/watcher-win32-arm64 | 2.6.0 | MIT | dev |
 | @parcel/watcher-win32-x64 | 2.6.0 | MIT | dev |
-| @playwright/test | 1.65.0 | Apache-2.0 | dev |
+| @playwright/test | 1.65.1 | Apache-2.0 | dev |
 | @protobufjs/aspromise | 1.1.2 | BSD-3-Clause | runtime |
 | @protobufjs/base64 | 1.1.2 | BSD-3-Clause | runtime |
 | @protobufjs/codegen | 2.0.5 | BSD-3-Clause | runtime |
@@ -453,8 +453,8 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | @typescript-eslint/utils | 8.72.2 | MIT | dev |
 | @typescript-eslint/visitor-keys | 8.72.2 | MIT | dev |
 | @vitejs/plugin-basic-ssl | 2.3.0 | MIT | dev |
-| @vitest/mocker | 5.1.0 | MIT | dev |
-| @vitest/spy | 5.1.0 | MIT | dev |
+| @vitest/mocker | 5.1.1 | MIT | dev |
+| @vitest/spy | 5.1.1 | MIT | dev |
 | acorn | 8.19.0 | MIT | dev |
 | acorn-jsx | 5.3.2 | MIT | dev |
 | agent-base | 9.0.0 | MIT | dev |
@@ -598,7 +598,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | jiti | 2.7.0 | MIT | dev |
 | js-tokens | 10.0.0 | MIT | dev |
 | js-yaml | 4.3.2 | MIT | dev |
-| jsdom | 31.0.0 | MIT | dev |
+| jsdom | 31.0.1 | MIT | dev |
 | jsesc | 3.1.0 | MIT | dev |
 | json-schema-traverse | 0.4.1 | MIT | dev |
 | json-schema-traverse | 1.0.0 | MIT | dev |
@@ -608,7 +608,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | keyv | 5.6.0 | MIT | dev |
 | lean-qr | 2.7.4 | MIT | runtime |
 | levn | 0.4.1 | MIT | dev |
-| libphonenumber-js | 1.13.16 | MIT AND Apache-2.0 | runtime |
+| libphonenumber-js | 1.13.17 | MIT AND Apache-2.0 | runtime |
 | lightningcss | 1.33.0 | MPL-2.0 | dev |
 | lightningcss-android-arm64 | 1.33.0 | MPL-2.0 | dev |
 | lightningcss-darwin-arm64 | 1.33.0 | MPL-2.0 | dev |
@@ -630,7 +630,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | lru-cache | 11.5.3 | BlueOak-1.0.0 | dev |
 | magic-string | 1.4.1 | MIT | dev |
 | magic-string | 1.4.5 | MIT | dev |
-| marked | 18.2.0 | MIT | runtime |
+| marked | 18.2.1 | MIT | runtime |
 | material-symbols | 0.48.3 | Apache-2.0 | runtime |
 | meshoptimizer | 1.1.1 | MIT | dev |
 | mimic-function | 5.0.1 | MIT | dev |
@@ -671,14 +671,14 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | picomatch | 4.0.7 | MIT | dev |
 | piscina | 5.3.2 | MIT | dev |
 | pkg-types | 2.4.0 | MIT | dev |
-| playwright | 1.65.0 | Apache-2.0 | dev |
-| playwright-core | 1.65.0 | Apache-2.0 | dev |
-| postcss | 8.5.32 | MIT | dev |
+| playwright | 1.65.1 | Apache-2.0 | dev |
+| playwright-core | 1.65.1 | Apache-2.0 | dev |
+| postcss | 8.5.33 | MIT | dev |
 | postcss-media-query-parser | 0.2.3 | MIT | dev |
 | postcss-safe-parser | 7.1.0 | MIT | dev |
 | powershell-utils | 0.1.0 | MIT | dev |
 | prelude-ls | 1.2.1 | MIT | dev |
-| prettier | 3.10.0 | MIT | dev |
+| prettier | 3.10.1 | MIT | dev |
 | proc-log | 7.0.0 | ISC | dev |
 | protobufjs | 7.6.6 | BSD-3-Clause | runtime |
 | proxy-agent-negotiate | 1.1.0 | MIT | dev |
@@ -762,7 +762,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | verkit | 0.3.2 | MIT | dev |
 | verkit | 0.5.0 | MIT | dev |
 | vite | 8.3.3 | MIT | dev |
-| vitest | 5.1.0 | MIT | dev |
+| vitest | 5.1.1 | MIT | dev |
 | w3c-xmlserializer | 6.0.0 | MIT | dev |
 | wawoff2 | 2.0.1 | MIT | dev |
 | weak-lru-cache | 1.2.3 | MIT | dev |
