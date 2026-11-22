@@ -12,7 +12,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
-| api-platform/core | 5.0.8 | MIT | runtime |
+| api-platform/core | 5.0.9 | MIT | runtime |
 | async-aws/core | 1.30.0 | MIT | runtime |
 | async-aws/s3 | 3.5.0 | MIT | runtime |
 | brianium/paratest | 7.27.5 | MIT | dev |
@@ -26,14 +26,14 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | doctrine/data-fixtures | 2.2.1 | MIT | dev |
 | doctrine/dbal | 4.5.1 | MIT | runtime |
 | doctrine/deprecations | 1.2.0 | MIT | runtime |
-| doctrine/doctrine-bundle | 3.3.4 | MIT | runtime |
+| doctrine/doctrine-bundle | 3.4.2 | MIT | runtime |
 | doctrine/doctrine-fixtures-bundle | 4.3.1 | MIT | dev |
 | doctrine/doctrine-migrations-bundle | 4.0.1 | MIT | runtime |
 | doctrine/event-manager | 2.1.1 | MIT | runtime |
 | doctrine/inflector | 2.1.1 | MIT | runtime |
 | doctrine/instantiator | 2.1.0 | MIT | runtime |
 | doctrine/lexer | 3.0.3 | MIT | runtime |
-| doctrine/migrations | 3.9.8 | MIT | runtime |
+| doctrine/migrations | 3.9.9 | MIT | runtime |
 | doctrine/orm | 3.7.6 | MIT | runtime |
 | doctrine/persistence | 4.2.1 | MIT | runtime |
 | doctrine/sql-formatter | 1.5.4 | MIT | runtime |
@@ -41,7 +41,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | ergebnis/agent-detector | 2.0.0 | MIT | dev |
 | evenement/evenement | 3.0.2 | MIT | dev |
 | fidry/cpu-core-counter | 1.4.1 | MIT | dev |
-| friendsofphp/php-cs-fixer | 3.95.30 | MIT | dev |
+| friendsofphp/php-cs-fixer | 3.95.32 | MIT | dev |
 | giggsey/libphonenumber-for-php-lite | 9.0.43 | Apache-2.0 | runtime |
 | guzzlehttp/psr7 | 3.2.0 | MIT | runtime |
 | jean85/pretty-package-versions | 2.1.1 | MIT | runtime |
@@ -52,7 +52,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | monolog/monolog | 3.12.1 | MIT | runtime |
 | myclabs/deep-copy | 1.14.0 | MIT | dev |
 | nikic/php-parser | 5.9.0 | BSD-3-Clause | dev |
-| openspout/openspout | 5.13.0 | MIT | runtime |
+| openspout/openspout | 5.15.3 | MIT | runtime |
 | paragonie/constant_time_encoding | 3.1.5 | MIT | runtime |
 | phar-io/manifest | 2.0.4 | BSD-3-Clause | dev |
 | phar-io/version | 3.2.1 | BSD-3-Clause | dev |
@@ -61,7 +61,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | phpdocumentor/type-resolver | 2.1.0 | MIT | runtime |
 | phpstan/extension-installer | 1.4.3 | MIT | dev |
 | phpstan/phpdoc-parser | 2.4.1 | MIT | runtime |
-| phpstan/phpstan | 2.3.5 | MIT | dev |
+| phpstan/phpstan | 2.3.7 | MIT | dev |
 | phpstan/phpstan-doctrine | 2.1.2 | MIT | dev |
 | phpstan/phpstan-symfony | 2.1.1 | MIT | dev |
 | phpunit/php-code-coverage | 14.5.2 | BSD-3-Clause | dev |
@@ -69,7 +69,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | phpunit/php-invoker | 7.0.0 | BSD-3-Clause | dev |
 | phpunit/php-text-template | 6.0.1 | BSD-3-Clause | dev |
 | phpunit/php-timer | 9.0.0 | BSD-3-Clause | dev |
-| phpunit/phpunit | 13.4.6 | BSD-3-Clause | dev |
+| phpunit/phpunit | 13.4.8 | BSD-3-Clause | dev |
 | psr/cache | 3.0.0 | MIT | runtime |
 | psr/clock | 1.0.0 | MIT | runtime |
 | psr/container | 2.0.2 | MIT | runtime |
