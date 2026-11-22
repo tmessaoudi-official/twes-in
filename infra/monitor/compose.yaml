@@ -110,7 +110,7 @@ services:
   glitchtip-db:
     logging: *logging
     restart: unless-stopped
-    image: postgres:18.6-trixie
+    image: postgres:18.7-trixie
     # As the application's database (compose.yaml): its shutdown checkpoint may outlast Docker's ten seconds.
     stop_grace_period: 1m
     environment:

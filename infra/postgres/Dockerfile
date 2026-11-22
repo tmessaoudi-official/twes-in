@@ -16,9 +16,9 @@ ADD --checksum=sha256:4ae22576a78223d8ccdf5f3b3660a5cbb5288416bf0ca96afc4a36d195
     https://github.com/aptible/supercronic/releases/download/v0.2.51/supercronic-linux-arm64 /supercronic
 FROM supercronic-${TARGETARCH} AS supercronic
 
-FROM postgres:18.6-trixie
+FROM postgres:18.7-trixie
 
-ARG PGBACKREST_VERSION=2.60.0-1.pgdg13+1
+ARG PGBACKREST_VERSION=2.60.1-1.pgdg13+1
 ARG RESTIC_VERSION=0.18.0-1+b4
 ARG CURL_VERSION=8.14.1-2+deb13u7
 # The base image's zlib1g predates Debian's security fix (CVE-2026-76844, CVE-2026-85091), which the weekly image scan
