@@ -48,7 +48,7 @@ WEB_TOOLS := $(WEB_TOOLS_RUN) web-tools
 WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: bootstrap rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
+.PHONY: bootstrap rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit advisories tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -350,6 +350,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/image-scan.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/advisory-feeds.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes-secrets.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/secrets-stay-files.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
@@ -544,6 +545,9 @@ videos: playwright-browser   ## the guide videos with their captions, into var/c
 audit: tools-image web-tools-image   ## known vulnerabilities in what is shipped: every Composer package, npm's production packages, high and above
 	$(TOOLS) sh -c 'cd api && composer audit --locked'
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm audit --omit=dev --audit-level=high'
+
+advisories:   ## the maintainers' own advisories composer audit misses, read for every Composer package (scripts/security/advisory-feeds.sh, .advisoryignore; CI's advisory-feeds workflow, weekly); runs on the host's gh, signed in
+	bash scripts/security/advisory-feeds.sh
 
 notices: tools-image   ## regenerate THIRD-PARTY-NOTICES.md after any dependency change
 	$(TOOLS) make --no-print-directory in-notices

@@ -74,6 +74,15 @@ describe('PriceListsApi', () => {
     expect(row.items).toBeNull();
   });
 
+  it('takes a list whose prices the answer writes as null for one sent without them', async () => {
+    // The contract says so: `items` is `array | null`, as the resource's `?array` declares.
+    const lists = api.list('c1');
+    http.expectOne('/api/companies/c1/price-lists').flush([{ ...read, items: null }]);
+
+    const [row] = await lists;
+    expect(row.items).toBeNull();
+  });
+
   it('reads one list with its prices and the version it was read at', async () => {
     const one = api.get('c1', 'l1');
     http.expectOne('/api/companies/c1/price-lists/l1').flush(read);

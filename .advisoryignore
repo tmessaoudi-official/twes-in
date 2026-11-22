@@ -1,0 +1,12 @@
+# The weekly read of the maintainers' own advisories (scripts/security/advisory-feeds.sh, .github/workflows/advisory-feeds.yml).
+# An advisory published on a package's repository reaches GitHub's reviewed database, which composer audit reads, only
+# once GitHub reviews it; this file triages those that reach a locked version, as .trivyignore does for the images: the
+# id with the date it is read again (exp:), then one comment line per package holding the verdict and the reason.
+# Review every entry by its date: the run fails again on it once the date has passed. A REACHABLE entry, or one whose
+# reach is not shown, is here only while no fixed release exists: take the release when it does.
+
+GHSA-7mxx-3cgm-xxv3 exp:2026-12-16
+#   MEDIUM api-platform/core (>v3.3.8, no fixed release): GraphQL's securityAfterResolver replaced by security — NOT REACHABLE: no GraphQL is installed (no api-platform/graphql, no webonyx/graphql-php in api/composer.lock) and no resource declares a GraphQL operation
+
+GHSA-875x-g8p7-5w27 exp:2026-12-16
+#   MEDIUM web-auth/webauthn-lib (>4.5.0 as written, patched 4.9.0 by its own record): usernames told apart by an empty allowCredentials from ProfileBasedRequestOptionsBuilder — NOT AFFECTED: fixed in 4.9.0, the range was left open-ended; the builder belongs to the Symfony bundle, not installed, and WebauthnPasskeyCeremonies builds its own request options

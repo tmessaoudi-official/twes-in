@@ -89,6 +89,17 @@ Write `<name>:<tag>@sha256:<that digest>` in every copy, then `make gate-licence
 `:master`, has a CRITICAL or HIGH with a fix that `.trivyignore` does not hold: that is when to move it, or to triage
 the finding into `.trivyignore` with its verdict and an `exp:` date.
 
+#### A maintainer's own advisory
+
+`composer audit` reads GitHub's reviewed database, which an advisory a maintainer publishes on its repository reaches only
+once GitHub reviews it (API Platform's and webauthn-framework's of November 2026 never did). The weekly read
+(`.github/workflows/advisory-feeds.yml`, `scripts/security/advisory-feeds.sh`, by hand `make advisories` with `gh`
+signed in) reads the published advisories of every repository a package of `api/composer.lock` comes from, and fails on
+one reaching a locked version that `.advisoryignore` does not hold: take the fixed release, or triage it there with its
+verdict and an `exp:` date. A package whose repository is a split of a monorepo (its issues switched off, as Symfony's
+components and polyfills, webauthn-lib, async-aws's clients) has its advisories on the monorepo: a new dependency from
+such a family adds the monorepo to the script's `extra` list.
+
 ### Frameworks and packages
 
 | Pin | Where | Copies that move with it | How to bump | Watch out for |

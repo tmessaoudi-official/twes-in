@@ -1,0 +1,38 @@
+# The weekly read of the maintainers' own advisories (scripts/security/advisory-feeds.sh, docs/UPDATE.md): every
+# repository a Composer package comes from, and the monorepos publishing for their splits, read for published advisories
+# reaching a locked version, which composer audit misses until GitHub reviews them. Weekly, so a new one shows within a
+# week; by hand; and on any push that changes the lock, the triage or the read itself. Not one of ci.yml's required
+# checks: it does not run on every push.
+name: advisory-feeds
+
+on:
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+  push:
+    # A cloud session's branch too (`claude/...`, `ccr-...`, `cloud/...`, as ci.yml); nothing here needs a secret beyond
+    # the run's own token, which reads public repositories.
+    branches: [master, 'claude/**', 'ccr-*', 'cloud/**', 'release/**']
+    paths:
+      - api/composer.lock
+      - .advisoryignore
+      - scripts/security/advisory-feeds.sh
+      - .github/workflows/advisory-feeds.yml
+
+# Every job reads the checkout and nothing more (security map F9: the default token's rights depend on a repository setting).
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: bash scripts/security/advisory-feeds.sh
+        env:
+          GH_TOKEN: ${{ github.token }}

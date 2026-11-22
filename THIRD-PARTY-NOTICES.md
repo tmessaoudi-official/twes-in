@@ -12,7 +12,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
-| api-platform/core | 5.0.6 | MIT | runtime |
+| api-platform/core | 5.0.8 | MIT | runtime |
 | async-aws/core | 1.30.0 | MIT | runtime |
 | async-aws/s3 | 3.5.0 | MIT | runtime |
 | brianium/paratest | 7.27.5 | MIT | dev |
@@ -147,7 +147,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | symfony/polyfill-intl-idn | 1.43.0 | MIT | runtime |
 | symfony/polyfill-intl-normalizer | 1.43.0 | MIT | runtime |
 | symfony/polyfill-mbstring | 1.43.3 | MIT | runtime |
-| symfony/polyfill-php85 | 1.43.0 | MIT | runtime |
+| symfony/polyfill-php85 | 1.44.0 | MIT | runtime |
 | symfony/polyfill-php86 | 1.43.0 | MIT | runtime |
 | symfony/polyfill-uuid | 1.43.0 | MIT | runtime |
 | symfony/process | 8.1.10 | MIT | dev |

@@ -150,16 +150,15 @@ function toRow(read: PriceListPriceListRead): PriceListRow {
     itemCount: read.itemCount ?? 0,
     // Every read carries it; a 0 would be refused by the API rather than taken for a version.
     version: read.version ?? 0,
+    // A list read without its prices leaves them out or writes them as null (`?array`): neither is an empty list.
     items:
-      read.items === undefined
-        ? null
-        : read.items.map((item) => ({
-            productId: item.productId ?? '',
-            productReference: item.productReference ?? '',
-            productName: item.productName ?? '',
-            minQuantity: item.minQuantity ?? '',
-            unitPriceNet: item.unitPriceNet ?? '',
-          })),
+      read.items?.map((item) => ({
+        productId: item.productId ?? '',
+        productReference: item.productReference ?? '',
+        productName: item.productName ?? '',
+        minQuantity: item.minQuantity ?? '',
+        unitPriceNet: item.unitPriceNet ?? '',
+      })) ?? null,
   };
 }
 
