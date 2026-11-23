@@ -120,6 +120,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   detached (`.claude/cloud-setup.sh`): before the first
   `make check`, read `/tmp/twes-in-bootstrap.done` (ready), `.running` (wait for it) or `.failed` (its exit; the reason in
   `/tmp/twes-in-bootstrap.log`); none of them means it never ran here, so run `make bootstrap` and `make playwright-browser`.
+  Then `make cloud-doctor` (`scripts/cloud/doctor.sh`) checks what a run needs that the cloud can lack, each with its fix:
+  Docker, the whole history and its tags, the author, the proxy CA, the images, the bootstrap, Docker Hub's pulls left, the
+  CA inside the toolchain. A red it names is that, never the code's.
   The session must have **claude-code-setup selected as a second repository**: without it nothing installs the framework
   or sets `CCS_EXTRA_CA_FILE`, so `make check` fails on the proxy's certificate (`SELF_SIGNED_CERT_IN_CHAIN`). If
   `docker info` fails, follow `claude-code-setup/cloud/machine-notes.md` to restart the daemon; if it still fails, say
@@ -224,7 +227,7 @@ those three is needed. Run them through `make`, which hands compose the uid, the
 | CI jobs `licences`, `api`, `web`, `e2e` | the same | `setup-php`, `setup-node`, a postgres service container, `apt-get install logrotate` |
 
 Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Makefile and the hook call on their own
-(`id`, `stat`, `mkdir`, `rm`, `ip`, `sed`, `jq`). The `prod-image` CI job and `make up` already ran in Docker.
+(`id`, `stat`, `mkdir`, `rm`, `ip`, `sed`, `jq`, and `curl` for `make cloud-doctor`'s pulls left at Docker Hub). The `prod-image` CI job and `make up` already ran in Docker.
 
 ## Lessons
 

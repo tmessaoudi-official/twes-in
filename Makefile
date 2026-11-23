@@ -52,7 +52,7 @@ WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here; an install script that
 # package.json's allowScripts does not name stops it (docs/SPEC.md § 7, scripts/gates/npm-install-scripts.sh).
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --strict-allow-scripts --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: bootstrap rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences gate-docs test-api test-web e2e gallery videos notices audit advisories tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-docs in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
+.PHONY: bootstrap cloud-doctor rc-lane rc-tools-image stress chaos playwright-browser tools web-tools php-lint up up-images live-refresh down reset reset-empty backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions count-lines scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences gate-docs test-api test-web e2e gallery videos notices audit advisories tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-docs in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-count-lines in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -328,6 +328,9 @@ E2E_ARGS ?=
 playwright-browser: web-tools-image
 	mkdir -p var/cache/ms-playwright
 	docker run --rm -u $(HOST_UID):$(HOST_GID) $(EXTRA_CA_RUN) -e HOME=/tmp -e PLAYWRIGHT_BROWSERS_PATH=$(HOST_REPO)/var/cache/ms-playwright -v $(HOST_REPO)/var/cache/ms-playwright:$(HOST_REPO)/var/cache/ms-playwright twes-in-web-tools playwright install chromium webkit >/dev/null
+
+cloud-doctor:  ## what a cloud session can lack against the computer, each checked and said with its fix (docs/SPEC.md § 7): Docker, the whole history and its tags, the author, the proxy CA, the toolchain's images, the bootstrap, Docker Hub's pulls left, the CA inside the toolchain
+	bash scripts/cloud/doctor.sh
 
 e2e: playwright-browser   ## needs the full stack up; E2E_ARGS passes options through, e.g. E2E_ARGS=--shard=1/3
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test $(E2E_ARGS)'
