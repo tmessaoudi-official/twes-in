@@ -13,6 +13,7 @@ declare(strict_types=1);
 // tests/bootstrap.php), made from it as a template rather than migrated again, then granted to the application role
 // as the test database is. Another tree's copies are never touched. The arguments given are paratest's.
 
+use App\Tests\Support\SkippedTests;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Fidry\CpuCoreCounter\CpuCoreCounter;
@@ -61,6 +62,26 @@ fwrite(\STDERR, sprintf("%d test databases copied from %s in %.1f s.\n", $proces
 /** @var list<string> $given */
 $given = $_SERVER['argv'] ?? [];
 $arguments = array_map(escapeshellarg(...), array_slice($given, 1));
+// A skipped case leaves the exit at 0: the run keeps a JUnit log of its own and holds its skips to a named list
+// (App\Tests\Support\SkippedTests), unless the caller asked for its own log.
+$junit = null;
+if ([] === preg_grep('/^--log-junit/', $given)) {
+    $junit = tempnam(sys_get_temp_dir(), 'twes-junit-');
+    $arguments[] = '--log-junit='.escapeshellarg((string) $junit);
+}
 // Paratest numbers its workers by TEST_TOKEN alone; the bootstrap puts the tree's token in front of that number.
 passthru(sprintf('TWES_TEST_BASE=%s %s/vendor/bin/paratest --processes=%d %s', escapeshellarg($base), escapeshellarg($root), $processes, implode(' ', $arguments)), $status);
+if (is_string($junit)) {
+    $log = (string) file_get_contents($junit);
+    unlink($junit);
+    if ('' !== $log) {
+        $allowed = (string) file_get_contents(dirname($root).'/'.SkippedTests::ALLOWED);
+        [$status, $said] = SkippedTests::verdict(
+            SkippedTests::unexpected($log, $allowed),
+            $status,
+            'true' === getenv('GITHUB_ACTIONS'),
+        );
+        fwrite(\STDERR, implode('', $said));
+    }
+}
 exit($status);

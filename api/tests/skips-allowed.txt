@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The API tests that may be skipped in a run of the whole suite (api/tests/parallel.php, App\Tests\Support\SkippedTests):
+# one line each, `Class::method` then why it may skip. A skip no line names reds the run outside CI and is a warning
+# on CI's run (docs/SPEC.md § 7, a cloud session never silently worse than the computer). None may skip today: the
+# fiscal schemas' cases run wherever scripts/fiscal/fetch-xsd.sh reaches their sources, and on CI a source that does not
+# answer stays a warning.

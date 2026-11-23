@@ -13,7 +13,9 @@ the end of § Lessons here.
 - `scripts/fiscal/fetch-xsd.sh` — the published schemas the fiscal XML tests read (TEJ, Factur-X EN 16931, the CEN's CII),
   fetched anew into the toolchain's temporary directory and pinned (`xsd-sources.tsv`: a git folder's tree id, the TEJ zip's
   SHA-256), never kept here; `make gate-api`, `gate-api-tests` and `test-api` run the suite through it (`WITH_FISCAL_XSD`).
-  A source that does not answer is « not run » (a warning on GitHub) and its tests skip; a changed schema stops the run.
+  A source that does not answer is « not run » and its tests skip: a warning on GitHub, a red anywhere else, since the suite's
+  run (`tests/parallel.php`, `Support/SkippedTests`) holds every skip to `api/tests/skips-allowed.txt`, empty today; a changed
+  schema stops the run.
 - The fiscal inventory: a context declares its issued documents, their ledger and what is kept beside them with
   `DeclaresFiscalRecords` in its own `Infrastructure/FiscalInventory/`; `app:fiscal:inventory` (`--company`, `--json`,
   `--summary`) counts them per company, exit 3 when anything fiscal is there; `FiscalInventoryCoverage` reds on a table
