@@ -1,5 +1,5 @@
 # EXPERTISE - twes-in   (L4 core; loaded every session in this project)
-Review date: 2026-11-02 21:45   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci, domain-identifiers
+Review date: 2026-11-23 19:08   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci, domain-identifiers
 Scope: the DELTA over CLAUDE.md (Process, Licensing invariants, Git, its Lessons: loaded every session) and the area rules files beside this one (`api.md`, `web.md`, `infra.md`, `gate-scripts.md`: their layout, gates and Lessons, loaded with their folders); neither is repeated here. This core keeps what prevents the worst mistakes; EXPERTISE-REFERENCE.md holds the rest: read only the section the pointer table (§6) names. Tags: [Ruled: user <date>] = AGREED in SPEC §7 (`<date>` finds the entry); [Source: ...]; [Observed: ...]; [Unverified].
 
 ## Domains this project touches
@@ -38,6 +38,10 @@ Law, fiscal, signing, licences (one-way doors):
 - A money or stock mistake is corrected by a new record; country and currency editable only before anything is issued.  [Ruled: user 2026-10-31 21:14]
 - Sensitive appointment activities stay closed per preset until hosting is certified; deployment region is a setting, nothing provider-specific.  [Ruled: user 2026-10-11 23:03, 2026-10-12 00:23]
 - Refused on licence: PrimeNG family, Transloco, `ng-openapi-gen`, Mercure, zbar, QZ Tray, Star SDKs, MinIO; TypeScript 7 held back.  [Ruled: user, see REFERENCE §10; 2026-10-12 10:12]
+- A document printed again keeps the look it had when issued or sent (design, logo, labels); a company setting lets reprints take today's; the content stays as issued. A purchase order keeps its design when sent, as a quote does.  [Ruled: user 2026-11-06 21:17, 21:21]
+- A closed period never opens again: no console, no undo window.  [Ruled: user 2026-11-18 11:31]
+- The fiscal XML schemas are fetched at test time, pinned, never kept in the tree, a cache or an artifact (TEJ ruled; Factur-X and CII the same, ASSUMED).  [Ruled: user 2026-11-04 20:15]
+- Paper documents are parked until after the stable release, and are read on the installation itself, never by an outside service.  [Ruled: user 2026-11-07 12:53]
 Tenancy and security:
 - `CompanyFilter` is turned on by `CompanyGuard::companyForActing` from the URL PATH; raw SQL escapes it and must name its company; the browser never chooses a realtime channel.  [Ruled: user 2026-09-16, 2026-09-27]
 - A non-active company answers like a stranger (404); a CLOSED one stays read-only to members with the accounting export until retention ends. Operators hold only platform endpoints; every platform write needs a recent operator proof.  [Ruled: user 2026-09-15, 2026-10-13 12:39, 20:21]
@@ -51,20 +55,28 @@ Tenancy and security:
 - Client and shop data never in committed files, history or artifacts; ask by sheet number and column letter. GitHub holds no credential reaching a server.  [Ruled: user 2026-10-20 19:16, 2026-10-22 00:44, 2026-10-12 22:07]
 - `product.cost.read` is the ONLY way to cost (else costPrice null, supplier codes and margin withheld); the customer screen is held by the API session (403 `customer_screen_locked`).  [Ruled: user 2026-09-23, 2026-10-06 19:44]
 - Signup and invitations never reveal a registered address; passkey PIN refused; breach check fails OPEN. `UnauthenticatedSweepTest` walks the router.  [Ruled: user 2026-09-15, 2026-09-16, 2026-09-22]
+- Proving who is at the screen is one canon for the step-up and a company's entry: one API computation says what is asked (`{password, code, passkey}`), each offering only the proofs the account holds; one form draws it.  [Ruled: user 2026-11-10 23:42, 2026-11-14 12:35]
+- No answer deletes the session cookie (`KeepSessionCookieListener`, a departure from Symfony's default); a spent budget's `Retry-After` is its window and one rounding step at most.  [Ruled: user 2026-11-07 16:23, 2026-11-05 10:33]
+- A cloud session works on its harness's branch and never signs or lands; `land.sh` re-signs on the computer. It is never silently worse than the computer: a difference is removed, fails loudly or is declared with where its proof runs; every toolchain run that downloads is handed the proxy CA.  [Ruled: user 2026-11-15 23:06, 2026-11-23 18:58, 18:45]
 Architecture:
-- `Domain/` and `Application/` import no framework; events published AFTER commit; modules never call each other (inventory's and the delivery-note ports carry ids and plain values; other crossings await their ruling); Messenger on Doctrine is the outbox; a module lives at `api/src/Module/<Name>/`.  [Ruled: user 2026-09-14/16/20, 2026-10-20 15:17]
+- `Domain/` and `Application/` import no framework; a domain event is written to Messenger's Doctrine transport in its change's own transaction and the worker runs its listeners until each is done (the outbox) [Ruled: user 2026-11-15 23:06]; modules never call each other (inventory's and the delivery-note ports carry ids and plain values; other crossings await their ruling); Messenger on Doctrine is the outbox; a module lives at `api/src/Module/<Name>/`.  [Ruled: user 2026-09-14/16/20, 2026-10-20 15:17]
 - Same validation on every way in: checks in domain value objects; imports refuse rows with a stable code, never the file. An import creates irreversible records only from a certain file; a doubt is an « à vérifier » reason.  [Ruled: user 2026-10-15 20:00, 2026-10-20 00:21]
 - Stock on-hand is never stored, only summed from `stock_movement`. Selling beyond stock follows « Sortie sans stock enregistré » (allow+signal default / confirm / refuse) at validation or issue, never at a draft; lots, serials, moves keep their refusal.  [Ruled: user 2026-10-12 04:03, 2026-10-28 00:13]
 - A system write locks the versioned row (FOR UPDATE), never refused; only a form's stale version answers 409.  [Ruled: user 2026-10-17 01:14]
 - Delete classes: fiscal/legal never deleted; master data deletable while unnamed, else deactivated or merged (alias model: merged-away stays, deactivated, pointing at the survivor); every delete undoable 24 h.  [Ruled: user 2026-10-20 00:36, 01:32]
 - Update rollback runs the previous release on the current schema (migrations additive, one transaction); a failing start step only warns; nothing wiped.  [Ruled: user 2026-10-17 17:08, 2026-11-01 21:13]
 - Stack rewrite REJECTED; FrankenPHP worker mode everywhere.  [Ruled: user 2026-09-27, 2026-09-30]
+- Refusals have two canons: what was SENT is refused as violations (`{violations: [{propertyPath, code, reason, params}]}`), the ACT or the session's state as `{error}` with its status (sign-in included). An answer a screen has no words for keeps its code and is never said as a lost connection.  [Ruled: user 2026-11-08 15:43, 18:37, 2026-11-09 11:44]
+- A test's day and the API's are read from one clock (Symfony's), held still in `setUp`.  [Ruled: user 2026-11-11 11:49]
 UI and product:
 - Descriptors (`DataList`/`DescriptorForm`); money from the decimal STRING via pipes; status six tones. Design values are tokens in three places only (tailwind.css, shared/theme, the styles.scss root block); `design-tokens.sh` refuses any other literal.  [Ruled: user 2026-09-13/16, 2026-11-02 00:39]
 - Each record type declares its actions once (RecordAction); every surface reads it; no action offered to a role the API refuses. Annulable never asks (toast undo); définitif is red, last in ⋮.  [Ruled: user 2026-10-11 08:26, 2026-10-26 00:17]
 - Bad network: nothing lost, unsent shown; issuing waits for the network; offline-first refused for fiscal documents.  [Ruled: user 2026-10-13 16:52]
 - Fonts and icons self-hosted; Angular i18n REFUSED; screen texts one file per language per feature, each with its own gzip budget.  [Ruled: user 2026-09-13, 2026-10-13 00:17]
 - Undo first, preview the rest; no "don't ask again"; no faked mockup element; logo raster only; RGAA; form-first.  [Ruled: user 2026-09-17/21/22/25, 2026-10-02]
+
+- The first page's ceiling is 986 kB (warning 979 kB) under the 1 MB wall; room is made by a lazy move, never by raising it; a dialog a first-page service opens goes through `LazyDialog`.  [Ruled: user 2026-11-10 21:59, 2026-11-11 14:41, 15:23]
+- A list whose address holds a filter the API refused names it and offers « Effacer ce filtre » beside « Effacer tout », on every list.  [Ruled: user 2026-11-08 15:43]
 
 ## 3. Working style (REFERENCE §11)
 - The developer tags releases and picks the commit (Claude notifies at ready-to-tag and keeps going) [Inferred: SPEC:5647, 5708, 5736]. Before each tag: CI green, `make onprem-check` on that commit, the update rehearsed on the shop's real files.  [Ruled: user 2026-10-24 22:16, 2026-10-28 01:04]
@@ -74,6 +86,11 @@ UI and product:
 - Sabotage the INVARIANT, not the diff. Reviewers write to disk and return ONE line; a lost lens is completed inline, disclosed.  [Ruled: user 2026-08-19; Observed: 2026-08-28]
 - Gates: `make gate` runs the halves in turn (the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-15); `make check` first; read each tool's own exit, never a pipe's.  [Observed: the Lessons (CLAUDE.md and `.claude/rules/`); contested, §5]
 
+- Every dependency is kept up to date always: an alert or an outdated package is a bump now. Symfony 8.2 (beta) and PHP 8.6.0 on FrankenPHP 1.14.0 set the « x.y.0 waits » rule aside for themselves; no release tag ships a pre-release.  [Ruled: user 2026-11-11 11:21, 2026-11-23 10:35]
+- A finding graded P2 or P3 becomes a next-release row (`deferred`) unless it breaks a law, loses data or opens a security hole.  [Ruled: user 2026-11-10 23:42]
+- Picks: a clear recommended option is taken, pure preferences become a parameter (today's behaviour the default), only the hard ones go to the developer.  [Ruled: user 2026-11-16 13:02]
+- npm install scripts are denied unless reviewed; every install says `--strict-allow-scripts`.  [Ruled: user 2026-11-23 18:45]
+
 ## 4. Machine facts that mislead (REFERENCE §12, §19)
 - `make up` is LIVE (source mounted); `make up-images` serves static builds. A stack down at resume is expected: `make up`, then `make fixtures`.  [Observed: 2026-09-16/27]
 
@@ -82,7 +99,7 @@ UI and product:
 - Gates: `make gate` runs its halves in turn (CLAUDE.md, which wins on process, after side by side starved the suites on 2026-10-15); the 2026-10-14 15:13 "side by side" (SPEC:5189) is superseded in practice.  [Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-15; SPEC:5189]
 - Release signing: GPG this release ("no cosign this release", 2026-10-31 21:14, the later entry, over cosign 2026-10-13); the tree verifies `infra/onprem/release-key.asc`.  [Ruled: user 2026-10-31 21:14]
 - Memories' resume state is likely stale: verify with `git log`, the plan file, SPEC §8.  [Source: r2-memories §4]
-- Rulings here reflect SPEC §7 up to its 2026-11-02 00:39 entry (refreshed 2026-11-02 21:45); read §7 after that stamp.  [Observed: refresh-20261102]
+- Rulings here reflect SPEC §7 up to its 2026-11-23 18:58 entry (refreshed 2026-11-23 19:08, AGREED entries only; EXPERTISE-REFERENCE.md and the domain packs were not refreshed then); read §7 after that stamp.  [Observed: refresh-20261123]
 
 ## 6. Pointer table: EXPERTISE-REFERENCE.md sections
 | Task touches | Section |

@@ -123,6 +123,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   or sets `CCS_EXTRA_CA_FILE`, so `make check` fails on the proxy's certificate (`SELF_SIGNED_CERT_IN_CHAIN`). If
   `docker info` fails, follow `claude-code-setup/cloud/machine-notes.md` to restart the daemon; if it still fails, say
   which gate legs did not run and leave the verdict to CI.
+  A cloud session starts in spec mode, every gate asking (the kit's profile, claude-code-setup cloud/profile.json),
+  whatever § Process says of this tree on the developer's computer; `/gates-bypass --run` switches it for that session.
 
 
 - `docs/SPEC.md` — product, architecture, goals, Decisions Log, status block.
