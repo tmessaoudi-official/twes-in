@@ -88,7 +88,7 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 5 | T3 expertise refresh | S | done | 02da3d68 | .claude/rules/expertise-core.md |
 | 6 | K6 the cloud paragraph's mode line | S | done | 02da3d68 | CLAUDE.md |
 | 7 | Parity: shallow refusals and the setup's unshallow, the skip list, cloud-doctor | M | done | 60426207 | Makefile scripts/** api/tests/** .claude/cloud-setup.sh CLAUDE.md |
-| 8 | One gate, push, CI read | S | todo | - | |
+| 8 | Liveness of the setup's mark, a run leaving no log, one gate, push, CI read | S | doing | - | .claude/cloud-setup.sh scripts/cloud/** api/tests/** CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input

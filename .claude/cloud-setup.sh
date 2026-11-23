@@ -23,11 +23,32 @@ mark=$dir/twes-in-bootstrap
 ca=${CCS_EXTRA_CA_FILE-/root/.ccr/ca-bundle.crt}
 wait=${TWES_CA_WAIT:-600}
 
-mkdir "$mark.running" 2>/dev/null || exit 0
+# A run's mark holds its process and the machine's boot (the run writes it first): one killed with its machine (a worker
+# restart, an environment restored from its cache) is read as dead, never waited for. A mark not yet written is a run
+# starting, for its first minute. scripts/cloud/doctor.sh reads it the same way. Its limit: a dead run's number taken
+# by another process on the same boot reads as alive.
+boot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
+alive() {
+  local pid on
+  if read -r pid on <"$mark.running/pid" 2>/dev/null; then
+    [[ "$on" == "$boot" ]] && kill -0 "$pid" 2>/dev/null
+  else
+    [[ -n "$(find "$mark.running" -maxdepth 0 -mmin -1 2>/dev/null)" ]]
+  fi
+}
+died=
+if ! mkdir "$mark.running" 2>/dev/null; then
+  alive && exit 0
+  died=$(cat "$mark.running/pid" 2>/dev/null || echo "no process written, older than a minute")
+  rm -rf "$mark.running"
+  mkdir "$mark.running" 2>/dev/null || exit 0
+fi
 rm -f "$mark.done" "$mark.failed"
 
 run() {
   local waited=0 status=0
+  echo "$$ $boot" >"$mark.running/pid"
+  [[ -n "$died" ]] && echo "cloud-setup: a run that died left its mark (process and boot: $died): started again"
   if [[ -n "$ca" ]]; then
     while [[ ! -s "$ca" ]] && ((waited < wait)); do sleep 1; waited=$((waited + 1)); done
   fi
@@ -55,11 +76,11 @@ run() {
     echo "$status" > "$mark.failed"
     echo "cloud-setup: failed with exit $status"
   fi
-  rmdir "$mark.running"
+  rm -rf "$mark.running"
 }
 
 # Its own session and no descriptor of the hook's: the setup's budget does not wait for it.
 export -f run
-export root mark ca wait
+export root mark ca wait boot died
 setsid bash -c run </dev/null >"$mark.log" 2>&1 &
 exit 0

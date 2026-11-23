@@ -53,6 +53,16 @@ images=yes
 if docker image inspect twes-in-tools twes-in-web-tools >/dev/null 2>&1; then ok "images: twes-in-tools and twes-in-web-tools"; else
   images=no; bad "images: the toolchain's images are missing — make bootstrap"; fi
 
+# The setup's run is alive while its process runs on this boot (.claude/cloud-setup.sh writes both in its mark); a
+# mark not yet written is a run starting, for its first minute.
+setup_alive() {
+  local pid on
+  if read -r pid on <"$marks.running/pid" 2>/dev/null; then
+    [[ "$on" == "$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)" ]] && kill -0 "$pid" 2>/dev/null
+  else
+    [[ -n "$(find "$marks.running" -maxdepth 0 -mmin -1 2>/dev/null)" ]]
+  fi
+}
 missing=()
 [[ -e "$root/api/vendor/autoload.php" ]] || missing+=(api/vendor)
 [[ -e "$root/web/node_modules/.twes-installed" ]] || missing+=(web/node_modules)
@@ -61,8 +71,10 @@ for dir in web/src/app/api web/src/generated var/cache/ms-playwright; do
 done
 if ((${#missing[@]} == 0)); then
   ok "bootstrap: packages, generated types, icon font and browsers"
-elif [[ -d "$marks.running" ]]; then
+elif [[ -d "$marks.running" ]] && setup_alive; then
   bad "bootstrap: ${missing[*]} not there yet, the setup's run still running — wait for $marks.done (or .failed), $marks.log says how far"
+elif [[ -d "$marks.running" ]]; then
+  bad "bootstrap: ${missing[*]} missing, the setup's run died (its machine restarted?) — make bootstrap, then make playwright-browser"
 elif [[ -e "$marks.failed" ]]; then
   bad "bootstrap: ${missing[*]} missing, the setup's run failed with exit $(cat "$marks.failed") — read $marks.log, then make bootstrap and make playwright-browser"
 else

@@ -62,26 +62,35 @@ fwrite(\STDERR, sprintf("%d test databases copied from %s in %.1f s.\n", $proces
 /** @var list<string> $given */
 $given = $_SERVER['argv'] ?? [];
 $arguments = array_map(escapeshellarg(...), array_slice($given, 1));
-// A skipped case leaves the exit at 0: the run keeps a JUnit log of its own and holds its skips to a named list
-// (App\Tests\Support\SkippedTests), unless the caller asked for its own log.
-$junit = null;
-if ([] === preg_grep('/^--log-junit/', $given)) {
-    $junit = tempnam(sys_get_temp_dir(), 'twes-junit-');
+// A skipped case leaves the exit at 0: the run keeps a JUnit log and holds its skips to a named list
+// (App\Tests\Support\SkippedTests), reading the caller's own log when it names one.
+$named = null;
+foreach ($given as $at => $argument) {
+    if (str_starts_with($argument, '--log-junit=')) {
+        $named = substr($argument, strlen('--log-junit='));
+    } elseif ('--log-junit' === $argument) {
+        $named = $given[$at + 1] ?? null;
+    }
+}
+$junit = $named ?? tempnam(sys_get_temp_dir(), 'twes-junit-');
+if (null === $named) {
     $arguments[] = '--log-junit='.escapeshellarg((string) $junit);
 }
 // Paratest numbers its workers by TEST_TOKEN alone; the bootstrap puts the tree's token in front of that number.
 passthru(sprintf('TWES_TEST_BASE=%s %s/vendor/bin/paratest --processes=%d %s', escapeshellarg($base), escapeshellarg($root), $processes, implode(' ', $arguments)), $status);
-if (is_string($junit)) {
-    $log = (string) file_get_contents($junit);
+$log = is_string($junit) && is_file($junit) ? (string) file_get_contents($junit) : '';
+if (null === $named && is_string($junit) && is_file($junit)) {
     unlink($junit);
-    if ('' !== $log) {
-        $allowed = (string) file_get_contents(dirname($root).'/'.SkippedTests::ALLOWED);
-        [$status, $said] = SkippedTests::verdict(
-            SkippedTests::unexpected($log, $allowed),
-            $status,
-            'true' === getenv('GITHUB_ACTIONS'),
-        );
-        fwrite(\STDERR, implode('', $said));
-    }
 }
+if ('' === $log) {
+    [$status, $said] = SkippedTests::withoutLog($status);
+} else {
+    $allowed = (string) file_get_contents(dirname($root).'/'.SkippedTests::ALLOWED);
+    [$status, $said] = SkippedTests::verdict(
+        SkippedTests::unexpected($log, $allowed),
+        $status,
+        'true' === getenv('GITHUB_ACTIONS'),
+    );
+}
+fwrite(\STDERR, implode('', $said));
 exit($status);

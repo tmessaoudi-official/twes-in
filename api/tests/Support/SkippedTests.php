@@ -82,4 +82,14 @@ final class SkippedTests
 
         return [0 === $status ? 1 : $status, $said];
     }
+
+    /**
+     * A run that left no JUnit log: its skips cannot be told, so a passing one is not taken as passing, CI included.
+     *
+     * @return array{int, list<string>}
+     */
+    public static function withoutLog(int $status): array
+    {
+        return [0 === $status ? 1 : $status, ["The suite's run left no JUnit log: which tests it skipped cannot be told, so it is not read as passing.\n"]];
+    }
 }

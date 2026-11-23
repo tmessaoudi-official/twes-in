@@ -77,5 +77,11 @@ d=$(tree); out=$(doctor "$d" PROBES='probe git fail\nprobe curl ok\nprobe node o
 d=$(tree); out=$(doctor "$d" PROBES=''); check "  probes that say nothing are refused, never read as passed" $? 1 "$out" "said nothing"
 d=$(tree); out=$(doctor "$d" DOCKER_IMAGES=1); check "missing toolchain images are refused, and the probes not run on them" $? 1 "$out" "make bootstrap"
 
+sleep 0 & dead=$!; wait "$dead"
+d=$(tree); rm "$d/api/vendor/autoload.php"; mkdir "$TMPDIR/twes-in-bootstrap.running"
+echo "$dead $(cat /proc/sys/kernel/random/boot_id)" > "$TMPDIR/twes-in-bootstrap.running/pid"
+out=$(doctor "$d"); status=$?; rm -r "$TMPDIR/twes-in-bootstrap.running"
+check "a setup run that died is said dead, never waited for" "$status" 1 "$out" "died"
+
 echo "cloud doctor: $pass passed, $fail failed"
 ((fail == 0))

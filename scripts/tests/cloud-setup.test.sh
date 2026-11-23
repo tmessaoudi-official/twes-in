@@ -74,5 +74,20 @@ check "  and says so in its log" 0 0 "$(cat "$d/twes-in-bootstrap.log")" "the wh
 d=$(case_dir); out=$(hook "$d" CLAUDE_CODE_REMOTE=true); ended "$d"
 ! grep -q 'whole history' "$d/twes-in-bootstrap.log"; check "  a whole clone is left as it is" $? 0 "$(cat "$d/twes-in-bootstrap.log")" ""
 
+# A run killed with its machine (a worker restart, an environment restored from its cache) leaves its mark behind: it
+# is read as dead by its process and the machine's boot, never waited for, and the next start runs again.
+boot=$(cat /proc/sys/kernel/random/boot_id)
+sleep 0 & dead=$!; wait "$dead"
+d=$(case_dir); rm -f "$TMPDIR/make.calls"; mkdir "$d/twes-in-bootstrap.running"; echo "$dead $boot" > "$d/twes-in-bootstrap.running/pid"
+out=$(hook "$d" CLAUDE_CODE_REMOTE=true); ended "$d"
+check "a mark left by a run that died is cleared and the run starts again" 0 0 "$(cat "$TMPDIR/make.calls" 2>/dev/null)" "make bootstrap"
+check "  saying so in its log" 0 0 "$(cat "$d/twes-in-bootstrap.log")" "died"
+d=$(case_dir); rm -f "$TMPDIR/make.calls"; mkdir "$d/twes-in-bootstrap.running"; echo "$$ another-boot" > "$d/twes-in-bootstrap.running/pid"
+out=$(hook "$d" CLAUDE_CODE_REMOTE=true); ended "$d"
+check "  and one from another boot, whatever its number" 0 0 "$(cat "$TMPDIR/make.calls" 2>/dev/null)" "make bootstrap"
+d=$(case_dir); rm -f "$TMPDIR/make.calls"; mkdir "$d/twes-in-bootstrap.running"; echo "$$ $boot" > "$d/twes-in-bootstrap.running/pid"
+out=$(hook "$d" CLAUDE_CODE_REMOTE=true); sleep 1
+[[ ! -e "$TMPDIR/make.calls" ]]; check "  a live one is left to run" $? 0 "$(cat "$TMPDIR/make.calls" 2>/dev/null)" ""
+
 echo "cloud setup hook: $pass passed, $fail failed"
 ((fail == 0))

@@ -81,4 +81,13 @@ final class SkippedTestsTest extends TestCase
         self::assertSame(2, SkippedTests::verdict(['X::testA'], 2, false)[0]);
         self::assertSame([0, []], SkippedTests::verdict([], 0, false));
     }
+
+    public function testARunLeavingNoLogIsRedEverywhereItsSkipsCannotBeTold(): void
+    {
+        [$status, $said] = SkippedTests::withoutLog(0);
+
+        self::assertSame(1, $status, 'a passing run whose skips nobody could read is not a passing run');
+        self::assertStringContainsString('left no JUnit log', $said[0]);
+        self::assertSame(3, SkippedTests::withoutLog(3)[0], 'a run already red keeps its own exit');
+    }
 }

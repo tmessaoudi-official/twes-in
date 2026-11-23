@@ -118,8 +118,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
   The environment's setup fetches the whole history with its tags, then starts that bootstrap and the browser fetch,
   detached (`.claude/cloud-setup.sh`): before the first
-  `make check`, read `/tmp/twes-in-bootstrap.done` (ready), `.running` (wait for it) or `.failed` (its exit; the reason in
-  `/tmp/twes-in-bootstrap.log`); none of them means it never ran here, so run `make bootstrap` and `make playwright-browser`.
+  `make check`, run `make cloud-doctor`: its bootstrap line reads `/tmp/twes-in-bootstrap.done`, `.running` (alive or died
+  with its machine) and `.failed` (its exit, the reason in `/tmp/twes-in-bootstrap.log`), and says to wait or what to run;
+  none of them means it never ran here, so run `make bootstrap` and `make playwright-browser`.
   Then `make cloud-doctor` (`scripts/cloud/doctor.sh`) checks what a run needs that the cloud can lack, each with its fix:
   Docker, the whole history and its tags, the author, the proxy CA, the images, the bootstrap, Docker Hub's pulls left, the
   CA inside the toolchain. A red it names is that, never the code's.
