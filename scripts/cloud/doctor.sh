@@ -90,7 +90,7 @@ if token=$(curl -sS --max-time 15 "${ca[@]}" 'https://auth.docker.io/token?servi
   left=$(tr -d '\r' <<<"$headers" | sed -n 's/^ratelimit-remaining: *\([0-9]*\).*/\1/Ip')
   if [[ -z "$left" ]]; then ok "Docker Hub: no pull limit said"
   elif ((left > 0)); then ok "Docker Hub: $left pulls left"
-  else bad "Docker Hub: 0 pulls left — a build asking it answers 429: run a target whose image is built as make -o <its image target> <target>, or wait out the window"; fi
+  else bad "Docker Hub: 0 pulls left — a build asking it answers 429: run a target whose toolchain images are built with KEEP_IMAGES=1 (make gate KEEP_IMAGES=1), or wait out the window"; fi
 else
   bad "Docker Hub: could not ask Docker Hub ($(head -n 1 <<<"${headers:-$token}")) — check the network before reading a build's red"
 fi

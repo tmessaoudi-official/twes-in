@@ -133,5 +133,7 @@ the end of § Lessons here.
   died on SELF_SIGNED_CERT_IN_CHAIN and `fetch-xsd.sh` said « not run » for Factur-X and CII, which skipped three API tests
   without a red. A new `docker run` in the Makefile takes `$(EXTRA_CA_RUN)`; a new tool behind the proxy, its own variable
   (`build-extra-ca.sh` reds the Makefile's; a script's is its own to carry) (2026-11-23).
-- Docker Hub answers 429 to an anonymous pull here, and BuildKit asks it for a cached base's tag on every build: a target
-  whose image is already built runs with `make -o <its image target> <target>` (2026-11-23).
+- Docker Hub answers 429 to an anonymous pull here, and BuildKit asks it for a cached base's tag on every build: run a
+  target whose toolchain images are built with `KEEP_IMAGES=1` (`make gate KEEP_IMAGES=1`), which every sub-make sees and
+  which says each image kept; `make -o tools-image gate` does not help, as make hands no `-o` to the gate's six sub-makes
+  (`scripts/tests/keep-images.test.sh`) (2026-11-23).

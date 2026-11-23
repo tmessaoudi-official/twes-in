@@ -67,11 +67,17 @@ web-tools:     ## CMD='…' in the Node toolchain container, from web/: e.g. mak
 web-tools: web-tools-image
 	$(WEB_TOOLS_RUN) -e CMD web-tools sh -c '$(NPM_INSTALL) && eval "$$CMD"'
 
-tools-image:   ## build the PHP toolchain image (a no-op when nothing under infra/api changed)
-	docker compose --profile tools build -q tools
+# KEEP_IMAGES=1 keeps a toolchain image already built as it is, through every sub-make a target calls (make gate calls
+# six): BuildKit asks Docker Hub about a base's tag on every build, even one its cache answers, and Docker Hub answers
+# 429 to anonymous pulls (a cloud session); make hands no -o to a sub-make, a variable it does. Said each time, refused
+# where there is no image to keep, and never set by default, since a kept image does not take its Dockerfile's changes.
+keep_image = docker image inspect $(1) >/dev/null 2>&1 && echo "$(1): kept as built (KEEP_IMAGES=1: not rebuilt, its Dockerfile's changes not taken)" || { echo "$(1): KEEP_IMAGES=1 but no image $(1) to keep: build it once without KEEP_IMAGES" >&2; exit 1; }
 
-web-tools-image: ## build the Node + Playwright toolchain image
-	docker build -q --load $(EXTRA_CA_SECRET) -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null
+tools-image:   ## build the PHP toolchain image (a no-op when nothing under infra/api changed; KEEP_IMAGES=1 keeps the one built)
+	$(if $(KEEP_IMAGES),@$(call keep_image,twes-in-tools),docker compose --profile tools build -q tools)
+
+web-tools-image: ## build the Node + Playwright toolchain image (KEEP_IMAGES=1 keeps the one built)
+	$(if $(KEEP_IMAGES),@$(call keep_image,twes-in-web-tools),docker build -q --load $(EXTRA_CA_SECRET) -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null)
 
 # The PowerShell toolchain image, named by its Dockerfile: its build reaches PowerShell Gallery, which fails now and
 # then, so an image already built from the same Dockerfile is kept, here and in CI's cache (.github/workflows/ci.yml).
@@ -293,8 +299,8 @@ chaos: tools-image
 	( flock -n 9 || { echo "make chaos: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
 	  bash scripts/stress/chaos.sh $(if $(SABOTAGE),--sabotage) ) 9>/tmp/twes-in-gate.lock
 
-rc-tools-image: ## build the RC lane's toolchain: the tools image on PHP's next release candidate (infra/api/rc.Dockerfile)
-	docker build -q --load $(EXTRA_CA_SECRET) -f infra/api/rc.Dockerfile -t twes-in-tools-rc . >/dev/null
+rc-tools-image: ## build the RC lane's toolchain: the tools image on PHP's next release candidate (infra/api/rc.Dockerfile; KEEP_IMAGES=1 keeps the one built)
+	$(if $(KEEP_IMAGES),@$(call keep_image,twes-in-tools-rc),docker build -q --load $(EXTRA_CA_SECRET) -f infra/api/rc.Dockerfile -t twes-in-tools-rc . >/dev/null)
 # The RC lane (scripts/rc-lane/rc-lane.sh, CI's rc-lane workflow): api/ copied outside the tree onto Symfony's next
 # minor and PHP's release candidate, then its deprecations, PHPStan and the suite on a database of its own
 # (twes_test_rc*); the report is var/rc-lane/summary.md. It reports and never fails on what it finds. The whole suite

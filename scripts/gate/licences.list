@@ -107,6 +107,7 @@ test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/count-lines
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/rc-lane.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/chaos.test.sh
 test serial bash scripts/gates/tests/no-leftovers.sh scripts/tests/tools-cmd.test.sh
+test serial bash scripts/gates/tests/no-leftovers.sh scripts/tests/keep-images.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-instance.test.sh
