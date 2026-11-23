@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
+<!-- executionOrder: the slowest classes first, by the times .phpunit.cache keeps of the last run. Paratest hands a free
+     worker the next class in this order, and in the alphabet's a 275-second class started last and ran on alone for
+     minutes. With no history (a fresh clone, CI) every weight is equal and the order stays the directory's. -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          colors="true"
@@ -9,6 +12,7 @@
          failOnWarning="true"
          bootstrap="tests/bootstrap.php"
          cacheDirectory=".phpunit.cache"
+         executionOrder="duration-descending"
 >
     <php>
         <ini name="display_errors" value="1" />
