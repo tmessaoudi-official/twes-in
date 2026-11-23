@@ -73,5 +73,12 @@
   "overrides": {
     "js-yaml": "4.3.2",
     "vite": "8.3.3"
+  },
+  "allowScripts": {
+    "@parcel/watcher": false,
+    "esbuild": false,
+    "lmdb": false,
+    "msgpackr-extract": false,
+    "protobufjs": false
   }
 }

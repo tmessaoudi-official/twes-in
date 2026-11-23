@@ -9,7 +9,7 @@ cd /app
 stamp=node_modules/.twes-lock-sum
 sum=$(sha256sum package-lock.json | cut -d ' ' -f 1)
 if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$sum" ]; then
-	npm ci --no-audit --no-fund
+	npm ci --strict-allow-scripts --no-audit --no-fund
 	echo "$sum" >"$stamp"
 fi
 

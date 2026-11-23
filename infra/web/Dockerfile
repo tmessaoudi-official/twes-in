@@ -10,7 +10,7 @@ COPY web/package.json web/package-lock.json ./
 # (compose.extra-ca.yaml) through NODE_EXTRA_CA_CERTS, for this step only; without it the step runs as it always did.
 RUN --mount=type=secret,id=extra_ca \
     if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi \
- && npm ci --no-audit --no-fund
+ && npm ci --strict-allow-scripts --no-audit --no-fund
 COPY web/ ./
 # The TypeScript types under src/app/api are generated, gitignored and kept out of the build context
 # (.dockerignore): they come from the api image's exported OpenAPI document, so the bundle always matches the

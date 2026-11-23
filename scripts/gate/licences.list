@@ -72,6 +72,7 @@ test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gate/tests/snapsh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gate/tests/run-list.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/npm-install-scripts.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/fiscal-test-door.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/build-extra-ca.test.sh
@@ -188,6 +189,7 @@ gate parallel bash scripts/gates/unsaved-guarded.sh
 gate parallel bash scripts/gates/list-stances.sh
 gate parallel bash scripts/gates/stored-items.sh
 gate parallel bash scripts/gates/icons-declared.sh
+gate parallel bash scripts/gates/npm-install-scripts.sh
 gate parallel bash scripts/gates/float-casts.sh
 gate long bash scripts/gates/fiscal-test-door.sh
 gate parallel bash scripts/gates/build-extra-ca.sh

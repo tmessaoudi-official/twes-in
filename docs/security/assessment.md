@@ -83,7 +83,8 @@ unauthenticated network actor can exploit with a fix to take today.
 | S7 | P2 | the edge carries Go stdlib DoS CVEs with no fixed Caddy release | build the edge on a fixed Go, or take Caddy 2.11.8 when out | M |
 
 The 22 P3 are in the lens reports: among them, raw exception text in some 4xx answers, an unbounded id list in a query
-string, session ids stored raw, a notification stop token that never expires, `npm ci` running lifecycle scripts, no
+string, session ids stored raw, a notification stop token that never expires, `npm ci` running lifecycle scripts (closed 2026-11-23: every install
+script denied unless reviewed, `--strict-allow-scripts` on every install, `scripts/gates/npm-install-scripts.sh`), no
 top-level `permissions:` in the workflows, and base images in Dockerfiles by tag rather than digest.
 
 ## Class: an action that cuts a person's own access, or strands a company or the platform
