@@ -1,0 +1,46 @@
+{
+  "licensing": {
+    "unmanaged": "This company has no subscription to pay for.",
+    "covered_until": "Covered until",
+    "paid_through": "Paid through",
+    "price": "Price",
+    "days_left": "{{days}} {days, plural, one {day} other {days}} left",
+    "stages": {
+      "trial": "Trial",
+      "paid": "Paid",
+      "grace": "Grace period",
+      "held": "Payment waiting",
+      "unpaid": "Unpaid"
+    },
+    "periods": {
+      "day": "{{count}} {count, plural, one {day} other {days}}",
+      "month": "{{count}} {count, plural, one {month} other {months}}",
+      "year": "{{count}} {count, plural, one {year} other {years}}"
+    },
+    "payment": {
+      "declare": "Declare a payment",
+      "declared": "Your payment was declared. You will hear from us once it is confirmed.",
+      "waiting": "A payment of {{amount}} {{currency}} was declared and is waiting to be confirmed.",
+      "history": "Declared payments",
+      "none": "No payment declared yet.",
+      "section": "Payment",
+      "section_hint": "Tell us what you paid; we confirm it once checked.",
+      "submit": "Declare",
+      "cancel": "Close",
+      "statuses": {
+        "declared": "Waiting",
+        "confirmed": "Confirmed",
+        "rejected": "Rejected"
+      },
+      "fields": {
+        "amount": "Amount",
+        "amount_hint": "Three decimals at most.",
+        "method": "Payment method",
+        "paidOn": "Payment date",
+        "reference": "Reference",
+        "reference_hint": "A receipt, transfer or cheque number.",
+        "note": "Note"
+      }
+    }
+  }
+}

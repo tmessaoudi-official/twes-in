@@ -1,0 +1,46 @@
+{
+  "licensing": {
+    "unmanaged": "Cette entreprise n’a pas d’abonnement à régler.",
+    "covered_until": "Couvert jusqu’au",
+    "paid_through": "Payé jusqu’au",
+    "price": "Prix",
+    "days_left": "{{days}} {days, plural, one {jour restant} other {jours restants}}",
+    "stages": {
+      "trial": "Essai",
+      "paid": "À jour",
+      "grace": "Tolérance",
+      "held": "Règlement en attente",
+      "unpaid": "Impayé"
+    },
+    "periods": {
+      "day": "{{count}} {count, plural, one {jour} other {jours}}",
+      "month": "{{count}} mois",
+      "year": "{{count}} {count, plural, one {an} other {ans}}"
+    },
+    "payment": {
+      "declare": "Déclarer un règlement",
+      "declared": "Votre règlement a été déclaré. Vous serez prévenu dès qu’il sera confirmé.",
+      "waiting": "Règlement de {{amount}} {{currency}} déclaré, en attente de confirmation.",
+      "history": "Règlements déclarés",
+      "none": "Aucun règlement déclaré pour l’instant.",
+      "section": "Règlement",
+      "section_hint": "Indiquez ce que vous avez réglé ; nous le confirmons après vérification.",
+      "submit": "Déclarer",
+      "cancel": "Fermer",
+      "statuses": {
+        "declared": "En attente",
+        "confirmed": "Confirmé",
+        "rejected": "Refusé"
+      },
+      "fields": {
+        "amount": "Montant",
+        "amount_hint": "Trois décimales au plus.",
+        "method": "Moyen de règlement",
+        "paidOn": "Date du règlement",
+        "reference": "Référence",
+        "reference_hint": "Numéro de reçu, de virement ou de chèque.",
+        "note": "Précision"
+      }
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "price_lists": {
+    "title": "Tarifs",
+    "intro": "Un prix par client, par groupe de clients ou pour tous, par quantité et sur une période, qui fixe le prix de départ d’une ligne avant toute remise.",
+    "add": "Nouveau tarif",
+    "edit": "Modifier",
+    "saved": "Le tarif a été enregistré.",
+    "none": "Aucun tarif.",
+    "always": "Toujours",
+    "active": "Actif",
+    "inactive": "Désactivé",
+    "no_customer_found": "Aucun client trouvé.",
+    "no_product_found": "Aucun produit trouvé.",
+    "delete_named": "Supprimer {{name}}",
+    "list": {
+      "name": "Tarif",
+      "scope": "Pour",
+      "validity": "Période",
+      "item_count": "Nombre de prix",
+      "state": "État"
+    },
+    "scopes": {
+      "everyone": "Tous les clients",
+      "group": "Un groupe de clients",
+      "customer": "Un client"
+    },
+    "prices": {
+      "title": "Prix",
+      "product": "Produit",
+      "min_quantity": "À partir de",
+      "unit_price": "Prix net unitaire",
+      "figures": "Prix actuel {{shelf}} · {{change}} par rapport au prix actuel",
+      "figures_cost": "Prix actuel {{shelf}} · coût {{cost}} · marge {{margin}} (sur ce prix) · {{change}} par rapport au prix actuel",
+      "figures_cost_markup": "Prix actuel {{shelf}} · coût {{cost}} · majoration {{margin}} (sur le coût) · {{change}} par rapport au prix actuel",
+      "below_cost": "Sous le coût : ce prix vend à perte.",
+      "add": "Ajouter un prix",
+      "remove": "Retirer",
+      "none": "Aucun prix : le tarif ne change rien."
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Ce tarif n’existe plus.",
+      "name_taken": "Un autre tarif porte déjà ce nom.",
+      "invalid": "Le tarif est refusé : vérifiez le nom, les dates, le client ou le groupe et les prix.",
+      "refused": "Vous n’avez pas le droit de faire cela."
+    },
+    "scope_conflict": "Le public visé a aussi été modifié dans la version enregistrée.",
+    "prices_conflict": "Les prix ont aussi été modifiés dans la version enregistrée."
+  }
+}

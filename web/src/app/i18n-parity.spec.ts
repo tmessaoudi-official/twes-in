@@ -110,6 +110,12 @@ import frSettingsRefusals from '../../public/i18n/settings-refusals/fr.json';
 import arLabels from '../../public/i18n/labels/ar.json';
 import enLabels from '../../public/i18n/labels/en.json';
 import frLabels from '../../public/i18n/labels/fr.json';
+import arLicensing from '../../public/i18n/licensing/ar.json';
+import enLicensing from '../../public/i18n/licensing/en.json';
+import frLicensing from '../../public/i18n/licensing/fr.json';
+import arPriceLists from '../../public/i18n/price-lists/ar.json';
+import enPriceLists from '../../public/i18n/price-lists/en.json';
+import frPriceLists from '../../public/i18n/price-lists/fr.json';
 import arStockPlan from '../../public/i18n/stock-plan/ar.json';
 import enStockPlan from '../../public/i18n/stock-plan/en.json';
 import frStockPlan from '../../public/i18n/stock-plan/fr.json';
@@ -187,6 +193,8 @@ const parts: Record<string, Record<string, unknown>> = {
   'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },
   'stock-moves': { fr: frStockMoves, en: enStockMoves, ar: arStockMoves },
   'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },
+  licensing: { fr: frLicensing, en: enLicensing, ar: arLicensing },
+  'price-lists': { fr: frPriceLists, en: enPriceLists, ar: arPriceLists },
   texts: { fr: frTexts, en: enTexts, ar: arTexts },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },
   unoffered: { fr: frUnoffered, en: enUnoffered, ar: arUnoffered },
@@ -686,6 +694,29 @@ describe('counted time', () => {
         const sentence = (said as (params: object) => string)({ [count]: value });
         expect(sentence, `${lang} ${key} ${value}`).toContain(expected[index]);
       });
+    }
+  });
+});
+
+// A page's own words wait in its part until it opens (the screen texts budget); the language's file keeps only what
+// another screen says: the activity list's price-list fields, the subscription's route title, the platform page's
+// errors and payment methods, and the shell's subscription bar (docs/SPEC.md § 7, the two parts).
+describe('the texts a page alone says', () => {
+  const keptByOthers: Record<string, string[]> = {
+    price_lists: ['fields'],
+    licensing: ['errors', 'notice', 'payment', 'title'],
+  };
+  it.each(Object.keys(keptByOthers))(
+    'keeps of %s in the language files only what another screen says',
+    (section) => {
+      for (const main of [fr, en, ar] as unknown as Record<string, object | undefined>[]) {
+        expect(Object.keys(main[section] ?? {}).sort()).toEqual(keptByOthers[section]);
+      }
+    },
+  );
+  it('keeps of the subscription payment only its methods, which the platform page names', () => {
+    for (const main of [fr, en, ar] as unknown as Record<string, Record<string, object>>[]) {
+      expect(Object.keys(main['licensing']?.['payment'] ?? {})).toEqual(['methods']);
     }
   });
 });

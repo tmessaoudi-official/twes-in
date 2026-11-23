@@ -1,0 +1,50 @@
+{
+  "price_lists": {
+    "title": "Price lists",
+    "intro": "A price per customer, per customer group or for everyone, by quantity and over a period, which sets the price a line starts at before any discount.",
+    "add": "New price list",
+    "edit": "Edit",
+    "saved": "The price list was saved.",
+    "none": "No price list.",
+    "always": "Always",
+    "active": "Active",
+    "inactive": "Deactivated",
+    "no_customer_found": "No customer found.",
+    "no_product_found": "No product found.",
+    "delete_named": "Delete {{name}}",
+    "list": {
+      "name": "Price list",
+      "scope": "For",
+      "validity": "Period",
+      "item_count": "Number of prices",
+      "state": "State"
+    },
+    "scopes": {
+      "everyone": "Every customer",
+      "group": "A customer group",
+      "customer": "One customer"
+    },
+    "prices": {
+      "title": "Prices",
+      "product": "Product",
+      "min_quantity": "From quantity",
+      "unit_price": "Net unit price",
+      "figures": "Current price {{shelf}} · {{change}} against the current price",
+      "figures_cost": "Current price {{shelf}} · cost {{cost}} · margin {{margin}} (on this price) · {{change}} against the current price",
+      "figures_cost_markup": "Current price {{shelf}} · cost {{cost}} · markup {{margin}} (on the cost) · {{change}} against the current price",
+      "below_cost": "Below cost: this price sells at a loss.",
+      "add": "Add a price",
+      "remove": "Remove",
+      "none": "No price: the list changes nothing."
+    },
+    "errors": {
+      "network": "The server cannot be reached.",
+      "not_found": "This price list no longer exists.",
+      "name_taken": "Another price list already has this name.",
+      "invalid": "The price list is refused: check the name, the dates, the customer or group and the prices.",
+      "refused": "You are not allowed to do this."
+    },
+    "scope_conflict": "Whom it is for was changed in the saved version too.",
+    "prices_conflict": "The prices were changed in the saved version too."
+  }
+}

@@ -162,7 +162,7 @@ export const routes: Routes = [
     // everything but reading the subscription and declaring a payment — which is what this page is for.
     path: 'subscription',
     title: 'licensing.title',
-    canActivate: [lockedSubscriptionGuard],
+    ...textsPart('licensing', lockedSubscriptionGuard),
     loadComponent: () =>
       import('./licensing/locked-subscription-page').then((m) => m.LockedSubscriptionPage),
   },
@@ -304,11 +304,12 @@ export const routes: Routes = [
       {
         path: 'price-lists',
         title: 'nav.price_lists',
-        canActivate: [
+        ...textsPart(
+          'price-lists',
           moduleGuard(PRICE_LISTS_MODULE),
           permissionGuard(PRICE_LISTS_NAV, '/price-lists'),
           textsOpened(UNREAD_TEXTS),
-        ],
+        ),
         loadComponent: () => import('./price-lists/price-lists-page').then((m) => m.PriceListsPage),
       },
       {
@@ -894,7 +895,7 @@ export const routes: Routes = [
             // way out of it (docs/SPEC.md § 7, 2026-09-17).
             path: 'company/subscription',
             title: 'nav.subscription',
-            canActivate: [permissionGuard(SETTINGS_NAV, '/company/subscription')],
+            ...textsPart('licensing', permissionGuard(SETTINGS_NAV, '/company/subscription')),
             loadComponent: () =>
               import('./licensing/subscription-page').then((m) => m.SubscriptionPage),
           },

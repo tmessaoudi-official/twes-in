@@ -2762,23 +2762,6 @@
       "held": "Payment declared, waiting to be confirmed. The company stays open for {{days}} {days, plural, one {day} other {days}}."
     },
     "title": "Subscription",
-    "unmanaged": "This company has no subscription to pay for.",
-    "covered_until": "Covered until",
-    "paid_through": "Paid through",
-    "price": "Price",
-    "days_left": "{{days}} {days, plural, one {day} other {days}} left",
-    "stages": {
-      "trial": "Trial",
-      "paid": "Paid",
-      "grace": "Grace period",
-      "held": "Payment waiting",
-      "unpaid": "Unpaid"
-    },
-    "periods": {
-      "day": "{{count}} {count, plural, one {day} other {days}}",
-      "month": "{{count}} {count, plural, one {month} other {months}}",
-      "year": "{{count}} {count, plural, one {year} other {years}}"
-    },
     "errors": {
       "not_managed": "This company has no subscription to pay for.",
       "already_declared": "A payment is already waiting to be confirmed.",
@@ -2788,34 +2771,11 @@
       "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "payment": {
-      "declare": "Declare a payment",
-      "declared": "Your payment was declared. You will hear from us once it is confirmed.",
-      "waiting": "A payment of {{amount}} {{currency}} was declared and is waiting to be confirmed.",
-      "history": "Declared payments",
-      "none": "No payment declared yet.",
-      "section": "Payment",
-      "section_hint": "Tell us what you paid; we confirm it once checked.",
-      "submit": "Declare",
-      "cancel": "Close",
       "methods": {
         "cash": "Cash",
         "transfer": "Transfer",
         "cheque": "Cheque",
         "other": "Other"
-      },
-      "statuses": {
-        "declared": "Waiting",
-        "confirmed": "Confirmed",
-        "rejected": "Rejected"
-      },
-      "fields": {
-        "amount": "Amount",
-        "amount_hint": "Three decimals at most.",
-        "method": "Payment method",
-        "paidOn": "Payment date",
-        "reference": "Reference",
-        "reference_hint": "A receipt, transfer or cheque number.",
-        "note": "Note"
       }
     }
   },
@@ -3301,25 +3261,6 @@
     }
   },
   "price_lists": {
-    "title": "Price lists",
-    "intro": "A price per customer, per customer group or for everyone, by quantity and over a period, which sets the price a line starts at before any discount.",
-    "add": "New price list",
-    "edit": "Edit",
-    "saved": "The price list was saved.",
-    "none": "No price list.",
-    "always": "Always",
-    "active": "Active",
-    "inactive": "Deactivated",
-    "no_customer_found": "No customer found.",
-    "no_product_found": "No product found.",
-    "delete_named": "Delete {{name}}",
-    "list": {
-      "name": "Price list",
-      "scope": "For",
-      "validity": "Period",
-      "item_count": "Number of prices",
-      "state": "State"
-    },
     "fields": {
       "name": "Name",
       "scope": "For",
@@ -3328,34 +3269,7 @@
       "valid_from": "From",
       "valid_to": "To",
       "active": "Active"
-    },
-    "scopes": {
-      "everyone": "Every customer",
-      "group": "A customer group",
-      "customer": "One customer"
-    },
-    "prices": {
-      "title": "Prices",
-      "product": "Product",
-      "min_quantity": "From quantity",
-      "unit_price": "Net unit price",
-      "figures": "Current price {{shelf}} · {{change}} against the current price",
-      "figures_cost": "Current price {{shelf}} · cost {{cost}} · margin {{margin}} (on this price) · {{change}} against the current price",
-      "figures_cost_markup": "Current price {{shelf}} · cost {{cost}} · markup {{margin}} (on the cost) · {{change}} against the current price",
-      "below_cost": "Below cost: this price sells at a loss.",
-      "add": "Add a price",
-      "remove": "Remove",
-      "none": "No price: the list changes nothing."
-    },
-    "errors": {
-      "network": "The server cannot be reached.",
-      "not_found": "This price list no longer exists.",
-      "name_taken": "Another price list already has this name.",
-      "invalid": "The price list is refused: check the name, the dates, the customer or group and the prices.",
-      "refused": "You are not allowed to do this."
-    },
-    "scope_conflict": "Whom it is for was changed in the saved version too.",
-    "prices_conflict": "The prices were changed in the saved version too."
+    }
   },
   "select": {
     "placeholder": "Choose",

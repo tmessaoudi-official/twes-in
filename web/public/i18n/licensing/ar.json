@@ -1,0 +1,46 @@
+{
+  "licensing": {
+    "unmanaged": "ليس لهذه الشركة اشتراك يجب دفعه.",
+    "covered_until": "مشمول إلى غاية",
+    "paid_through": "مدفوع إلى غاية",
+    "price": "السعر",
+    "days_left": "{days, plural, zero {لم يبقَ أي يوم} one {بقي يوم واحد} two {بقي يومان} few {بقيت {{days}} أيام} many {بقي {{days}} يومًا} other {بقي {{days}} يوم}}",
+    "stages": {
+      "trial": "فترة تجريبية",
+      "paid": "محيّن",
+      "grace": "إمهال",
+      "held": "دفع في الانتظار",
+      "unpaid": "غير مدفوع"
+    },
+    "periods": {
+      "day": "{count, plural, zero {0 يوم} one {يوم واحد} two {يومان} few {{{count}} أيام} many {{{count}} يومًا} other {{{count}} يوم}}",
+      "month": "{{count}} من الأشهر",
+      "year": "{count, plural, zero {0 سنة} one {سنة واحدة} two {سنتان} few {{{count}} سنوات} many {{{count}} سنةً} other {{{count}} سنة}}"
+    },
+    "payment": {
+      "declare": "التصريح بدفعة",
+      "declared": "صُرّح بدفعتك. ستُعلَم بمجرّد تأكيدها.",
+      "waiting": "دفعة بمبلغ {{amount}} {{currency}} مصرّح بها، في انتظار التأكيد.",
+      "history": "الدفعات المصرّح بها",
+      "none": "لا دفعة مصرّح بها حاليًا.",
+      "section": "الدفعة",
+      "section_hint": "حدّد ما دفعته؛ نؤكّده بعد التحقّق.",
+      "submit": "تصريح",
+      "cancel": "إغلاق",
+      "statuses": {
+        "declared": "في الانتظار",
+        "confirmed": "مؤكَّدة",
+        "rejected": "مرفوضة"
+      },
+      "fields": {
+        "amount": "المبلغ",
+        "amount_hint": "ثلاثة أرقام بعد الفاصل على الأكثر.",
+        "method": "طريقة الدفع",
+        "paidOn": "تاريخ الدفع",
+        "reference": "المرجع",
+        "reference_hint": "رقم الوصل أو التحويل أو الصكّ.",
+        "note": "توضيح"
+      }
+    }
+  }
+}
