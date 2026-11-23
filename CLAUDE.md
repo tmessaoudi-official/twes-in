@@ -187,7 +187,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
 
 ## Run everything in Docker
 
-The toolchain is two images, `tools` (`infra/api/Dockerfile` stage `tools`: PHP 8.5, Composer, git, jq, perl, python3,
+The toolchain is two images, `tools` (`infra/api/Dockerfile` stage `tools`: PHP 8.6, Composer, git, jq, perl, python3,
 logrotate, the Docker CLI) and `web-tools` (`infra/web/tools.Dockerfile`: Node 26 and Playwright's system libraries),
 run by `compose.yaml` under the `tools` profile as the host user, on the host's network, with the working tree mounted at
 its own path and a temporary directory outside it (`/tmp/twes-in-tools-<uid>`). `docs/START.md` § 1 says why each of

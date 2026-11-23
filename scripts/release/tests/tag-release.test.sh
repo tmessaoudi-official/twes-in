@@ -34,8 +34,10 @@ proven() {
 # imagetools, as the real one does, and answers nothing else: a pull would fail the case.
 fixture() {
   local d; d=$(mktemp -d)
-  mkdir -p "$d/repo/scripts/release" "$d/repo/infra/onprem" "$d/bin"
+  mkdir -p "$d/repo/scripts/release" "$d/repo/infra/onprem" "$d/repo/api" "$d/bin"
   cp "$SCRIPT" "$d/repo/scripts/release/"
+  echo '{"require": {"php": ">=8.5"}}' > "$d/repo/api/composer.json"
+  echo '{"packages": [{"name": "symfony/console", "version": "v8.1.11"}], "packages-dev": []}' > "$d/repo/api/composer.lock"
   gpg --batch --armor --export "$KEY" > "$d/repo/infra/onprem/release-key.asc"
   git -C "$d/repo" init -q -b master && git -C "$d/repo" add -A && signed_commit "$d" one
   git -C "$d/repo" update-ref refs/remotes/origin/master HEAD
@@ -237,5 +239,31 @@ check "  saying to patch master" 0 0 "$out" "master"
 d=$(fixture); lane "$d"; root_commit=$(git -C "$d/repo" rev-list --max-parents=0 HEAD)
 git -C "$d/repo" tag v2026.10.11.1 "$(git -C "$d/repo" commit-tree "$root_commit^{tree}" -p "$root_commit" -m "another lane's patch")"
 out=$(tag_release "$d" v2026.10.20.1); check "an older release the patch does not hold is no reason to refuse it" $? 0 "$out" "made and verified"
+
+# A release ships stable dependencies only: master may run on a framework's beta while it is tried, and no shop takes it.
+# The API's composer.json and lock are read at the commit tagged, never the checkout's.
+api_deps() { # dir, composer.json, composer.lock: committed signed, published and proved
+  echo "$2" > "$1/repo/api/composer.json"; echo "$3" > "$1/repo/api/composer.lock"
+  git -C "$1/repo" add -A; signed_commit "$1" api-deps
+  git -C "$1/repo" update-ref refs/remotes/origin/master HEAD; proven "$1" HEAD
+}
+STABLE_LOCK='{"packages": [{"name": "symfony/console", "version": "v8.2.0"}], "packages-dev": []}'
+d=$(fixture); api_deps "$d" '{"minimum-stability": "beta", "prefer-stable": true}' "$STABLE_LOCK"
+out=$(tag_release "$d" v2026.10.13.1); check "an API whose composer.json allows beta packages: refused" $? 1 "$out" "minimum-stability is beta"
+git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
+d=$(fixture); api_deps "$d" '{"minimum-stability": "stable"}' '{"packages": [{"name": "symfony/console", "version": "v8.2.0-BETA2"}, {"name": "a/b", "version": "1.0.0-RC1"}, {"name": "c/d", "version": "dev-main"}, {"name": "e/f", "version": "2.1.0"}], "packages-dev": []}'
+out=$(tag_release "$d" v2026.10.13.1); check "a lock holding pre-releases: refused" $? 1 "$out" "symfony/console v8.2.0-BETA2"
+check "  naming each of them" 0 0 "$out" "a/b 1.0.0-RC1 c/d dev-main"
+[[ "$out" != *"e/f"* ]]; check "  and no stable one" $? 0 "$out" ""
+d=$(fixture); api_deps "$d" '{}' '{"packages": [{"name": "symfony/console", "version": "v8.2.0"}], "packages-dev": [{"name": "g/h", "version": "v3.0.0-beta.1"}]}'
+out=$(tag_release "$d" v2026.10.13.1); check "a pre-release among the dev packages alone, which no image ships: tagged" $? 0 "$out" "made and verified"
+d=$(fixture); api_deps "$d" '{"minimum-stability": "beta"}' "$STABLE_LOCK"
+FLAGS=(--hotfix "a sale refused at the till"); out=$(tag_release "$d" v2026.10.13.1); code=$?; FLAGS=()
+check "a hotfix is no way round it" $code 1 "$out" "minimum-stability is beta"
+d=$(fixture); api_deps "$d" '{"minimum-stability": "beta"}' '{"packages": [{"name": "symfony/console", "version": "v8.2.0-BETA2"}], "packages-dev": []}'
+out=$(tag_release "$d" v2026.10.13.1 TWES_RELEASE_KEY="$REHEARSAL"); check "a rehearsal's tag on a beta: tagged, as no shop takes it" $? 0 "$out" "made and verified"
+d=$(fixture); git -C "$d/repo" rm -q api/composer.lock; signed_commit "$d" no-lock
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.13.1); check "a commit with no API lock: refused, nothing says what it ships" $? 1 "$out" "api/composer.lock"
 echo "tag-release.test: $pass passed, $fail failed"
 ((fail == 0))

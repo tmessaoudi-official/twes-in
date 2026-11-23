@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Starts the compose postgres service and runs the gate in the tools image: the same PostgreSQL 18 and PHP 8.5 as
+      # Starts the compose postgres service and runs the gate in the tools image: the same PostgreSQL 18 and PHP 8.6 as
       # the stack, never the runner's.
       - run: make gate-api
       # The race tests (api/tests/Concurrency): racers in processes of their own, released together, on a database of

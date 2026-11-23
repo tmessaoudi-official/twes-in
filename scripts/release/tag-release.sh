@@ -90,6 +90,17 @@ for day in "${tag:1:10}" "$today"; do
   fi
 done
 
+# Stable: master may run on a framework's beta while it is tried, and a shop never takes one, hotfix or not. Read at the
+# commit tagged: the API's composer.json allows stable packages alone (Composer's default when it says nothing), and
+# its lock holds no pre-release among the packages the images ship (the dev ones are never installed there).
+api_json=$(git -C "$root" show "$revision:api/composer.json" 2>/dev/null) || refuse "$revision has no api/composer.json: nothing says what it ships"
+api_lock=$(git -C "$root" show "$revision:api/composer.lock" 2>/dev/null) || refuse "$revision has no api/composer.lock: nothing says what it ships"
+stability=$(jq -r '."minimum-stability" // "stable"' <<<"$api_json") || refuse "api/composer.json of $revision is not JSON"
+[[ "$stability" == stable ]] || refuse "api/composer.json of $revision says minimum-stability is $stability: a release ships stable packages only; put it back to stable once the release it waits for is out, or tag a release/<YYYY.MM.DD> lane that never left it"
+unstable=$(jq -r '.packages[] | select(.version | test("^dev-|-dev$|(alpha|beta|rc)[.-]?[0-9]*$"; "i")) | "\(.name) \(.version)"' <<<"$api_lock") \
+  || refuse "api/composer.lock of $revision is not JSON"
+[[ -z "$unstable" ]] || refuse "api/composer.lock of $revision holds pre-releases a shop would run: $(tr '\n' ' ' <<<"$unstable")(a release ships stable packages only)"
+
 # Signed: a commit on master without the developer's good signature is a way round the signing the shops rely on. The
 # rule is signed-commits.sh's: a good signature (G, or U for a key this keyring holds but never marked trusted) by the
 # pinned key's fingerprint, whatever other key this keyring trusts.

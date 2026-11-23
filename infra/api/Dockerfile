@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
-# twes-in API on FrankenPHP (Caddy + PHP 8.5). Two targets over one base, as the official Symfony Docker image
+# twes-in API on FrankenPHP (Caddy + PHP 8.6). Two targets over one base, as the official Symfony Docker image
 # lays them out: dev (compose.yaml, CI's e2e) and prod (compose.prod.yaml, a deployment). The last stage, prod, is
 # what a build that names no target gets.
-FROM dunglas/frankenphp:1.13.6-php8.5-trixie AS base
+FROM dunglas/frankenphp:1.14.0-php8.6-trixie AS base
 
 # Worker mode (https://frankenphp.dev/docs/worker/): the kernel boots once per worker and serves request after request;
 # symfony/runtime's FrankenPhpWorkerRunner resets the services between them and starts a fresh worker every 500. In
@@ -19,6 +19,8 @@ WORKDIR /app
 # photos are cut into thumbnails on the server, turned upright first as the phone that took them says.
 # pcntl: the workers hear the signal Docker stops a container with, finish the message they hold and leave, instead of
 # being killed in the middle of it once the grace runs out (WorkerStopsOnSignalTest).
+# mbstring: PHP's 8.6 images no longer build it in, as FrankenPHP's release notes say; composer.json requires ext-mbstring,
+# so an image without it refuses to install instead of running on symfony/polyfill-mbstring.
 # Behind a proxy that re-terminates TLS (a cloud session), the build is handed its CA as the optional secret extra_ca
 # (compose.extra-ca.yaml), added to the system bundle for this step only (SSL_CERT_FILE, read by curl and Composer) on a
 # tmpfs, so it is in no layer; without it the step runs as it always did. TLS checks stay on.
@@ -26,7 +28,7 @@ RUN --mount=type=secret,id=extra_ca --mount=type=tmpfs,target=/run/extra-ca \
     if [ -s /run/secrets/extra_ca ]; then { if [ -f /etc/ssl/certs/ca-certificates.crt ]; then cat /etc/ssl/certs/ca-certificates.crt; fi; \
       cat /run/secrets/extra_ca; } > /run/extra-ca/all.pem \
       && export SSL_CERT_FILE=/run/extra-ca/all.pem; fi \
- && install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif pcntl
+ && install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif pcntl mbstring
 COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
 
 COPY --from=composer:2.11.2 /usr/bin/composer /usr/bin/composer

@@ -32,4 +32,8 @@ return (new PhpCsFixer\Config())
         ],
     ])
     ->setFinder($finder)
+    // The API runs PHP 8.6 and php-cs-fixer reads syntax up to 8.5 (ConfigInterface::PHP_VERSION_SYNTAX_SUPPORTED): it
+    // refuses to start on a newer PHP unless allowed. The code holds no 8.6-only syntax, which the fixer could misread;
+    // drop this once a release supports 8.6 (docs/SPEC.md § 7).
+    ->setUnsupportedPhpVersionAllowed(true)
 ;
