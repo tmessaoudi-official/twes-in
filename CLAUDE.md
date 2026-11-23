@@ -112,9 +112,13 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `master-signed` ruleset refuses an unsigned commit there anyway. It runs `make bootstrap` once, `make check` on each change and `make gate`
   once before it says the branch is ready (the setup script starts Docker; its builds and toolchain runs trust the agent proxy's CA, which
   `CCS_EXTRA_CA_FILE` names, through `compose.extra-ca.yaml`: the optional BuildKit secret `extra_ca` for a build, the file
-  mounted into `tools` and `web-tools` for a run, never by switching TLS checks off), and ends with the line the developer runs on
+  mounted into `tools` and `web-tools` for a run, a hand-started `docker run` through `$(EXTRA_CA_RUN)`, git through
+  `GIT_SSL_CAINFO`, never by switching TLS checks off), and ends with the line the developer runs on
   the PC: `land.sh /stack/projects/twes-in <branch>` (claude-code-setup), which re-signs every commit as the developer,
   strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
+  The environment's setup starts that bootstrap and the browser fetch detached (`.claude/cloud-setup.sh`): before the first
+  `make check`, read `/tmp/twes-in-bootstrap.done` (ready), `.running` (wait for it) or `.failed` (its exit; the reason in
+  `/tmp/twes-in-bootstrap.log`); none of them means it never ran here, so run `make bootstrap` and `make playwright-browser`.
   The session must have **claude-code-setup selected as a second repository**: without it nothing installs the framework
   or sets `CCS_EXTRA_CA_FILE`, so `make check` fails on the proxy's certificate (`SELF_SIGNED_CERT_IN_CHAIN`). If
   `docker info` fails, follow `claude-code-setup/cloud/machine-notes.md` to restart the daemon; if it still fails, say

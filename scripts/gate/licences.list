@@ -121,6 +121,7 @@ test parallel bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/stag
 test long bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/image-scan.test.sh
+test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/cloud-setup.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/advisory-feeds.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes-secrets.test.sh
 test parallel bash scripts/gates/tests/no-leftovers.sh scripts/tests/secrets-stay-files.test.sh
