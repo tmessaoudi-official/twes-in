@@ -8,6 +8,12 @@
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
+# A shallow clone (a cloud session's) holds neither the release tag nor every commit since it: an OK there would be
+# about the commits it happens to hold. The snapshot gate's worktree shares its repository's whole history.
+if [[ "$(git -C "$root" rev-parse --is-shallow-repository 2>&1)" != "false" ]]; then
+  echo "signed-commits: FAIL — a shallow clone holds neither the release tag nor every commit since it: check out the whole history (fetch-depth: 0 in CI; git fetch --unshallow --tags origin in a clone)"
+  exit 1
+fi
 pinned=$root/infra/onprem/release-key.asc
 [[ -s "$pinned" ]] || { echo "signed-commits: FAIL — no pinned key at infra/onprem/release-key.asc to check the signatures against"; exit 1; }
 

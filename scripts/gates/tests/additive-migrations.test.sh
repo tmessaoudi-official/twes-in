@@ -139,4 +139,9 @@ git -C "$d" tag -a v2026.10.30.1 -m elsewhere; git -C "$d" checkout -q master
 since "$d" "$(sql 'ALTER TABLE invoice ADD note VARCHAR(255) DEFAULT NULL')"
 out=$(run "$d"); check "judged against the newest release HEAD descends from, not the newest by name" $? 0 "$out" "since v2026.10.20.1"
 
+# A shallow clone holds no release tag: « no release yet » there would let a migration that contracts the schema pass.
+d=$(repo released); since "$d" "$(sql 'ALTER TABLE invoice DROP note')"; git -C "$d" -c user.name=t -c user.email=t@t commit -qm since
+s=$(mktemp -d); git clone -q --depth 1 "file://$d" "$s/clone"
+out=$(run "$s/clone"); check "a shallow clone is refused, never read as a tree with no release" $? 1 "$out" "git fetch --unshallow --tags"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

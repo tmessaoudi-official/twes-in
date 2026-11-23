@@ -116,7 +116,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `GIT_SSL_CAINFO`, never by switching TLS checks off), and ends with the line the developer runs on
   the PC: `land.sh /stack/projects/twes-in <branch>` (claude-code-setup), which re-signs every commit as the developer,
   strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
-  The environment's setup starts that bootstrap and the browser fetch detached (`.claude/cloud-setup.sh`): before the first
+  The environment's setup fetches the whole history with its tags, then starts that bootstrap and the browser fetch,
+  detached (`.claude/cloud-setup.sh`): before the first
   `make check`, read `/tmp/twes-in-bootstrap.done` (ready), `.running` (wait for it) or `.failed` (its exit; the reason in
   `/tmp/twes-in-bootstrap.log`); none of them means it never ran here, so run `make bootstrap` and `make playwright-browser`.
   The session must have **claude-code-setup selected as a second repository**: without it nothing installs the framework
@@ -147,7 +148,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   - `executable-bits.sh`
   - `test-tmpdir.sh` (every shell test, and the runner they go through, stops when its temporary folder cannot be made: `TMPDIR=$(mktemp -d) || exit 1`; an empty one turned every fixture path and cleanup into one under `/`; a floor of 100 tests)
   - `decision-stamps.sh` (no Decisions Log stamp later than the commit `git blame` names for it, or than now while uncommitted; a late one found afterwards gains « (stamp corrected: written at HH:MM, commit <sha>) »; CI's licence job checks out the whole history for it)
-  - `signed-commits.sh` (every commit since the newest release tag carries a good signature by `infra/onprem/release-key.asc`, read into a keyring of its own, as CI holds no other; in the snapshot gate's worktree alone, `.claude/worktrees/gate`, its own unsigned snapshot commit is read as its parent; on a cloud branch or in a cloud session, never on master or `release/*`, the unsigned commits are listed as pending land.sh's re-signing, compose handing the tools container `GITHUB_REF_NAME` and `CLAUDE_CODE_REMOTE`)
+  - `signed-commits.sh` (every commit since the newest release tag carries a good signature by `infra/onprem/release-key.asc`, read into a keyring of its own, as CI holds no other; a shallow clone is refused, as `decision-stamps.sh` and `additive-migrations.sh` refuse it, since it holds neither the tag nor the commits since; in the snapshot gate's worktree alone, `.claude/worktrees/gate`, its own unsigned snapshot commit is read as its parent; on a cloud branch or in a cloud session, never on master or `release/*`, the unsigned commits are listed as pending land.sh's re-signing, compose handing the tools container `GITHUB_REF_NAME` and `CLAUDE_CODE_REMOTE`)
   - `docs-run-lines.sh` (every `docker compose … run` in a code span or block of `docs/*.md` and `TODO.md` reads `< /dev/null` or a pipe, or says `<!-- run-input: <why> -->`; a floor of 6)
   `tests/` beside them is each gate's own test, run by CI before the gate, each through `tests/no-leftovers.sh`, which reds a test leaving anything in its TMPDIR.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset;

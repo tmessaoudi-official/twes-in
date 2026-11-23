@@ -15,7 +15,14 @@ printf '#!/usr/bin/env bash\necho "make $* CA=${CCS_EXTRA_CA_FILE:-none}" >> "%s
 chmod +x "$TMPDIR/bin/make"
 case_dir() { local d; d=$(mktemp -d); echo "$d"; }
 # No proxy CA unless a case names one: the session running the test has its own, which the hook would otherwise read.
-hook() { env PATH="$TMPDIR/bin:$PATH" TWES_BOOTSTRAP_DIR="$1" TWES_CA_WAIT="${CA_WAIT:-0}" CCS_EXTRA_CA_FILE= "${@:2}" bash "$HOOK" 2>&1; }
+# A repository of the test's own, its whole history: the hook's real one is never fetched into.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
+origin=$TMPDIR/origin; git init -q -b master "$origin"
+for n in 1 2 3; do echo "$n" > "$origin/f"; git -C "$origin" add f; git -C "$origin" commit -qm "c$n"; done
+git -C "$origin" tag v2026.10.20.1 HEAD~1
+full=$TMPDIR/full; git clone -q "file://$origin" "$full"
+hook() { env PATH="$TMPDIR/bin:$PATH" TWES_BOOTSTRAP_DIR="$1" TWES_BOOTSTRAP_ROOT="${ROOT:-$full}" TWES_CA_WAIT="${CA_WAIT:-0}" CCS_EXTRA_CA_FILE= "${@:2}" bash "$HOOK" 2>&1; }
 # Waits for the detached run to say how it ended, at most 20 seconds.
 ended() { local i; for ((i = 0; i < 200; i++)); do [[ -e "$1/twes-in-bootstrap.done" || -e "$1/twes-in-bootstrap.failed" ]] && return 0; sleep 0.1; done; return 1; }
 echo "cloud setup hook"
@@ -58,6 +65,14 @@ d=$(case_dir); rm -f "$TMPDIR/make.calls"
 out=$(CA_WAIT=1 hook "$d" CLAUDE_CODE_REMOTE=true CCS_EXTRA_CA_FILE="$d/never.crt"); ended "$d"
 check "  and goes on without it when none comes" 0 0 "$(cat "$TMPDIR/make.calls")" "make bootstrap CA=none"
 check "  saying so in its log" 0 0 "$(cat "$d/twes-in-bootstrap.log")" "no proxy CA"
+
+# A cloud clone is shallow and holds no tag: the gates that read the history refuse it, so the run fetches it whole first.
+d=$(case_dir); rm -f "$TMPDIR/make.calls"; shallow=$(mktemp -d)/clone; git clone -q --depth 1 --no-tags "file://$origin" "$shallow"
+out=$(ROOT=$shallow hook "$d" CLAUDE_CODE_REMOTE=true); ended "$d"
+check "a shallow clone is fetched whole, with its tags, before the bootstrap" 0 0 "$(git -C "$shallow" rev-parse --is-shallow-repository) $(git -C "$shallow" tag -l)" "false v2026.10.20.1"
+check "  and says so in its log" 0 0 "$(cat "$d/twes-in-bootstrap.log")" "the whole history fetched"
+d=$(case_dir); out=$(hook "$d" CLAUDE_CODE_REMOTE=true); ended "$d"
+! grep -q 'whole history' "$d/twes-in-bootstrap.log"; check "  a whole clone is left as it is" $? 0 "$(cat "$d/twes-in-bootstrap.log")" ""
 
 echo "cloud setup hook: $pass passed, $fail failed"
 ((fail == 0))

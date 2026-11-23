@@ -11,11 +11,13 @@
 # None of them: it never ran here (an environment restored from its cache keeps files, not processes): run
 # `make bootstrap` then `make playwright-browser` yourself. <dir> is /tmp (TWES_BOOTSTRAP_DIR for the test).
 # The proxy's CA is written by the harness after setup, so the run waits for it (TWES_CA_WAIT seconds, 600 by default)
-# and hands it to make; without it, it goes on and says so. Off the cloud it does nothing. It always exits 0: a hook's
+# and hands it to make; without it, it goes on and says so. A shallow clone is fetched whole with its tags first, since
+# three gates read the history (TWES_BOOTSTRAP_ROOT names another repository for the test). Off the cloud it does
+# nothing. It always exits 0: a hook's
 # failure would only be logged, and a failure of the run is the session's to read.
 set -u
 [[ "${CLAUDE_CODE_REMOTE:-}" == true ]] || exit 0
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd) || exit 0
+root=${TWES_BOOTSTRAP_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)} || exit 0
 dir=${TWES_BOOTSTRAP_DIR:-/tmp}
 mark=$dir/twes-in-bootstrap
 ca=${CCS_EXTRA_CA_FILE-/root/.ccr/ca-bundle.crt}
@@ -35,6 +37,15 @@ run() {
   else
     export CCS_EXTRA_CA_FILE=
     echo "cloud-setup: no proxy CA after ${waited}s: going on without one"
+  fi
+  # A cloud clone is shallow and holds no tag; the gates reading the history (decision-stamps, signed-commits,
+  # additive-migrations) refuse it, so it is fetched whole first. git reads the proxy's CA through its own variable.
+  if [[ "$(git -C "$root" rev-parse --is-shallow-repository 2>&1)" == true ]]; then
+    if ${CCS_EXTRA_CA_FILE:+env GIT_SSL_CAINFO="$CCS_EXTRA_CA_FILE"} git -C "$root" fetch --quiet --unshallow --tags origin; then
+      echo "cloud-setup: the whole history fetched, with its tags"
+    else
+      echo "cloud-setup: the whole history could not be fetched (exit $?): the gates reading it will refuse this clone"
+    fi
   fi
   cd "$root" && make bootstrap && make playwright-browser
   status=$?

@@ -23,6 +23,12 @@ loosening='DROP[[:space:]]+(INDEX|CONSTRAINT|NOT[[:space:]]+NULL|TRIGGER)\b'
 
 [[ -d "$root/api/migrations" ]] || { echo "additive-migrations: FAIL — found no api/migrations under $root"; exit 1; }
 git -C "$root" rev-parse --git-dir >/dev/null 2>&1 || { echo "additive-migrations: FAIL — $root is not a git repository: the release tags are read from it"; exit 1; }
+# A shallow clone (a cloud session's) holds no release tag, and « no release yet » there would let a migration that
+# contracts the schema pass: it is refused, as decision-stamps refuses it.
+if [[ "$(git -C "$root" rev-parse --is-shallow-repository 2>&1)" != "false" ]]; then
+  echo "additive-migrations: FAIL — a shallow clone holds no release tag to judge the migrations since: check out the whole history (fetch-depth: 0 in CI; git fetch --unshallow --tags origin in a clone)"
+  exit 1
+fi
 # The newest release this commit descends from, as signed-commits.sh, onprem-overlay.sh and tag-release.sh read it: a
 # patch on a release's own branch is judged against its base, never against what master released since.
 release=$(git -C "$root" tag --merged HEAD --list "$release_tags" --sort=-v:refname | head -n 1)

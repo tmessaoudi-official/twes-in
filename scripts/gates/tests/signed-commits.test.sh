@@ -77,4 +77,9 @@ out=$(GITHUB_REF_NAME=master run "$d"); check "on master: refused" $? 1 "$out" "
 out=$(GITHUB_REF_NAME=release/2026.10.30 run "$d"); check "on a release's lane: refused" $? 1 "$out" "not signed"
 out=$(GITHUB_REF_NAME=master CLAUDE_CODE_REMOTE=true run "$d"); check "on master even from a cloud session: refused" $? 1 "$out" "not signed"
 
+# A shallow clone (a cloud session's, fetch-depth 1) holds neither the release tag nor the commits since it: an OK there
+# would be about the few commits it holds, so it is refused, as decision-stamps refuses it.
+d=$(repo); commit "$d" "$KEY"; commit "$d" "$KEY"; s=$(mktemp -d); git clone -q --depth 1 "file://$d" "$s/clone"
+out=$(run "$s/clone"); check "a shallow clone is refused, never read as the whole history" $? 1 "$out" "git fetch --unshallow --tags"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
