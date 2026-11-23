@@ -66,6 +66,8 @@ Detached (`setsid`, all three descriptors redirected), lock and `.done`/`.failed
 0 always; its test under `scripts/tests/` through the tmpdir and no-leftovers rules, listed in
 `scripts/gate/licences.list`. CLAUDE.md's cloud paragraph says to wait for the marker. Proven only by a fresh session.
 
+### Parity (2026-11-23 18:58): c4724af6 the shallow refusals and the setup's unshallow, cb9aad39 the skip list, 60426207 cloud-doctor
+
 ### T3, T7, K6
 
 T3: `.claude/rules/expertise-core.md` refreshed against § 7's AGREED entries after 2026-11-02 00:39, up to this
@@ -83,15 +85,15 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 2 | T4 npm install scripts denied, strict | S | done | fea912df | web/package.json infra/web/** Makefile scripts/gates/** |
 | 3 | T5 price-lists and subscription texts parts | M | done | 6736d4c7 | web/public/i18n/** web/src/app/** |
 | 4 | T6 the cloud setup hook | S | done | 82ce5719 | .claude/cloud-setup.sh scripts/tests/** scripts/gate/licences.list CLAUDE.md |
-| 5 | T3 expertise refresh | S | doing | - | .claude/rules/expertise-core.md |
-| 6 | K6 the cloud paragraph's mode line | S | doing | - | CLAUDE.md |
-| 7 | Parity: cloud-doctor, the skip list, shallow/tagless refusals | M | todo | - | Makefile scripts/** api/tests/** |
+| 5 | T3 expertise refresh | S | done | 02da3d68 | .claude/rules/expertise-core.md |
+| 6 | K6 the cloud paragraph's mode line | S | done | 02da3d68 | CLAUDE.md |
+| 7 | Parity: shallow refusals and the setup's unshallow, the skip list, cloud-doctor | M | done | 60426207 | Makefile scripts/** api/tests/** .claude/cloud-setup.sh CLAUDE.md |
 | 8 | One gate, push, CI read | S | todo | - | |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
 ### Needs research
-- Whether the environment's cache keeps what a detached setup job built (T6).
+- Whether the environment's cache keeps what a detached setup job built (T6): proven only by a fresh session.
 ### Fragile
 ### Known issues
-- `decision-stamps` is red on a shallow clone; `signed-commits` and `additive-migrations` pass vacuously there (kit K7).
+- A shallow clone is refused by `decision-stamps`, `signed-commits` and `additive-migrations` (c4724af6); the setup hook fetches the whole history, and `make cloud-doctor` says it.
