@@ -57,6 +57,7 @@ services:
       NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
       COMPOSER_CAFILE: /etc/ccs-ca.crt
       REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt
   web-tools:
     volumes:
       - ${CCS_EXTRA_CA_FILE:?}:/etc/ccs-ca.crt:ro
@@ -65,6 +66,7 @@ services:
       NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
       COMPOSER_CAFILE: /etc/ccs-ca.crt
       REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt
 secrets:
   extra_ca:
     file: ${CCS_EXTRA_CA_FILE:?}
@@ -113,6 +115,22 @@ out=$(run "$d"); check "a toolchain service missing one tool's variable is refus
 
 d=$(tree); sed -i 's/profiles: \[tools\]/profiles: [other]/' "$d/compose.yaml"
 out=$(run "$d"); check "no toolchain service found is refused, not read as none to check" $? 1 "$out" "no service under the tools profile"
+
+# A toolchain run started by hand, outside compose (Playwright's browser fetch, the RC lane), meets the same proxy.
+d=$(tree); printf 'browser:\n\tdocker run --rm -e HOME=/tmp twes-in-web-tools playwright install chromium\n' >> "$d/Makefile"
+out=$(run "$d"); check "a docker run in the Makefile without \$(EXTRA_CA_RUN) is refused with its line" $? 1 "$out" "Makefile:4 runs docker run without"
+
+d=$(tree); printf 'rc:\n\t( docker run --rm --network host -u 1:1 \\\n\t    -v x:x \\\n\t    twes-in-tools-rc bash run.sh )\n' >> "$d/Makefile"
+out=$(run "$d"); check "a docker run continued over lines is refused at its first line" $? 1 "$out" "Makefile:4 runs docker run without"
+
+d=$(tree); printf 'rc:\n\t( docker run --rm --network host -u 1:1 \\\n\t    $(EXTRA_CA_RUN) -v x:x \\\n\t    twes-in-tools-rc bash run.sh )\n' >> "$d/Makefile"
+out=$(run "$d"); check "a docker run handed \$(EXTRA_CA_RUN) on a continuation line passes" $? 0 "$out" "OK"
+
+d=$(tree); printf 'ps:\n\tdocker run --rm --network none -v s:/s img pwsh -File t.ps1\n' >> "$d/Makefile"
+out=$(run "$d"); check "a docker run with --network none reaches nothing and passes" $? 0 "$out" "OK"
+
+d=$(tree); python3 -I -c 'import sys; p=sys.argv[1]; s=open(p).read(); i=s.index("  web-tools:"); j=s.index("GIT_SSL_CAINFO", i); k=s.index("\n", j); open(p,"w").write(s[:s.rindex("\n", 0, j)]+s[k:])' "$d/compose.extra-ca.yaml"
+out=$(run "$d"); check "git's own variable is required too (GnuTLS never reads SSL_CERT_FILE)" $? 1 "$out" "web-tools: GIT_SSL_CAINFO"
 
 d=$(tree); rm "$d/compose.extra-ca.yaml"
 out=$(run "$d"); check "a missing overlay is refused, not skipped" $? 1 "$out" "compose.extra-ca.yaml"

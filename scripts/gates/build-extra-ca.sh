@@ -10,8 +10,13 @@
 #   - compose.extra-ca.yaml, which the Makefile adds when CCS_EXTRA_CA_FILE names a file, gives the secret to every
 #     service compose.yaml builds;
 #   - every `docker build` the Makefile runs passes $(EXTRA_CA_SECRET);
+#   - every `docker run` the Makefile starts by hand, outside compose (Playwright's browser fetch, the RC lane), passes
+#     $(EXTRA_CA_RUN), the same file mounted at run time, unless it says `--network none`;
 #   - every toolchain service (compose.yaml, profile `tools`) is handed the file at run time too, mounted read-only at
-#     /etc/ccs-ca.crt with the variable each tool reads pointed at it, since composer install, npm ci and git run there.
+#     /etc/ccs-ca.crt with the variable each tool reads pointed at it, since composer install, npm ci and git run there
+#     (git through GIT_SSL_CAINFO: Debian builds it on GnuTLS, which never reads SSL_CERT_FILE).
+# A script's own `docker run` is not read here: most reach nothing; scripts/security/image-scan.sh's trivy, which does,
+# mounts the file itself (its test holds it).
 # Not seen, by design: an `ADD <url>` (infra/postgres's supercronic), which BuildKit fetches itself, outside any RUN, so
 # no secret mount reaches it; that image is built only by the backup overlays, never by make check or make gate.
 # Usage: build-extra-ca.sh [--root DIR]
@@ -139,7 +144,7 @@ else:
             continue
         if not re.search(r'^\s+- \$\{CCS_EXTRA_CA_FILE[^}]*\}:/etc/ccs-ca\.crt:ro\s*$', block, re.M):
             print('compose.extra-ca.yaml: %s: the CA is not mounted read-only at /etc/ccs-ca.crt' % svc)
-        for var in ('SSL_CERT_FILE', 'NODE_EXTRA_CA_CERTS', 'COMPOSER_CAFILE', 'REQUESTS_CA_BUNDLE'):
+        for var in ('SSL_CERT_FILE', 'NODE_EXTRA_CA_CERTS', 'COMPOSER_CAFILE', 'REQUESTS_CA_BUNDLE', 'GIT_SSL_CAINFO'):
             if not re.search(r'^\s+' + var + r':\s*/etc/ccs-ca\.crt\s*$', block, re.M):
                 print('compose.extra-ca.yaml: %s: %s does not name the mounted CA' % (svc, var))
 
@@ -149,6 +154,17 @@ if os.path.exists(mp):
     for n, line in enumerate(lines, 1):
         if re.search(r'\bdocker build\b', line) and not line.lstrip().startswith('#') and '$(EXTRA_CA_SECRET)' not in line:
             print('Makefile:%d runs docker build without $(EXTRA_CA_SECRET)' % n)
+    # A `docker run` is read with its continuation lines, since its options often follow on the next ones.
+    n = 0
+    while n < len(lines):
+        start, run = n + 1, lines[n]
+        while run.rstrip().endswith('\\') and n + 1 < len(lines):
+            n += 1
+            run = run.rstrip()[:-1] + ' ' + lines[n]
+        n += 1
+        if re.search(r'\bdocker run\b', run) and not run.lstrip().startswith('#') \
+                and '$(EXTRA_CA_RUN)' not in run and not re.search(r'--network[ =]none\b', run):
+            print('Makefile:%d runs docker run without $(EXTRA_CA_RUN): a proxy re-terminating TLS refuses what it downloads' % start)
 PY
 )
 
@@ -157,4 +173,4 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'build-extra-ca: OK — every download in a build mounts the optional proxy CA, every built service and docker build is handed it, every toolchain run too, no TLS check is off\n'
+printf 'build-extra-ca: OK — every download in a build mounts the optional proxy CA, every built service, docker build and docker run is handed it, every toolchain run too, no TLS check is off\n'

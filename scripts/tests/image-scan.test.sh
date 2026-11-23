@@ -37,5 +37,16 @@ out=$(run DOCKER_STATUS=125); check "a scan that could not run fails too" $? 1 "
 [[ "$out" != *"Move the image to a fixed release"* ]]; check "  and is never told as a finding to fix" $? 0 "$out" ""
 check "  but as a scan to run again once its error above is settled" 0 0 "$out" "could not run"
 
+# Behind a proxy that re-terminates TLS (a cloud session), Trivy fetches its database and reads the registries through
+# it: it is handed the proxy's CA when CCS_EXTRA_CA_FILE names a file, as the Makefile's runs are, and nothing otherwise.
+printf 'a CA\n' > "$TMPDIR/ca.crt"
+out=$(run CCS_EXTRA_CA_FILE="$TMPDIR/ca.crt")
+grep -qxF -- "$TMPDIR/ca.crt:/etc/ccs-ca.crt:ro" "$TMPDIR/docker.args"; check "a proxy's CA, when one is named, is mounted read-only" $? 0 "$out" ""
+grep -qxF -- 'SSL_CERT_FILE=/etc/ccs-ca.crt' "$TMPDIR/docker.args"; check "  and Trivy reads it through SSL_CERT_FILE" $? 0 "$out" ""
+out=$(run CCS_EXTRA_CA_FILE=)
+! grep -q 'ccs-ca' "$TMPDIR/docker.args"; check "no CA named (a computer, CI): the scan runs as before" $? 0 "$out" ""
+out=$(run CCS_EXTRA_CA_FILE="$TMPDIR/absent.crt")
+! grep -q 'ccs-ca' "$TMPDIR/docker.args"; check "a CA named but absent is not mounted (docker would make it a folder)" $? 0 "$out" ""
+
 echo "image scan: $pass passed, $fail failed"
 ((fail == 0))

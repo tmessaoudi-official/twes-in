@@ -35,12 +35,18 @@ if [[ -z "$cache" ]]; then cache=$(mktemp -d); own_cache=yes; fi
 [[ "$cache" == /* ]] || cache="$PWD/$cache"
 cleanup() { [[ "$own_cache" == yes ]] && rm -rf "$cache"; }
 trap cleanup EXIT
+# Behind a proxy that re-terminates TLS (a claude.ai cloud session), Trivy's database and the registries are read through
+# it: its CA is handed over as the Makefile hands it to every toolchain run, only when CCS_EXTRA_CA_FILE names a file,
+# so CI scans exactly as before.
+extra_ca=()
+[[ -n "${CCS_EXTRA_CA_FILE:-}" && -f "$CCS_EXTRA_CA_FILE" ]] \
+  && extra_ca=(-v "$CCS_EXTRA_CA_FILE:/etc/ccs-ca.crt:ro" -e SSL_CERT_FILE=/etc/ccs-ca.crt)
 
 failed=() found=no
 for image in "${images[@]}"; do
   echo "::group::$image"
   # Exit 3 says what was found, so a scan that could not run (exit 1: a registry or the database unreachable) is told apart.
-  docker run --rm -v "$root/.trivyignore:/scan/.trivyignore:ro" -v "$cache:/root/.cache/trivy" "$TRIVY_IMAGE" \
+  docker run --rm "${extra_ca[@]}" -v "$root/.trivyignore:/scan/.trivyignore:ro" -v "$cache:/root/.cache/trivy" "$TRIVY_IMAGE" \
     image --image-src remote --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed \
     --ignorefile /scan/.trivyignore --exit-code 3 --no-progress --skip-version-check "$image"
   status=$?

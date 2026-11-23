@@ -5,7 +5,7 @@
 # computer and CI build exactly as before; a secret is in no image layer (scripts/gates/build-extra-ca.sh holds the rest).
 # The toolchain's runs (composer install, npm ci, git) go through the same proxy, so they are handed the same file,
 # mounted read-only, with the variable each tool reads pointed at it: there every connection is the proxy's, whose CA
-# is all they need.
+# is all they need. git has its own: Debian builds it on GnuTLS, which never reads SSL_CERT_FILE.
 services:
   api:
     build:
@@ -35,6 +35,7 @@ services:
       NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
       COMPOSER_CAFILE: /etc/ccs-ca.crt
       REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt
   web-tools:
     volumes:
       - ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}:/etc/ccs-ca.crt:ro
@@ -43,6 +44,7 @@ services:
       NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
       COMPOSER_CAFILE: /etc/ccs-ca.crt
       REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt
 secrets:
   extra_ca:
     file: ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}

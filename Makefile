@@ -18,6 +18,9 @@ COMPOSE_FILE ?= compose.yaml:compose.live.yaml
 EXTRA_CA := $(if $(CCS_EXTRA_CA_FILE),$(wildcard $(CCS_EXTRA_CA_FILE)))
 comma := ,
 EXTRA_CA_SECRET := $(if $(EXTRA_CA),--secret id=extra_ca$(comma)src=$(EXTRA_CA))
+# The same file for a toolchain run started by hand outside compose (the browser fetch, the RC lane), as
+# compose.extra-ca.yaml hands it to the compose ones: mounted read-only, each tool's variable pointed at it.
+EXTRA_CA_RUN := $(if $(EXTRA_CA),-v $(EXTRA_CA):/etc/ccs-ca.crt:ro -e SSL_CERT_FILE=/etc/ccs-ca.crt -e NODE_EXTRA_CA_CERTS=/etc/ccs-ca.crt -e COMPOSER_CAFILE=/etc/ccs-ca.crt -e REQUESTS_CA_BUNDLE=/etc/ccs-ca.crt -e GIT_SSL_CAINFO=/etc/ccs-ca.crt)
 override COMPOSE_FILE := $(COMPOSE_FILE)$(if $(EXTRA_CA),:compose.extra-ca.yaml)
 # Everything that parses, tests or builds the project runs in a container, never on the host's PHP, Composer or Node
 # (docs/SPEC.md § 7): the host needs Docker, make, bash and git, nothing else. The services are `tools` (PHP, the gates'
@@ -301,7 +304,7 @@ rc-lane: rc-tools-image
 	docker compose up -d --wait gotenberg
 	mkdir -p $(TOOLS_TMP)
 	( flock -n 9 || { echo "make rc-lane: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
-	  docker run --rm --network host -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e IN_TOOLS=1 -e TMPDIR=$(TOOLS_TMP) \
+	  docker run --rm --network host -u $(HOST_UID):$(HOST_GID) $(EXTRA_CA_RUN) -e HOME=/tmp -e IN_TOOLS=1 -e TMPDIR=$(TOOLS_TMP) \
 	    -e GITHUB_ACTIONS -e RC_SYMFONY -e COMPOSER_CACHE_DIR=$(CURDIR)/var/cache/composer \
 	    -v $(CURDIR):$(CURDIR) -v $(TOOLS_TMP):$(TOOLS_TMP) -w $(CURDIR) \
 	    twes-in-tools-rc bash scripts/rc-lane/rc-lane.sh run var/rc-lane < /dev/null ) 9>/tmp/twes-in-gate.lock
@@ -323,7 +326,7 @@ E2E_ARGS ?=
 # docs/START.md); on the default network it took 23 s (measured 2026-10-03, no environment variable needed).
 playwright-browser: web-tools-image
 	mkdir -p var/cache/ms-playwright
-	docker run --rm -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e PLAYWRIGHT_BROWSERS_PATH=$(HOST_REPO)/var/cache/ms-playwright -v $(HOST_REPO)/var/cache/ms-playwright:$(HOST_REPO)/var/cache/ms-playwright twes-in-web-tools playwright install chromium webkit >/dev/null
+	docker run --rm -u $(HOST_UID):$(HOST_GID) $(EXTRA_CA_RUN) -e HOME=/tmp -e PLAYWRIGHT_BROWSERS_PATH=$(HOST_REPO)/var/cache/ms-playwright -v $(HOST_REPO)/var/cache/ms-playwright:$(HOST_REPO)/var/cache/ms-playwright twes-in-web-tools playwright install chromium webkit >/dev/null
 
 e2e: playwright-browser   ## needs the full stack up; E2E_ARGS passes options through, e.g. E2E_ARGS=--shard=1/3
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test $(E2E_ARGS)'
