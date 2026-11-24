@@ -66,7 +66,7 @@ Detached (`setsid`, all three descriptors redirected), lock and `.done`/`.failed
 0 always; its test under `scripts/tests/` through the tmpdir and no-leftovers rules, listed in
 `scripts/gate/licences.list`. CLAUDE.md's cloud paragraph says to wait for the marker. Proven only by a fresh session.
 
-### Parity (2026-11-23 18:58): c4724af6 the shallow refusals and the setup's unshallow, cb9aad39 the skip list, 60426207 cloud-doctor
+### Parity (2026-11-23 18:58): 194a371a the shallow refusals and the setup's unshallow, 72f9a67a the skip list, 6a3a4a17 cloud-doctor
 
 ### T3, T7, K6
 
@@ -81,14 +81,14 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | T2 the proxy CA in every toolchain run, the gate extended | M | done | bb49e0fe | Makefile compose.extra-ca.yaml scripts/gates/** scripts/security/** .claude/rules/infra.md |
-| 2 | T4 npm install scripts denied, strict | S | done | fea912df | web/package.json infra/web/** Makefile scripts/gates/** |
-| 3 | T5 price-lists and subscription texts parts | M | done | 6736d4c7 | web/public/i18n/** web/src/app/** |
-| 4 | T6 the cloud setup hook | S | done | 82ce5719 | .claude/cloud-setup.sh scripts/tests/** scripts/gate/licences.list CLAUDE.md |
-| 5 | T3 expertise refresh | S | done | 02da3d68 | .claude/rules/expertise-core.md |
-| 6 | K6 the cloud paragraph's mode line | S | done | 02da3d68 | CLAUDE.md |
-| 7 | Parity: shallow refusals and the setup's unshallow, the skip list, cloud-doctor | M | done | 60426207 | Makefile scripts/** api/tests/** .claude/cloud-setup.sh CLAUDE.md |
-| 8 | Liveness of the setup's mark, a run leaving no log, one gate, push, CI read | S | done | 8298c260 | .claude/cloud-setup.sh scripts/cloud/** api/tests/** CLAUDE.md |
+| 1 | T2 the proxy CA in every toolchain run, the gate extended | M | done | afe54dcd | Makefile compose.extra-ca.yaml scripts/gates/** scripts/security/** .claude/rules/infra.md |
+| 2 | T4 npm install scripts denied, strict | S | done | b9d8b800 | web/package.json infra/web/** Makefile scripts/gates/** |
+| 3 | T5 price-lists and subscription texts parts | M | done | 90b99c90 | web/public/i18n/** web/src/app/** |
+| 4 | T6 the cloud setup hook | S | done | 3ba2d50f | .claude/cloud-setup.sh scripts/tests/** scripts/gate/licences.list CLAUDE.md |
+| 5 | T3 expertise refresh | S | done | 718b920e | .claude/rules/expertise-core.md |
+| 6 | K6 the cloud paragraph's mode line | S | done | 718b920e | CLAUDE.md |
+| 7 | Parity: shallow refusals and the setup's unshallow, the skip list, cloud-doctor | M | done | 6a3a4a17 | Makefile scripts/** api/tests/** .claude/cloud-setup.sh CLAUDE.md |
+| 8 | Liveness of the setup's mark, a run leaving no log, one gate, push, CI read | S | done | 7860c7d5 | .claude/cloud-setup.sh scripts/cloud/** api/tests/** CLAUDE.md |
 | 9 | KEEP_IMAGES=1 through every sub-make (Docker Hub 429), the advice reworded | S | done | - | Makefile scripts/tests/** scripts/cloud/** .claude/rules/infra.md |
 <!-- /progress-block -->
 ### Blocked
@@ -97,4 +97,4 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 - Whether the environment's cache keeps what a detached setup job built (T6): proven only by a fresh session.
 ### Fragile
 ### Known issues
-- A shallow clone is refused by `decision-stamps`, `signed-commits` and `additive-migrations` (c4724af6); the setup hook fetches the whole history, and `make cloud-doctor` says it.
+- A shallow clone is refused by `decision-stamps`, `signed-commits` and `additive-migrations` (194a371a); the setup hook fetches the whole history, and `make cloud-doctor` says it.
