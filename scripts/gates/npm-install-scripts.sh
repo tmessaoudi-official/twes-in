@@ -5,6 +5,7 @@
 # an image, a container's script, a workflow or a script, says --strict-allow-scripts, so a package bringing a new one
 # stops the install, naming itself, instead of running with a notice. The flag rather than an .npmrc: .gitignore keeps
 # every .npmrc out of the tree, since one may hold a registry token.
+# npm's bypass, --dangerously-allow-all-scripts or its npm_config_ variable, is refused wherever the gate reads.
 # Not read: a global install (--global, -g: npm's own docs give it no project policy), a comment, and the tests'
 # fixtures (scripts/tests, scripts/gates/tests). An install is read with its continuation lines.
 # A floor: the Makefile's, the web image's and the live container's installs, so an install moved out of sight reds.
@@ -33,6 +34,10 @@ def files():
                     out.append(os.path.join(rel_dir, f))
     return sorted(out)
 
+# npm's own way past the policy, which its refusal names: with it every denied script runs, the flag kept or not. Its
+# npm_config_ variable is the same switch, in any case (npm reads both).
+BYPASS = re.compile(r'dangerously[-_]allow[-_]all[-_]scripts', re.I)
+
 found, problems = 0, []
 for rel in files():
     lines = open(os.path.join(root, rel), encoding='utf-8').read().split('\n')
@@ -40,6 +45,10 @@ for rel in files():
         code = line.split('#')[0] if not rel.endswith(('.yml', '.yaml')) else line
         if line.lstrip().startswith('#'):
             continue
+        # The match is printed rather than spelled out here: this file is under scripts/, which the gate reads.
+        bypass = BYPASS.search(code)
+        if bypass:
+            problems.append('%s:%d lets every install script run (%s): the policy would be skipped' % (rel, n, bypass.group(0)))
         for m in INSTALL.finditer(code):
             # The command's own words: up to the next command, read across continuation lines.
             rest, k = m.group('rest'), n

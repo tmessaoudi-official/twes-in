@@ -41,6 +41,13 @@ out=$(run "$d"); check "a container script's npm ci is refused too" $? 1 "$out" 
 d=$(tree); printf 'jobs:\n  web:\n    steps:\n      - run: cd web && npm install\n' > "$d/.github/workflows/ci.yml"
 out=$(run "$d"); check "a project npm install in a workflow is refused (it runs the same scripts)" $? 1 "$out" ".github/workflows/ci.yml:4"
 
+# npm's own way past the policy: its refusal names --dangerously-allow-all-scripts, and with it every denied script runs.
+d=$(tree); sed -i 's/npm ci --strict-allow-scripts/npm ci --strict-allow-scripts --dangerously-allow-all-scripts/' "$d/Makefile"
+out=$(run "$d"); check "an install that bypasses the policy with --dangerously-allow-all-scripts is refused" $? 1 "$out" "Makefile:1"
+
+d=$(tree); printf 'export NPM_CONFIG_DANGEROUSLY_ALLOW_ALL_SCRIPTS=true\n' >> "$d/infra/web/live.sh"
+out=$(run "$d"); check "  and so is its npm_config_ variable, in any case, anywhere the gate reads" $? 1 "$out" "infra/web/live.sh:4"
+
 d=$(tree); printf '{\n  "name": "w"\n}\n' > "$d/web/package.json"
 out=$(run "$d"); check "a manifest with no allowScripts is refused: the flag would stop every install" $? 1 "$out" "allowScripts"
 
