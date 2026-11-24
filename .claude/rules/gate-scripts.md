@@ -46,3 +46,6 @@ the end of § Lessons here.
   first read a descriptor entry on one line, passed, and went red an hour later once `make check FIX=1` put one property a
   line. Read an entry to the brace closing it (counting braces), give the test a fixture in prettier's layout, and run the
   gate again after `FIX=1` (2026-11-09).
+- A gate that reads `scripts/` reads its own source: `npm-install-scripts.sh` first went red on the tree on its own refusal
+  message, which spelled out the npm flag it refuses. Print the match (`bypass.group(0)`) rather than the literal, and run
+  a new gate on the real tree, not only on its test's fixtures, before gating (2026-11-23).
