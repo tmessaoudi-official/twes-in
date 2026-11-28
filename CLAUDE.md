@@ -113,7 +113,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   once before it says the branch is ready (the setup script starts Docker; its builds and toolchain runs trust the agent proxy's CA, which
   `CCS_EXTRA_CA_FILE` names, through `compose.extra-ca.yaml`: the optional BuildKit secret `extra_ca` for a build, the file
   mounted into `tools` and `web-tools` for a run, a hand-started `docker run` through `$(EXTRA_CA_RUN)`, git through
-  `GIT_SSL_CAINFO`, never by switching TLS checks off), and ends with the line the developer runs on
+  `GIT_SSL_CAINFO`; the live stack's through `compose.live-extra-ca.yaml`, the file mounted into what downloads as it
+  starts, live `api`, `migrate` and `web`, the live web run as the host user; never by switching TLS checks off), and ends with the line the developer runs on
   the PC: `land.sh /stack/projects/twes-in <branch>` (claude-code-setup), which re-signs every commit as the developer,
   strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
   The environment's setup fetches the whole history with its tags, then starts that bootstrap and the browser fetch,

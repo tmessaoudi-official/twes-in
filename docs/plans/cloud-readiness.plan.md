@@ -14,6 +14,7 @@ the developer's computer session's, in claude-code-setup.
 
 - [2026-11-23 18:58] AGREED: a cloud session is never silently worse than the computer; twes-in's part (cloud-doctor, the skip list, the shallow/tagless refusals) is built after the items above, the kit's goes to the PC prompt (docs/SPEC.md § 7, same stamp).
 - [2026-11-23 18:58] ASSUMED (review): T4 passes `--strict-allow-scripts` on each install instead of a `web/.npmrc` — because `.gitignore` keeps every `.npmrc` out of the tree (a registry token may sit in one); a gate holds the flag on every install. Alternatives: force-add `web/.npmrc` with a `.gitignore` exception.
+- [2026-11-27 21:18] AGREED: C1 + C1b (row 10): a cloud-only overlay compose.live-extra-ca.yaml (migrate-watch's build secret; the run-time CA for live api, migrate, web; web as the host user), appended by the Makefile only with the CA and the live file, idempotently; build-extra-ca.sh extended test-first; no 0644 copy; the gate stays a text check; verified on a fresh web-node-modules volume; committed on the cloud branch and kept local (the developer, AskUserQuestion, the recommended options)
 
 ## Formal Plan
 
@@ -90,6 +91,7 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 7 | Parity: shallow refusals and the setup's unshallow, the skip list, cloud-doctor | M | done | 6a3a4a17 | Makefile scripts/** api/tests/** .claude/cloud-setup.sh CLAUDE.md |
 | 8 | Liveness of the setup's mark, a run leaving no log, one gate, push, CI read | S | done | 7860c7d5 | .claude/cloud-setup.sh scripts/cloud/** api/tests/** CLAUDE.md |
 | 9 | KEEP_IMAGES=1 through every sub-make (Docker Hub 429), the advice reworded | S | done | - | Makefile scripts/tests/** scripts/cloud/** .claude/rules/infra.md |
+| 10 | C1 + C1b of the 2026-11-27 audit: `make up-images` and `make up` start in a cloud session (the live overlay, run-time CA, live web as host user), gate extended | M | in progress | - | compose.extra-ca.yaml compose.live-extra-ca.yaml Makefile scripts/gates/build-extra-ca.sh scripts/gates/tests/build-extra-ca.test.sh CLAUDE.md .claude/rules/infra.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input

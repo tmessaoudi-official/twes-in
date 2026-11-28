@@ -1,0 +1,42 @@
+# What live development needs behind a proxy that re-terminates TLS (a claude.ai cloud session), beside
+# compose.extra-ca.yaml: the Makefile adds this file only when CCS_EXTRA_CA_FILE names a file that exists AND
+# compose.live.yaml is in COMPOSE_FILE, so a computer, CI and `make up-images` compose exactly as before.
+# - migrate-watch is built only by compose.live.yaml: its secret lives here, since compose.extra-ca.yaml also goes with
+#   compose.yaml alone, where a service it named would be built from ./Dockerfile and the stack would not start.
+# - api and migrate run composer install as they start (infra/api/live-entrypoint.sh), the web npm ci (infra/web/live.sh):
+#   they are handed the CA at run time as the toolchain is, mounted read-only with each tool's variable pointed at it.
+# - The live web's image fixes uid 1000, which owns what it writes into the mounted web/; a cloud session's tree is
+#   root's, so there it runs as the host user, as the toolchain does (root can also read the CA file, which is 0600).
+# scripts/gates/build-extra-ca.sh holds each of these.
+services:
+  migrate-watch:
+    build:
+      secrets: [extra_ca]
+  api:
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt
+  migrate:
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt
+  web:
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    volumes:
+      - ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}:/etc/ccs-ca.crt:ro
+    environment:
+      SSL_CERT_FILE: /etc/ccs-ca.crt
+      NODE_EXTRA_CA_CERTS: /etc/ccs-ca.crt
+      COMPOSER_CAFILE: /etc/ccs-ca.crt
+      REQUESTS_CA_BUNDLE: /etc/ccs-ca.crt
+      GIT_SSL_CAINFO: /etc/ccs-ca.crt

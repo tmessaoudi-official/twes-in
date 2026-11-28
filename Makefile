@@ -21,7 +21,13 @@ EXTRA_CA_SECRET := $(if $(EXTRA_CA),--secret id=extra_ca$(comma)src=$(EXTRA_CA))
 # The same file for a toolchain run started by hand outside compose (the browser fetch, the RC lane), as
 # compose.extra-ca.yaml hands it to the compose ones: mounted read-only, each tool's variable pointed at it.
 EXTRA_CA_RUN := $(if $(EXTRA_CA),-v $(EXTRA_CA):/etc/ccs-ca.crt:ro -e SSL_CERT_FILE=/etc/ccs-ca.crt -e NODE_EXTRA_CA_CERTS=/etc/ccs-ca.crt -e COMPOSER_CAFILE=/etc/ccs-ca.crt -e REQUESTS_CA_BUNDLE=/etc/ccs-ca.crt -e GIT_SSL_CAINFO=/etc/ccs-ca.crt)
-override COMPOSE_FILE := $(COMPOSE_FILE)$(if $(EXTRA_CA),:compose.extra-ca.yaml)
+# Live development downloads as it starts too, and builds migrate-watch: compose.live-extra-ca.yaml, added only beside
+# compose.live.yaml, since compose.extra-ca.yaml also goes with compose.yaml alone (`make up-images`). Both are added
+# once: COMPOSE_FILE is exported, so a nested $(MAKE) reads it with them already in.
+space := $(subst ,, )
+COMPOSE_SET := $(filter-out compose.extra-ca.yaml compose.live-extra-ca.yaml,$(subst :, ,$(COMPOSE_FILE)))
+EXTRA_CA_FILES := $(if $(EXTRA_CA),compose.extra-ca.yaml $(if $(filter compose.live.yaml,$(COMPOSE_SET)),compose.live-extra-ca.yaml))
+override COMPOSE_FILE := $(subst $(space),:,$(strip $(COMPOSE_SET) $(EXTRA_CA_FILES)))
 # Everything that parses, tests or builds the project runs in a container, never on the host's PHP, Composer or Node
 # (docs/SPEC.md § 7): the host needs Docker, make, bash and git, nothing else. The services are `tools` (PHP, the gates'
 # own tools, the Docker CLI) and `web-tools` (Node, Playwright's Chromium), compose.yaml, profile `tools`. They run as

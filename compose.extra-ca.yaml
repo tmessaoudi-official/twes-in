@@ -6,6 +6,8 @@
 # The toolchain's runs (composer install, npm ci, git) go through the same proxy, so they are handed the same file,
 # mounted read-only, with the variable each tool reads pointed at it: there every connection is the proxy's, whose CA
 # is all they need. git has its own: Debian builds it on GnuTLS, which never reads SSL_CERT_FILE.
+# Only services compose.yaml defines are named here: this file also goes with compose.yaml alone (`make up-images`),
+# where any other would be built from ./Dockerfile. What live development adds is compose.live-extra-ca.yaml's.
 services:
   api:
     build:
@@ -17,9 +19,6 @@ services:
     build:
       secrets: [extra_ca]
   demo-worker:
-    build:
-      secrets: [extra_ca]
-  migrate-watch:
     build:
       secrets: [extra_ca]
   web:
