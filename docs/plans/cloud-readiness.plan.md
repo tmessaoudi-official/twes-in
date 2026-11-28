@@ -91,7 +91,7 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 7 | Parity: shallow refusals and the setup's unshallow, the skip list, cloud-doctor | M | done | 6a3a4a17 | Makefile scripts/** api/tests/** .claude/cloud-setup.sh CLAUDE.md |
 | 8 | Liveness of the setup's mark, a run leaving no log, one gate, push, CI read | S | done | 7860c7d5 | .claude/cloud-setup.sh scripts/cloud/** api/tests/** CLAUDE.md |
 | 9 | KEEP_IMAGES=1 through every sub-make (Docker Hub 429), the advice reworded | S | done | - | Makefile scripts/tests/** scripts/cloud/** .claude/rules/infra.md |
-| 10 | C1 + C1b of the 2026-11-27 audit: `make up-images` and `make up` start in a cloud session (the live overlay, run-time CA, live web as host user), gate extended | M | in progress | - | compose.extra-ca.yaml compose.live-extra-ca.yaml Makefile scripts/gates/build-extra-ca.sh scripts/gates/tests/build-extra-ca.test.sh CLAUDE.md .claude/rules/infra.md |
+| 10 | C1 + C1b of the 2026-11-27 audit: `make up-images` and `make up` start in a cloud session (the live overlay, run-time CA, live web as host user), gate extended | M | done | bbc83cce | compose.extra-ca.yaml compose.live-extra-ca.yaml Makefile scripts/gates/build-extra-ca.sh scripts/gates/tests/build-extra-ca.test.sh CLAUDE.md .claude/rules/infra.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
