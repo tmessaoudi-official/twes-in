@@ -71,19 +71,19 @@ Detached (`setsid`, all three descriptors redirected), lock and `.done`/`.failed
 
 ### C1 + C1b (row 10) — a compose overlay or service the cloud composes wrong (class: an overlay naming a service its file set does not define; a service downloading as it starts without the proxy CA; a container writing the mounted tree under a fixed uid)
 
-The class search (the audit of 2026-11-27): `git grep -nE 'npm (ci|install)|composer (install|update)|curl|wget|git (fetch|clone)' -- 'infra/**/*.sh' 'infra/**/entrypoint*' 'compose*.yaml'`, then the resolved live config (`docker compose -f compose.yaml -f compose.live.yaml config`) for each entrypoint, and `git grep -n '^USER' -- 'infra/**/Dockerfile'` for fixed users.
+The class search (the audit of 2026-11-27): `git grep -nE 'npm (ci|install)|composer (install|update)|curl|wget|git (fetch|clone)' -- 'infra/**/*.sh' 'infra/**/entrypoint*' 'compose*.yaml'`, then the resolved live config (`docker compose -f compose.yaml -f compose.live.yaml config`) for each entrypoint, and `git grep -n '^USER' -- 'infra/**/*Dockerfile*'` for fixed users.
 
 | Member | What | Done |
 |---|---|---|
 | `compose.extra-ca.yaml` `migrate-watch` | named in the overlay `make up-images` composes with `compose.yaml` alone, built from `./Dockerfile`: the stack never started | moved to `compose.live-extra-ca.yaml` |
 | live `web`, `infra/web/live.sh` (`npm ci`) | no CA at run time; the CA file 0600 root; `USER 1000:1000` cannot write a root tree | CA mounted, `user:` the host's |
 | live `migrate`, `infra/api/live-entrypoint.sh` (`composer install`) | no CA at run time (curl error 60, passed only with nothing to fetch) | CA mounted |
-| live `api`, the same entrypoint | no CA at run time (passed only as `migrate` filled the vendor volume first) | CA mounted |
+| live `api`, the same entrypoint | no CA at run time (passed, inferred because `migrate` filled the vendor volume first; not probed) | CA mounted |
 | live `migrate-watch` (`migrate-watch.sh`, `migrate.sh`), `worker` | download nothing at start | — |
-| `live.sh`'s `wget` of the api | the compose network, no proxy | — |
+| `live.sh`'s `wget` of the api; the healthchecks' `curl`/`wget`; `infra/*/tests/` | the compose network or the container itself, no proxy | — |
 | prod `USER twes` (`infra/api/Dockerfile`) | the prod stage, not composed by `make up` | not traced |
 
-`build-extra-ca.sh` holds the first three by text (members found from each service's mounted start script, `IMAGE_STARTS` for an image's own, a floor of three). The audit's other findings (C2–C7, S1–S6, `var/claude/audit-cloud-and-web-state-2026-11-27.md`) are not rows yet: the developer has not chosen which to take.
+`build-extra-ca.sh` holds the four members marked done, by text (downloaders found from each service's mounted start script, `IMAGE_STARTS` for an image's own, a floor of three of them). The audit's other findings (C2–C7, S1–S6, `var/claude/audit-cloud-and-web-state-2026-11-27.md`) are not rows yet: the developer has not chosen which to take.
 
 ### T3, T7, K6
 
