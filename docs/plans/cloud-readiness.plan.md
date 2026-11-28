@@ -15,6 +15,7 @@ the developer's computer session's, in claude-code-setup.
 - [2026-11-23 18:58] AGREED: a cloud session is never silently worse than the computer; twes-in's part (cloud-doctor, the skip list, the shallow/tagless refusals) is built after the items above, the kit's goes to the PC prompt (docs/SPEC.md § 7, same stamp).
 - [2026-11-23 18:58] ASSUMED (review): T4 passes `--strict-allow-scripts` on each install instead of a `web/.npmrc` — because `.gitignore` keeps every `.npmrc` out of the tree (a registry token may sit in one); a gate holds the flag on every install. Alternatives: force-add `web/.npmrc` with a `.gitignore` exception.
 - [2026-11-27 21:18] AGREED: C1 + C1b (row 10): a cloud-only overlay compose.live-extra-ca.yaml (migrate-watch's build secret; the run-time CA for live api, migrate, web; web as the host user), appended by the Makefile only with the CA and the live file, idempotently; build-extra-ca.sh extended test-first; no 0644 copy; the gate stays a text check; verified on a fresh web-node-modules volume; committed on the cloud branch and kept local (the developer, AskUserQuestion, the recommended options)
+- [2026-11-27 21:52] AGREED: the audit findings C2-C7 and S1-S5 recorded as rows 11-21 (S1 todo, P2/P3 deferred, kit ones named), and the branch sent to the remote for CI (the developer, AskUserQuestion, the recommended option)
 
 ## Formal Plan
 
@@ -83,7 +84,7 @@ The class search (the audit of 2026-11-27): `git grep -nE 'npm (ci|install)|comp
 | `live.sh`'s `wget` of the api; the healthchecks' `curl`/`wget`; `infra/*/tests/` | the compose network or the container itself, no proxy | — |
 | prod `USER twes` (`infra/api/Dockerfile`) | the prod stage, not composed by `make up` | not traced |
 
-`build-extra-ca.sh` holds the four members marked done, by text (downloaders found from each service's mounted start script, `IMAGE_STARTS` for an image's own, a floor of three of them). The audit's other findings (C2–C7, S1–S6, `var/claude/audit-cloud-and-web-state-2026-11-27.md`) are not rows yet: the developer has not chosen which to take.
+`build-extra-ca.sh` holds the four members marked done, by text (downloaders found from each service's mounted start script, `IMAGE_STARTS` for an image's own, a floor of three of them). The audit's other findings are rows 11–21 (S6 is not a defect: the modules catalogue and `me().modules` are two shapes kept in step by `switch()`); P2 and P3 ones are `deferred` (the 2026-11-10 23:42 ruling), the kit's go to claude-code-setup.
 
 ### T3, T7, K6
 
@@ -108,6 +109,17 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 8 | Liveness of the setup's mark, a run leaving no log, one gate, push, CI read | S | done | 7860c7d5 | .claude/cloud-setup.sh scripts/cloud/** api/tests/** CLAUDE.md |
 | 9 | KEEP_IMAGES=1 through every sub-make (Docker Hub 429), the advice reworded | S | done | - | Makefile scripts/tests/** scripts/cloud/** .claude/rules/infra.md |
 | 10 | C1 + C1b of the 2026-11-27 audit: `make up-images` and `make up` start in a cloud session (the live overlay, run-time CA, live web as host user), gate extended | M | done | bbc83cce | compose.extra-ca.yaml compose.live-extra-ca.yaml Makefile scripts/gates/build-extra-ca.sh scripts/gates/tests/build-extra-ca.test.sh CLAUDE.md .claude/rules/infra.md |
+| 11 | S1 (P1) a read's late answer is written after a sign-out or a company switch: `requestState`/`LatestRequest` moved by the forget, every `sessionSignal` holder guarded (unguarded: company, customer-account, price-lists, reports, notifications, pending-erasure facades), a gate holding it; test first | L | todo | - | web/src/app/** scripts/gates/** |
+| 12 | S2 (P2) five facades keep company data in plain signals (company, party and article settings, document design, platform), exempted in `session-forgotten.sh`: convert them, drop the exemptions | M | deferred | - | web/src/app/** scripts/gates/session-forgotten.sh |
+| 13 | S3 (P2) reference data read by several facades with no shared copy (custom fields, presentation/articles settings chains, groups and products): one holder each | M | deferred | - | web/src/app/** |
+| 14 | S4 (P3) facades hand-rolling busy/error beside `requestState` (survey-grade: recount first) | S | deferred | - | web/src/app/** |
+| 15 | S5 (P3) components injecting an API adapter directly (survey-grade; SPEC § 7's entry is ASSUMED): read it, ask for the ruling, then an ESLint `no-restricted-imports` | S | deferred | - | web/** |
+| 16 | C2 (P2, kit) the project's PostToolUse lint hook never runs in a cloud session (it starts in /home/user; `${CLAUDE_PROJECT_DIR:-.}` reads /home/user) | S | deferred | - | .claude/settings.json .claude/hooks/** |
+| 17 | C3 (P3, kit) `gh auth status` says the token is invalid while every `gh` call `/ci-watch` makes works | S | deferred | - | - |
+| 18 | C4 (P3, kit) the kit's status hook and `.claude/cloud-setup.sh` both unshallow at start; one loses on `.git/shallow.lock` and logs fatal | S | deferred | - | .claude/cloud-setup.sh |
+| 19 | C5 (P3) `rc-lane.yml` never runs on `claude/**` pushes: add the patterns or record why in SPEC § 7 | S | deferred | - | .github/workflows/rc-lane.yml |
+| 20 | C6 (P3) the `tools` image has no `unzip`: Composer falls back to PHP's zip and warns of lost permissions | S | deferred | - | infra/api/Dockerfile |
+| 21 | C7 (open) whether the environment cache keeps what the detached setup built: a session on a cached environment reads `docker images` before its bootstrap | S | todo | - | - |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
