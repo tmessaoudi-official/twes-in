@@ -22,6 +22,11 @@ make versions
    do change between versions. See "After every bump" below.
 4. **A new licence identifier is a licensing decision, not a build fix** (`CLAUDE.md` § Licensing invariants). If
    the licence gate refuses a package after a bump, stop: do not widen the allowed list.
+5. **Every x.y.0 waits for its first patch (.1)**, runtime and dev tools alike, unless a ruling sets it aside for one
+   pin (Symfony 8.2 and PHP 8.6 have one). The held ones are listed in `docs/plans/stable-release.plan.md` (S5.67).
+   `composer update … -W`, and `-w` too, moves transitive packages, held ones included: hold each in the same command
+   (`--with doctrine/dbal:4.5.* --with monolog/monolog:3.12.*`), then compare the new lock's minors with the old
+   one's before gating. A bump for advisories once took `doctrine/dbal` 4.6.0 and `monolog/monolog` 3.13.0 that way.
 
 ## Find what is out of date
 

@@ -24,7 +24,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | dama/doctrine-test-bundle | 8.7.1 | MIT | dev |
 | doctrine/collections | 3.1.1 | MIT | runtime |
 | doctrine/data-fixtures | 2.2.1 | MIT | dev |
-| doctrine/dbal | 4.6.0 | MIT | runtime |
+| doctrine/dbal | 4.5.1 | MIT | runtime |
 | doctrine/deprecations | 1.2.0 | MIT | runtime |
 | doctrine/doctrine-bundle | 3.4.2 | MIT | runtime |
 | doctrine/doctrine-fixtures-bundle | 4.3.1 | MIT | dev |
@@ -49,7 +49,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | league/flysystem-async-aws-s3 | 3.31.0 | MIT | runtime |
 | league/flysystem-local | 3.35.3 | MIT | runtime |
 | league/mime-type-detection | 1.17.0 | MIT | runtime |
-| monolog/monolog | 3.13.0 | MIT | runtime |
+| monolog/monolog | 3.12.1 | MIT | runtime |
 | myclabs/deep-copy | 1.14.0 | MIT | dev |
 | nikic/php-parser | 5.9.0 | BSD-3-Clause | dev |
 | openspout/openspout | 5.15.3 | MIT | runtime |
