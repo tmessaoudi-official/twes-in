@@ -328,3 +328,7 @@ The gates holding the API and the web together (`effect-kinds.sh`, `typed-emails
   catalog): the catalog then recurses into itself, and the OpenAPI export, PHPUnit and the web's types all go red at once.
   A reader goes in a class of its own (`RecordsUndoWindow` beside `RecordsUndoSettings`), or a static method taking
   `ReadSetting`, as `QuoteSettings` does (2026-11-17, B56).
+- Since Symfony 8.2 the mailer assertions see the mails of every request a test made, not only the last one's: a
+  `getMailerMessage()` after a second request reads the first request's mail, and `assertEmailCount(0)` counts them all.
+  Ten cases went red and others could pass on the wrong mail. Read what one step sent through `ApiTestCase::mailMark()`
+  taken before it and `mailsSince($mark)`, or the test's last mail through `newestMail()` (2026-11-28, Symfony 8.2 RC1).

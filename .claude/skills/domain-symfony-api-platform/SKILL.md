@@ -1,6 +1,6 @@
 ---
 name: domain-symfony-api-platform
-description: Use when a task touches the twes-in PHP API - Symfony 8.1, API Platform 5 resources/paging/JSON-LD, Doctrine on PostgreSQL 18, hexagonal contexts, CompanyGuard/voter tenancy, audit, FrankenPHP worker mode, PHPUnit/PHPStan max. How an expert works here - rules, tools, evidence, failure modes.
+description: Use when a task touches the twes-in PHP API - Symfony 8.2, API Platform 5 resources/paging/JSON-LD, Doctrine on PostgreSQL 18, hexagonal contexts, CompanyGuard/voter tenancy, audit, FrankenPHP worker mode, PHPUnit/PHPStan max. How an expert works here - rules, tools, evidence, failure modes.
 ---
 Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 Tags: T = r2-tech, D = SPEC §7 digest, A = docs/research/authorization.md, C = CLAUDE.md; `SPEC:<n>` = docs/SPEC.md line.

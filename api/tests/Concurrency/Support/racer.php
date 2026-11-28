@@ -17,6 +17,8 @@ use App\Tests\Concurrency\Support\Outcome;
 use App\Tests\Concurrency\Support\RaceStep;
 use Doctrine\DBAL\Exception\DriverException;
 
+// Before the bootstrap: the race's own process has cleared the compiled container and its system pool already.
+define('TWES_TEST_RACER', true);
 require dirname(__DIR__, 2).'/bootstrap.php';
 
 /** @param array<string, mixed> $outcome */

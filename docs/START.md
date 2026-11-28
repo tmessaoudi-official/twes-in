@@ -493,7 +493,7 @@ make e2e              # Playwright against the running stack (make up first)
 
 `make rc-lane` is the RC lane (`scripts/rc-lane/rc-lane.sh`, `infra/api/rc.Dockerfile`), which CI's `rc-lane` workflow
 runs weekly, by hand, and on a push changing the dependencies. It copies `api/` into the toolchain's temporary
-directory, never the tree, moves the copy to Symfony's next minor (`RC_SYMFONY`, default 8.2) on PHP's release candidate,
+directory, never the tree, moves the copy to Symfony's next minor (`RC_SYMFONY`, default 8.3) on PHP's release candidate,
 then installs it, lists the container's deprecations, runs PHPStan and the suite on a database of its own (`twes_test_rc*`),
 and writes what each step gave to `var/rc-lane/summary.md`. It reports and never fails on what it finds: on GitHub a
 failed step is a warning on the run's page. php-cs-fixer is not run there, since it refuses a PHP it does not know yet.

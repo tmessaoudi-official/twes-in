@@ -144,11 +144,12 @@ final class PasswordResetTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->deliverQueued();
         self::assertEmailCount(1);
+        $mark = self::mailMark();
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'the same answer');
         self::assertSame(0, $this->deliverQueued());
-        self::assertEmailCount(0);
+        self::assertSame([], self::mailsSince($mark));
     }
 
     public function testAnUnknownLinkAndAWeakPasswordAreRefusedWithTheirReasons(): void

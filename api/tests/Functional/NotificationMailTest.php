@@ -332,9 +332,10 @@ final class NotificationMailTest extends ApiTestCase
         self::assertSame([true, false], $rows['stock.low'], 'the bell stays as it was');
         self::assertSame([true, true], $rows['invitation.accepted']);
 
+        $mark = self::mailMark();
         $this->tellStockLow();
         self::assertSame(1, $this->deliverQueued(), 'the worker had the mail to send');
-        self::assertEmailCount(0);
+        self::assertSame([], self::mailsSince($mark));
     }
 
     public function testWhatACompanyIsToldOfSomebodysActIsNotToldToThatPersonNorMailedToThem(): void

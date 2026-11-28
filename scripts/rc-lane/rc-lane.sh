@@ -7,7 +7,7 @@
 # and only that copy is moved to the next Symfony and installed.
 #
 #   rc-lane.sh run <out-dir>                 in the RC image (`make rc-lane`): copy api/, move it to $RC_SYMFONY
-#                                            (default 8.2), resolve, list the container's deprecations, PHPStan, the
+#                                            (default 8.3), resolve, list the container's deprecations, PHPStan, the
 #                                            suite on a database of its own (TEST_TOKEN=_rc), then the summary.
 #                                            Exits 0 once the summary is written, whatever the steps found: the lane
 #                                            reports, it never blocks; a step's failure is a warning on GitHub.
@@ -130,7 +130,7 @@ run() {
   done
   tar -C "$root/api" --exclude=./vendor --exclude=./var -cf - . | tar -C "$work" -xf - || { echo "rc-lane: could not copy api/" >&2; exit 1; }
   : > "$out/steps.tsv"
-  rewrite "$work/composer.json" "${RC_SYMFONY:-8.2}" || exit 1
+  rewrite "$work/composer.json" "${RC_SYMFONY:-8.3}" || exit 1
   if step resolve composer update 'symfony/*' -W --no-interaction --no-progress; then
     { php -r 'echo "PHP ", PHP_VERSION, "\n";'; (cd "$work" && bin/console --version --no-ansi); } > "$out/versions.txt" 2>&1
     step container bin/console debug:container --deprecations --no-interaction --no-ansi

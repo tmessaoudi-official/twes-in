@@ -12,6 +12,7 @@ namespace App\Shared\Infrastructure\Events;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Domain\Event\DomainEvent;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -21,11 +22,12 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * An event is published once its change is committed, so a listener that fails can undo nothing: it is logged, and the
  * other listeners still run, as the stock an issued invoice takes out must not wait on the storage of its PDF. That is
  * why the listeners are called here one by one rather than through dispatch(), which stops at the first that throws
- * (and which the profiler traces, the one thing lost).
+ * (and which the profiler traces, the one thing lost). getListeners() is the component's, not the contract's, so the
+ * dispatcher is named by its service id: its interface's alias is deprecated since Symfony 8.2.
  */
 final readonly class SymfonyDomainEvents implements DomainEvents
 {
-    public function __construct(private EventDispatcherInterface $dispatcher, private LoggerInterface $logger)
+    public function __construct(#[Autowire(service: 'event_dispatcher')] private EventDispatcherInterface $dispatcher, private LoggerInterface $logger)
     {
     }
 

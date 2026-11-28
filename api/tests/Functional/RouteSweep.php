@@ -62,7 +62,10 @@ trait RouteSweep
 
     private static function placeholder(string $variable, ?string $requirement): string
     {
-        $candidates = (array) (self::PLACEHOLDERS[$variable] ?? Uuid::v5(Uuid::fromString(Uuid::NAMESPACE_OID), $variable)->toRfc4122());
+        // Not `(array)`: PHPStan reads the cast of symfony/uid's `non-empty-string&non-decimal-int-string` as a union
+        // it no longer takes for a string.
+        $sample = self::PLACEHOLDERS[$variable] ?? Uuid::v5(Uuid::fromString(Uuid::NAMESPACE_OID), $variable)->toRfc4122();
+        $candidates = \is_array($sample) ? $sample : [$sample];
         foreach ($candidates as $candidate) {
             if (null === $requirement || 1 === preg_match('#^(?:'.$requirement.')$#', $candidate)) {
                 return $candidate;

@@ -333,12 +333,13 @@ final class SignupTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
         $this->deliverQueued();
         self::assertEmailCount(1);
+        $mark = self::mailMark();
 
         $this->postJson('/api/signup', ['email' => self::ADDRESS]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
         self::assertSame(0, $this->deliverQueued(), 'nothing queued past the address budget');
-        self::assertEmailCount(0);
+        self::assertSame([], self::mailsSince($mark));
     }
 
     public function testOneClientAsksForAFewLinksAndIsThenTurnedAway(): void

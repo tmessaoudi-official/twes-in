@@ -77,11 +77,12 @@ final class CompanyApprovalTest extends ApiTestCase
         $this->signedInAsOperator();
         $this->postJson($this->pathOf($company, 'approve'), []);
         self::assertResponseIsSuccessful();
+        $mark = self::mailMark();
 
         $this->postJson($this->pathOf($company, 'approve'), []);
 
         self::assertResponseIsSuccessful();
-        self::assertEmailCount(0);
+        self::assertSame([], self::mailsSince($mark));
         self::assertSame(['company.approved'], $this->auditActionsFor($company));
     }
 
@@ -201,13 +202,14 @@ final class CompanyApprovalTest extends ApiTestCase
         $this->signedInAsOperator();
         $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars']);
         self::assertResponseIsSuccessful();
+        $mark = self::mailMark();
 
         $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars et avril']);
 
         self::assertResponseIsSuccessful();
         self::assertSame('Impayé de mars', $this->em()->getConnection()->fetchOne('SELECT suspension_reason FROM company WHERE id = ?', [$company->getId()->toRfc4122()]));
         self::assertSame(['company.suspended'], $this->auditActionsFor($company));
-        self::assertCount(0, self::getMailerMessages());
+        self::assertSame([], self::mailsSince($mark));
     }
 
     /**
@@ -235,11 +237,12 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertStringContainsString('Impayé de mars et avril', $this->lastMailTo('nadia@example.test'));
 
         // The same reason again changes nothing and tells nobody, and says so rather than answering as if it had.
+        $mark = self::mailMark();
         $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Impayé de mars et avril']);
         self::assertResponseStatusCodeSame(409);
         self::assertSame([['propertyPath' => '', 'reason' => 'suspension_reason_unchanged', 'params' => []]], $this->refusals());
         self::assertCount(2, $this->auditActionsFor($company));
-        self::assertCount(0, self::getMailerMessages());
+        self::assertSame([], self::mailsSince($mark));
     }
 
     public function testRestoringASuspendedCompanySaysAccessIsBackNeverThatItWasApproved(): void
@@ -355,7 +358,7 @@ final class CompanyApprovalTest extends ApiTestCase
 
     private function lastMailTo(string $address): string
     {
-        $message = self::getMailerMessage();
+        $message = self::newestMail();
         self::assertInstanceOf(MimeEmail::class, $message);
         self::assertSame($address, $message->getTo()[0]->getAddress());
 

@@ -310,7 +310,7 @@ final class PlatformOwnersTest extends ApiTestCase
     private function tokenOfTheLastMail(): string
     {
         $this->deliverQueued();
-        $message = self::getMailerMessage();
+        $message = self::newestMail();
         self::assertInstanceOf(MimeEmail::class, $message);
         $found = [];
         if (1 !== preg_match('#/invitations/([0-9a-f]{64})#', (string) $message->getHtmlBody(), $found)) {

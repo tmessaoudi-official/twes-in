@@ -228,11 +228,12 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $declarationId = $this->stringAt($this->json(), 'id');
 
         $this->signInOperator();
+        $mark = self::mailMark();
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/reject', ['note' => 'rien reçu']);
         self::assertResponseIsSuccessful();
         self::assertSame('rejected', $this->json()['status']);
 
-        $message = self::getMailerMessage();
+        $message = self::mailsSince($mark)[0] ?? null;
         self::assertInstanceOf(MimeEmail::class, $message);
         self::assertSame('owner@twes.local', $message->getTo()[0]->getAddress());
 
@@ -303,9 +304,10 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         self::assertSame("Acme a déclaré un règlement de 1\u{a0}234,50 EUR", $declared->getSubject());
         self::assertStringContainsString("Acme a déclaré 1\u{a0}234,50 EUR réglés le", (string) $declared->getHtmlBody());
         $this->signInOperator();
+        $mark = self::mailMark();
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/reject', ['note' => 'rien reçu']);
         self::assertResponseIsSuccessful();
-        $rejected = self::getMailerMessage();
+        $rejected = self::mailsSince($mark)[0] ?? null;
         self::assertInstanceOf(MimeEmail::class, $rejected);
         self::assertStringContainsString('Payment of 1,234.50 EUR not confirmed', (string) $rejected->getHtmlBody());
         // The subject names the company, among several an owner may have, and a refusal says what to do next.
@@ -335,9 +337,10 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $declarationId = $this->stringAt($this->json(), 'id');
 
         $this->signInOperator();
+        $mark = self::mailMark();
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/confirm', []);
         self::assertResponseIsSuccessful();
-        $confirmed = self::getMailerMessage();
+        $confirmed = self::mailsSince($mark)[0] ?? null;
         self::assertInstanceOf(MimeEmail::class, $confirmed);
         self::assertSame('owner@twes.local', $confirmed->getTo()[0]->getAddress());
         self::assertStringContainsString('Payment of 1,234.50 EUR confirmed', (string) $confirmed->getHtmlBody());

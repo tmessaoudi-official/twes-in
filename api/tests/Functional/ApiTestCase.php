@@ -45,6 +45,7 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -770,6 +771,29 @@ abstract class ApiTestCase extends WebTestCase
             static fn (SecurityNoticeToMail $notice): string => $notice->change,
             array_filter($this->queued(), static fn (object $message): bool => $message instanceof SecurityNoticeToMail),
         ));
+    }
+
+    /**
+     * How many mails the test has sent so far. Symfony's mailer assertions see the mails of every request the test made,
+     * not only the last one's, so what one step sent is what came after the mark taken before it.
+     */
+    protected static function mailMark(): int
+    {
+        return \count(self::getMailerMessages());
+    }
+
+    /** @return list<RawMessage> the mails sent since the mark, in the order they went */
+    protected static function mailsSince(int $mark): array
+    {
+        return \array_slice(array_values(self::getMailerMessages()), $mark);
+    }
+
+    /** The last mail the test sent, from whichever of its requests. */
+    protected static function newestMail(): ?RawMessage
+    {
+        $mails = array_values(self::getMailerMessages());
+
+        return [] === $mails ? null : $mails[\count($mails) - 1];
     }
 
     /** Hands what is queued to the bus as the worker would, until nothing is left; how many it handed. */

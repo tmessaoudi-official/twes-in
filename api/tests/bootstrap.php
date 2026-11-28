@@ -10,6 +10,7 @@ declare(strict_types=1);
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Symfony\Component\Dotenv\Dotenv;
+use Symfony\Component\Filesystem\Filesystem;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 
@@ -37,12 +38,24 @@ if ($_SERVER['APP_DEBUG']) {
 
 // A container compiled without debug is never checked against the source again, so a later run booted one built before
 // the code it tested: a debug-off case answered 500 at sign-in in the snapshot gate's worktree, which keeps its caches.
-// Its loader goes at every run, and the first debug-off case compiles it from the tree as it stands.
+// Its loader goes at every run, and the first debug-off case compiles it from the tree as it stands. Its system pool
+// goes too: the pool's namespace follows the project and the container's class, never the vendor's versions, so the new
+// container read serializer metadata another Symfony had exported, which its own classes no longer take back.
 (static function (): void {
+    // A racer starts beside K others on one cache directory, after the race's own process ran this guard: removing what
+    // they read and write at once would turn the race into one about the cache.
+    if (defined('TWES_TEST_RACER')) {
+        return;
+    }
     $cache = $_SERVER['APP_CACHE_DIR'] ?? null;
-    $directory = (is_string($cache) && '' !== $cache ? $cache : dirname(__DIR__).'/var/cache').'/test';
-    if (is_file($directory.'/App_KernelTestContainer.php')) {
-        unlink($directory.'/App_KernelTestContainer.php');
+    $base = is_string($cache) && '' !== $cache ? $cache : dirname(__DIR__).'/var/cache';
+    // Each environment a test boots without debug: the suite's own, and production's (DevelopmentKeysTest).
+    foreach (['test' => 'Test', 'prod' => 'Prod'] as $environment => $name) {
+        $directory = $base.'/'.$environment;
+        if (is_file($directory.'/App_Kernel'.$name.'Container.php')) {
+            unlink($directory.'/App_Kernel'.$name.'Container.php');
+        }
+        (new Filesystem())->remove($directory.'/pools/system');
     }
 })();
 
