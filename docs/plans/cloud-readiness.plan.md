@@ -17,6 +17,7 @@ the developer's computer session's, in claude-code-setup.
 - [2026-11-27 21:18] AGREED: C1 + C1b (row 10): a cloud-only overlay compose.live-extra-ca.yaml (migrate-watch's build secret; the run-time CA for live api, migrate, web; web as the host user), appended by the Makefile only with the CA and the live file, idempotently; build-extra-ca.sh extended test-first; no 0644 copy; the gate stays a text check; verified on a fresh web-node-modules volume; committed on the cloud branch and kept local (the developer, AskUserQuestion, the recommended options)
 - [2026-11-27 21:52] AGREED: the audit findings C2-C7 and S1-S5 recorded as rows 11-21 (S1 todo, P2/P3 deferred, kit ones named), and the branch sent to the remote for CI (the developer, AskUserQuestion, the recommended option)
 - [2026-11-27 22:13] AGREED: row 22: Symfony 8.1.12 and Twig 3.31.1 inside the existing pins, for the 28 advisories composer audit found after master last went green (2026-11-23 to 25); the branch CI reds at make audit, so its e2e never ran; batch B (Symfony 8.2) on the computer will conflict on composer.lock (the developer, AskUserQuestion, the recommended option)
+- [2026-11-27 23:11] ASSUMED (review): row 22 ran composer update with --with-all-dependencies, where the question named --with-dependencies, so doctrine/dbal 4.6.0 and monolog 3.13.0 (minors) and doctrine/collections, egulias/email-validator (patches) moved too — because every dependency is kept up to date always (2026-11-11 11:21). Alternatives: hold them back with --with-dependencies
 
 ## Formal Plan
 
