@@ -16,6 +16,7 @@ the developer's computer session's, in claude-code-setup.
 - [2026-11-23 18:58] ASSUMED (review): T4 passes `--strict-allow-scripts` on each install instead of a `web/.npmrc` — because `.gitignore` keeps every `.npmrc` out of the tree (a registry token may sit in one); a gate holds the flag on every install. Alternatives: force-add `web/.npmrc` with a `.gitignore` exception.
 - [2026-11-27 21:18] AGREED: C1 + C1b (row 10): a cloud-only overlay compose.live-extra-ca.yaml (migrate-watch's build secret; the run-time CA for live api, migrate, web; web as the host user), appended by the Makefile only with the CA and the live file, idempotently; build-extra-ca.sh extended test-first; no 0644 copy; the gate stays a text check; verified on a fresh web-node-modules volume; committed on the cloud branch and kept local (the developer, AskUserQuestion, the recommended options)
 - [2026-11-27 21:52] AGREED: the audit findings C2-C7 and S1-S5 recorded as rows 11-21 (S1 todo, P2/P3 deferred, kit ones named), and the branch sent to the remote for CI (the developer, AskUserQuestion, the recommended option)
+- [2026-11-27 22:13] AGREED: row 22: Symfony 8.1.12 and Twig 3.31.1 inside the existing pins, for the 28 advisories composer audit found after master last went green (2026-11-23 to 25); the branch CI reds at make audit, so its e2e never ran; batch B (Symfony 8.2) on the computer will conflict on composer.lock (the developer, AskUserQuestion, the recommended option)
 
 ## Formal Plan
 
@@ -120,6 +121,7 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 19 | C5 (P3) `rc-lane.yml` never runs on `claude/**` pushes: add the patterns or record why in SPEC § 7 | S | deferred | - | .github/workflows/rc-lane.yml |
 | 20 | C6 (P3) the `tools` image has no `unzip`: Composer falls back to PHP's zip and warns of lost permissions | S | deferred | - | infra/api/Dockerfile |
 | 21 | C7 (open) whether the environment cache keeps what the detached setup built: a session on a cached environment reads `docker images` before its bootstrap | S | todo | - | - |
+| 22 | Symfony 8.1.12 and Twig 3.31.1 inside the pins: `composer audit` found 28 advisories (11 packages) published after master last went green, which reddened the branch's CI at `make audit` | S | doing | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
