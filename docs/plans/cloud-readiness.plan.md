@@ -121,7 +121,7 @@ K6: CLAUDE.md's cloud paragraph says a cloud session starts in spec mode and how
 | 19 | C5 (P3) `rc-lane.yml` never runs on `claude/**` pushes: add the patterns or record why in SPEC § 7 | S | deferred | - | .github/workflows/rc-lane.yml |
 | 20 | C6 (P3) the `tools` image has no `unzip`: Composer falls back to PHP's zip and warns of lost permissions | S | deferred | - | infra/api/Dockerfile |
 | 21 | C7 (open) whether the environment cache keeps what the detached setup built: a session on a cached environment reads `docker images` before its bootstrap | S | todo | - | - |
-| 22 | Symfony 8.1.12 and Twig 3.31.1 inside the pins: `composer audit` found 28 advisories (11 packages) published after master last went green, which reddened the branch's CI at `make audit` | S | doing | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
+| 22 | Symfony 8.1.12 and Twig 3.31.1 inside the pins: `composer audit` found 28 advisories (11 packages) published after master last went green, which reddened the branch's CI at `make audit` | S | done | 888c85803 | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
